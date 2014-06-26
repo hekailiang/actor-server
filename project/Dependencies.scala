@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val akka = "2.3.2"
+    val akka = "2.3.3"
     val scalaz = "7.1.0-M7"
   }
 
@@ -28,6 +28,8 @@ object Dependencies {
     val redis = "com.etaty.rediscala" %% "rediscala" % "1.3.1"
 
     val logback = "ch.qos.logback" % "logback-classic" % "1.1.2"
+
+    val scodec = "org.typelevel" %% "scodec-core" % "1.0.0" // TODO: 1.1.0-SNAPSHOT
 
 //    val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
 //
@@ -92,7 +94,7 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val etc = Seq()
+  val etc = Seq(scodec)
 
   val testDependencies = Seq(scalatest, akkaTest) // , scalaMockTest)
 
