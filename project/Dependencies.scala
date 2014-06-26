@@ -31,6 +31,10 @@ object Dependencies {
 
     val scodec = "org.typelevel" %% "scodec-core" % "1.0.0" // TODO: 1.1.0-SNAPSHOT
 
+    val guava = "com.google.guava" % "guava" % "17.0"
+
+    val annotationApi = "javax.annotation" % "javax.annotation-api" % "1.2"
+
 //    val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
@@ -94,7 +98,7 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val etc = Seq(scodec)
+  val etc = Seq(guava, annotationApi, scodec)
 
   val testDependencies = Seq(scalatest, akkaTest) // , scalaMockTest)
 
