@@ -19,6 +19,8 @@ object Dependencies {
 
     val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
 
+    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.3"
+
     val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
     val scalazCore = "org.scalaz" %% "scalaz-core" % V.scalaz
@@ -30,6 +32,8 @@ object Dependencies {
     val logback = "ch.qos.logback" % "logback-classic" % "1.1.2"
 
     val scodec = "org.typelevel" %% "scodec-core" % "1.0.0" // TODO: 1.1.0-SNAPSHOT
+
+    val scodecBits = "org.typelevel" %% "scodec-bits" % "1.0.1"
 
     val guava = "com.google.guava" % "guava" % "17.0"
 
@@ -45,7 +49,7 @@ object Dependencies {
 //
 //    val macwiew = "com.softwaremill.macwire" %% "macros" % "0.6"
 //
-//    val shepless = "com.chuusai" %% "shapeless" % "2.0.0"
+    val shapeless = "com.chuusai" %% "shapeless" % "2.0.0"
 //
 //    val optional = "org.nalloc" %% "optional" % "0.1.0"
 //
@@ -92,13 +96,13 @@ object Dependencies {
   import DeployDependencies._
   import TestDependencies._
 
-  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, logback)
+  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, akkaStreams, logback)
 
   val scalaz = Seq(scalazCore, scalazConcurrent)
 
   val dbs = Seq(redis)
 
-  val etc = Seq(guava, annotationApi, scodec)
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless)
 
   val testDependencies = Seq(scalatest, akkaTest) // , scalaMockTest)
 

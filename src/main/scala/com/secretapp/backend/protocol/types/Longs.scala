@@ -1,28 +1,21 @@
 package com.secretapp.backend.protocol.types
 
+import scodec.bits._
 import com.secretapp.backend.protocol.types.{ VarInt => VI }
-import com.google.common.primitives.{ Longs => L }
 
 object Longs {
-  def encode(n: Long): List[Byte] = L.toByteArray(n).toList
+  def encode(n: Long): ByteVector = BitVector.fromLong(n, 64, ByteOrdering.BigEndian).bytes
 
-  def decode(buf: List[Byte]) = L.fromByteArray(buf.toArray)
+  def decode(buf: ByteVector): Long = buf.toLong()
 
-  def encodeL(xs: List[Long]): List[Byte] = {
+  def encodeL(xs: Array[Long]): ByteVector = {
     val size = VI.encode(xs.length)
-    val longs = xs.flatMap(encode(_))
-    size ++ longs
+    xs.map(encode(_)).foldLeft(size)(_ ++ _)
   }
 
-  def decodeL(buf: List[Byte]): List[Long] = {
-    if (buf.isEmpty) {
-      Nil
-    } else {
-      decode(buf.take(8)) :: decodeL(buf.drop(8))
-    }
-  }
+  def decodeL(buf: ByteVector): Array[Long] = buf.grouped(8).map(decode(_)).toArray
 
-  def take(buf: List[Byte]): (List[Long], List[Byte]) = {
+  def take(buf: ByteVector): (Array[Long], ByteVector) = {
     val (len, xs) = VI.take(buf)
     Tuple2(decodeL(xs.take(8 * len)), xs.drop(8 * len))
   }

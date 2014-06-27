@@ -10,14 +10,10 @@ object Resolvers {
     new RawRepository(r)
   }
 
-  val typesafe = "typesafe repo" at "http://repo.typesafe.com/typesafe/releases"
-
-  val sonatypeSnapshots = "sonatype snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-
-  val sonatypeReleases = "sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"
-
-//  val localMaven = "Local Maven Repository" at "file:///" + Path.userHome.absolutePath + "/.m2/repository"
-
-  lazy val seq = Seq(typesafe, mavenOrg, sonatypeReleases, sonatypeSnapshots) //, localMaven)
+  lazy val seq = Seq("typesafe repo" at "http://repo.typesafe.com/typesafe/releases",
+    "sonatype snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
+    "sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/",
+//    "gideondk-repo" at "https://raw.github.com/gideondk/gideondk-mvn-repo/master",
+    mavenOrg)
 
 }
