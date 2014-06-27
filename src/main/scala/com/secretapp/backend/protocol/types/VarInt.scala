@@ -11,12 +11,12 @@ object VarInt {
     case x if x <= 0x1fffff => 3
     case x if x <= 0xfffffff => 4
     case x if x <= 0x7fffffff => 5
-    case x if x <= Int.MaxValue => 6
+    case _ => 6
   }
 
   def encode(buf: Int): ByteVector = {
-    val res = ByteBuffer.allocate(sizeOf(buf))
-    var n: Int = buf
+    var n: Int = buf.abs
+    val res = ByteBuffer.allocate(sizeOf(n))
     while (n > 0x7f) {
       res.put(((n & 0xff) | 0x80).toByte)
       n >>= 7

@@ -19,7 +19,7 @@ object Dependencies {
 
     val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
 
-    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.3"
+    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
 
     val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
@@ -82,7 +82,7 @@ object Dependencies {
   }
 
   object TestDependencies {
-    val scalatest = "org.scalatest" %% "scalatest" % "2.1.3" % "test"
+    val scalatest = "org.scalatest" %% "scalatest" % "2.2.0" % "test"
 
     val akkaTest = "com.typesafe.akka" %% "akka-testkit" % V.akka % "test"
 
