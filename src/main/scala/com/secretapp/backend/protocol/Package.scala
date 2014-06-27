@@ -1,7 +1,7 @@
 package com.secretapp.backend.protocol
 
 import types._
-import scodec.bits._
+import scodec.bits.ByteVector
 
 case class Package[T <: Struct](authId: Long,
                                 sessionId: Long,
@@ -18,7 +18,7 @@ object Package {
     Longs.encode(authId) ++
       Longs.encode(sessionId) ++
       Longs.encode(messageId) ++
-      BitVector.fromInt(msg.length, 32, ByteOrdering.BigEndian).bytes ++
+      ByteVector.fromInt(msg.length) ++
       msg
   }
 
@@ -27,7 +27,7 @@ object Package {
     Longs.encode(p.authId) ++
       Longs.encode(p.sessionId) ++
       Longs.encode(p.messageId) ++
-      BitVector.fromInt(message.length, 32, ByteOrdering.BigEndian).bytes ++
+      ByteVector.fromInt(message.length) ++
       message
   }
 

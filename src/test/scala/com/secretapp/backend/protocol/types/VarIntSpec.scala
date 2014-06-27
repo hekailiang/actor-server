@@ -27,7 +27,7 @@ class VarIntSpec extends FlatSpec with Matchers {
     res._2 should === (hex"ff")
   }
 
-  "varIntLen" should "count size of VarInt" in {
+  "varIntLen" should "count size from bytes" in {
     VarInt.varIntLen(hex"9601") should === (2)
     VarInt.varIntLen(hex"ac02") should === (2)
     VarInt.varIntLen(hex"ffffffff07") should === (5)
