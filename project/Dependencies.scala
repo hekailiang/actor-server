@@ -88,7 +88,7 @@ object Dependencies {
 
 //    val scalaMockTest = "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test"
 
-    val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.3" % "test"
+    val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
   }
 
 
@@ -104,6 +104,6 @@ object Dependencies {
 
   val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless)
 
-  val testDependencies = Seq(scalatest, akkaTest) // , scalaMockTest)
+  val testDependencies = Seq(scalatest, akkaTest, scalaCheck) // , scalaMockTest)
 
 }

@@ -33,7 +33,7 @@ object VarInt {
       res ^= ((n & 0xff) & 0x7f) << 7 * position
       position += 1
     }
-    res
+    res.abs
   }
 
   def varIntLen(xs: ByteVector): Int = {
