@@ -3,10 +3,10 @@ package com.secretapp.backend
 import akka.actor.{ Actor, ActorRef, ActorLogging, Props }
 import akka.io.{ IO, Tcp }
 import akka.util.ByteString
+import Tcp._
 
 class Server extends Actor with ActorLogging {
 
-  import Tcp._
   import context.system
 
   def receive = {
@@ -24,8 +24,6 @@ class Server extends Actor with ActorLogging {
 }
 
 class ApiHandler extends Actor with ActorLogging {
-
-  import Tcp._
 
   def receive = {
     case Received(data) =>

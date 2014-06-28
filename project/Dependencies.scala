@@ -4,7 +4,7 @@ object Dependencies {
 
   object V {
     val akka = "2.3.3"
-    val scalaz = "7.1.0-M7"
+    val scalaz = "7.0.6"
   }
 
   object CompileDependencies {
@@ -19,7 +19,7 @@ object Dependencies {
 
     val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
 
-    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
+//    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
 
     val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
@@ -31,7 +31,7 @@ object Dependencies {
 
     val logback = "ch.qos.logback" % "logback-classic" % "1.1.2"
 
-    val scodec = "org.typelevel" %% "scodec-core" % "1.0.0" // TODO: 1.1.0-SNAPSHOT
+    val scodec = "org.typelevel" %% "scodec-core" % "1.1.0"
 
     val scodecBits = "org.typelevel" %% "scodec-bits" % "1.0.1"
 
@@ -39,7 +39,7 @@ object Dependencies {
 
     val annotationApi = "javax.annotation" % "javax.annotation-api" % "1.2"
 
-//    val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
+    val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
@@ -96,13 +96,13 @@ object Dependencies {
   import DeployDependencies._
   import TestDependencies._
 
-  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, akkaStreams, logback)
+  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, /* akkaStreams, */ logback)
 
   val scalaz = Seq(scalazCore, scalazConcurrent)
 
   val dbs = Seq(redis)
 
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless)
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils)
 
   val testDependencies = Seq(scalatest, akkaTest, scalaCheck) // , scalaMockTest)
 
