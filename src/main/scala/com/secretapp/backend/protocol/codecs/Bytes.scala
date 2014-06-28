@@ -1,16 +1,33 @@
-//package com.secretapp.backend.protocol.codecs
-//
-//import scodec.bits.BitVector
-//
-//class Bytes(val n: BitVector) extends AnyVal {
-//  override def toString = s"Bytes(${n.toString})"
-//}
-//
-//object Bytes {
-//  def encode(xs: BitVector): BitVector = VarInt.encode(xs.length / 8) ++ xs
-//
-//  def take(buf: BitVector): (BitVector, BitVector) = {
-//    val (len, xs) = VarInt.take(buf)
-//    Tuple2(xs.take(8 * len), xs.drop(8 * len))
-//  }
-//}
+package com.secretapp.backend.protocol.codecs
+
+import scodec.bits._
+import scodec.{ Codec, DecodingContext }
+import scodec.codecs._
+import shapeless._
+import scalaz._
+import Scalaz._
+
+object Bytes {
+
+  val codec: Codec[BitVector] = new Codec[BitVector] {
+
+    def encode(xs: BitVector) = {
+      for {
+        len <- VarInt.encode(xs.length.toInt / 8)
+      } yield len ++ xs
+    }
+
+    def decode(buf: BitVector) =
+      for {
+        l <- VarInt.decode(buf)
+        xs = l._1
+        len = l._2 * 8L
+      } yield (xs.drop(len), xs.take(len))
+
+  }
+
+  def encode(s: BitVector) = codec.encode(s)
+
+  def decode(buf: BitVector) = codec.decode(buf)
+
+}

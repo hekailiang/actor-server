@@ -22,8 +22,8 @@ object String {
       for {
         l <- VarInt.decode(buf)
         xs = l._1
-        len = l._2 * 8
-      } yield (xs.drop(len.toLong), new String(xs.take(len).toByteArray))
+        len = l._2 * 8L
+      } yield (xs.drop(len), new String(xs.take(len).toByteArray))
 
   }
 

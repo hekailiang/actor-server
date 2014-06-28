@@ -24,9 +24,10 @@ object Main extends App {
   println(s"res: $res")
 
 
-//  import VarString._
-//  val vsres = VarString.encode("wow")
-//  println(s"vsres encode: $vsres")
-//  println(s"vsres decode: ${VarString.decode(vsres.toOption.get)}")
+  val a = Array[Long](6L, 1239L, Long.MaxValue)
+  val lres = Longs.encode(a)
+  println(s"lres encode: $lres")
+  println(s"lres decode: ${Longs.decode(lres.toOption.get).toOption.get._2.mkString(",")}")
+  println(s"lres decode length: ${Longs.decode(lres.toOption.get).toOption.get._2.length}")
 
 }
