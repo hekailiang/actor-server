@@ -35,6 +35,8 @@ object Dependencies {
 
     val scodecBits = "org.typelevel" %% "scodec-bits" % "1.2"
 
+//    val scodecStream = "org.typelevel" %% "scodec-stream" % "1.0.0-SNAPSHOT"
+
     val guava = "com.google.guava" % "guava" % "17.0"
 
     val annotationApi = "javax.annotation" % "javax.annotation-api" % "1.2"
@@ -102,7 +104,7 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils)
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils) // scodecStream,
 
   val testDependencies = Seq(scalatest, akkaTest, scalaCheck) // , scalaMockTest)
 

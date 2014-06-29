@@ -8,40 +8,21 @@ import shapeless._
 import scalaz._
 import Scalaz._
 
-case class Package(authId: Long,
-                   sessionId: Long,
-                   messageId: Long,
-                   length: Int/*,
-                   message: Struct*/)
+case class PackageHead(authId: Long,
+                       sessionId: Long,
+                       messageId: Long,
+                       messageLength: Int)
+{
+  val messageBitLength = messageLength * 8L
+}
+case class PackageMessage[T <: Struct](message: T)
+case class Package[T <: PackageMessage[_]](head: PackageHead, message: T)
 
 object Package {
 
-  implicit val codec: Codec[Package] = (int64L :: int64L :: int64L :: int16).as[Package]
+  val codecHead: Codec[PackageHead] = (int64L :: int64L :: int64L :: int16).as[PackageHead]
+
+  def headerSize = 64 * 3 + 16
+  def headerBitSize = 8L * headerSize
 
 }
-
-//object Package {
-//
-//  def build[T <: Struct](authId: Long, sessionId: Long, messageId: Long, message: T)
-//                        (implicit f: StructSerializer[T]): BitVector =
-//  {
-//    val msg = Struct.encode(message)
-//    Longs.encode(authId) ++
-//      Longs.encode(sessionId) ++
-//      Longs.encode(messageId) ++
-//      BitVector.fromInt(msg.length.toInt) ++
-//      msg
-//  }
-//
-//  def encode[T <: Struct](p: Package[T])(implicit f: StructSerializer[T]): BitVector = {
-//    val message = Struct.encode(p.message)
-//    Longs.encode(p.authId) ++
-//      Longs.encode(p.sessionId) ++
-//      Longs.encode(p.messageId) ++
-//      BitVector.fromInt(message.length.toInt) ++
-//      message
-//  }
-//
-//  def decode[T <: Struct](buf: BitVector): Package[T] = ???
-//
-//}
