@@ -20,9 +20,9 @@ case class Package[T <: PackageMessage[_]](head: PackageHead, message: T)
 
 object Package {
 
-  val codecHead: Codec[PackageHead] = (int64L :: int64L :: int64L :: int16).as[PackageHead]
+  val codecHead: Codec[PackageHead] = (int64 :: int64 :: int64 :: int16).as[PackageHead]
 
-  def headerSize = 64 * 3 + 16
-  def headerBitSize = 8L * headerSize
+  def headerSize = 8 * 3 + 16
+  def headerBitSize = 64L * 3 + 16
 
 }

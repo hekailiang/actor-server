@@ -39,8 +39,8 @@ class ApiHandler extends Actor with ActorLogging {
   var state: ParseResult = (PackageParsing(), BitVector.empty)
   val dropState = (DropParsing(), BitVector.empty)
 
-  //  @tailrec TODO: could not optimize @tailrec annotated method handleReceivedBytes: it is neither private nor final so can be overridden
-  def handleReceivedBytes(s: ParseState, buf: BitVector): ParseResult = s match {
+  @tailrec
+  private def handleReceivedBytes(s: ParseState, buf: BitVector): ParseResult = s match {
     case PackageParsing() =>
       if (buf.length >= Package.headerBitSize) {
         parsePackage(buf.take(Package.headerBitSize)) match {
@@ -87,8 +87,10 @@ class ApiHandler extends Actor with ActorLogging {
       log.info(s"Received: $data ${data.length}")
 
       state = handleReceivedBytes(state._1, state._2 ++ BitVector(data.toArray))
+      log.info(s"state: $state")
       state._1 match {
         case DropParsing(e) =>
+          log.info(s"DropParsing: $e}")
 //          val dropMsg = Struct.dropCodec.encode(e.getMessage)
 //          connection ! Write(dropMsg)
           connection ! Close

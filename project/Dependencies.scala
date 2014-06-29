@@ -104,8 +104,8 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils) // scodecStream,
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils)
 
-  val testDependencies = Seq(scalatest, akkaTest, scalaCheck) // , scalaMockTest)
+  val testDependencies = Seq(scalatest, akkaTest, scalaCheck)
 
 }
