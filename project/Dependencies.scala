@@ -31,9 +31,9 @@ object Dependencies {
 
     val logback = "ch.qos.logback" % "logback-classic" % "1.1.2"
 
-    val scodec = "org.typelevel" %% "scodec-core" % "1.1.0"
+    val scodec = "org.typelevel" %% "scodec-core" % "1.2"
 
-    val scodecBits = "org.typelevel" %% "scodec-bits" % "1.0.1"
+    val scodecBits = "org.typelevel" %% "scodec-bits" % "1.2"
 
     val guava = "com.google.guava" % "guava" % "17.0"
 
