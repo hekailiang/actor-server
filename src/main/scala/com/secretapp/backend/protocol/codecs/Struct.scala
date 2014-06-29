@@ -21,19 +21,19 @@ object ResponseAuthId {
 
 case class Ping(randomId: Long) extends Message
 object Ping {
-  val header: Byte = 0x1.toByte
+  val header: Byte = 0x1
   val codec = int64.pxmap[Ping](Ping.apply, Ping.unapply)
 }
 
 case class Pong(randomId: Long) extends Message
 object Pong {
-  val header: Byte = 0x2.toByte
+  val header: Byte = 0x2
   val codec = int64.pxmap[Pong](Pong.apply, Pong.unapply)
 }
 
 case class Drop(messageId: Long, message: String) extends Message
 object Drop {
-  val header: Byte = 0xd.toByte
+  val header: Byte = 0xd
   val codec = (int64 ~ String.codec).pxmap[Drop](Drop.apply, Drop.unapply)
 }
 
