@@ -24,17 +24,15 @@ class Server extends Actor with ActorLogging {
 }
 
 class ApiHandler extends Actor with ActorLogging {
-
   def receive = {
     case Received(data) =>
       val connection = sender()
-      log.info(s"Received: $data")
+      val length = data.length
+      log.info(s"Received: $data $length")
       connection ! Write(data)
       connection ! Close
     case PeerClosed     =>
       log.info("PeerClosed")
       context stop self
   }
-
 }
-

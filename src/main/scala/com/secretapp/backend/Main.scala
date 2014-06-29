@@ -7,11 +7,11 @@ import Tcp._
 
 object Main extends App {
 
-//  implicit val system = ActorSystem("secret-api-server")
-//
-//  implicit val service = system.actorOf(Props[Server], "api-service")
-//
-//  IO(Tcp) ! Bind(service, new InetSocketAddress("0.0.0.0", 8080))
+  implicit val system = ActorSystem("secret-api-server")
+
+  implicit val service = system.actorOf(Props[Server], "api-service")
+
+  IO(Tcp) ! Bind(service, new InetSocketAddress("0.0.0.0", 8080))
 
   import protocol._
   import codecs._
