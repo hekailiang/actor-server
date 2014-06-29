@@ -1,5 +1,7 @@
 package com.secretapp.backend.protocol.codecs
 
+import scodec.bits.ByteVector
+
 sealed trait Struct
 
 case class RequestAuth() extends Struct {
@@ -20,4 +22,12 @@ case class Pong(randomId: Long) extends Struct {
 
 case class Drop(messageId: Long, message: String) extends Struct {
   val header: Byte = 0xd.toByte
+}
+
+case class RpcRequest(payload: ByteVector) extends Struct {
+  val header: Byte = 0x3.toByte
+}
+
+case class RpcResponse(payload: ByteVector) extends Struct {
+  val header: Byte = 0x4.toByte
 }
