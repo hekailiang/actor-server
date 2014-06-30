@@ -24,9 +24,11 @@ object Package {
   def headerSize = 8 * 3 + 16
   def headerBitSize = 64L * 3 + 16
 
-  def encode(head: PackageHead, msg: PackageMessage) = for {
-    h <- codecHead.encode(head)
-    m <- Message.codec.encode(msg.message)
-  } yield h ++ m
+  def encode(authId: Long, sessionId: Long, messageId: Long, msg: Message) = {
+    for {
+      m <- Message.codec.encode(msg)
+      h <- codecHead.encode(PackageHead(authId, sessionId, messageId, (m.length / 8).toInt))
+    } yield h ++ m
+  }
 
 }
