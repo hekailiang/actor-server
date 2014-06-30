@@ -2,6 +2,7 @@ import sbt._
 import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
+import spray.revolver.RevolverPlugin._
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 
@@ -24,13 +25,16 @@ object BackendBuild extends Build {
     file("."),
     settings = defaultSettings ++
       AkkaKernelPlugin.distSettings ++
+      Revolver.settings ++
       //      AtmosDist.settings ++
       Seq(
         libraryDependencies ++= rootDependencies,
         resolvers ++= Resolvers.seq,
         distJvmOptions in Dist := "-Xms256M -Xmx1024M",
         distBootClass in Dist := appClass,
-        outputDirectory in Dist := file("target/dist")
+        outputDirectory in Dist := file("target/dist"),
+        Revolver.reStartArgs := Seq(appClass),
+        mainClass in Revolver.reStart := Some(appClass)
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
   // .settings(atmosSettings: _*).configs(Atmos)
