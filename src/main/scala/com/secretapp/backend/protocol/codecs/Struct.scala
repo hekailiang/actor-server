@@ -11,42 +11,33 @@ import Scalaz._
 sealed trait Struct // deprecate it?
 sealed trait Message extends Struct
 
-private object Headers {
-  val PING = 0x1.toByte
-  val PONG = 0x2.toByte
-  val DROP = 0xd.toByte
-  val REQ_AUTH = 0xf0.toByte
-  val RES_AUTH = 0xf1.toByte
-}
-import Headers._
-
 case class RequestAuthId() extends Message
 object RequestAuthId {
-  val header = REQ_AUTH
+  val header = 0xf0
   val codec = provide(RequestAuthId())
 }
 
 case class ResponseAuthId(authId: Long) extends Message
 object ResponseAuthId {
-  val header = RES_AUTH
+  val header = 0xf1
   val codec = int64.pxmap[ResponseAuthId](ResponseAuthId.apply, ResponseAuthId.unapply)
 }
 
 case class Ping(randomId: Long) extends Message
 object Ping {
-  val header = PING
+  val header = 0x1
   val codec = int64.pxmap[Ping](Ping.apply, Ping.unapply)
 }
 
 case class Pong(randomId: Long) extends Message
 object Pong {
-  val header = PONG
+  val header = 0x2
   val codec = int64.pxmap[Pong](Pong.apply, Pong.unapply)
 }
 
 case class Drop(messageId: Long, message: String) extends Message
 object Drop {
-  val header = DROP
+  val header = 0xd
   val codec = (int64 ~ String.codec).pxmap[Drop](Drop.apply, Drop.unapply)
 }
 

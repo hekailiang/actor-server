@@ -4,6 +4,8 @@ import akka.actor.{ ActorRef, ActorLogging }
 import scala.annotation.tailrec
 import scodec.bits._
 import java.util.concurrent.ConcurrentHashMap
+import scalaz._
+import Scalaz._
 
 trait ApiService {
 
@@ -14,11 +16,11 @@ trait ApiService {
   sealed trait ParseState
   case class PackageParsing() extends ParseState
   case class MessageParsing(p: PackageHead) extends ParseState
-  case class DropParsing(e: Option[Throwable] = None) extends ParseState
+  case class DropParsing(e: String) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
   var state: ParseResult = (PackageParsing(), BitVector.empty)
-  def dropState(e: Option[Throwable] = None) = (DropParsing(e), BitVector.empty)
+  def dropState(e: String) = (DropParsing(e), BitVector.empty)
 
   type HandleResult[T] = Either[Throwable, T]
 
@@ -29,7 +31,7 @@ trait ApiService {
       if (buf.length >= Package.headerBitSize) {
         parsePackage(buf.take(Package.headerBitSize)) match {
           case Right(p) => handleReceivedBytes(MessageParsing(p), buf.drop(Package.headerBitSize))(con)
-          case Left(e) => dropState(Some(e))
+          case Left(e) => dropState(e.getMessage)
         }
       } else (PackageParsing(), buf)
 
@@ -39,23 +41,23 @@ trait ApiService {
           case Right(m) =>
             handleMessage(Package(p, m))(con) match {
               case Right(_) => handleReceivedBytes(PackageParsing(), buf.drop(p.messageBitLength))(con)
-              case Left(e) => dropState(Some(e))
+              case Left(e) => dropState(e.getMessage)
             }
 
-          case Left(e) => dropState(Some(e))
+          case Left(e) => dropState(e.getMessage)
         }
       } else (MessageParsing(p), buf)
 
-    case _ => dropState()
+    case _ => dropState("unknown state")
   }
 
   def parsePackage(buf: BitVector): HandleResult[PackageHead] =
-    Package.codecHead.decode(buf).toOption match {
-      case Some((_, p)) =>
+    Package.codecHead.decode(buf) match {
+      case \/-((_, p)) =>
         // TODO: validate p
         Right(p)
 
-      case None => Left(new Throwable("parse error"))
+      case -\/(e) => Left(new Throwable(e))
     }
 
   def parseMessage[T <: PackageMessage[_]](buf: BitVector): HandleResult[T] = {
