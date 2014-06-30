@@ -98,16 +98,18 @@ trait ApiService {
     }
   }
 
-  var messageCounter: Long = 0L
-
   def writeCodecResult(p: PackageHead, m: codecs.Message): HandleResult[Unit] = {
-//    case \/-(b) =>
-    val reply = ByteString(Message.codec.encode(m).toOption.get.toByteBuffer) // TODO replace toOption.get by flatMap
-    val head = PackageHead(p.authId, p.sessionId, p.messageId, reply.length)
-    val res = ByteString(Package.codecHead.encode(head).toOption.get.toByteBuffer) ++ reply // TODO replace toOption.get by flatMap
-    sendBuffer ++= res
-    Right(())
-//    case -\/(e) => Left(e)
+    val res = for {
+      reply <- Message.codec.encode(m)
+      packageHead = PackageHead(p.authId, p.sessionId, p.messageId, (reply.length / 8).toInt)
+      head <- Package.codecHead.encode(packageHead)
+    } yield ByteString(head.toByteBuffer) ++ ByteString(reply.toByteBuffer)
+    res match {
+      case \/-(b) =>
+        sendBuffer ++= b
+        Right(())
+      case -\/(e) => Left(e)
+    }
   }
 
   def handleMessage(head: PackageHead, msg: PackageMessage): HandleResult[Unit] = authId match {
