@@ -35,6 +35,12 @@ object Pong {
   val codec = int64.pxmap[Pong](Pong.apply, Pong.unapply)
 }
 
+case class NewSession(sessionId: Long, messageId: Long) extends Message
+object NewSession {
+  val header = 0xc
+  val codec = (int64 ~ int64).pxmap[NewSession](NewSession.apply, NewSession.unapply)
+}
+
 case class Drop(messageId: Long, message: String) extends Message
 object Drop {
   val header = 0xd
@@ -48,4 +54,5 @@ object Message {
     .\(Ping.header) { case p@Ping(_) => p}(Ping.codec)
     .\(Pong.header) { case p@Pong(_) => p}(Pong.codec)
     .\(Drop.header) { case d@Drop(_, _) => d}(Drop.codec)
+    .\(NewSession.header) { case s@NewSession(_, _) => s}(NewSession.codec)
 }

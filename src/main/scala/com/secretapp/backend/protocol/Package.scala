@@ -15,8 +15,7 @@ case class PackageHead(authId: Long,
 {
   val messageBitLength = messageLength * 8L
 }
-case class PackageMessage[T <: Struct](message: T)
-case class Package[T <: PackageMessage[_]](head: PackageHead, message: T)
+case class PackageMessage(message: Message)
 
 object Package {
 
@@ -24,5 +23,10 @@ object Package {
 
   def headerSize = 8 * 3 + 16
   def headerBitSize = 64L * 3 + 16
+
+  def encode(head: PackageHead, msg: PackageMessage) = for {
+    h <- codecHead.encode(head)
+    m <- Message.codec.encode(msg.message)
+  } yield h ++ m
 
 }
