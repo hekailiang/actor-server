@@ -42,15 +42,6 @@ object VarInt {
       (buf.drop(offset), len).right
     }
 
-    private def sizeOf(buf: Int): Int = buf match {
-      case x if x <= 0x7f => 1
-      case x if x <= 0x3fff => 2
-      case x if x <= 0x1fffff => 3
-      case x if x <= 0xfffffff => 4
-      case x if x <= 0x7fffffff => 5
-      case _ => 6
-    }
-
     private def varIntLen(buf: BitVector): Long = {
       @tailrec
       def f(buf: BitVector, len: Long = 1): Long = {
@@ -62,8 +53,18 @@ object VarInt {
 
   }
 
-  def encode(vi: Int) = codec.encode(vi)
+  def encode(n: Int) = codec.encode(n)
+  def encode(n: Long) = codec.encode(n.toInt)
 
   def decode(buf: BitVector) = codec.decode(buf)
+
+  def sizeOf(buf: Int): Int = buf match {
+    case x if x <= 0x7f => 1
+    case x if x <= 0x3fff => 2
+    case x if x <= 0x1fffff => 3
+    case x if x <= 0xfffffff => 4
+    case x if x <= 0x7fffffff => 5
+    case _ => 6
+  }
 
 }

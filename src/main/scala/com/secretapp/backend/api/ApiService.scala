@@ -18,122 +18,99 @@ trait ApiService {
   import com.secretapp.backend.protocol._
 
   sealed trait ParseState
-  case class PackageParsing() extends ParseState
-  case class MessageParsing(p: PackageHead) extends ParseState
+  case class LengthParsing() extends ParseState
+  case class PackageParsing(bitsLen: Long) extends ParseState
   case class DropParsing(e: String) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
-  var state: ParseResult = (PackageParsing(), BitVector.empty)
+  var state: ParseResult = (LengthParsing(), BitVector.empty)
   var sendBuffer: ByteString = ByteString()
   def dropState(e: String) = (DropParsing(e), BitVector.empty)
 
-  type HandleResult[T] = Either[String, T]
+  type HandleResult = String \/ Unit
 
-  //  TODO: replace with scalaz State monad
-  //  TODO: check for max buffer length and drop parsing for GC
+  val minParseLength = 40L
+
   @tailrec
   final def handleReceivedBytes(s: ParseState, buf: BitVector): ParseResult = s match {
-    case PackageParsing() =>
-      if (buf.length >= Package.headerBitSize) {
-        println(s"PackageParsing(): buf.take ${Package.headerBitSize} ${buf.length}")
-        parsePackage(buf.take(Package.headerBitSize)) match {
-          case Right(p) =>
-            val newState = if (p.messageBitLength > 0) MessageParsing(p) else PackageParsing()
-            handleReceivedBytes(newState, buf.drop(Package.headerBitSize))
-          case Left(e) => dropState(e)
+    case lp@LengthParsing() =>
+      if (buf.length >= minParseLength) {
+        VarInt.decode(buf) match {
+          case \/-((_, len)) =>
+            val pLen = len * 8 + VarInt.sizeOf(len) * 8
+            handleReceivedBytes(PackageParsing(pLen), buf)
+          case -\/(e) => dropState(e)
         }
-      } else (PackageParsing(), buf)
+      } else (lp, buf)
 
-    case MessageParsing(p) =>
-      if (buf.length >= p.messageBitLength) {
-        println(s"MessageParsing(): buf.take ${p.messageBitLength} ${buf.length}")
-        parseMessage(buf.take(p.messageBitLength)) match {
-          case Right(m) =>
-            handleMessage(p, m) match {
-              case Right(_) => handleReceivedBytes(PackageParsing(), buf.drop(p.messageBitLength))
-              case Left(e) => dropState(e)
+    case pp@PackageParsing(bitsLen) =>
+      if (buf.length >= bitsLen) {
+        Package.decode(buf) match {
+          case \/-((remain, p)) =>
+            val res = for {
+              _ <- validatePackage(p)
+              _ <- handleMessage(p)
+            } yield (LengthParsing(), remain)
+            res match {
+              case \/-(r@((_, _))) => r
+              case -\/(e) => dropState(e)
             }
-
-          case Left(e) => dropState(e)
+          case -\/(e) => dropState(e)
         }
-      } else (MessageParsing(p), buf)
+      } else (pp, buf)
 
     case _ => dropState("unknown state")
   }
 
-  def parsePackage(buf: BitVector): HandleResult[PackageHead] = {
-    Package.codecHead.decode(buf) match {
-      case \/-((_, p)) =>
-        if (Some(p.authId) != authId && p.authId != 0L) {
-          if (authTable.containsKey(p.authId)) authId = Some(p.authId)
-          else return Left(s"unknown authId($authId)")
-        }
-
-        if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
-          val sessions = authTable.get(p.authId)
-          if (sessions != null) return Left(s"empty authTable")
-
-          if (sessions.contains(p.sessionId)) {
-            sessionIds = sessionIds :+ p.sessionId
-          } else {
-            val newSessionId = rand.nextLong
-            sessionId = Some(newSessionId)
-            sessionIds = sessionIds.+:(newSessionId)
-            sessions.add(newSessionId)
-            writeCodecResult(p, NewSession(newSessionId, p.messageId))
-          }
-        }
-
-        Right(p)
-      case -\/(e) => Left(e)
+  def validatePackage(p: Package): HandleResult = {
+    val ph = p.head
+    if (Some(ph.authId) != authId && ph.authId != 0L) {
+      if (authTable.containsKey(ph.authId)) authId = Some(ph.authId)
+      else return s"unknown authId($authId)".left
     }
+
+    if (Some(ph.sessionId) != sessionId && !sessionIds.contains(ph.sessionId) && ph.sessionId != 0L) {
+      val sessions = authTable.get(ph.authId)
+      if (sessions != null) return s"empty authTable".left
+
+      if (sessions.contains(ph.sessionId)) {
+        sessionIds = sessionIds :+ ph.sessionId
+      } else {
+        val newSessionId = rand.nextLong
+        sessionId = Some(newSessionId)
+        sessionIds = sessionIds.+:(newSessionId)
+        sessions.add(newSessionId)
+        writeCodecResult(ph, NewSession(newSessionId, ph.messageId))
+      }
+    }
+
+    ().right
   }
 
-  def parseMessage(buf: BitVector): HandleResult[PackageMessage] = {
-    Message.codec.decode(buf) match {
-      case \/-((_, m)) =>
-        println(PackageMessage(m))
-        Right(PackageMessage(m))
-      case -\/(e) => Left(e)
-    }
-  }
-
-  def writeCodecResult(p: PackageHead, m: codecs.Message): HandleResult[Unit] = {
-    val res = for {
-      reply <- Message.codec.encode(m)
-      packageHead = PackageHead(p.authId, p.sessionId, p.messageId, (reply.length / 8).toInt)
-      head <- Package.codecHead.encode(packageHead)
-    } yield ByteString(head.toByteBuffer) ++ ByteString(reply.toByteBuffer)
-    res match {
+  def writeCodecResult(p: PackageHead, m: codecs.Message): HandleResult = {
+    Package.encode(p.authId, p.sessionId, p.messageId, m) match {
       case \/-(b) =>
-        sendBuffer ++= b
-        Right(())
-      case -\/(e) => Left(e)
+        sendBuffer ++= ByteString(b.toByteBuffer)
+        ().right
+      case -\/(e) => e.left
     }
   }
 
-  def handleMessage(head: PackageHead, msg: PackageMessage): HandleResult[Unit] = authId match {
+  def handleMessage(p: Package): HandleResult = authId match {
     case Some(authId) =>
-      println(head)
-      println(msg)
-
-      msg.message match {
-        case Ping(randomId) =>
-          println(s"Ping: $randomId")
-          writeCodecResult(head, Pong(randomId))
-        case _ =>
-          Left(s"unknown case for message")
+      p.message match {
+        case Ping(randomId) => writeCodecResult(p.head, Pong(randomId))
+        case _ => s"unknown case for message".left
       }
 
     case None =>
-      msg.message match {
-        case RequestAuthId() if head.authId == 0L && head.sessionId == 0L =>
+      p.message match {
+        case RequestAuthId() if p.head.authId == 0L && p.head.sessionId == 0L =>
           val newAuthId = rand.nextLong
           authId = Some(newAuthId)
           authTable.put(newAuthId, new ConcurrentSkipListSet[Long]()) // TODO: check for uniqueness
-          writeCodecResult(head, ResponseAuthId(newAuthId))
-        case _ =>
-          Left(s"unknown authId(${head.authId}) or sessionId(${head.sessionId})")
+          writeCodecResult(p.head, ResponseAuthId(newAuthId))
+        case _ => s"unknown authId(${p.head.authId}) or sessionId(${p.head.sessionId})".left
       }
   }
 

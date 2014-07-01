@@ -10,7 +10,6 @@ class MessagesSpec extends FlatSpec with Matchers {
   "Message" should "encode and decode RequestAuth" in {
     val encoded = hex"f0".bits
 
-    println(Message.codec.encode(RequestAuthId()))
     Message.codec.encode(RequestAuthId()) should === (encoded.right)
     Message.codec.decode(encoded).toOption should === (
       Some((BitVector.empty, RequestAuthId()))

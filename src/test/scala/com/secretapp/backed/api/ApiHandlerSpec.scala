@@ -1,6 +1,6 @@
 package com.secretapp.backed.api
 
-import com.secretapp.backend.protocol.codecs.{ResponseAuthId, RequestAuthId}
+import com.secretapp.backend.protocol.codecs._
 import org.scalatest._
 import akka.testkit._
 import akka.actor.{ ActorSystem, Props }
