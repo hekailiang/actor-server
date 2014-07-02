@@ -3,6 +3,7 @@ import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
 import spray.revolver.RevolverPlugin._
+import org.scalastyle.sbt.ScalastylePlugin
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 
@@ -28,6 +29,7 @@ object BackendBuild extends Build {
       AkkaKernelPlugin.distSettings ++
       Revolver.settings ++
       //      AtmosDist.settings ++
+      ScalastylePlugin.Settings ++
       Seq(
         libraryDependencies ++= rootDependencies,
         resolvers ++= Resolvers.seq,
