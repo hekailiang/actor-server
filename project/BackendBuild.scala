@@ -16,7 +16,8 @@ object BackendBuild extends Build {
   import CompileDependencies._
 
   val appName = "backend"
-  val appClass = "com.secretapp.backend.Main"
+  val appClass = "com.secretapp.backend.ApiKernel"
+  val appClassMock = "com.secretapp.backend.Main"
 
   lazy val rootDependencies = akka ++ scalaz ++ etc ++ testDependencies
 
@@ -33,8 +34,8 @@ object BackendBuild extends Build {
         distJvmOptions in Dist := "-Xms256M -Xmx1024M",
         distBootClass in Dist := appClass,
         outputDirectory in Dist := file("target/dist"),
-        Revolver.reStartArgs := Seq(appClass),
-        mainClass in Revolver.reStart := Some(appClass)
+        Revolver.reStartArgs := Seq(appClassMock),
+        mainClass in Revolver.reStart := Some(appClassMock)
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
   // .settings(atmosSettings: _*).configs(Atmos)
