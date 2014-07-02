@@ -1,0 +1,7 @@
+sms {
+  clickatell {
+    user = "ex3ndr"
+    password = "QEFAQAcREYHfXX"
+    api-id = "3486451"
+  }
+}

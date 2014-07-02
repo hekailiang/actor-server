@@ -21,6 +21,8 @@ object Dependencies {
 
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
 
+    val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.1"
+
     val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
     val scalazCore = "org.scalaz" %% "scalaz-core" % V.scalaz
@@ -104,7 +106,7 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils)
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
 
   val testDependencies = Seq(scalatest, akkaTest, scalaCheck)
 

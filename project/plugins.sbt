@@ -4,7 +4,7 @@ resolvers ++= Seq(
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.10.0")
 
-addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.3.2")
+addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.5.0")
 
 addSbtPlugin("com.typesafe.akka" % "akka-sbt-plugin" % "2.2.3")
 
