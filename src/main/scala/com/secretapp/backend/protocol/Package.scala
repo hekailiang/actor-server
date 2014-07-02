@@ -53,7 +53,7 @@ object Package {
 
   def encodeCRCR32(buf: BitVector): BitVector = {
     val crc32 = new CRC32()
-    crc32.update(buf.toByteBuffer)
+    crc32.update(buf.toByteArray)
     BitVector.fromLong(crc32.getValue)
   }
 
