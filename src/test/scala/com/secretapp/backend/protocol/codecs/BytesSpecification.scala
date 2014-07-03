@@ -6,11 +6,12 @@ import org.scalacheck.Prop._
 import scalaz._
 import Scalaz._
 import test.utils.scalacheck.Generators._
+import com.secretapp.backend.protocol._
 
 object BytesSpecification extends Properties("Bytes") {
 
   property("encode/decode") = forAll(genBV) { (a: BitVector) =>
-    Bytes.decode(Bytes.encode(a).toOption.get) == (BitVector.empty, a).right
+    bytes.decode(bytes.encode(a).toOption.get) == (BitVector.empty, a).right
   }
 
 }

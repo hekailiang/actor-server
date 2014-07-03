@@ -9,7 +9,7 @@ import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
 import com.secretapp.backend.api.ApiHandler
-import com.secretapp.backend.protocol.Package
+import com.secretapp.backend.data._
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
 class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike
@@ -36,8 +36,8 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
     "reply with auth token to auth request" in {
       val apiActor = getApiActor()
-      val req = Package.encode(0L, 0L, 1L, RequestAuthId())
-      val res = Package.encode(0L, 0L, 1L, ResponseAuthId(12345L))
+      val req = PackageCodec.encode(0L, 0L, 1L, RequestAuthId())
+      val res = PackageCodec.encode(0L, 0L, 1L, ResponseAuthId(12345L))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
     }
@@ -47,16 +47,16 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val apiActor = getApiActor()
       val authId = 12345L
       val messageId = 1L
-      val req = Package.encode(0L, 0L, messageId, RequestAuthId())
-      val res = Package.encode(0L, 0L, messageId, ResponseAuthId(authId))
+      val req = PackageCodec.encode(0L, 0L, messageId, RequestAuthId())
+      val res = PackageCodec.encode(0L, 0L, messageId, ResponseAuthId(authId))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
 
       val randId = 987654321L
       val sessionId = 123L
-      val ping = Package.encode(authId, sessionId, messageId + 1, Ping(randId))
-      val newNewSession = Package.encode(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-      val pong = Package.encode(authId, sessionId, messageId + 1, Pong(randId))
+      val ping = PackageCodec.encode(authId, sessionId, messageId + 1, Ping(randId))
+      val newNewSession = PackageCodec.encode(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      val pong = PackageCodec.encode(authId, sessionId, messageId + 1, Pong(randId))
       val reply = newNewSession.toOption.get ++ pong.toOption.get
 
       probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))

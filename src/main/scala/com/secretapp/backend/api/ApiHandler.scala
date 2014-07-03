@@ -6,6 +6,8 @@ import akka.io.Tcp._
 import scodec.bits._
 import java.util.concurrent.{ConcurrentSkipListSet, ConcurrentHashMap}
 import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.protocol._
+import com.secretapp.backend.data._
 import scalaz._
 import Scalaz._
 
@@ -23,7 +25,7 @@ class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Lo
       state._1 match {
         case DropParsing(e) =>
           log.info(s"DropParsing: $e")
-          val dropMsg: ByteString = Message.codec.encode(Drop(5L, e)) match {
+          val dropMsg: ByteString = protoMessage.encode(Drop(5L, e)) match {
             case \/-(bs) => ByteString(bs.toByteArray)
             case -\/(e) => ByteString(e)
           }

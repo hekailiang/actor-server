@@ -10,13 +10,13 @@ import scalaz._
 import Scalaz._
 import java.nio.ByteBuffer
 
-object VarInt {
+trait VarIntCodec {
 
-  val codec: Codec[Int] = new Codec[Int] {
+  val varint: Codec[Int] = new Codec[Int] {
 
     def encode(v: Int) = {
       var n: Int = v.abs
-      val res = ByteBuffer.allocate(sizeOf(n))
+      val res = ByteBuffer.allocate(VarIntCodec.sizeOf(n))
       while (n > 0x7f) {
         res.put(((n & 0xff) | 0x80).toByte)
         n >>= 7
@@ -52,11 +52,13 @@ object VarInt {
     }
 
   }
+}
 
-  def encode(n: Int) = codec.encode(n)
-  def encode(n: Long) = codec.encode(n.toInt)
+object VarIntCodec extends VarIntCodec {
+  def encode(n: Int) = varint.encode(n)
+  def encode(n: Long) = varint.encode(n.toInt)
 
-  def decode(buf: BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = varint.decode(buf)
 
   def sizeOf(buf: Int): Int = buf match {
     case x if x <= 0x7f => 1
@@ -66,5 +68,4 @@ object VarInt {
     case x if x <= 0x7fffffff => 5
     case _ => 6
   }
-
 }

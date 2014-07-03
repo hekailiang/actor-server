@@ -4,12 +4,14 @@ import akka.actor.{ ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.data._
 import scala.annotation.tailrec
 import scala.util.Random
 import scodec.bits._
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 import scalaz._
 import Scalaz._
+import com.secretapp.backend.data
 
 trait ApiService {
 
@@ -35,9 +37,9 @@ trait ApiService {
   final def handleReceivedBytes(s: ParseState, buf: BitVector): ParseResult = s match {
     case lp@LengthParsing() =>
       if (buf.length >= minParseLength) {
-        VarInt.decode(buf) match {
+        VarIntCodec.decode(buf) match {
           case \/-((_, len)) =>
-            val pLen = len * 8 + VarInt.sizeOf(len) * 8
+            val pLen = len * 8 + VarIntCodec.sizeOf(len) * 8
             handleReceivedBytes(PackageParsing(pLen), buf)
           case -\/(e) => dropState(e)
         }
@@ -45,7 +47,7 @@ trait ApiService {
 
     case pp@PackageParsing(bitsLen) =>
       if (buf.length >= bitsLen) {
-        Package.decode(buf) match {
+        PackageCodec.decode(buf) match {
           case \/-((remain, p)) =>
             val res = for {
               _ <- validatePackage(p)
@@ -86,8 +88,8 @@ trait ApiService {
     ().right
   }
 
-  def writeCodecResult(p: PackageHead, m: codecs.Message): HandleResult = {
-    Package.encode(p.authId, p.sessionId, p.messageId, m) match {
+  def writeCodecResult(p: PackageHead, m: ProtoMessage): HandleResult = {
+    PackageCodec.encode(p.authId, p.sessionId, p.messageId, m) match {
       case \/-(b) =>
 //        println(s"writeCodecResult: $p $m\n${ByteString(b.toByteBuffer)}")
         sendBuffer ++= ByteString(b.toByteBuffer)

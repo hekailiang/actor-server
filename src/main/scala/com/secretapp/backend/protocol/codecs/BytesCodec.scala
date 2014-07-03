@@ -7,27 +7,28 @@ import shapeless._
 import scalaz._
 import Scalaz._
 
-object Bytes {
+trait BytesCodec {
 
-  val codec: Codec[BitVector] = new Codec[BitVector] {
+  val bytes: Codec[BitVector] = new Codec[BitVector] {
 
     def encode(xs: BitVector) = {
       for {
-        len <- VarInt.encode(xs.length.toInt / 8)
+        len <- VarIntCodec.encode(xs.length.toInt / 8)
       } yield len ++ xs
     }
 
     def decode(buf: BitVector) =
       for {
-        l <- VarInt.decode(buf)
+        l <- VarIntCodec.decode(buf)
         xs = l._1
         len = l._2 * 8L
       } yield (xs.drop(len), xs.take(len))
-
   }
 
-  def encode(s: BitVector) = codec.encode(s)
+}
 
-  def decode(buf: BitVector) = codec.decode(buf)
+object BytesCodec extends BytesCodec {
+  def encode(s: BitVector) = bytes.encode(s)
 
+  def decode(buf: BitVector) = bytes.decode(buf)
 }

@@ -9,7 +9,7 @@ import Scalaz._
 object StringSpecification extends Properties("String") {
 
   property("encode/decode") = forAll { (a: String) =>
-    String.decode(String.encode(a).toOption.get) == (BitVector.empty, a).right
+    StringCodec.decode(StringCodec.encode(a).toOption.get) == (BitVector.empty, a).right
   }
 
 }
