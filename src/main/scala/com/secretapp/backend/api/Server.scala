@@ -23,4 +23,3 @@ class Server extends Actor with ActorLogging {
       connection ! Register(handler)
   }
 }
-

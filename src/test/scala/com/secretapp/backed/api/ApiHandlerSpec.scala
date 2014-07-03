@@ -25,7 +25,7 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   val authTable = new ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]()
   val probe = TestProbe()
-  val apiActor = system.actorOf(Props(new ApiHandler(authTable) {
+  def getApiActor() = system.actorOf(Props(new ApiHandler(authTable) {
     override lazy val rand = new Random() {
       override def nextLong() = 12345L
     }
@@ -34,11 +34,33 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   "actor" must {
 
+    "reply with auth token to auth request" in {
+      val apiActor = getApiActor()
+      val req = Package.encode(0L, 0L, 1L, RequestAuthId())
+      val res = Package.encode(0L, 0L, 1L, ResponseAuthId(12345L))
+      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+    }
+
     "reply pong to ping" in {
-      val req = Package.encode(0L, 0L, 1L, RequestAuthId()).toOption.get.toByteBuffer
-      val res = Package.encode(0L, 0L, 1L, ResponseAuthId(12345L)).toOption.get.toByteBuffer
-      probe.send(apiActor, Received(ByteString(req)))
-      probe.expectMsg(Write(ByteString(res)))
+//      TODO: DRY
+      val apiActor = getApiActor()
+      val authId = 12345L
+      val messageId = 1L
+      val req = Package.encode(0L, 0L, messageId, RequestAuthId())
+      val res = Package.encode(0L, 0L, messageId, ResponseAuthId(authId))
+      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+
+      val randId = 987654321L
+      val sessionId = 123L
+      val ping = Package.encode(authId, sessionId, messageId + 1, Ping(randId))
+      val newNewSession = Package.encode(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      val pong = Package.encode(authId, sessionId, messageId + 1, Pong(randId))
+      val reply = newNewSession.toOption.get ++ pong.toOption.get
+
+      probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(reply.toByteBuffer)))
     }
 
   }

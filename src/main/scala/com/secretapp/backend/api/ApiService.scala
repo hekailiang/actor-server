@@ -71,16 +71,15 @@ trait ApiService {
 
     if (Some(ph.sessionId) != sessionId && !sessionIds.contains(ph.sessionId) && ph.sessionId != 0L) {
       val sessions = authTable.get(ph.authId)
-      if (sessions != null) return s"empty authTable".left
+      if (sessions == null) return s"empty authTable".left
 
       if (sessions.contains(ph.sessionId)) {
         sessionIds = sessionIds :+ ph.sessionId
       } else {
-        val newSessionId = rand.nextLong
-        sessionId = Some(newSessionId)
-        sessionIds = sessionIds.+:(newSessionId)
-        sessions.add(newSessionId)
-        writeCodecResult(ph, NewSession(newSessionId, ph.messageId))
+        sessionId = Some(ph.sessionId)
+        sessionIds = sessionIds.+:(ph.sessionId)
+        sessions.add(ph.sessionId)
+        writeCodecResult(ph, NewSession(ph.sessionId, ph.messageId))
       }
     }
 
@@ -90,6 +89,7 @@ trait ApiService {
   def writeCodecResult(p: PackageHead, m: codecs.Message): HandleResult = {
     Package.encode(p.authId, p.sessionId, p.messageId, m) match {
       case \/-(b) =>
+//        println(s"writeCodecResult: $p $m\n${ByteString(b.toByteBuffer)}")
         sendBuffer ++= ByteString(b.toByteBuffer)
         ().right
       case -\/(e) => e.left
@@ -101,7 +101,13 @@ trait ApiService {
       p.message match {
         case Ping(randomId) => writeCodecResult(p.head, Pong(randomId))
         case RpcRequest(rpcMessageId, rpcMessage) =>
-          s"rpc message $rpcMessage is not implemented yet".left
+          rpcMessage match {
+            case SendSMSCode(phoneNumber, _, _) =>
+            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
+            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
+          }
+
+          s"rpc message#$rpcMessageId $rpcMessage is not implemented yet".left
         case _ => s"unknown case for message".left
       }
 

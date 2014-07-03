@@ -104,6 +104,9 @@ object RpcResponse {
 }
 
 
+case class User(firstName: String, lastName: String, sex: Sex, photo: BitVector)
+
+
 
 object Message {
   val codec: Codec[Message] = discriminated[Message].by(uint8)

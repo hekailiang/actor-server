@@ -9,7 +9,9 @@ import com.secretapp.backend.protocol.codecs._
 import scalaz._
 import Scalaz._
 
-class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]) extends Actor with ActorLogging with ApiService  {
+class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]) extends Actor with ActorLogging
+  with ApiService
+{
 
   def receive = {
     case Received(data) =>
