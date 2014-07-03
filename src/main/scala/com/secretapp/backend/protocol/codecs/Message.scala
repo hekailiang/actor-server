@@ -84,21 +84,23 @@ object Authorization {
   val codec = int64.pxmap[Authorization](Authorization.apply, Authorization.unapply)
 }
 
-case class RpcRequest(message: RpcRequestMessage)
+case class RpcRequest(messageId: Long, message: RpcRequestMessage) extends Message
 object RpcRequest {
   val header = 0x3
-  val codec: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint8)
+  val codecRequestMessage: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint8)
     .\(SendSMSCode.header) { case sms@SendSMSCode(_, _, _) => sms}(SendSMSCode.codec)
     .\(SignIn.header) { case s: SignIn => s } (SignIn.codec)
     .\(SignUp.header) { case s: SignUp => s } (SignUp.codec)
+  val codec = (int64 :: codecRequestMessage).as[RpcRequest]
 }
 
-case class RpcResponse(messageId: Long, message: RpcResponseMessage)
+case class RpcResponse(messageId: Long, message: RpcResponseMessage) extends Message
 object RpcResponse {
   val header = 0x4
-  val codec: Codec[RpcResponseMessage] = discriminated[RpcResponseMessage].by(uint8)
+  val codecResponseMessage: Codec[RpcResponseMessage] = discriminated[RpcResponseMessage].by(uint8)
     .\(SentSMSCode.header) { case sms: SentSMSCode => sms } (SentSMSCode.codec)
     .\(Authorization.header) { case a: Authorization => a } (Authorization.codec)
+  val codec = (int64 :: codecResponseMessage).as[RpcResponse]
 }
 
 

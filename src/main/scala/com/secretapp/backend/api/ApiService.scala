@@ -100,6 +100,8 @@ trait ApiService {
     case Some(authId) =>
       p.message match {
         case Ping(randomId) => writeCodecResult(p.head, Pong(randomId))
+        case RpcRequest(rpcMessageId, rpcMessage) =>
+          s"rpc message $rpcMessage is not implemented yet".left
         case _ => s"unknown case for message".left
       }
 
