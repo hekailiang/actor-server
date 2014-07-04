@@ -10,7 +10,7 @@ import org.scalastyle.sbt.ScalastylePlugin
 object BackendBuild extends Build {
   val Organization = "secretapp"
   val Version = "0.1-SNAPSHOT"
-  val ScalaVersion = "2.11.1"
+  val ScalaVersion = "2.10.4"
 
   import Dependencies._
   import TestDependencies._
@@ -20,7 +20,7 @@ object BackendBuild extends Build {
   val appClass = "com.secretapp.backend.ApiKernel"
   val appClassMock = "com.secretapp.backend.Main"
 
-  lazy val rootDependencies = akka ++ scalaz ++ etc ++ testDependencies
+  lazy val rootDependencies = akka ++ scalaz ++ cassandra ++ etc ++ testDependencies
 
   lazy val root = Project(
     appName,
