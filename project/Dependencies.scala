@@ -49,7 +49,7 @@ object Dependencies {
     val phantomDsl = "com.newzly"  %% "phantom-dsl" % V.phantom
     val phantomCassandraUnit = "com.newzly"  %% "phantom-cassandra-unit" % V.phantom
     // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
-    val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
+    // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
     val phantomTest = "com.newzly"  %% "phantom-test" % V.phantom
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
@@ -113,7 +113,7 @@ object Dependencies {
 
   val dbs = Seq(redis)
 
-  val cassandra = Seq(phantomDsl, phantomCassandraUnit, phantomThrift, phantomTest)
+  val cassandra = Seq(phantomDsl, phantomCassandraUnit, phantomTest)
 
   val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
 
