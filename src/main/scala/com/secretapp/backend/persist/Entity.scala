@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
-/** Type that represents an entity with both its Key and Scala record representation
+/**
+  * Type that represents an entity with both its Key and Scala record representation
   *
   * It's done in analogue with haskell's persistent (http://hackage.haskell.org/package/persistent-1.3.1.1/docs/Database-Persist-Types.html#t:Entity)
   *
