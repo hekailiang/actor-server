@@ -37,7 +37,8 @@ object BackendBuild extends Build {
         distBootClass in Dist := appClass,
         outputDirectory in Dist := file("target/dist"),
         Revolver.reStartArgs := Seq(appClassMock),
-        mainClass in Revolver.reStart := Some(appClassMock)
+        mainClass in Revolver.reStart := Some(appClassMock),
+        fork in Test := true
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
   // .settings(atmosSettings: _*).configs(Atmos)
