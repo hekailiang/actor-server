@@ -24,9 +24,7 @@ object DBConnector {
 trait DBConnector {
   self: CassandraTable[_, _] =>
 
-  def createTable(): Future[Unit] ={
-    create.future() map (_ => ())
+  def createTable(session: Session): Future[Unit] = {
+    create.future()(session) map (_ => ())
   }
-
-  implicit lazy val datastax: Session = DBConnector.session
 }

@@ -1,6 +1,6 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row }
+import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data._
@@ -26,7 +26,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Long, User]] {
 }
 
 object UserRecord extends UserRecord with DBConnector {
-  def insertEntity(entity: Entity[Long, User]): Future[ResultSet] = entity match {
+  def insertEntity(entity: Entity[Long, User])(implicit session: Session): Future[ResultSet] = entity match {
     case Entity(id, user) =>
       insert.value(_.id, BigInt.long2bigInt(id))
         .value(_.firstName, user.firstName)
@@ -35,7 +35,7 @@ object UserRecord extends UserRecord with DBConnector {
         .future()
   }
 
-  def getEntity(id: Long): Future[Option[Entity[Long, User]]] = {
+  def getEntity(id: Long)(implicit session: Session): Future[Option[Entity[Long, User]]] = {
     select.where(_.id eqs id).one()
   }
 }

@@ -15,7 +15,7 @@ class UserRecordSpec extends CassandraSpec {
     super.beforeAll()
 
     blocking {
-      UserRecord.createTable()
+      UserRecord.createTable(session).sync()
     }
   }
 
