@@ -8,7 +8,6 @@ import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data._
 
 class UserRecordSpec extends CassandraSpec {
-  val keySpace: String = "secret"
   implicit val s: PatienceConfiguration.Timeout = timeout(10 seconds)
 
   override def beforeAll(): Unit = {

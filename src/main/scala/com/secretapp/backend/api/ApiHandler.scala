@@ -4,15 +4,14 @@ import akka.actor.{ Actor, ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import scodec.bits._
-import java.util.concurrent.{ConcurrentSkipListSet, ConcurrentHashMap}
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol._
 import com.secretapp.backend.data._
 import scalaz._
 import Scalaz._
+import java.util.concurrent.{ConcurrentSkipListSet, ConcurrentHashMap}
 
-class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]) extends Actor with ActorLogging
-  with ApiService
+class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]) extends Actor with ActorLogging with ApiService
 {
 
   def receive = {

@@ -95,7 +95,7 @@ object Dependencies {
 
     val akkaTest = "com.typesafe.akka" %% "akka-testkit" % V.akka % "test"
 
-//    val scalaMockTest = "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test"
+    val scalaMockTest = "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test"
 
     val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
   }
@@ -115,6 +115,6 @@ object Dependencies {
 
   val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
 
-  val testDependencies = Seq(scalatest, akkaTest, scalaCheck)
+  val testDependencies = Seq(scalatest, akkaTest, scalaCheck, scalaMockTest)
 
 }

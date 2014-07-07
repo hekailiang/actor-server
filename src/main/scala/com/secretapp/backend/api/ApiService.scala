@@ -8,10 +8,10 @@ import com.secretapp.backend.data._
 import scala.annotation.tailrec
 import scala.util.Random
 import scodec.bits._
-import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 import scalaz._
 import Scalaz._
 import com.secretapp.backend.data
+import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
 trait ApiService {
 
@@ -102,14 +102,15 @@ trait ApiService {
     case Some(authId) =>
       p.message match {
         case Ping(randomId) => writeCodecResult(p.head, Pong(randomId))
-        case RpcRequest(rpcMessageId, rpcMessage) =>
+        case RpcRequest(rpcMessage) =>
           rpcMessage match {
             case SendSMSCode(phoneNumber, _, _) =>
+
             case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
             case SignIn(phoneNumber, smsCodeHash, smsCode) =>
           }
 
-          s"rpc message#$rpcMessageId $rpcMessage is not implemented yet".left
+          s"rpc message $rpcMessage is not implemented yet".left
         case _ => s"unknown case for message".left
       }
 
@@ -126,7 +127,7 @@ trait ApiService {
 
   var authId: Option[Long] = None
   var sessionId: Option[Long] = None
-  var sessionIds: Seq[Long] = Seq[Long]()
+  var sessionIds = Vector[Long]()
   lazy val rand = new Random()
 
 }

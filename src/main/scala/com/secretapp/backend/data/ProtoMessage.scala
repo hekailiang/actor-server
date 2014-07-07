@@ -74,7 +74,7 @@ object Authorization {
   val header = 0x5
 }
 
-case class RpcRequest(messageId: Long, message: RpcRequestMessage) extends ProtoMessage
+case class RpcRequest(message: RpcRequestMessage) extends ProtoMessage
 object RpcRequest {
   val header = 0x3
 }

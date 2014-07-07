@@ -58,7 +58,7 @@ trait RpcRequestCodec {
     .\(SendSMSCode.header) { case sms@SendSMSCode(_, _, _) => sms}(sendSMSCode)
     .\(SignIn.header) { case s: SignIn => s } (signIn)
     .\(SignUp.header) { case s: SignUp => s } (signUp)
-  val rpcRequest = (int64 :: rpcRequestMessage).as[RpcRequest]
+  val rpcRequest = rpcRequestMessage.pxmap[RpcRequest](RpcRequest.apply, RpcRequest.unapply)
 }
 
 trait RpcResponseCodec {
