@@ -5,6 +5,8 @@ object Dependencies {
   object V {
     val akka = "2.3.3"
     val scalaz = "7.0.6"
+    val phantom = "0.8.0"
+    val newzlyUtil = "0.0.28"
   }
 
   object CompileDependencies {
@@ -15,15 +17,11 @@ object Dependencies {
 
     val akkaRemote = "com.typesafe.akka" %% "akka-remote" % V.akka
 
-    val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % V.akka
-
     val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
 
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
 
     val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.1"
-
-    val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
     val scalazCore = "org.scalaz" %% "scalaz-core" % V.scalaz
 
@@ -44,6 +42,13 @@ object Dependencies {
     val annotationApi = "javax.annotation" % "javax.annotation-api" % "1.2"
 
     val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
+
+    val phantomDsl = "com.newzly"  %% "phantom-dsl" % V.phantom
+    val phantomCassandraUnit = "com.newzly"  %% "phantom-cassandra-unit" % V.phantom excludeAll(ExclusionRule(organization = "org.slf4j"))
+    // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
+    // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
+    val phantomTest = "com.newzly"  %% "phantom-test" % V.phantom % "test"
+    val newzlyUtil = "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
@@ -53,7 +58,7 @@ object Dependencies {
 //
 //    val macwiew = "com.softwaremill.macwire" %% "macros" % "0.6"
 //
-    val shapeless = "com.chuusai" %% "shapeless" % "2.0.0"
+    val shapeless = "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT"
 //
 //    val optional = "org.nalloc" %% "optional" % "0.1.0"
 //
@@ -100,11 +105,13 @@ object Dependencies {
   import DeployDependencies._
   import TestDependencies._
 
-  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, /* akkaStreams, */ logback)
+  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, logback)
 
   val scalaz = Seq(scalazCore, scalazConcurrent)
 
   val dbs = Seq(redis)
+
+  val cassandra = Seq(phantomDsl, phantomCassandraUnit, phantomTest, newzlyUtil)
 
   val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
 

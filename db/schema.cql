@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS secret.users (id bigint PRIMARY KEY, first_name text, last_name text, sex int);
