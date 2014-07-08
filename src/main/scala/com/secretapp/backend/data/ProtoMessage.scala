@@ -6,8 +6,6 @@ import scodec.codecs._
 import shapeless._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
-import com.secretapp.backend.protocol.codecs._
 
 trait ProtoMessage
 
@@ -83,3 +81,6 @@ case class RpcResponse(messageId: Long, message: RpcResponseMessage) extends Pro
 object RpcResponse {
   val header = 0x4
 }
+
+// TODO: build method
+case class ProtoMessageWrapper(messageId : Long, body : ProtoMessage)

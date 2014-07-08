@@ -17,81 +17,81 @@ trait ApiService {
 
   val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
 
-  import com.secretapp.backend.protocol._
+  import com.secretapp.backend.protocol.codecs.ByteConstants._
 
   sealed trait ParseState
-  case class LengthParsing() extends ParseState
-  case class PackageParsing(bitsLen: Long) extends ParseState
+  case class WrappedPackageSizeParsing() extends ParseState
+  case class WrappedPackageParsing(bitsLen: Long) extends ParseState
   case class DropParsing(e: String) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
-  var state: ParseResult = (LengthParsing(), BitVector.empty)
+  var state: ParseResult = (WrappedPackageSizeParsing(), BitVector.empty)
   var sendBuffer: ByteString = ByteString()
   def dropState(e: String) = (DropParsing(e), BitVector.empty)
 
   type HandleResult = String \/ Unit
 
-  val minParseLength = 40L
+  val minParseLength = 6 * byteSize // we need first 6 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
 
   @tailrec
-  final def handleReceivedBytes(s: ParseState, buf: BitVector): ParseResult = s match {
-    case lp@LengthParsing() =>
+  final def handleStream(s: ParseState, buf: BitVector): ParseResult = s match {
+    case wpsp@WrappedPackageSizeParsing() =>
       if (buf.length >= minParseLength) {
-        VarIntCodec.decode(buf) match {
+        varint.decode(buf) match {
           case \/-((_, len)) =>
-            val pLen = len * 8 + VarIntCodec.sizeOf(len) * 8
-            handleReceivedBytes(PackageParsing(pLen), buf)
+            val pLen = len * byteSize + varint.sizeOf(len) * byteSize
+            handleStream(WrappedPackageParsing(pLen), buf)
           case -\/(e) => dropState(e)
         }
-      } else (lp, buf)
+      } else (wpsp, buf)
 
-    case pp@PackageParsing(bitsLen) =>
+    case wpp@WrappedPackageParsing(bitsLen) =>
       if (buf.length >= bitsLen) {
-        PackageCodec.decode(buf) match {
-          case \/-((remain, p)) =>
-            val res = for {
-              _ <- validatePackage(p)
-              _ <- handleMessage(p)
-            } yield (LengthParsing(), remain)
-            res match {
-              case \/-(r@((_, _))) => r
+        protoWrappedPackage.decode(buf) match {
+          case \/-((remain, wp)) =>
+            val handleRes = for {
+              _ <- validatePackage(wp.p)
+              _ <- handleMessage(wp.p)
+            } yield ()
+
+            handleRes match {
+              case \/-(_) => (WrappedPackageSizeParsing(), remain)
               case -\/(e) => dropState(e)
             }
           case -\/(e) => dropState(e)
         }
-      } else (pp, buf)
+      } else (wpp, buf)
 
-    case _ => dropState("unknown state")
+    case _ => dropState("Internal error: wrong state.")
   }
 
   def validatePackage(p: Package): HandleResult = {
-    val ph = p.head
-    if (Some(ph.authId) != authId && ph.authId != 0L) {
-      if (authTable.containsKey(ph.authId)) authId = Some(ph.authId)
+    if (Some(p.authId) != authId && p.authId != 0L) {
+      if (authTable.containsKey(p.authId)) authId = Some(p.authId)
       else return s"unknown authId($authId)".left
     }
 
-    if (Some(ph.sessionId) != sessionId && !sessionIds.contains(ph.sessionId) && ph.sessionId != 0L) {
-      val sessions = authTable.get(ph.authId)
+    if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
+      val sessions = authTable.get(p.authId)
       if (sessions == null) return s"empty authTable".left
 
-      if (sessions.contains(ph.sessionId)) {
-        sessionIds = sessionIds :+ ph.sessionId
+      if (sessions.contains(p.sessionId)) {
+        sessionIds = sessionIds :+ p.sessionId
       } else {
-        sessionId = Some(ph.sessionId)
-        sessionIds = sessionIds.+:(ph.sessionId)
-        sessions.add(ph.sessionId)
-        writeCodecResult(ph, NewSession(ph.sessionId, ph.messageId))
+        sessionId = Some(p.sessionId)
+        sessionIds = sessionIds.+:(p.sessionId)
+        sessions.add(p.sessionId)
+        val wrappedMsg = ProtoMessageWrapper(p.message.messageId, NewSession(p.sessionId, p.message.messageId))
+        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
       }
     }
 
     ().right
   }
 
-  def writeCodecResult(p: PackageHead, m: ProtoMessage): HandleResult = {
-    PackageCodec.encode(p.authId, p.sessionId, p.messageId, m) match {
+  def writeCodecResult(authId: Long, sessionId: Long, m: ProtoMessageWrapper): HandleResult = {
+    protoWrappedPackage.encode(Package(authId, sessionId, m)) match {
       case \/-(b) =>
-//        println(s"writeCodecResult: $p $m\n${ByteString(b.toByteBuffer)}")
         sendBuffer ++= ByteString(b.toByteBuffer)
         ().right
       case -\/(e) => e.left
@@ -100,8 +100,10 @@ trait ApiService {
 
   def handleMessage(p: Package): HandleResult = authId match {
     case Some(authId) =>
-      p.message match {
-        case Ping(randomId) => writeCodecResult(p.head, Pong(randomId))
+      p.message.body match {
+        case Ping(randomId) =>
+          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, Pong(randomId))
+          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
         case RpcRequest(rpcMessage) =>
           rpcMessage match {
             case SendSMSCode(phoneNumber, _, _) =>
@@ -110,18 +112,19 @@ trait ApiService {
             case SignIn(phoneNumber, smsCodeHash, smsCode) =>
           }
 
-          s"rpc message $rpcMessage is not implemented yet".left
+          s"rpc message#$rpcMessage is not implemented yet".left
         case _ => s"unknown case for message".left
       }
 
     case None =>
-      p.message match {
-        case RequestAuthId() if p.head.authId == 0L && p.head.sessionId == 0L =>
+      p.message.body match {
+        case RequestAuthId() if p.authId == 0L && p.sessionId == 0L =>
           val newAuthId = rand.nextLong
           authId = Some(newAuthId)
           authTable.put(newAuthId, new ConcurrentSkipListSet[Long]()) // TODO: check for uniqueness
-          writeCodecResult(p.head, ResponseAuthId(newAuthId))
-        case _ => s"unknown authId(${p.head.authId}) or sessionId(${p.head.sessionId})".left
+          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
+          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+        case _ => s"unknown authId(${p.authId}) or sessionId(${p.sessionId})".left
       }
   }
 
