@@ -82,4 +82,5 @@ object RpcResponse {
   val header = 0x4
 }
 
-case class MessageWrapper(messageId : Long, body : ProtoMessage)
+// TODO: build method
+case class ProtoMessageWrapper(messageId : Long, body : ProtoMessage)

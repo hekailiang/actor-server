@@ -1,11 +1,12 @@
-package com.secretapp.backend.protocol.codecs
+package com.secretapp.backend.protocol.codecs.common
 
+import com.secretapp.backend.protocol.codecs._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
 
-class BytesSpec extends FlatSpec with Matchers {
+class BytesCodecSpec extends FlatSpec with Matchers {
 
   "encode" should "pack ByteVector" in {
     val v = hex"f0aff01".bits

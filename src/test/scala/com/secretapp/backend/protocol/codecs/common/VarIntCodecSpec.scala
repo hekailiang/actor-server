@@ -1,11 +1,12 @@
-package com.secretapp.backend.protocol.codecs
+package com.secretapp.backend.protocol.codecs.common
 
+import com.secretapp.backend.protocol.codecs._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
 
-class VarIntSpec extends FlatSpec with Matchers {
+class VarIntCodecSpec extends FlatSpec with Matchers {
 
   "encode" should "pack VarInt" in {
     varint.encode(150) should === (hex"9601".bits.right)

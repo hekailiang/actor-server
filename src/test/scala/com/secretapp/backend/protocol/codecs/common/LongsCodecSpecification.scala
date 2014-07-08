@@ -1,12 +1,13 @@
-package com.secretapp.backend.protocol.codecs
+package com.secretapp.backend.protocol.codecs.common
 
+import com.secretapp.backend.protocol.codecs._
 import scodec.bits.BitVector
 import org.scalacheck._
 import org.scalacheck.Prop._
 import scalaz._
 import Scalaz._
 
-object LongsSpecification extends Properties("Longs") {
+object LongsCodecSpecification extends Properties("Longs") {
 
   val genLong = for {
     l <- Gen.choose(Long.MinValue, Long.MaxValue)

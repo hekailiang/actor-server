@@ -1,12 +1,13 @@
-package com.secretapp.backend.protocol.codecs
+package com.secretapp.backend.protocol.codecs.message
 
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
 
-class ProtoMessagesSpec extends FlatSpec with Matchers {
+class ProtoMessagesCodecSpec extends FlatSpec with Matchers {
   "ProtoMessage" should "encode and decode RequestAuth" in {
     val encoded = hex"f0".bits
 

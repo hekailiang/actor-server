@@ -1,11 +1,12 @@
-package com.secretapp.backend.protocol.codecs
+package com.secretapp.backend.protocol.codecs.common
 
+import com.secretapp.backend.protocol.codecs._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
 
-class LongsSpec extends FlatSpec with Matchers {
+class LongsCodecSpec extends FlatSpec with Matchers {
 
   "encode" should "pack array of longs" in {
     protoLongs.encode(Array(100L, Long.MaxValue)) should === (hex"0200000000000000647fffffffffffffff".bits.right)
