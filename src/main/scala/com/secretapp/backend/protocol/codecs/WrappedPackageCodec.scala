@@ -19,7 +19,7 @@ trait WrappedPackageCodec {
     def encode(wp: WrappedPackage) = {
       for {
         p <- packageCodec.encode(wp.p)
-        len <- VarIntCodec.encode(p.length / byteSize + crcSize)
+        len <- VarIntCodec.encode(p.length / byteSize + crcByteSize)
         body = len ++ p
       } yield body ++ encodeCRCR32(body)
     }
@@ -27,9 +27,9 @@ trait WrappedPackageCodec {
     def decode(buf: BitVector) = {
       VarIntCodec.decode(buf) match { // read varint length of Package: body + crc32
         case \/-((xs, len)) =>
-          val bodyLen = (len - crcSize) * byteSize // get body size without crc32
+          val bodyLen = (len - crcByteSize) * byteSize // get body size without crc32
           val body = xs.take(bodyLen)
-          val crc = xs.drop(bodyLen).take(crcSize * byteSize)
+          val crc = xs.drop(bodyLen).take(crcByteSize * byteSize)
           val varIntSize = VarIntCodec.sizeOf(len) * byteSize // varint bit size
           val crcBody = buf.take(varIntSize + bodyLen) // crc body: package len + package body
           if (crc == encodeCRCR32(crcBody)) {

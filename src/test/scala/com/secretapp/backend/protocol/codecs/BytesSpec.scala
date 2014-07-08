@@ -4,7 +4,7 @@ import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
+import com.secretapp.backend.protocol.Codecs._
 
 class BytesSpec extends FlatSpec with Matchers {
 

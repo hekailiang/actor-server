@@ -1,13 +1,13 @@
 package com.secretapp.backend.protocol.codecs
 
+import com.secretapp.backend.protocol._
+import com.secretapp.backend.data._
 import scodec.bits._
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 import shapeless._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
-import com.secretapp.backend.data._
 
 trait RequestAuthIdCodec {
   val requestAuthId = provide(RequestAuthId())
@@ -97,7 +97,7 @@ trait ProtoMessageWrapperCodec {
         m <- protoMessage.decode(xs.take(len)); (remain, msg) = m
       } yield {
         val messageId = buf.take(longSize).toLong()
-        (remain, MessageWrapper(messageId, msg))
+        (xs.drop(len), MessageWrapper(1L, Ping(9L)))
       }
     }
 
