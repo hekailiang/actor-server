@@ -1,7 +1,6 @@
 package com.secretapp.backend.protocol.codecs
 
 import com.secretapp.backend.data._
-import com.secretapp.backend.protocol.Codecs._
 import scodec.bits._
 import org.scalatest._
 import scalaz._

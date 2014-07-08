@@ -9,7 +9,7 @@ import Scalaz._
 
 trait BytesCodec {
 
-  val bytes: Codec[BitVector] = new Codec[BitVector] {
+  val protoBytes: Codec[BitVector] = new Codec[BitVector] {
 
     import ByteConstants._
 
@@ -32,8 +32,8 @@ trait BytesCodec {
 
 object BytesCodec extends BytesCodec {
 
-  def encode(s: BitVector) = bytes.encode(s)
+  def encode(s: BitVector) = protoBytes.encode(s)
 
-  def decode(buf: BitVector) = bytes.decode(buf)
+  def decode(buf: BitVector) = protoBytes.decode(buf)
 
 }

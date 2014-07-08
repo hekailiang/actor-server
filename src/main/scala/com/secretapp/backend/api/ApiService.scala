@@ -17,7 +17,6 @@ trait ApiService {
 
   val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
 
-  import com.secretapp.backend.protocol._
   import ByteConstants._
 
   sealed trait ParseState

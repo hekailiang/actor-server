@@ -1,14 +1,12 @@
 package com.secretapp.backend.protocol.codecs
 
 import com.secretapp.backend.data._
-import com.secretapp.backend.protocol.Codecs._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
 
 class PackageSpec extends FlatSpec with Matchers {
-
   "encode" should "pack Package" in {
     val p = Package(1L, 2L, MessageWrapper(3L, RequestAuthId()))
     packageCodec.encode(p) should === {

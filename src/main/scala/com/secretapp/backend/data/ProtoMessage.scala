@@ -6,8 +6,6 @@ import scodec.codecs._
 import shapeless._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
-import com.secretapp.backend.protocol.codecs._
 
 trait ProtoMessage
 

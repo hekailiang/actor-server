@@ -7,7 +7,7 @@ import Scalaz._
 
 class StringSpec extends FlatSpec with Matchers {
 
-  val c = StringCodec.string
+  val c = StringCodec.protoString
 
   "encode" should "pack string" in {
     c.encode("strтестΩ≈ç√") should === ((hex"15737472d182d0b5d181d182cea9e28988c3a7e2889a".bits).right)

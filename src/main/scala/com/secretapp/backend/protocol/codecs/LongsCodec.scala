@@ -8,7 +8,7 @@ import scalaz._
 import Scalaz._
 
 trait LongsCodec {
-  val longs: Codec[Array[Long]] = new Codec[Array[Long]] {
+  val protoLongs: Codec[Array[Long]] = new Codec[Array[Long]] {
 
     import ByteConstants._
 
@@ -31,8 +31,8 @@ trait LongsCodec {
 
 object LongsCodec extends LongsCodec {
 
-  def encode(s: Array[Long]) = longs.encode(s)
+  def encode(s: Array[Long]) = protoLongs.encode(s)
 
-  def decode(buf: BitVector) = longs.decode(buf)
+  def decode(buf: BitVector) = protoLongs.decode(buf)
 
 }

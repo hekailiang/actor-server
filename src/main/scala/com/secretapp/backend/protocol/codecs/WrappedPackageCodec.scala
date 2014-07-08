@@ -2,7 +2,6 @@ package com.secretapp.backend.protocol.codecs
 
 import com.secretapp.backend.protocol.codecs.utils._
 import com.secretapp.backend.data._
-import com.secretapp.backend.protocol._
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 import shapeless._

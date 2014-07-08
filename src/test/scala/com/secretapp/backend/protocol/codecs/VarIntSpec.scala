@@ -4,7 +4,6 @@ import scodec.bits._
 import org.scalatest._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
 
 class VarIntSpec extends FlatSpec with Matchers {
 

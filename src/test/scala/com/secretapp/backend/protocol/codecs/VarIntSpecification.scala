@@ -5,7 +5,6 @@ import org.scalacheck._
 import org.scalacheck.Prop._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol._
 
 object VarIntSpecification extends Properties("VarInt") {
 

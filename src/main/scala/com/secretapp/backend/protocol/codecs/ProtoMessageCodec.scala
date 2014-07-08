@@ -1,6 +1,5 @@
 package com.secretapp.backend.protocol.codecs
 
-import com.secretapp.backend.protocol._
 import com.secretapp.backend.data._
 import scodec.bits._
 import scodec.{ Codec, DecodingContext }
@@ -13,45 +12,67 @@ trait RequestAuthIdCodec {
   val requestAuthId = provide(RequestAuthId())
 }
 
+object RequestAuthIdCodec extends RequestAuthIdCodec
+
 trait ResponseAuthIdCodec {
   val responseAuthId = int64.pxmap[ResponseAuthId](ResponseAuthId.apply, ResponseAuthId.unapply)
 }
+
+object ResponseAuthIdCodec extends ResponseAuthIdCodec
 
 trait PingCodec {
   val ping = int64.pxmap[Ping](Ping.apply, Ping.unapply)
 }
 
+object PingCodec extends PingCodec
+
 trait PongCodec {
   val pong = int64.pxmap[Pong](Pong.apply, Pong.unapply)
 }
+
+object PongCodec extends PongCodec
 
 trait NewSessionCodec {
   val newSession = (int64 :: int64).as[NewSession]
 }
 
+object NewSessionCodec extends NewSessionCodec
+
 trait DropCodec {
-  val drop = (int64 :: StringCodec.string).as[Drop]
+  val drop = (int64 :: StringCodec.protoString).as[Drop]
 }
 
+object DropCodec extends DropCodec
+
 trait SendSMSCodeCodec {
-  val sendSMSCode = (StringCodec.string :: int64 :: int64).as[SendSMSCode]
+  val sendSMSCode = (StringCodec.protoString :: int64 :: int64).as[SendSMSCode]
 }
+
+object SendSMSCodeCodec extends SendSMSCodeCodec
 
 trait SentSMSCodeCodec {
   val sentSMSCode = (bool :: int64).as[SentSMSCode]
 }
 
+object SentSMSCodeCodec extends SentSMSCodeCodec
+
 trait SignUpCodec {
-  val signUp = (StringCodec.string :: int64 :: StringCodec.string :: StringCodec.string :: StringCodec.string :: SexCodec.sex :: BytesCodec.bytes).as[SignUp]
+  val signUp = (StringCodec.protoString :: int64 :: StringCodec.protoString :: StringCodec.protoString :: StringCodec.protoString :: SexCodec.sex :: BytesCodec.protoBytes).as[SignUp]
 }
 
+object SignUpCodec extends SignUpCodec
+
 trait SignInCodec {
-  val signIn = (StringCodec.string :: int64 :: StringCodec.string).as[SignIn]
+  val signIn = (StringCodec.protoString :: int64 :: StringCodec.protoString).as[SignIn]
 }
+
+object SignInCodec extends SignInCodec
 
 trait AuthorizationCodec {
   val authorization = int64.pxmap[Authorization](Authorization.apply, Authorization.unapply)
 }
+
+object AuthorizationCodec extends AuthorizationCodec
 
 trait RpcRequestCodec {
   val rpcRequestMessage: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint8)
@@ -61,12 +82,16 @@ trait RpcRequestCodec {
   val rpcRequest = rpcRequestMessage.pxmap[RpcRequest](RpcRequest.apply, RpcRequest.unapply)
 }
 
+object RpcRequestCodec extends RpcRequestCodec
+
 trait RpcResponseCodec {
   val rpcResponseMessage: Codec[RpcResponseMessage] = discriminated[RpcResponseMessage].by(uint8)
     .\(SentSMSCode.header) { case sms: SentSMSCode => sms } (sentSMSCode)
     .\(Authorization.header) { case a: Authorization => a } (authorization)
   val rpcResponse = (int64 :: rpcResponseMessage).as[RpcResponse]
 }
+
+object RpcResponseCodec extends RpcResponseCodec
 
 trait ProtoMessageCodec {
   val protoMessage: Codec[ProtoMessage] = discriminated[ProtoMessage].by(uint8)
@@ -77,6 +102,8 @@ trait ProtoMessageCodec {
     .\(Drop.header) { case d: Drop => d} (drop)
     .\(NewSession.header) { case s: NewSession => s} (newSession)
 }
+
+object ProtoMessageCodec extends ProtoMessageCodec
 
 trait ProtoMessageWrapperCodec {
 
@@ -104,3 +131,5 @@ trait ProtoMessageWrapperCodec {
   }
 
 }
+
+object ProtoMessageWrapperCodec extends ProtoMessageWrapperCodec
