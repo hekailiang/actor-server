@@ -14,6 +14,8 @@ trait VarIntCodec {
 
   val varint: Codec[Int] = new Codec[Int] {
 
+    import ByteConstants._
+
     def encode(v: Int) = {
       var n: Int = v.abs
       val res = ByteBuffer.allocate(VarIntCodec.sizeOf(n))
@@ -37,24 +39,29 @@ trait VarIntCodec {
       }
       def decodeVI(buf: BitVector) = f(buf.bytes).abs
 
-      val offset = varIntLen(buf)
-      val len = decodeVI(buf.take(offset))
-      (buf.drop(offset), len).right
+      val sizeVI = varIntLen(buf)
+      if (sizeVI >= 1 && sizeVI <= 6) {
+        val offset = sizeVI * byteSize
+        val len = decodeVI(buf.take(offset))
+        (buf.drop(offset), len).right
+      } else s"Wrong varint size: $sizeVI. Varint should have size within range from 1 to 6.".left
     }
 
-    private def varIntLen(buf: BitVector): Long = {
+//    TODO: check for max length (6) and return left
+    private def varIntLen(buf: BitVector): Int = {
       @tailrec
-      def f(buf: BitVector, len: Long = 1): Long = {
+      def f(buf: BitVector, len: Int = 1): Int = {
         if (buf.isEmpty || !buf.head) len
-        else f(buf.drop(8), len + 1)
+        else f(buf.drop(byteSize), len + 1)
       }
-      f(buf) * 8L
+      f(buf)
     }
 
   }
 }
 
 object VarIntCodec extends VarIntCodec {
+
   def encode(n: Int) = varint.encode(n)
   def encode(n: Long) = varint.encode(n.toInt)
 
@@ -68,4 +75,5 @@ object VarIntCodec extends VarIntCodec {
     case x if x <= 0x7fffffff => 5
     case _ => 6
   }
+
 }

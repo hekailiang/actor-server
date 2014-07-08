@@ -11,6 +11,8 @@ trait StringCodec {
 
   val string: Codec[String] = new Codec[String] {
 
+    import ByteConstants._
+
     def encode(s: String) = {
       val bytes = s.getBytes
       for {
@@ -20,16 +22,19 @@ trait StringCodec {
 
     def decode(buf: BitVector) =
       for {
-        l <- VarIntCodec.decode(buf)
-        xs = l._1
-        len = l._2 * 8L
-      } yield (xs.drop(len), new String(xs.take(len).toByteArray))
+        l <- VarIntCodec.decode(buf) ; (xs, len) = l
+      } yield {
+        val bitsLen = len * longSize
+        (xs.drop(bitsLen), new String(xs.take(bitsLen).toByteArray))
+      }
 
   }
 }
 
 object StringCodec extends StringCodec {
+
   def encode(s: String) = string.encode(s)
 
   def decode(buf: BitVector) = string.decode(buf)
+
 }

@@ -11,24 +11,29 @@ trait BytesCodec {
 
   val bytes: Codec[BitVector] = new Codec[BitVector] {
 
+    import ByteConstants._
+
     def encode(xs: BitVector) = {
       for {
-        len <- VarIntCodec.encode(xs.length.toInt / 8)
+        len <- VarIntCodec.encode(xs.length.toInt / byteSize)
       } yield len ++ xs
     }
 
     def decode(buf: BitVector) =
       for {
-        l <- VarIntCodec.decode(buf)
-        xs = l._1
-        len = l._2 * 8L
-      } yield (xs.drop(len), xs.take(len))
+        l <- VarIntCodec.decode(buf) ; (xs, len) = l
+      } yield {
+        val bitsLen = len * byteSize
+        (xs.drop(bitsLen), xs.take(bitsLen))
+      }
   }
 
 }
 
 object BytesCodec extends BytesCodec {
+
   def encode(s: BitVector) = bytes.encode(s)
 
   def decode(buf: BitVector) = bytes.decode(buf)
+
 }

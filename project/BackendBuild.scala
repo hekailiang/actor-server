@@ -54,7 +54,7 @@ object BackendBuild extends Build {
 
   lazy val defaultSettings = buildSettings ++ Seq(
     resolvers ++= Resolvers.seq,
-    scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature"), //, "-Xprint:typer"
+    scalacOptions ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature"), //, "-Xprint:typer"
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation")
   )
 }

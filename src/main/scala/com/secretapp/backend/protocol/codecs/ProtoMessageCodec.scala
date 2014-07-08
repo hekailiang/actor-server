@@ -6,7 +6,7 @@ import scodec.codecs._
 import shapeless._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol.Codecs._
+import com.secretapp.backend.protocol._
 import com.secretapp.backend.data._
 
 trait RequestAuthIdCodec {
@@ -78,4 +78,29 @@ trait ProtoMessageCodec {
     .\(NewSession.header) { case s: NewSession => s} (newSession)
 }
 
-object ProtoMessageCodec extends ProtoMessageCodec
+trait ProtoMessageWrapperCodec {
+
+  val protoMessageWrapper : Codec[MessageWrapper] = new Codec[MessageWrapper] {
+
+    import ByteConstants._
+
+    def encode(m: MessageWrapper) = {
+      for {
+        body <- protoMessage.encode(m.body)
+        len <- VarIntCodec.encode(body.length / byteSize)
+      } yield (BitVector.fromLong(m.messageId) ++ len ++ body)
+    }
+
+    def decode(buf: BitVector) = {
+      for {
+        l <- VarIntCodec.decode(buf.drop(longSize)); (xs, len) = l
+        m <- protoMessage.decode(xs.take(len)); (remain, msg) = m
+      } yield {
+        val messageId = buf.take(longSize).toLong()
+        (remain, MessageWrapper(messageId, msg))
+      }
+    }
+
+  }
+
+}

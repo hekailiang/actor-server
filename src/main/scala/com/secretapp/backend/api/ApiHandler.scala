@@ -4,7 +4,6 @@ import akka.actor.{ Actor, ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import scodec.bits._
-import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol._
 import com.secretapp.backend.data._
 import scalaz._
@@ -19,7 +18,7 @@ class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Lo
       val connection = sender()
       log.info(s"Received: $data ${data.length}")
 
-      state = handleReceivedBytes(state._1, state._2 ++ BitVector(data.toArray))
+      state = handleStream(state._1, state._2 ++ BitVector(data.toArray))
       log.info(s"state: $state")
       state._1 match {
         case DropParsing(e) =>

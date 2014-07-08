@@ -83,3 +83,5 @@ case class RpcResponse(messageId: Long, message: RpcResponseMessage) extends Pro
 object RpcResponse {
   val header = 0x4
 }
+
+case class MessageWrapper(messageId : Long, body : ProtoMessage)
