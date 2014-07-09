@@ -20,10 +20,10 @@ object ProtoMessageWrapperCodec extends Codec[ProtoMessageWrapper] {
   def decode(buf: BitVector) = {
     for {
       l <- varint.decode(buf.drop(longSize)); (xs, len) = l
-      m <- protoMessage.decode(xs.take(len)); (remain, msg) = m
+      m <- protoMessage.decode(xs.take(len * byteSize)); (remain, msg) = m
     } yield {
       val messageId = buf.take(longSize).toLong()
-      (xs.drop(len), ProtoMessageWrapper(1L, Ping(9L)))
+      (xs.drop(len * byteSize), ProtoMessageWrapper(messageId, msg))
     }
   }
 

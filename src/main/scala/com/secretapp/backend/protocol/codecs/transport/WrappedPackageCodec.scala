@@ -42,4 +42,8 @@ object WrappedPackageCodec extends Codec[WrappedPackage] {
 
   def encode(p: Package) : String \/ BitVector = encode(WrappedPackage(p))
 
+  def build(authId : Long, sessionId : Long, messageId : Long, body : ProtoMessage) = {
+    encode(Package(authId, sessionId, ProtoMessageWrapper(messageId, body)))
+  }
+
 }
