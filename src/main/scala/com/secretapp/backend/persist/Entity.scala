@@ -10,6 +10,8 @@ package com.secretapp.backend.persist
   * @param value the Scala record representation
   */
 
-class KeyedEntity[Key](val key: Key)
+trait KeyedEntity[Key]{
+  val key: Key
+}
 
-case class Entity[Key, Value](key: Key, value: Value) extends KeyedEntity(key)
+case class Entity[Key, Value](val key: Key, value: Value) extends KeyedEntity[Key]
