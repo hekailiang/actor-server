@@ -35,8 +35,8 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
     "reply with auth token to auth request" in {
       val apiActor = getApiActor()
-      val req = protoPackage.build(0L, 0L, 1L, RequestAuthId())
-      val res = protoPackage.build(0L, 0L, 1L, ResponseAuthId(12345L))
+      val req = protoWrappedPackage.build(0L, 0L, 1L, RequestAuthId())
+      val res = protoWrappedPackage.build(0L, 0L, 1L, ResponseAuthId(12345L))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
     }
@@ -46,16 +46,16 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val apiActor = getApiActor()
       val authId = 12345L
       val messageId = 1L
-      val req = protoPackage.build(0L, 0L, messageId, RequestAuthId())
-      val res = protoPackage.build(0L, 0L, messageId, ResponseAuthId(authId))
+      val req = protoWrappedPackage.build(0L, 0L, messageId, RequestAuthId())
+      val res = protoWrappedPackage.build(0L, 0L, messageId, ResponseAuthId(authId))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
 
       val randId = 987654321L
       val sessionId = 123L
-      val ping = protoPackage.build(authId, sessionId, messageId + 1, Ping(randId))
-      val newNewSession = protoPackage.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-      val pong = protoPackage.build(authId, sessionId, messageId + 1, Pong(randId))
+      val ping = protoWrappedPackage.build(authId, sessionId, messageId + 1, Ping(randId))
+      val newNewSession = protoWrappedPackage.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      val pong = protoWrappedPackage.build(authId, sessionId, messageId + 1, Pong(randId))
       val reply = newNewSession.toOption.get ++ pong.toOption.get
 
       probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
