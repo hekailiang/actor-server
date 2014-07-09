@@ -7,25 +7,24 @@ import com.newzly.phantom.Implicits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data._
 
-class UserRecordSpec extends CassandraSpec {
+class AuthIdRecordSpec extends CassandraSpec {
   implicit val s: PatienceConfiguration.Timeout = timeout(10 seconds)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
 
     blocking {
-      UserRecord.createTable(session).sync()
+      AuthIdRecord.createTable(session).sync()
     }
   }
 
-  "UserRecord" should "insert/get User Entity" in {
-    val entityId = 100L
-    val entity = Entity(entityId, User("Wayne", "Brain", Male))
-    val insertFuture = UserRecord.insertEntity(entity)
+  "AuthIdRecord" should "insert/get AuthId Entity" in {
+    val entity = AuthId(123L, None)
+    val insertFuture = AuthIdRecord.insertEntity(entity)
 
     val chain = for {
       insertDone <- insertFuture
-      oneSelect <- UserRecord.getEntity(entityId)
+      oneSelect <- AuthIdRecord.getEntity(entity.authId)
     } yield (oneSelect)
 
     chain successful {

@@ -20,6 +20,7 @@ object Dependencies {
     val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
 
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
+    val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % V.akka
 
     val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.1"
 
@@ -44,10 +45,8 @@ object Dependencies {
     val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
 
     val phantomDsl = "com.newzly"  %% "phantom-dsl" % V.phantom
-    val phantomCassandraUnit = "com.newzly"  %% "phantom-cassandra-unit" % V.phantom excludeAll(ExclusionRule(organization = "org.slf4j"))
     // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
     // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
-    val phantomTest = "com.newzly"  %% "phantom-test" % V.phantom % "test"
     val newzlyUtil = "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
@@ -82,6 +81,8 @@ object Dependencies {
 //
 //    val scalacache = "com.github.cb372" %% "scalacache-guava" % "0.3.0"
 
+    val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
+
   }
 
   object DeployDependencies {
@@ -105,13 +106,13 @@ object Dependencies {
   import DeployDependencies._
   import TestDependencies._
 
-  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, logback)
+  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, logback)
 
   val scalaz = Seq(scalazCore, scalazConcurrent)
 
   val dbs = Seq(redis)
 
-  val cassandra = Seq(phantomDsl, phantomCassandraUnit, phantomTest, newzlyUtil)
+  val cassandra = Seq(phantomDsl, newzlyUtil)
 
   val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
 

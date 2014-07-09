@@ -1,13 +1,21 @@
 package com.secretapp.backend.persist
 
 import scala.concurrent.blocking
+import com.datastax.driver.core.{ Cluster, Session }
 import com.newzly.util.testing.cassandra.BaseTest
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import scala.util.Random
+import com.typesafe.config._
 
 trait CassandraSpec extends BaseTest {
 
-  lazy val keySpace: String = s"secret_test_${new Random().nextLong.abs}"
+  lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
+  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
+
+  override val cluster =  Cluster.builder()
+    .addContactPoint(dbConfig.getString("contact-point.host"))
+    .withPort(dbConfig.getInt("contact-point.port"))
+    .withoutJMXReporting()
+    .withoutMetrics()
+    .build()
 
   private def createKeySpace(spaceName: String) = {
     blocking {
@@ -26,8 +34,6 @@ trait CassandraSpec extends BaseTest {
     * Need to override it because original method cannot find cassandra.yaml or fails for some another reason
     */
   override def beforeAll(): Unit = {
-    EmbeddedCassandraServerHelper.mkdirs()
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra("cassandra.yaml")
     dropKeySpace(keySpace)
     createKeySpace(keySpace)
   }
