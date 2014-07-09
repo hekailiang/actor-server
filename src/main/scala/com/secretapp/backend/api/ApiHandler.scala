@@ -21,9 +21,9 @@ class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Lo
       state = handleStream(state._1, state._2 ++ BitVector(data.toArray))
       log.info(s"state: $state")
       state._1 match {
-        case DropParsing(e) =>
+        case DropParsing(authId, sessionId, messageId, e) =>
           log.info(s"DropParsing: $e")
-          val dropMsg: ByteString = protoMessage.encode(Drop(5L, e)) match {
+          val dropMsg: ByteString = protoWrappedPackage.build(authId, sessionId, messageId, Drop(messageId, e)) match {
             case \/-(bs) => ByteString(bs.toByteArray)
             case -\/(e) => ByteString(e)
           }

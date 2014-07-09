@@ -62,6 +62,14 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       probe.expectMsg(Write(ByteString(reply.toByteBuffer)))
     }
 
+    "send drop to invalid crc" in {
+      val apiActor = getApiActor()
+      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
+      val res = protoWrappedPackage.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
+      probe.send(apiActor, Received(ByteString(req)))
+      probe.expectMsg(Write(ByteString(res)))
+    }
+
   }
 
 

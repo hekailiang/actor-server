@@ -22,12 +22,15 @@ trait ApiService {
   sealed trait ParseState
   case class WrappedPackageSizeParsing() extends ParseState
   case class WrappedPackageParsing(bitsLen: Long) extends ParseState
-  case class DropParsing(e: String) extends ParseState
+  case class DropParsing(authId: Long, sessionId: Long, messageId: Long, e: String) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
   var state: ParseResult = (WrappedPackageSizeParsing(), BitVector.empty)
   var sendBuffer: ByteString = ByteString()
-  def dropState(e: String) = (DropParsing(e), BitVector.empty)
+
+  def dropState(authId: Long, sessionId: Long, messageId: Long, e: String) = {
+    (DropParsing(authId, sessionId, messageId, e), BitVector.empty)
+  }
 
   type HandleResult = String \/ Unit
 
@@ -41,7 +44,7 @@ trait ApiService {
           case \/-((_, len)) =>
             val pLen = len * byteSize + varint.sizeOf(len) * byteSize
             handleStream(WrappedPackageParsing(pLen), buf)
-          case -\/(e) => dropState(e)
+          case -\/(e) => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, e)
         }
       } else (wpsp, buf)
 
@@ -56,13 +59,13 @@ trait ApiService {
 
             handleRes match {
               case \/-(_) => (WrappedPackageSizeParsing(), remain)
-              case -\/(e) => dropState(e)
+              case -\/(e) => dropState(wp.p.authId, wp.p.sessionId, wp.p.message.messageId, e)
             }
-          case -\/(e) => dropState(e)
+          case -\/(e) => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, e)
         }
       } else (wpp, buf)
 
-    case _ => dropState("Internal error: wrong state.")
+    case _ => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, "Internal error: wrong state.")
   }
 
   def validatePackage(p: Package): HandleResult = {
