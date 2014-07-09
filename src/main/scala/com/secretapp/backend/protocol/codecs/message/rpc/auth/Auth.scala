@@ -1,5 +1,6 @@
 package com.secretapp.backend.protocol.codecs.message.rpc.auth
 
+// TODO
 //trait SendSMSCodeCodec {
 //  val sendSMSCode = (protoString :: int64 :: int64).as[SendSMSCode]
 //}

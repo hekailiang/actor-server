@@ -70,13 +70,18 @@ trait ApiService {
 
   def validatePackage(p: Package): HandleResult = {
     if (Some(p.authId) != authId && p.authId != 0L) {
-      if (authTable.containsKey(p.authId)) authId = Some(p.authId)
-      else return s"unknown authId($authId)".left
+      if (authTable.containsKey(p.authId)) {
+        authId = Some(p.authId)
+      } else {
+        return s"unknown authId($authId)".left
+      }
     }
 
     if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
       val sessions = authTable.get(p.authId)
-      if (sessions == null) return s"empty authTable".left
+      if (sessions == null) {
+        return s"authId(${p.authId}) not found".left
+      }
 
       if (sessions.contains(p.sessionId)) {
         sessionIds = sessionIds :+ p.sessionId
