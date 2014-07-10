@@ -3,6 +3,7 @@ package com.secretapp.backend.persist
 import scala.concurrent.blocking
 import com.datastax.driver.core.{ Cluster, Session }
 import com.newzly.util.testing.cassandra.BaseTest
+import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 
 trait CassandraSpec extends BaseTest {
@@ -36,6 +37,7 @@ trait CassandraSpec extends BaseTest {
   override def beforeAll(): Unit = {
     dropKeySpace(keySpace)
     createKeySpace(keySpace)
+    DBConnector.createTables(session).sync()
   }
 
 

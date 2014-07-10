@@ -10,12 +10,12 @@ import scalaz._
 import Scalaz._
 import java.nio.ByteBuffer
 
-object VarIntCodec extends Codec[Int] {
+object VarIntCodec extends Codec[Long] {
 
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
-  def encode(v: Int) = {
-    var n: Int = v.abs
+  def encode(v: Long) = {
+    var n = v.abs
     val res = ByteBuffer.allocate(sizeOf(n))
     while (n > 0x7f) {
       res.put(((n & 0xff) | 0x80).toByte)
@@ -26,41 +26,51 @@ object VarIntCodec extends Codec[Int] {
     BitVector(res).right
   }
 
-  def encode(n: Long) : String \/ BitVector = encode(n.toInt)
-
   def decode(buf: BitVector) = {
     @tailrec
-    def f(buf: ByteVector, position: Int = 0, acc: Int = 0): Int = {
-      if (buf.isEmpty) acc
-      else {
-        val n = ((buf(0) & 0xff) & 0x7f) << 7 * position
+    def f(buf: ByteVector, position: Int = 0, acc: Long = 0): Long = {
+      if (buf.isEmpty) {
+        acc
+      } else {
+        val n = ((buf(0) & 0xffL) & 0x7fL) << 7 * position
         f(buf.drop(1), position + 1, acc ^ n)
       }
     }
     def decodeVI(buf: BitVector) = f(buf.bytes).abs
 
     val sizeVI = varIntLen(buf)
-    if (sizeVI >= 1 && sizeVI <= 6) {
+    if (sizeVI >= 1 && sizeVI <= maxSize) {
       val offset = sizeVI * byteSize
       val len = decodeVI(buf.take(offset))
       (buf.drop(offset), len).right
-    } else s"Wrong varint size: $sizeVI. Varint should have size within range from 1 to 6.".left
+    } else {
+      s"Wrong varint size: $sizeVI. Varint should have size within range from 1 to $maxSize.".left
+    }
   }
 
-  def sizeOf(buf: Int): Int = buf match {
-    case x if x <= 0x7f => 1
-    case x if x <= 0x3fff => 2
-    case x if x <= 0x1fffff => 3
-    case x if x <= 0xfffffff => 4
-    case x if x <= 0x7fffffff => 5
-    case _ => 6
+  private val maxSize = 10
+
+  def sizeOf(buf: Long): Int = buf match {
+    case x if x <= 0x7fL => 1
+    case x if x <= 0x3fffL => 2
+    case x if x <= 0x1fffffL => 3
+    case x if x <= 0xfffffffL => 4
+    case x if x <= 0x7fffffffL => 5
+    case x if x <= 0x7ffffffffL => 6
+    case x if x <= 0x3ffffffffffL => 7
+    case x if x <= 0x1ffffffffffffL => 8
+    case x if x <= 0xffffffffffffffL => 9
+    case _ => maxSize
   }
 
   private def varIntLen(buf: BitVector): Int = {
     @tailrec
     def f(buf: BitVector, len: Int = 1): Int = {
-      if (buf.isEmpty || !buf.head) len
-      else f(buf.drop(byteSize), len + 1)
+      if (buf.isEmpty || !buf.head) {
+        len
+      } else {
+        f(buf.drop(byteSize), len + 1)
+      }
     }
     f(buf)
   }

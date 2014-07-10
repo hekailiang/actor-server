@@ -9,9 +9,9 @@ import Scalaz._
 
 object VarIntCodecSpecification extends Properties("VarInt") {
 
-  val integers = Gen.choose(Int.MinValue, Int.MaxValue)
+  val integers = Gen.choose(Long.MinValue, Long.MaxValue)
 
-  property("encode/decode") = forAll(integers) { (a: Int) =>
+  property("encode/decode") = forAll(integers) { (a: Long) =>
     varint.decode(varint.encode(a).toOption.get) == (BitVector.empty, a.abs).right
   }
 

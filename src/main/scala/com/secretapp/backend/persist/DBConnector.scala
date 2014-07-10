@@ -19,6 +19,18 @@ object DBConnector {
   lazy val session = blocking {
     cluster.connect(keySpace)
   }
+
+  def createTables(session: Session) = blocking {
+    for {
+      _ <- UserRecord.createTable(session)
+      _ <- AuthIdRecord.createTable(session)
+    } yield ()
+  }
+
+//  def dumpKeySpace() = blocking {
+//    session.execute(s"DESCRIBE KEYSPACE $secret;")
+//  }
+
 }
 
 trait DBConnector {
