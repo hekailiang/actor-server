@@ -1,6 +1,6 @@
 package com.secretapp.backend.api
 
-import akka.actor.{ ActorRef, ActorLogging }
+import akka.actor.{ Actor, ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import akka.event.LoggingAdapter
@@ -8,12 +8,15 @@ import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.annotation.tailrec
-import scala.util.Random
+import scala.util.{ Success, Failure, Random }
 import scodec.bits._
 import scalaz._
 import Scalaz._
 import com.secretapp.backend.data
+import spray.caching.LruCache
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
 
@@ -24,9 +27,12 @@ trait LoggerService {
 }
 
 
-trait WrappedPackageService {
+trait WrappedPackageService { self : Actor =>
 
+  import context._
   import ByteConstants._
+
+  implicit val session = DBConnector.session
 
   sealed trait ParseState
   case class WrappedPackageSizeParsing() extends ParseState
@@ -55,7 +61,9 @@ trait WrappedPackageService {
               }
             case -\/(e) => ParseError(e).left
           }
-        } else (sp, buf).right
+        } else {
+          (sp, buf).right
+        }
 
       case pp@WrappedPackageParsing(bitsLen) =>
         if (buf.length >= bitsLen) {
@@ -65,10 +73,93 @@ trait WrappedPackageService {
               (WrappedPackageSizeParsing(), remain).right
             case -\/(e) => ParseError(e).left
           }
-        } else (pp, buf).right
+        } else {
+          (pp, buf).right
+        }
 
       case _ => ParseError("internal error: wrong state").left
     }
+
+
+//  def validatePackage(p: Package): HandleResult = {
+//    if (Some(p.authId) != authId && p.authId != 0L) {
+//      if (authTable.containsKey(p.authId)) {
+//        authId = Some(p.authId)
+//      } else {
+//        return s"unknown authId($authId)".left
+//      }
+//    }
+//
+//    if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
+//      val sessions = authTable.get(p.authId)
+//      if (sessions == null) {
+//        return s"authId(${p.authId}) not found".left
+//      }
+//
+//      if (sessions.contains(p.sessionId)) {
+//        sessionIds = sessionIds :+ p.sessionId
+//      } else {
+//        sessionId = Some(p.sessionId)
+//        sessionIds = sessionIds.+:(p.sessionId)
+//        sessions.add(p.sessionId)
+//        val wrappedMsg = ProtoMessageWrapper(p.message.messageId, NewSession(p.sessionId, p.message.messageId))
+//        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+//      }
+//    }
+//
+//    ().right
+//  }
+
+  private var currentAuthId : Long = _
+  private var currentUser : Option[User] = _
+  private val currentSessions = LruCache[Long](maxCapacity = 10, initialCapacity = 1, timeToIdle = 10 minutes)
+  private lazy val rand = new Random()
+
+  final def handlePackage(p: Package): Unit = {
+
+    if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
+
+      if (p.authId == 0L) { // check for auth request - simple key registration
+        if (p.sessionId == 0L) {
+          currentAuthId = rand.nextLong
+          AuthIdRecord.insertEntity(AuthId(currentAuthId, None))
+
+          //      val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
+          //      writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+        } else {
+          // error: unknown session/bad package
+        }
+      } else {
+
+        AuthIdRecord.getEntity(p.authId).onComplete {
+          case Success(res) => res match {
+            case Some(authIdRecord) =>
+              currentAuthId = authIdRecord.authId
+              currentUser = authIdRecord.user
+              handlePackage(p)
+            case None =>
+//            send drop package with bad auth id message
+          }
+          case Failure(e) =>
+//            send drop package with e message
+        }
+
+//        s"unknown authId(${p.authId}) or sessionId(${p.sessionId})".left
+      }
+
+    } else {
+
+      if (p.authId == currentAuthId) {
+
+      } else {
+
+//        error: you can't use two differ auth id in same connection
+
+      }
+
+    }
+
+  }
 
 }
 
