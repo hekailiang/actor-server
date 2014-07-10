@@ -3,6 +3,8 @@ package com.secretapp.backend.api
 import akka.actor.{ ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
+import akka.event.LoggingAdapter
+import com.secretapp.backend.persist.{DBConnector, AuthIdRecord}
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import scala.annotation.tailrec
@@ -14,6 +16,8 @@ import com.secretapp.backend.data
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
 trait ApiService {
+
+  def log : LoggingAdapter
 
   val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
 
@@ -129,6 +133,7 @@ trait ApiService {
         case RequestAuthId() if p.authId == 0L && p.sessionId == 0L =>
           val newAuthId = rand.nextLong
           authId = Some(newAuthId)
+//          AuthIdRecord.insertEntity(AuthId(newAuthId, None))(DBConnector.session)
           authTable.put(newAuthId, new ConcurrentSkipListSet[Long]()) // TODO: check for uniqueness
           val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
           writeCodecResult(p.authId, p.sessionId, wrappedMsg)
