@@ -37,8 +37,7 @@ object BackendBuild extends Build {
         distBootClass in Dist := appClass,
         outputDirectory in Dist := file("target/dist"),
         Revolver.reStartArgs := Seq(appClassMock),
-        mainClass in Revolver.reStart := Some(appClassMock),
-        fork in Test := true
+        mainClass in Revolver.reStart := Some(appClassMock)
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
   // .settings(atmosSettings: _*).configs(Atmos)
@@ -55,6 +54,8 @@ object BackendBuild extends Build {
   lazy val defaultSettings = buildSettings ++ Seq(
     resolvers ++= Resolvers.seq,
     scalacOptions ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature"), //, "-Xprint:typer"
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation")
+    javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
+    parallelExecution in Test := true,
+    fork in Test := true
   )
 }

@@ -27,13 +27,6 @@ object DBConnector {
     } yield ()
   }
 
-  def truncateTables(session: Session) = blocking {
-    for {
-      _ <- UserRecord.truncateTable(session)
-      _ <- AuthIdRecord.truncateTable(session)
-    } yield ()
-  }
-
 //  def dumpKeySpace() = blocking {
 //    session.execute(s"DESCRIBE KEYSPACE $secret;")
 //  }

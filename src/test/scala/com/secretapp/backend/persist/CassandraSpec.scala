@@ -7,9 +7,17 @@ import com.newzly.util.testing.cassandra.BaseTest
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 
-object CassandraHelperSpec {
+trait CassandraSpec extends BaseTest {
 
   lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
+  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
+
+  override val cluster = Cluster.builder()
+    .addContactPoint(dbConfig.getString("contact-point.host"))
+    .withPort(dbConfig.getInt("contact-point.port"))
+    .withoutJMXReporting()
+    .withoutMetrics()
+    .build()
 
   private def createKeySpace(spaceName: String)(implicit session : Session) = {
     blocking {
@@ -24,39 +32,13 @@ object CassandraHelperSpec {
     }
   }
 
-  private var isCreated = false
-
-  def recreateSpaceWithTables(keySpace: String)(implicit session : Session): Unit = {
-    if (!isCreated) {
-      println(s"create $keySpace")
-      isCreated = true
-      dropKeySpace(keySpace)
-      createKeySpace(keySpace)
-      DBConnector.createTables(session).sync()
-    }
-    session.execute(s"use $keySpace;")
-  }
-
-}
-
-trait CassandraSpec extends BaseTest {
-
-  lazy val keySpace: String = CassandraHelperSpec.keySpace
-  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
-
-  override val cluster = Cluster.builder()
-    .addContactPoint(dbConfig.getString("contact-point.host"))
-    .withPort(dbConfig.getInt("contact-point.port"))
-    .withoutJMXReporting()
-    .withoutMetrics()
-    .build()
-
   override def beforeAll(): Unit = {
-    CassandraHelperSpec.recreateSpaceWithTables(keySpace)
+    createKeySpace(keySpace)
+    DBConnector.createTables(session).sync()
   }
 
   override def afterAll(): Unit = {
-    DBConnector.truncateTables(session).sync()
+    dropKeySpace(keySpace)
   }
 
 }

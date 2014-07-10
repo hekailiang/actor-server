@@ -4,7 +4,8 @@ import akka.actor.{ ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import akka.event.LoggingAdapter
-import com.secretapp.backend.persist.{DBConnector, AuthIdRecord}
+import com.secretapp.backend.protocol.codecs.ByteConstants
+import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import scala.annotation.tailrec
@@ -15,9 +16,64 @@ import Scalaz._
 import com.secretapp.backend.data
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
-trait ApiService {
+
+trait LoggerService {
 
   def log : LoggingAdapter
+
+}
+
+
+trait WrappedPackageService {
+
+  import ByteConstants._
+
+  sealed trait ParseState
+  case class WrappedPackageSizeParsing() extends ParseState
+  case class WrappedPackageParsing(bitsLen : Long) extends ParseState
+
+  type ParseResult = (ParseState, BitVector)
+
+  val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
+  val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
+
+  sealed trait HandleError
+  case class ParseError(msg : String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
+
+  @tailrec
+  final def handleByteStream(state : ParseState, buf : BitVector)(f : (Package) => Unit) : HandleError \/ ParseResult =
+    state match {
+      case sp@WrappedPackageSizeParsing() =>
+        if (buf.length >= minParseLength) {
+          varint.decode(buf) match {
+            case \/-((_, len)) =>
+              val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
+              if (len <= maxPackageLen) {
+                handleByteStream(WrappedPackageParsing(pLen), buf)(f)
+              } else {
+                ParseError(s"received package size $len is bigger than $maxPackageLen bytes").left
+              }
+            case -\/(e) => ParseError(e).left
+          }
+        } else (sp, buf).right
+
+      case pp@WrappedPackageParsing(bitsLen) =>
+        if (buf.length >= bitsLen) {
+          protoWrappedPackage.decode(buf) match {
+            case \/-((remain, wp)) =>
+              f(wp.p)
+              (WrappedPackageSizeParsing(), remain).right
+            case -\/(e) => ParseError(e).left
+          }
+        } else (pp, buf).right
+
+      case _ => ParseError("internal error: wrong state").left
+    }
+
+}
+
+
+trait ApiService {
 
   val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
 
@@ -38,7 +94,7 @@ trait ApiService {
 
   type HandleResult = String \/ Unit
 
-  val minParseLength = 6 * byteSize // we need first 6 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
+  val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
 
   @tailrec
   final def handleStream(s: ParseState, buf: BitVector): ParseResult = s match {

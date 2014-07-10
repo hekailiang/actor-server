@@ -48,7 +48,7 @@ object VarIntCodec extends Codec[Long] {
     }
   }
 
-  private val maxSize = 10
+  val maxSize = 10
 
   def sizeOf(buf: Long): Int = buf match {
     case x if x <= 0x7fL => 1
