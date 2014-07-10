@@ -8,6 +8,7 @@ import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.annotation.tailrec
@@ -16,8 +17,8 @@ import scodec.bits._
 import scalaz._
 import Scalaz._
 import com.secretapp.backend.data
-import spray.caching.LruCache
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
+import java.util.concurrent.ConcurrentLinkedQueue
 
 
 trait LoggerService {
@@ -69,7 +70,7 @@ trait WrappedPackageService { self : Actor =>
         if (buf.length >= bitsLen) {
           protoWrappedPackage.decode(buf) match {
             case \/-((remain, wp)) =>
-              f(wp.p)
+              handlePackage(wp.p)(f)
               (WrappedPackageSizeParsing(), remain).right
             case -\/(e) => ParseError(e).left
           }
@@ -81,85 +82,81 @@ trait WrappedPackageService { self : Actor =>
     }
 
 
-//  def validatePackage(p: Package): HandleResult = {
-//    if (Some(p.authId) != authId && p.authId != 0L) {
-//      if (authTable.containsKey(p.authId)) {
-//        authId = Some(p.authId)
-//      } else {
-//        return s"unknown authId($authId)".left
-//      }
-//    }
-//
-//    if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
-//      val sessions = authTable.get(p.authId)
-//      if (sessions == null) {
-//        return s"authId(${p.authId}) not found".left
-//      }
-//
-//      if (sessions.contains(p.sessionId)) {
-//        sessionIds = sessionIds :+ p.sessionId
-//      } else {
-//        sessionId = Some(p.sessionId)
-//        sessionIds = sessionIds.+:(p.sessionId)
-//        sessions.add(p.sessionId)
-//        val wrappedMsg = ProtoMessageWrapper(p.message.messageId, NewSession(p.sessionId, p.message.messageId))
-//        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
-//      }
-//    }
-//
-//    ().right
-//  }
-
   private var currentAuthId : Long = _
+  private var currentSessionId : Long = _
   private var currentUser : Option[User] = _
-  private val currentSessions = LruCache[Long](maxCapacity = 10, initialCapacity = 1, timeToIdle = 10 minutes)
-  private lazy val rand = new Random()
+  private val currentSessions = new ConcurrentLinkedQueue[Long]()
 
-  final def handlePackage(p: Package): Unit = {
+  final def handlePackage(p : Package)(f : (Package) => Unit) : Unit = {
 
     if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
 
       if (p.authId == 0L) { // check for auth request - simple key registration
         if (p.sessionId == 0L) {
-          currentAuthId = rand.nextLong
-          AuthIdRecord.insertEntity(AuthId(currentAuthId, None))
-
-          //      val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
-          //      writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+          val newAuthId = new Random().nextLong
+          AuthIdRecord.insertEntity(AuthId(newAuthId, None)).onComplete {
+            case Success(_) =>
+              currentAuthId = newAuthId
+            //          TODO: send
+            //          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
+            //          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+            case Failure(e) => sendDrop(p, e)
+          }
         } else {
-          // error: unknown session/bad package
+          sendDrop(p, s"unknown session id(${p.sessionId}) within auth id(${p.authId}})")
         }
       } else {
-
         AuthIdRecord.getEntity(p.authId).onComplete {
           case Success(res) => res match {
             case Some(authIdRecord) =>
               currentAuthId = authIdRecord.authId
               currentUser = authIdRecord.user
-              handlePackage(p)
-            case None =>
-//            send drop package with bad auth id message
+              handlePackage(p)(f)
+            case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
           }
-          case Failure(e) =>
-//            send drop package with e message
+          case Failure(e) => sendDrop(p, e)
         }
-
-//        s"unknown authId(${p.authId}) or sessionId(${p.sessionId})".left
       }
 
     } else {
 
       if (p.authId == currentAuthId) {
-
+        if (p.sessionId == 0L) {
+          sendDrop(p, "sessionId can't be zero")
+        } else {
+          if (p.sessionId == currentSessionId || currentSessions.contains(p.sessionId)) {
+            f(p)
+          } else {
+            SessionIdRecord.getEntity(p.authId, p.sessionId).onComplete {
+              case Success(res) => res match {
+                case Some(sessionIdRecord) =>
+                  if (currentSessionId == 0L) {
+                    currentSessionId = p.sessionId
+                  }
+                  currentSessions.add(p.sessionId)
+                  //  TODO: send new session response package
+                  f(p)
+                case None =>
+                  SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
+                    case Success(_) => f(p)
+                    case Failure(e) => sendDrop(p, e)
+                  }
+              }
+              case Failure(e) => sendDrop(p, e)
+            }
+          }
+        }
       } else {
-
-//        error: you can't use two differ auth id in same connection
-
+        sendDrop(p, "you can't use two different auth id at the same connection")
       }
 
     }
-
   }
+
+  private def sendDrop(p : Package, msg : String) : Unit = {
+    ???
+  }
+  private def sendDrop(p : Package, e : Throwable) : Unit = sendDrop(p, e.getMessage)
 
 }
 
