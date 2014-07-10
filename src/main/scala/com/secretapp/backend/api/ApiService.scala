@@ -28,7 +28,7 @@ trait LoggerService {
 }
 
 
-trait WrappedPackageService { self : Actor =>
+trait WrappedPackageService extends LoggerService { self : Actor =>
 
   import context._
   import ByteConstants._
@@ -48,7 +48,7 @@ trait WrappedPackageService { self : Actor =>
   case class ParseError(msg : String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
 
   @tailrec
-  final def handleByteStream(state : ParseState, buf : BitVector)(f : (Package) => Unit) : HandleError \/ ParseResult =
+  private final def parseByteStream(state : ParseState, buf : BitVector)(f : (Package) => Unit) : HandleError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
         if (buf.length >= minParseLength) {
@@ -56,7 +56,7 @@ trait WrappedPackageService { self : Actor =>
             case \/-((_, len)) =>
               val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
               if (len <= maxPackageLen) {
-                handleByteStream(WrappedPackageParsing(pLen), buf)(f)
+                parseByteStream(WrappedPackageParsing(pLen), buf)(f)
               } else {
                 ParseError(s"received package size $len is bigger than $maxPackageLen bytes").left
               }
@@ -80,6 +80,21 @@ trait WrappedPackageService { self : Actor =>
 
       case _ => ParseError("internal error: wrong state").left
     }
+
+
+  private var parseState: ParseState = WrappedPackageSizeParsing()
+  private var parseBuffer = BitVector.empty
+
+  final def handleByteStream(buf : BitVector)(packageFunc : (Package) => Unit, failureFunc : () => Unit) = {
+    parseByteStream(parseState, parseBuffer ++ buf)(packageFunc) match {
+      case \/-((newState, remainBuf)) =>
+        parseState = newState
+        parseBuffer = remainBuf
+      case -\/(e) =>
+        log.error(s"handleByteStream#$parseState: $e")
+        failureFunc()
+    }
+  }
 
 
   private var currentAuthId : Long = _
