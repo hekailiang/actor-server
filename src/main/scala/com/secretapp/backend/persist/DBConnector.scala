@@ -27,6 +27,13 @@ object DBConnector {
     } yield ()
   }
 
+  def truncateTables(session: Session) = blocking {
+    for {
+      _ <- UserRecord.truncateTable(session)
+      _ <- AuthIdRecord.truncateTable(session)
+    } yield ()
+  }
+
 //  def dumpKeySpace() = blocking {
 //    session.execute(s"DESCRIBE KEYSPACE $secret;")
 //  }
@@ -39,4 +46,9 @@ trait DBConnector {
   def createTable(session: Session): Future[Unit] = {
     create.future()(session) map (_ => ())
   }
+
+  def truncateTable(session: Session): Future[Unit] = {
+    truncate.future()(session) map (_ => ())
+  }
+
 }
