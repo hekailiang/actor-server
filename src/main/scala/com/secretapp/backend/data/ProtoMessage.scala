@@ -39,7 +39,7 @@ object Drop {
   val header = 0xd
 }
 
-case class ProtoMessageAck(messageIds: Array[Long])
+case class ProtoMessageAck(messageIds: Array[Long]) extends ProtoMessage
 object ProtoMessageAck {
   val header = 0x6
 

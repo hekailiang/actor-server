@@ -1,6 +1,6 @@
 package com.secretapp.backend.api
 
-import akka.actor.{ ActorRef, ActorLogging }
+import akka.actor.{ Actor, ActorRef, ActorLogging, Props }
 import akka.util.ByteString
 import akka.io.Tcp._
 import akka.event.LoggingAdapter
@@ -16,8 +16,12 @@ import com.secretapp.backend.data
 import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
 
 trait ApiService {
+  this: Actor =>
 
   def log : LoggingAdapter
+
+  val unackedSizeLimit = 1024 * 100
+  val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
 
   val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
 
@@ -101,17 +105,41 @@ trait ApiService {
     ().right
   }
 
-  def writeCodecResult(authId: Long, sessionId: Long, m: ProtoMessageWrapper): HandleResult = {
-    protoWrappedPackage.encode(Package(authId, sessionId, m)) match {
+  def writeCodecResult(authId: Long, sessionId: Long, mw: ProtoMessageWrapper): HandleResult = {
+    protoWrappedPackage.encode(Package(authId, sessionId, mw)) match {
       case \/-(b) =>
-        sendBuffer ++= ByteString(b.toByteBuffer)
+        val bs = ByteString(b.toByteBuffer)
+        registerSentMessage(mw, bs)
+        sendBuffer ++= bs
         ().right
       case -\/(e) => e.left
     }
   }
 
+  def registerSentMessage(m: ProtoMessageWrapper, b: ByteString): Unit = m match {
+    case ProtoMessageWrapper(mid, m) =>
+      m match {
+        case _: Pong =>
+        case _ =>
+          ackTracker ! RegisterMessage(mid, b)
+      }
+  }
+
+  def acknowledgeReceivedPackage(p: Package): Unit = {
+    p.message match {
+      case ProtoMessageWrapper(_, m: Ping) =>
+        log.info("Ping got, no need in acknowledgement")
+      case _ =>
+        // TODO: aggregation
+        log.info(s"Sending acknowledgement for $p")
+        val wrappedMsg = ProtoMessageWrapper(0L, ProtoMessageAck(Array(p.message.messageId)))
+        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+    }
+  }
+
   def handleMessage(p: Package): HandleResult = authId match {
     case Some(authId) =>
+      acknowledgeReceivedPackage(p)
       p.message.body match {
         case Ping(randomId) =>
           val wrappedMsg = ProtoMessageWrapper(p.message.messageId, Pong(randomId))
@@ -125,6 +153,9 @@ trait ApiService {
           }
 
           s"rpc message#$rpcMessage is not implemented yet".left
+        case ProtoMessageAck(mids) =>
+          ackTracker ! RegisterMessageAcks(mids.toList)
+          ().right
         case _ => s"unknown case for message".left
       }
 

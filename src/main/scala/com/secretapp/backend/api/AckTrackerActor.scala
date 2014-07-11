@@ -9,6 +9,7 @@ sealed trait AckTrackerMessage
 
 case class RegisterMessage[K](key: K, value: ByteString) extends AckTrackerMessage
 case class RegisterMessageAck[K](key: K) extends AckTrackerMessage
+case class RegisterMessageAcks[K](keys: List[K]) extends AckTrackerMessage
 
 // perhaps in future we will need it to be case class with key or key and value
 case object MessageAlreadyRegistered extends AckTrackerMessage
@@ -43,13 +44,22 @@ class AckTrackerActor[K](val sizeLimit: Int) extends Actor with ActorLogging {
           }
       }
     case m: RegisterMessageAck[K] =>
-      val newState = remove(state, m.key)
-      become(trackMessages(newState))
+      registerMessageAck(state, m.key)
+    case ms: RegisterMessageAcks[K] =>
+      ms.keys.foreach (key => registerMessageAck(state, key))
     case GetUnackdMessages =>
       sender ! UnackdMessages(state.messages)
   }
 
   def receive = trackMessages(State(immutable.Map[K, ByteString](), 0))
+
+  /**
+    * Register message ack
+    */
+  private def registerMessageAck(state: State, key: K) = {
+    val newState = remove(state, key)
+    become(trackMessages(newState))
+  }
 
   /**
     * Add new element
