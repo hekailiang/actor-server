@@ -40,6 +40,7 @@ trait WrappedPackageService extends LoggerService { self : Actor =>
   case class WrappedPackageParsing(bitsLen : Long) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
+  type PackageFunc = (Package, Option[ProtoMessage]) => Unit
 
   val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
@@ -48,7 +49,7 @@ trait WrappedPackageService extends LoggerService { self : Actor =>
   case class ParseError(msg : String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
 
   @tailrec
-  private final def parseByteStream(state : ParseState, buf : BitVector)(f : (Package) => Unit) : HandleError \/ ParseResult =
+  private final def parseByteStream(state : ParseState, buf : BitVector)(f : PackageFunc) : HandleError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
         if (buf.length >= minParseLength) {
@@ -82,28 +83,42 @@ trait WrappedPackageService extends LoggerService { self : Actor =>
     }
 
 
-  private var parseState: ParseState = WrappedPackageSizeParsing()
+  private var parseState : ParseState = WrappedPackageSizeParsing()
   private var parseBuffer = BitVector.empty
 
-  final def handleByteStream(buf : BitVector)(packageFunc : (Package) => Unit, failureFunc : () => Unit) = {
+  /**
+   * Parse bit stream, handle Package's and parsing failures.
+   *
+   * @param buf bit stream for parsing and handling
+   * @param packageFunc handle Package function and maybe additional reply message
+   * @param failureFunc handle parsing failures function
+   */
+  final def handleByteStream(buf : BitVector)(packageFunc : PackageFunc, failureFunc : (HandleError) => Unit) : Unit = {
     parseByteStream(parseState, parseBuffer ++ buf)(packageFunc) match {
       case \/-((newState, remainBuf)) =>
         parseState = newState
         parseBuffer = remainBuf
       case -\/(e) =>
         log.error(s"handleByteStream#$parseState: $e")
-        failureFunc()
+        failureFunc(e)
     }
   }
 
 
   private var currentAuthId : Long = _
   private var currentSessionId : Long = _
-  private var currentUser : Option[User] = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
+  private var currentUser : Option[User] = _
 
-  final def handlePackage(p : Package)(f : (Package) => Unit) : Unit = {
-
+  final def handlePackage(p : Package)(f : (Package, Option[ProtoMessage]) => Unit) : Unit = {
+    @inline
+    def updateCurrentSession() : Unit = {
+      if (currentSessionId == 0L) {
+        currentSessionId = p.sessionId
+      }
+      currentSessions.add(p.sessionId)
+    }
+    
     if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
 
       if (p.authId == 0L) { // check for auth request - simple key registration
@@ -115,6 +130,7 @@ trait WrappedPackageService extends LoggerService { self : Actor =>
             //          TODO: send
             //          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
             //          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+              f(p, None)
             case Failure(e) => sendDrop(p, e)
           }
         } else {
@@ -140,20 +156,18 @@ trait WrappedPackageService extends LoggerService { self : Actor =>
           sendDrop(p, "sessionId can't be zero")
         } else {
           if (p.sessionId == currentSessionId || currentSessions.contains(p.sessionId)) {
-            f(p)
+            f(p, None)
           } else {
             SessionIdRecord.getEntity(p.authId, p.sessionId).onComplete {
               case Success(res) => res match {
                 case Some(sessionIdRecord) =>
-                  if (currentSessionId == 0L) {
-                    currentSessionId = p.sessionId
-                  }
-                  currentSessions.add(p.sessionId)
-                  //  TODO: send new session response package
-                  f(p)
+                  updateCurrentSession()
+                  f(p, None)
                 case None =>
                   SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
-                    case Success(_) => f(p)
+                    case Success(_) =>
+                      updateCurrentSession()
+                      f(p, Some(NewSession(p.sessionId, p.message.messageId)))
                     case Failure(e) => sendDrop(p, e)
                   }
               }
