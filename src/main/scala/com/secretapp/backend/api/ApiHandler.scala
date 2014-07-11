@@ -8,36 +8,29 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import scalaz._
 import Scalaz._
-import java.util.concurrent.{ConcurrentSkipListSet, ConcurrentHashMap}
+import com.datastax.driver.core.{ Session => CSession }
 
-class ApiHandler(val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]) extends Actor with ActorLogging with ApiService
+
+// TODO: replace connection : ActorRef hack with real sender (or forget it?)
+class ApiHandler(connection : ActorRef)(implicit val session : CSession) extends Actor with ActorLogging
+with WrappedPackageService with PackageHandler
 {
 
+  val handleActor = self
+
   def receive = {
+    case PackageToSend(pe) => pe match {
+      case \/-(p) =>
+        connection ! Write(replyPackage(p))
+      case -\/(p) =>
+        connection ! Write(replyPackage(p))
+        connection ! Close
+        context stop self
+    }
+
     case Received(data) =>
-      val connection = sender()
       log.info(s"Received: $data ${data.length}")
-
-      state = handleStream(state._1, state._2 ++ BitVector(data.toArray))
-      log.info(s"state: $state")
-      state._1 match {
-        case DropParsing(authId, sessionId, messageId, e) =>
-          log.info(s"DropParsing: $e")
-          val dropMsg: ByteString = protoWrappedPackage.build(authId, sessionId, messageId, Drop(messageId, e)) match {
-            case \/-(bs) => ByteString(bs.toByteArray)
-            case -\/(e) => ByteString(e)
-          }
-          connection ! Write(dropMsg)
-          connection ! Close
-          context stop self
-
-        case _ =>
-          if (!sendBuffer.isEmpty) {
-            log.info(s"Write($sendBuffer)")
-            connection ! Write(sendBuffer)
-            sendBuffer = ByteString()
-          }
-      }
+      handleByteStream(BitVector(data.toArray))(handlePackage, handleError)
 
     case PeerClosed =>
       log.info("PeerClosed")

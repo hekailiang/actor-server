@@ -9,12 +9,10 @@ import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
 import com.secretapp.backend.data._
-import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
+import com.secretapp.backend.persist.CassandraWordSpec
 
-class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike
-  with Matchers with BeforeAndAfterAll {
-
-  def this() = this(ActorSystem("api"))
+class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender with CassandraWordSpec
+{
 
   import system.dispatcher
 
@@ -22,9 +20,8 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
     TestKit.shutdownActorSystem(system)
   }
 
-  val authTable = new ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]()
   val probe = TestProbe()
-  def getApiActor() = system.actorOf(Props(new ApiHandler(authTable) {
+  def getApiActor() = system.actorOf(Props(new ApiHandler(probe.ref) {
     override lazy val rand = new Random() {
       override def nextLong() = 12345L
     }
@@ -56,10 +53,10 @@ class ApiHandlerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val ping = protoWrappedPackage.build(authId, sessionId, messageId + 1, Ping(randId))
       val newNewSession = protoWrappedPackage.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
       val pong = protoWrappedPackage.build(authId, sessionId, messageId + 1, Pong(randId))
-      val reply = newNewSession.toOption.get ++ pong.toOption.get
 
       probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
-      probe.expectMsg(Write(ByteString(reply.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
     }
 
     "send drop to invalid crc" in {

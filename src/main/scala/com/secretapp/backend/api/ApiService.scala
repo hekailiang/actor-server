@@ -4,177 +4,287 @@ import akka.actor.{ Actor, ActorRef, ActorLogging, Props }
 import akka.util.ByteString
 import akka.io.Tcp._
 import akka.event.LoggingAdapter
-import com.secretapp.backend.persist.{DBConnector, AuthIdRecord}
+import com.secretapp.backend.protocol.codecs.ByteConstants
+import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import scala.collection.JavaConversions._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.annotation.tailrec
-import scala.util.Random
+import scala.util.{ Success, Failure, Random }
 import scodec.bits._
 import scalaz._
 import Scalaz._
 import com.secretapp.backend.data
-import java.util.concurrent.{ ConcurrentHashMap, ConcurrentSkipListSet }
+import java.util.concurrent.ConcurrentLinkedQueue
+import com.datastax.driver.core.{ Session => CSession }
 
-trait ApiService {
-  this: Actor =>
+
+trait LoggerService {
 
   def log : LoggingAdapter
 
+}
+
+trait PackageCommon extends LoggerService {
+
+  val handleActor : ActorRef
+
+  type PackageEither = Package \/ Package
+
+  case class PackageToSend(p : PackageEither)
+
+}
+
+trait PackageAckService extends PackageCommon { this: Actor =>
+
   val unackedSizeLimit = 1024 * 100
   val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
-
-  val authTable: ConcurrentHashMap[Long, ConcurrentSkipListSet[Long]]
-
-  import com.secretapp.backend.protocol.codecs.ByteConstants._
-
-  sealed trait ParseState
-  case class WrappedPackageSizeParsing() extends ParseState
-  case class WrappedPackageParsing(bitsLen: Long) extends ParseState
-  case class DropParsing(authId: Long, sessionId: Long, messageId: Long, e: String) extends ParseState
-
-  type ParseResult = (ParseState, BitVector)
-  var state: ParseResult = (WrappedPackageSizeParsing(), BitVector.empty)
-  var sendBuffer: ByteString = ByteString()
-
-  def dropState(authId: Long, sessionId: Long, messageId: Long, e: String) = {
-    (DropParsing(authId, sessionId, messageId, e), BitVector.empty)
-  }
-
-  type HandleResult = String \/ Unit
-
-  val minParseLength = 6 * byteSize // we need first 6 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
-
-  @tailrec
-  final def handleStream(s: ParseState, buf: BitVector): ParseResult = s match {
-    case wpsp@WrappedPackageSizeParsing() =>
-      if (buf.length >= minParseLength) {
-        varint.decode(buf) match {
-          case \/-((_, len)) =>
-            val pLen = len * byteSize + varint.sizeOf(len) * byteSize
-            handleStream(WrappedPackageParsing(pLen), buf)
-          case -\/(e) => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, e)
-        }
-      } else (wpsp, buf)
-
-    case wpp@WrappedPackageParsing(bitsLen) =>
-      if (buf.length >= bitsLen) {
-        protoWrappedPackage.decode(buf) match {
-          case \/-((remain, wp)) =>
-            val handleRes = for {
-              _ <- validatePackage(wp.p)
-              _ <- handleMessage(wp.p)
-            } yield ()
-
-            handleRes match {
-              case \/-(_) => (WrappedPackageSizeParsing(), remain)
-              case -\/(e) => dropState(wp.p.authId, wp.p.sessionId, wp.p.message.messageId, e)
-            }
-          case -\/(e) => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, e)
-        }
-      } else (wpp, buf)
-
-    case _ => dropState(authId.getOrElse(0), sessionId.getOrElse(0), 0L, "Internal error: wrong state.")
-  }
-
-  def validatePackage(p: Package): HandleResult = {
-    if (Some(p.authId) != authId && p.authId != 0L) {
-      if (authTable.containsKey(p.authId)) {
-        authId = Some(p.authId)
-      } else {
-        return s"unknown authId($authId)".left
-      }
-    }
-
-    if (Some(p.sessionId) != sessionId && !sessionIds.contains(p.sessionId) && p.sessionId != 0L) {
-      val sessions = authTable.get(p.authId)
-      if (sessions == null) {
-        return s"authId(${p.authId}) not found".left
-      }
-
-      if (sessions.contains(p.sessionId)) {
-        sessionIds = sessionIds :+ p.sessionId
-      } else {
-        sessionId = Some(p.sessionId)
-        sessionIds = sessionIds.+:(p.sessionId)
-        sessions.add(p.sessionId)
-        val wrappedMsg = ProtoMessageWrapper(p.message.messageId, NewSession(p.sessionId, p.message.messageId))
-        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
-      }
-    }
-
-    ().right
-  }
-
-  def writeCodecResult(authId: Long, sessionId: Long, mw: ProtoMessageWrapper): HandleResult = {
-    protoWrappedPackage.encode(Package(authId, sessionId, mw)) match {
-      case \/-(b) =>
-        val bs = ByteString(b.toByteBuffer)
-        registerSentMessage(mw, bs)
-        sendBuffer ++= bs
-        ().right
-      case -\/(e) => e.left
-    }
-  }
 
   def registerSentMessage(m: ProtoMessageWrapper, b: ByteString): Unit = m match {
     case ProtoMessageWrapper(mid, m) =>
       m match {
         case _: Pong =>
-        case _ =>
-          ackTracker ! RegisterMessage(mid, b)
+        case _ => ackTracker ! RegisterMessage(mid, b)
       }
   }
 
-  def acknowledgeReceivedPackage(p: Package): Unit = {
+  def acknowledgeReceivedPackage(p : Package) : Unit = {
     p.message match {
-      case ProtoMessageWrapper(_, m: Ping) =>
+      case ProtoMessageWrapper(_, m : Ping) =>
         log.info("Ping got, no need in acknowledgement")
       case _ =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
-        val wrappedMsg = ProtoMessageWrapper(0L, ProtoMessageAck(Array(p.message.messageId)))
-        writeCodecResult(p.authId, p.sessionId, wrappedMsg)
+
+        val reply = p.replyWith(ProtoMessageAck(Array(p.message.messageId))).left
+        handleActor ! PackageToSend(reply)
     }
   }
 
-  def handleMessage(p: Package): HandleResult = authId match {
-    case Some(authId) =>
-      acknowledgeReceivedPackage(p)
-      p.message.body match {
-        case Ping(randomId) =>
-          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, Pong(randomId))
-          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
-        case RpcRequest(rpcMessage) =>
-          rpcMessage match {
-            case SendSMSCode(phoneNumber, _, _) =>
+}
 
-            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
-            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
-          }
 
-          s"rpc message#$rpcMessage is not implemented yet".left
-        case ProtoMessageAck(mids) =>
-          ackTracker ! RegisterMessageAcks(mids.toList)
-          ().right
-        case _ => s"unknown case for message".left
+trait PackageManagerService extends PackageCommon { self : Actor =>
+
+  import context._
+
+  implicit val session : CSession
+
+  private var currentAuthId : Long = _
+  private var currentSessionId : Long = _
+  private val currentSessions = new ConcurrentLinkedQueue[Long]()
+  private var currentUser : Option[User] = _
+
+  lazy val rand = new Random()
+
+  final def handlePackage(p : Package)(f : (Package, Option[ProtoMessage]) => Unit) : Unit = {
+    @inline
+    def updateCurrentSession() : Unit = {
+      if (currentSessionId == 0L) {
+        currentSessionId = p.sessionId
       }
+      currentSessions.add(p.sessionId)
+    }
 
-    case None =>
-      p.message.body match {
-        case RequestAuthId() if p.authId == 0L && p.sessionId == 0L =>
+    if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
+
+      if (p.authId == 0L) { // check for auth request - simple key registration
+        if (p.sessionId == 0L) {
           val newAuthId = rand.nextLong
-          authId = Some(newAuthId)
-//          AuthIdRecord.insertEntity(AuthId(newAuthId, None))(DBConnector.session)
-          authTable.put(newAuthId, new ConcurrentSkipListSet[Long]()) // TODO: check for uniqueness
-          val wrappedMsg = ProtoMessageWrapper(p.message.messageId, ResponseAuthId(newAuthId))
-          writeCodecResult(p.authId, p.sessionId, wrappedMsg)
-        case _ => s"unknown authId(${p.authId}) or sessionId(${p.sessionId})".left
+          AuthIdRecord.insertEntity(AuthId(newAuthId, None)).onComplete {
+            case Success(_) =>
+              currentAuthId = newAuthId
+              f(p, None)
+            case Failure(e) => sendDrop(p, e)
+          }
+        } else {
+          sendDrop(p, s"unknown session id(${p.sessionId}) within auth id(${p.authId}})")
+        }
+      } else {
+        AuthIdRecord.getEntity(p.authId).onComplete {
+          case Success(res) => res match {
+            case Some(authIdRecord) =>
+              currentAuthId = authIdRecord.authId
+              currentUser = authIdRecord.user
+              handlePackage(p)(f)
+            case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
+          }
+          case Failure(e) => sendDrop(p, e)
+        }
       }
+
+    } else {
+
+      if (p.authId == currentAuthId) {
+        if (p.sessionId == 0L) {
+          sendDrop(p, "sessionId can't be zero")
+        } else {
+          if (p.sessionId == currentSessionId || currentSessions.contains(p.sessionId)) {
+            f(p, None)
+          } else {
+            SessionIdRecord.getEntity(p.authId, p.sessionId).onComplete {
+              case Success(res) => res match {
+                case Some(sessionIdRecord) =>
+                  updateCurrentSession()
+                  f(p, None)
+                case None =>
+                  SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
+                    case Success(_) =>
+                      updateCurrentSession()
+                      f(p, Some(NewSession(p.sessionId, p.message.messageId)))
+                    case Failure(e) => sendDrop(p, e)
+                  }
+              }
+              case Failure(e) => sendDrop(p, e)
+            }
+          }
+        }
+      } else {
+        sendDrop(p, "you can't use two different auth id at the same connection")
+      }
+
+    }
   }
 
-  var authId: Option[Long] = None
-  var sessionId: Option[Long] = None
-  var sessionIds = Vector[Long]()
-  lazy val rand = new Random()
+  def getAuthId = currentAuthId
+
+  def getSessionId = currentSessionId
+
+  private def sendDrop(p : Package, msg : String) : Unit = {
+    val reply = p.replyWith(Drop(_, msg)).left
+    handleActor ! PackageToSend(reply)
+  }
+  private def sendDrop(p : Package, e : Throwable) : Unit = sendDrop(p, e.getMessage)
+
+}
+
+sealed trait HandleError
+case class ParseError(msg : String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
+
+trait WrappedPackageService extends PackageManagerService with PackageAckService { self : Actor =>
+
+  import ByteConstants._
+
+  sealed trait ParseState
+  case class WrappedPackageSizeParsing() extends ParseState
+  case class WrappedPackageParsing(bitsLen : Long) extends ParseState
+
+  type ParseResult = (ParseState, BitVector)
+  type PackageFunc = (Package, Option[ProtoMessage]) => Unit
+
+  val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
+  val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
+
+  @tailrec
+  private final def parseByteStream(state : ParseState, buf : BitVector)(f : PackageFunc) : HandleError \/ ParseResult =
+    state match {
+      case sp@WrappedPackageSizeParsing() =>
+        if (buf.length >= minParseLength) {
+          varint.decode(buf) match {
+            case \/-((_, len)) =>
+              val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
+              if (len <= maxPackageLen) {
+                parseByteStream(WrappedPackageParsing(pLen), buf)(f)
+              } else {
+                ParseError(s"received package size $len is bigger than $maxPackageLen bytes").left
+              }
+            case -\/(e) => ParseError(e).left
+          }
+        } else {
+          (sp, buf).right
+        }
+
+      case pp@WrappedPackageParsing(bitsLen) =>
+        if (buf.length >= bitsLen) {
+          protoWrappedPackage.decode(buf) match {
+            case \/-((remain, wp)) =>
+              handlePackage(wp.p)(f)
+              (WrappedPackageSizeParsing(), remain).right
+            case -\/(e) => ParseError(e).left
+          }
+        } else {
+          (pp, buf).right
+        }
+
+      case _ => ParseError("internal error: wrong state").left
+    }
+
+
+  private var parseState : ParseState = WrappedPackageSizeParsing()
+  private var parseBuffer = BitVector.empty
+
+  /**
+   * Parse bit stream, handle Package's and parsing failures.
+   *
+   * @param buf bit stream for parsing and handling
+   * @param packageFunc handle Package function and maybe additional reply message
+   * @param failureFunc handle parsing failures function
+   */
+  final def handleByteStream(buf : BitVector)(packageFunc : PackageFunc, failureFunc : (HandleError) => Unit) : Unit = {
+    parseByteStream(parseState, parseBuffer ++ buf)(packageFunc) match {
+      case \/-((newState, remainBuf)) =>
+        parseState = newState
+        parseBuffer = remainBuf
+      case -\/(e) =>
+        log.error(s"handleByteStream#$parseState: $e")
+        failureFunc(e)
+    }
+  }
+
+
+  def replyPackage(p : Package) : ByteString = {
+    protoWrappedPackage.encode(p) match {
+      case \/-(bv) =>
+        val bs = ByteString(bv.toByteArray)
+        registerSentMessage(p.message, bs)
+        bs
+      case -\/(e) => ByteString(e)
+    }
+  }
+
+}
+
+trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
+
+  def handlePackage(p : Package, pMsg : Option[ProtoMessage]) : Unit = {
+    pMsg match {
+      case Some(m) => handleActor ! PackageToSend(p.replyWith(m).right)
+      case None =>
+    }
+
+    if (p.authId == 0L && p.sessionId == 0L) {
+      val reply = p.replyWith(ResponseAuthId(getAuthId)).right
+      handleActor ! PackageToSend(reply)
+    } else {
+      acknowledgeReceivedPackage(p)
+      p.message.body match { // TODO: move into pluggable traits
+        case Ping(randomId) =>
+          val reply = p.replyWith(Pong(randomId)).right
+          handleActor ! PackageToSend(reply)
+        //        case RpcRequest(rpcMessage) =>
+        //          rpcMessage match {
+        //            case SendSMSCode(phoneNumber, _, _) =>
+        //
+        //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
+        //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
+        //          }
+        //
+        //          s"rpc message#$rpcMessage is not implemented yet".left
+        //        case _ => s"unknown case for message".left
+        case ProtoMessageAck(mids) =>
+          ackTracker ! RegisterMessageAcks(mids.toList)
+        case _ =>
+      }
+    }
+  }
+
+  def handleError(e : HandleError) : Unit = e match {
+    case ParseError(msg) =>
+      val reply = Package(0L, 0L, ProtoMessageWrapper(0L, Drop(0L, msg))).left
+      handleActor ! PackageToSend(reply)
+    case _ => log.error("unknown handle error")
+  }
 
 }

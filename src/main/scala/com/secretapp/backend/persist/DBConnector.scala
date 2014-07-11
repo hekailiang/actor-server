@@ -6,8 +6,8 @@ import com.newzly.phantom.Implicits._
 import com.typesafe.config._
 
 object DBConnector {
-  val keySpace = "secret"
   val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
+  val keySpace = dbConfig.getString("key-space")
 
   lazy val cluster =  Cluster.builder()
     .addContactPoint(dbConfig.getString("contact-point.host"))
@@ -24,13 +24,7 @@ object DBConnector {
     for {
       _ <- UserRecord.createTable(session)
       _ <- AuthIdRecord.createTable(session)
-    } yield ()
-  }
-
-  def truncateTables(session: Session) = blocking {
-    for {
-      _ <- UserRecord.truncateTable(session)
-      _ <- AuthIdRecord.truncateTable(session)
+      _ <- SessionIdRecord.createTable(session)
     } yield ()
   }
 

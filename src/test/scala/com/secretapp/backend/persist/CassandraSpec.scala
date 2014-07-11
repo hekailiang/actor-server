@@ -3,13 +3,25 @@ package com.secretapp.backend.persist
 import scala.concurrent.blocking
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.datastax.driver.core.{ Cluster, Session }
-import com.newzly.util.testing.cassandra.BaseTest
+import org.scalatest._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 
-object CassandraHelperSpec {
+trait CassandraSpec { self: BeforeAndAfterAll =>
 
   lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
+  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
+
+  val cluster = Cluster.builder()
+    .addContactPoint(dbConfig.getString("contact-point.host"))
+    .withPort(dbConfig.getInt("contact-point.port"))
+    .withoutJMXReporting()
+    .withoutMetrics()
+    .build()
+
+  implicit lazy val session: Session = blocking {
+    cluster.connect()
+  }
 
   private def createKeySpace(spaceName: String)(implicit session : Session) = {
     blocking {
@@ -24,39 +36,16 @@ object CassandraHelperSpec {
     }
   }
 
-  private var isCreated = false
-
-  def recreateSpaceWithTables(keySpace: String)(implicit session : Session): Unit = {
-    if (!isCreated) {
-      println(s"create $keySpace")
-      isCreated = true
-      dropKeySpace(keySpace)
-      createKeySpace(keySpace)
-      DBConnector.createTables(session).sync()
-    }
-    session.execute(s"use $keySpace;")
-  }
-
-}
-
-trait CassandraSpec extends BaseTest {
-
-  lazy val keySpace: String = CassandraHelperSpec.keySpace
-  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
-
-  override val cluster = Cluster.builder()
-    .addContactPoint(dbConfig.getString("contact-point.host"))
-    .withPort(dbConfig.getInt("contact-point.port"))
-    .withoutJMXReporting()
-    .withoutMetrics()
-    .build()
-
   override def beforeAll(): Unit = {
-    CassandraHelperSpec.recreateSpaceWithTables(keySpace)
+    createKeySpace(keySpace)
+    DBConnector.createTables(session).sync()
   }
 
   override def afterAll(): Unit = {
-    DBConnector.truncateTables(session).sync()
+    dropKeySpace(keySpace)
   }
 
 }
+
+trait CassandraFlatSpec extends FlatSpec with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec
+trait CassandraWordSpec extends WordSpecLike with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec

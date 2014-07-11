@@ -5,6 +5,7 @@ object Dependencies {
   object V {
     val akka = "2.3.3"
     val scalaz = "7.0.6"
+    val spray = "1.3.1"
     val phantom = "0.8.0"
     val newzlyUtil = "0.0.28"
   }
@@ -83,6 +84,8 @@ object Dependencies {
 
     val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
 
+    val sprayCaching = "io.spray" %% "spray-caching" % V.spray
+
   }
 
   object DeployDependencies {
@@ -114,7 +117,7 @@ object Dependencies {
 
   val cassandra = Seq(phantomDsl, newzlyUtil)
 
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch)
+  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch, sprayCaching)
 
   val testDependencies = Seq(scalatest, akkaTest, scalaCheck, scalaMockTest)
 
