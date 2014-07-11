@@ -98,12 +98,11 @@ trait PackageManagerService extends PackageCommunication { self : Actor =>
             f(p, None)
           } else {
             SessionIdRecord.getEntity(p.authId, p.sessionId).onComplete {
-              case Success(res) => log.error(s"SessionIdRecord.Success($res)"); res match {
+              case Success(res) => res match {
                 case Some(sessionIdRecord) =>
                   updateCurrentSession()
                   f(p, None)
                 case None =>
-                  log.error(s"SessionIdRecord.insertEntity")
                   SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
                     case Success(_) =>
                       updateCurrentSession()

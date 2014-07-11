@@ -18,8 +18,6 @@ class ApiHandler(connection : ActorRef)(implicit val session : CSession) extends
   val handleActor = self
 
   private def handlePackage(p : Package, pMsg : Option[ProtoMessage]) : Unit = {
-    log.error(s"handlePackage: $p $pMsg")
-
     pMsg match {
       case Some(m) => handleActor ! PackageToSend(p.replyWith(m).right)
       case None =>
@@ -58,19 +56,15 @@ class ApiHandler(connection : ActorRef)(implicit val session : CSession) extends
   private def replyPackage(p : Package) : ByteString = {
     protoWrappedPackage.encode(p) match {
       case \/-(bs) => ByteString(bs.toByteArray)
-      case -\/(e) =>
-        log.error(s"replyPackage -\/(e): $e")
-        ByteString(e)
+      case -\/(e) => ByteString(e)
     }
   }
 
   def receive = {
     case PackageToSend(pe) => pe match {
       case \/-(p) =>
-        log.error(s"$pe => ${replyPackage(p)}")
         connection ! Write(replyPackage(p))
       case -\/(p) =>
-        log.error(s"$pe => ${replyPackage(p)}")
         connection ! Write(replyPackage(p))
         connection ! Close
         context stop self
