@@ -58,7 +58,7 @@ trait PackageAckService extends PackageCommon { this: Actor =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(ProtoMessageAck(Array(p.message.messageId))).left
+        val reply = p.replyWith(ProtoMessageAck(Array(p.message.messageId))).right
         handleActor ! PackageToSend(reply)
     }
   }
