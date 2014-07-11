@@ -3,7 +3,7 @@ package com.secretapp.backend.persist
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data._
+import com.secretapp.backend.data.models._
 import scala.concurrent.Future
 
 sealed class SessionIdRecord extends CassandraTable[SessionIdRecord, SessionId] {

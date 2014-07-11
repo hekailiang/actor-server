@@ -5,6 +5,7 @@ import akka.io.Tcp._
 import akka.testkit._
 import akka.util.ByteString
 import com.secretapp.backend.data._
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
 import org.scalatest._
@@ -28,8 +29,8 @@ class AckTrackerSpec(_system: ActorSystem) extends TestKit(_system) with Implici
   "AckTracker" must {
     "register new message, track its status and forget when it's delivered" in {
       val tracker = getTrackerActor()
-      val message = ProtoMessageWrapper(messageId = 123L, RequestAuthId())
-      val bytes = ByteString(ProtoMessageWrapperCodec.encode(message).toOption.get.toByteArray)
+      val message = MessageBox(messageId = 123L, RequestAuthId())
+      val bytes = ByteString(MessageBoxCodec.encode(message).toOption.get.toByteArray)
       val size = bytes.length
 
       // TODO: split to various "musts"

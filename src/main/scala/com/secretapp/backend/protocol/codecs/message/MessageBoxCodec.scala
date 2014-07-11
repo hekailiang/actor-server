@@ -1,29 +1,29 @@
 package com.secretapp.backend.protocol.codecs.message
 
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.data._
+import com.secretapp.backend.data.message._
 import scodec.bits._
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 
-object ProtoMessageWrapperCodec extends Codec[ProtoMessageWrapper] {
+object MessageBoxCodec extends Codec[MessageBox] {
 
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
-  def encode(m: ProtoMessageWrapper) = {
+  def encode(mb: MessageBox) = {
     for {
-      body <- protoMessage.encode(m.body)
+      body <- protoTransportMessage.encode(mb.body)
       len <- varint.encode(body.length / byteSize)
-    } yield (BitVector.fromLong(m.messageId) ++ len ++ body)
+    } yield (BitVector.fromLong(mb.messageId) ++ len ++ body)
   }
 
   def decode(buf: BitVector) = {
     for {
       l <- varint.decode(buf.drop(longSize)); (xs, len) = l
-      m <- protoMessage.decode(xs.take(len * byteSize)); (remain, msg) = m
+      m <- protoTransportMessage.decode(xs.take(len * byteSize)); (remain, msg) = m
     } yield {
       val messageId = buf.take(longSize).toLong()
-      (xs.drop(len * byteSize), ProtoMessageWrapper(messageId, msg))
+      (xs.drop(len * byteSize), MessageBox(messageId, msg))
     }
   }
 

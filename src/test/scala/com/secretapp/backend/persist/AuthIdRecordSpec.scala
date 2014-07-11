@@ -5,7 +5,7 @@ import org.scalatest.concurrent.PatienceConfiguration
 import org.scalatest.time.SpanSugar._
 import com.newzly.phantom.Implicits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
-import com.secretapp.backend.data._
+import com.secretapp.backend.data.models._
 
 class AuthIdRecordSpec extends CassandraFlatSpec {
   implicit val s: PatienceConfiguration.Timeout = timeout(10 seconds)

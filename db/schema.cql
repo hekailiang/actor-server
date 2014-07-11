@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS auth_ids (
 );
 
 CREATE TABLE users (
-  id varint,
+  id int,
   first_name text,
   last_name text,
   sex int,
