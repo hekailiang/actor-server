@@ -3,21 +3,25 @@ package com.secretapp.backend.persist
 import scala.concurrent.blocking
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.datastax.driver.core.{ Cluster, Session }
-import com.newzly.util.testing.cassandra.BaseTest
+import org.scalatest._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 
-trait CassandraSpec extends BaseTest {
+trait CassandraSpec { self: BeforeAndAfterAll =>
 
   lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
   val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
 
-  override val cluster = Cluster.builder()
+  val cluster = Cluster.builder()
     .addContactPoint(dbConfig.getString("contact-point.host"))
     .withPort(dbConfig.getInt("contact-point.port"))
     .withoutJMXReporting()
     .withoutMetrics()
     .build()
+
+  implicit lazy val session: Session = blocking {
+    cluster.connect()
+  }
 
   private def createKeySpace(spaceName: String)(implicit session : Session) = {
     blocking {
@@ -42,3 +46,6 @@ trait CassandraSpec extends BaseTest {
   }
 
 }
+
+trait CassandraFlatSpec extends FlatSpec with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec
+trait CassandraWordSpec extends WordSpecLike with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec

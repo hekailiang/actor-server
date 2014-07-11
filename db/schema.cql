@@ -13,3 +13,9 @@ CREATE TABLE users (
   sex int,
   PRIMARY KEY ((id))
 );
+
+CREATE TABLE sessions (
+  authid bigint,
+  sessionid bigint,
+  PRIMARY KEY ((authid, sessionid))
+);
