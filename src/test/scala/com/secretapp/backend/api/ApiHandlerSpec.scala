@@ -80,17 +80,19 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       val (probe, apiActor) = probeAndActor()
       val rand = new Random()
       val ids = (1L to 100L) map ((_, rand.nextLong))
-      val authId = 5035258019635449406L
-      val sessionId = -2911383367460896512L
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
 
-      val req = ids.map { (item) =>
+      val res = ids.map { (item) =>
         val (msgId, pingVal) = item
         val p = Package(authId, sessionId, MessageBox(msgId, Ping(pingVal)))
         protoPackageBox.encode(p).toOption.get
-      }.foldLeft(BitVector.empty)(_ ++ _)
+      }.foldLeft(BitVector.empty)(_ ++ _).toByteBuffer
+      ByteString(res).grouped(7) foreach { buf =>
+        probe.send(apiActor, Received(buf))
+      }
 
-      probe.send(apiActor, Received(ByteString(req.toByteBuffer)))
       val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
       probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
 
