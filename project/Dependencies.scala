@@ -82,7 +82,8 @@ object Dependencies {
 
     "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
     "io.spray" %% "spray-caching" % V.spray,
-    "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.8"
+    "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.7",
+    "net.sandrogrzicic" %% "scalabuff-compiler" % "1.3.7"
   )
 
   val deployDependencies = Seq(

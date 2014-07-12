@@ -1,3 +1,5 @@
 package com.secretapp.backend.data.message
 
-case class RpcRequestBox() extends TransportMessage
+import com.secretapp.backend.data.message.rpc.RpcMessage
+
+case class RpcRequestBox(body : RpcMessage) extends TransportMessage

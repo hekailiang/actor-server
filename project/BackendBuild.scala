@@ -4,6 +4,7 @@ import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
 import spray.revolver.RevolverPlugin._
 import org.scalastyle.sbt.ScalastylePlugin
+import scalabuff.ScalaBuffPlugin._
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 
@@ -35,7 +36,7 @@ object BackendBuild extends Build {
         Revolver.reStartArgs := Seq(appClassMock),
         mainClass in Revolver.reStart := Some(appClassMock)
       )
-  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff)
   // .settings(atmosSettings: _*).configs(Atmos)
 
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
@@ -47,7 +48,7 @@ object BackendBuild extends Build {
     organizationHomepage := Some(url("https://secretapp.io"))
   )
 
-  lazy val defaultSettings = buildSettings ++ Seq(
+  lazy val defaultSettings = buildSettings ++ scalabuffSettings ++ Seq(
     resolvers ++= Resolvers.seq,
     scalacOptions ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature"), //, "-Xprint:typer"
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
