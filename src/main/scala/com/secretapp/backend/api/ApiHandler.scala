@@ -12,7 +12,7 @@ import com.datastax.driver.core.{ Session => CSession }
 
 
 // TODO: replace connection : ActorRef hack with real sender (or forget it?)
-class ApiHandler(connection : ActorRef)(implicit val session : CSession) extends Actor with ActorLogging
+class ApiHandler(connection : ActorRef, val session : CSession) extends Actor with ActorLogging
 with WrappedPackageService with PackageHandler
 {
 

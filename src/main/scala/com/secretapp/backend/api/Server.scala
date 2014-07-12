@@ -18,7 +18,7 @@ class Server(session : CSession) extends Actor with ActorLogging {
     case c @ Connected(remote, local) =>
       log.info(s"Connected: $c")
       val connection = sender()
-      val handler = context.actorOf(Props(classOf[ApiHandler], connection))
+      val handler = context.actorOf(Props(new ApiHandler(connection, session)))
       connection ! Register(handler)
   }
 }

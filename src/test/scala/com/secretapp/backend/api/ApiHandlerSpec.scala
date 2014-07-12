@@ -23,7 +23,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandler(probe.ref) {
+    val actor = system.actorOf(Props(new ApiHandler(probe.ref, session) {
       override lazy val rand = new Random() {
         override def nextLong() = 12345L
       }
