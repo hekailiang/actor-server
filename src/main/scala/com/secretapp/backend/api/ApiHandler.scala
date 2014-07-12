@@ -24,7 +24,6 @@ with WrappedPackageService with PackageHandler
       case -\/(p) =>
         connection ! Write(replyPackage(p))
         connection ! Close
-        context stop self
     }
 
     case Received(data) =>
@@ -33,6 +32,10 @@ with WrappedPackageService with PackageHandler
 
     case PeerClosed =>
       log.info("PeerClosed")
+      context stop self
+
+    case ErrorClosed =>
+      log.error("ErrorClosed")
       context stop self
   }
 
