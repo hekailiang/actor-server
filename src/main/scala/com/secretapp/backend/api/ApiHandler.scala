@@ -31,12 +31,15 @@ with WrappedPackageService with PackageHandler
       handleByteStream(BitVector(data.toArray))(handlePackage, handleError)
 
     case PeerClosed =>
-      log.info("PeerClosed")
+      log.info("Connection closed by peer")
       context stop self
 
     case ErrorClosed =>
       log.error("ErrorClosed")
       context stop self
-  }
 
+    case Closed =>
+      log.info(s"Connection closed by listener")
+      context stop self
+  }
 }
