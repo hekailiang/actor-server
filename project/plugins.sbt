@@ -1,5 +1,6 @@
 resolvers ++= Seq(
-  "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+  "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/",
+  "secret repository" at "http://repos.81port.com/content/repositories/secret"
 )
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.10.0")
