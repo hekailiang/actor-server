@@ -109,11 +109,11 @@ trait SessionManager extends ActorLogging {
   /**
     * Gets existing session from database or creates new
     *
-    * @param authId aith id
+    * @param authId auth id
     * @param sessionId session id
     *
     * @return Left[Long] if existing session got or Right[Long] if new session created
-    *         Perhaps we need something more convenient that Eigher here
+    *         Perhaps we need something more convenient that Either here
     */
   protected def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
     ask(sessionManager, GetOrCreate(authId, sessionId)).mapTo[Either[Long, Long]]

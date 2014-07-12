@@ -67,31 +67,6 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
     }
 
-//    "reply pong to ping (10 times)" in {
-//      //      TODO: DRY
-//      val (probe, apiActor) = probeAndActor()
-//      val authId = 12345L
-//      val messageId = 1L
-//      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
-//      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
-//      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
-//      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
-//
-//      val randId = 987654321L
-//      val sessionId = 123L
-//      for (i <- 1 to 10) {
-//        val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
-//        probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
-//      }
-//      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-//      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
-//
-//      for (i <- 1 to 10) {
-//        val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
-//        probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
-//      }
-//    }
-
     "send drop to invalid crc" in {
       val (probe, apiActor) = probeAndActor()
       val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
@@ -103,35 +78,29 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
       val (probe, apiActor) = probeAndActor()
-
-      val ids = new mutable.Queue[(Long, Long)]
-      ids += ((150, 213674937025390L), (151, 213674988049640L), (152, 213674988971057L), (153, 213674991707182L))
-
+      val rand = new Random()
+      val ids = (1L to 10L) map ((_, rand.nextLong))
       val authId = 5035258019635449406L
       val sessionId = -2911383367460896512L
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
 
-      val req = List(
-        Package(authId,sessionId,MessageBox(150,Ping(213674937025390L))),
-        Package(authId,sessionId,MessageBox(151,Ping(213674988049640L))),
-        Package(authId,sessionId,MessageBox(152,Ping(213674988971057L))),
-        Package(authId,sessionId,MessageBox(153,Ping(213674991707182L)))
-      ).map { p => protoPackageBox.encode(p).toOption.get }.foldLeft(BitVector.empty)(_ ++ _)
+      val req = ids.map { (item) =>
+        val (msgId, pingVal) = item
+        val p = Package(authId, sessionId, MessageBox(msgId, Ping(pingVal)))
+        protoPackageBox.encode(p).toOption.get
+      }.foldLeft(BitVector.empty)(_ ++ _)
 
       probe.send(apiActor, Received(ByteString(req.toByteBuffer)))
-      val newNewSession = protoPackageBox.build(authId, sessionId, 150, NewSession(sessionId, 150))
+      val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
       probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
 
-
-      val res = List(
-        Package(authId,sessionId,MessageBox(150,Pong(213674937025390L))),
-        Package(authId,sessionId,MessageBox(151,Pong(213674988049640L))),
-        Package(authId,sessionId,MessageBox(152,Pong(213674988971057L))),
-        Package(authId,sessionId,MessageBox(153,Pong(213674991707182L)))
-      ).map { p => ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer) }
-      for (r <- res) {
-        probe.expectMsg(Write(r))
+      val expectedPongs = ids map { (item) =>
+        val (msgId, pingVal) = item
+        val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
+        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
+        Write(res)
       }
+      probe.expectMsgAllOf(expectedPongs :_*)
     }
   }
 }
