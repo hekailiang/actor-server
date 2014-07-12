@@ -16,6 +16,7 @@ object Resolvers {
     "sonatype releases"   at "https://oss.sonatype.org/content/repositories/releases/",
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     "newzly repository"   at "http://maven.newzly.com/repository/internal",
+    "secret repository"   at "http://repos.81port.com/content/repositories/secret",
     mavenOrg
   )
 
