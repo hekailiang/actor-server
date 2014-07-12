@@ -1,7 +1,8 @@
 package com.secretapp.backend.api
 
 import akka.actor.{ Actor, ActorRef, ActorLogging, Props }
-import akka.util.ByteString
+import akka.util.{ ByteString, Timeout }
+import akka.pattern.ask
 import akka.io.Tcp._
 import akka.event.LoggingAdapter
 import com.secretapp.backend.protocol.codecs.ByteConstants
@@ -12,6 +13,7 @@ import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -62,8 +64,54 @@ trait PackageAckService extends PackageCommon { this: Actor =>
   }
 }
 
+trait SessionManager {
+  self: Actor =>
 
-trait PackageManagerService extends PackageCommon { self : Actor =>
+  import context._
+
+  implicit val session : CSession
+
+  private case class GetOrCreate(authId: Long, sessionId: Long)
+
+  private val sessionManager = context.actorOf(Props(new Actor {
+    var sessionFutures = new mutable.HashMap[Long, Future[Either[Long, Long]]]()
+
+    def receive = {
+      // TODO: case for forgetting sessions?
+      case GetOrCreate(authId, sessionId) =>
+        val f = sessionFutures.get(sessionId) match {
+          case None =>
+            val f = SessionIdRecord.getEntity(authId, sessionId).flatMap {
+              case s@Some(sessionIdRecord) => Future { Left(sessionId) }
+              case None =>
+                SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
+            }
+            sessionFutures.put(sessionId, f)
+            f
+          case Some(f) => f
+        }
+
+        f map (sessionId => sender() ! sessionId)
+    }
+  }))
+
+  implicit val timeout = Timeout(5 seconds)
+
+  /**
+    * Gets existing session from database or creates new
+    *
+    * @param authId aith id
+    * @param sessionId session id
+    *
+    * @return Left[Long] if existing session got or Right[Long] if new session created
+    *         Perhaps we need something more convenient that Eigher here
+    */
+  protected def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
+    ask(sessionManager, GetOrCreate(authId, sessionId)).mapTo[Either[Long, Long]]
+  }
+}
+
+trait PackageManagerService extends PackageCommon with SessionManager { self : Actor =>
   import context._
 
   implicit val session : CSession
@@ -109,23 +157,6 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
         currentSessionId = sessionId
       }
       currentSessions.add(sessionId)
-    }
-
-    /**
-      * Gets existing session from database or creates new
-      *
-      * @param authId aith id
-      * @param sessionId session id
-      *
-      * @return Left[Long] if existing session got or Right[Long] if new session created
-      *         Perhaps we need something more convenient that Eigher here
-      */
-    def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
-      SessionIdRecord.getEntity(authId, sessionId).flatMap {
-        case s@Some(sessionIdRecord) => Future { Left(sessionId) }
-        case None =>
-          SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
-      }
     }
 
     if (p.authId == currentAuthId) {
