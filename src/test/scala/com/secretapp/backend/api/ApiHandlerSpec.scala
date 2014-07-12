@@ -63,30 +63,30 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
     }
 
-    "reply pong to ping (10 times)" in {
-      //      TODO: DRY
-      val (probe, apiActor) = probeAndActor()
-      val authId = 12345L
-      val messageId = 1L
-      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
-      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
-      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
-      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
-
-      val randId = 987654321L
-      val sessionId = 123L
-      for (i <- 1 to 10) {
-        val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
-        probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
-      }
-      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
-
-      for (i <- 1 to 10) {
-        val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
-        probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
-      }
-    }
+//    "reply pong to ping (10 times)" in {
+//      //      TODO: DRY
+//      val (probe, apiActor) = probeAndActor()
+//      val authId = 12345L
+//      val messageId = 1L
+//      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
+//      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
+//      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+//      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+//
+//      val randId = 987654321L
+//      val sessionId = 123L
+//      for (i <- 1 to 10) {
+//        val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
+//        probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
+//      }
+//      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+//      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+//
+//      for (i <- 1 to 10) {
+//        val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
+//        probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
+//      }
+//    }
 
     "send drop to invalid crc" in {
       val (probe, apiActor) = probeAndActor()
