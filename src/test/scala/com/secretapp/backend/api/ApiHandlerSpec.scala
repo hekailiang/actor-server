@@ -10,6 +10,7 @@ import akka.io.Tcp._
 import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
+import scala.collection.mutable
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.persist.{AuthIdRecord, CassandraWordSpec}
@@ -101,38 +102,36 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
-      1 to 50 foreach { _ =>
-        val (probe, apiActor) = probeAndActor()
+      val (probe, apiActor) = probeAndActor()
 
-        val authId = 5035258019635449406L
-        val sessionId = -2911383367460896512L
-        AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      val ids = new mutable.Queue[(Long, Long)]
+      ids += ((150, 213674937025390L), (151, 213674988049640L), (152, 213674988971057L), (153, 213674991707182L))
 
-        val req = List(
-          Package(authId,sessionId,MessageBox(150,Ping(213674937025390L))),
-          Package(authId,sessionId,MessageBox(151,Ping(213674988049640L))),
-          Package(authId,sessionId,MessageBox(152,Ping(213674988971057L))),
-          Package(authId,sessionId,MessageBox(153,Ping(213674991707182L)))
-        ).map { p => protoPackageBox.encode(p).toOption.get }.foldLeft(BitVector.empty)(_ ++ _)
+      val authId = 5035258019635449406L
+      val sessionId = -2911383367460896512L
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
 
-        probe.send(apiActor, Received(ByteString(req.toByteBuffer)))
-        val newNewSession = protoPackageBox.build(authId, sessionId, 150, NewSession(sessionId, 150))
-        probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+      val req = List(
+        Package(authId,sessionId,MessageBox(150,Ping(213674937025390L))),
+        Package(authId,sessionId,MessageBox(151,Ping(213674988049640L))),
+        Package(authId,sessionId,MessageBox(152,Ping(213674988971057L))),
+        Package(authId,sessionId,MessageBox(153,Ping(213674991707182L)))
+      ).map { p => protoPackageBox.encode(p).toOption.get }.foldLeft(BitVector.empty)(_ ++ _)
 
-        val res = List(
-          Package(authId,sessionId,MessageBox(150,Pong(213674937025390L))),
-          Package(authId,sessionId,MessageBox(151,Pong(213674988049640L))),
-          Package(authId,sessionId,MessageBox(152,Pong(213674988971057L))),
-          Package(authId,sessionId,MessageBox(153,Pong(213674991707182L)))
-        ).map { p => ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer) }
-        for (r <- res) {
-          probe.expectMsg(Write(r))
-        }
+      probe.send(apiActor, Received(ByteString(req.toByteBuffer)))
+      val newNewSession = protoPackageBox.build(authId, sessionId, 150, NewSession(sessionId, 150))
+      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
 
+
+      val res = List(
+        Package(authId,sessionId,MessageBox(150,Pong(213674937025390L))),
+        Package(authId,sessionId,MessageBox(151,Pong(213674988049640L))),
+        Package(authId,sessionId,MessageBox(152,Pong(213674988971057L))),
+        Package(authId,sessionId,MessageBox(153,Pong(213674991707182L)))
+      ).map { p => ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer) }
+      for (r <- res) {
+        probe.expectMsg(Write(r))
       }
-
     }
-
   }
-
 }

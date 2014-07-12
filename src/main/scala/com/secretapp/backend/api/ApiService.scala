@@ -64,8 +64,8 @@ trait PackageAckService extends PackageCommon { this: Actor =>
   }
 }
 
-trait SessionManager {
-  self: Actor =>
+trait SessionManager extends ActorLogging {
+  self: Actor  =>
 
   import context._
 
@@ -79,8 +79,10 @@ trait SessionManager {
     def receive = {
       // TODO: case for forgetting sessions?
       case GetOrCreate(authId, sessionId) =>
+        log.info(s"GetOrCreate $authId, $sessionId")
         val f = sessionFutures.get(sessionId) match {
           case None =>
+            log.info(s"GetOrCreate Creating Future")
             val f = SessionIdRecord.getEntity(authId, sessionId).flatMap {
               case s@Some(sessionIdRecord) => Future { Left(sessionId) }
               case None =>
@@ -88,7 +90,13 @@ trait SessionManager {
             }
             sessionFutures.put(sessionId, f)
             f
-          case Some(f) => f
+          case Some(f) =>
+            log.info(s"GetOrCreate Returning existing Future")
+            f map {
+              // We already sent Right to first future processor
+              case Right(sessionId) => Left(sessionId)
+              case left => left
+            }
         }
 
         val replyTo = sender()
