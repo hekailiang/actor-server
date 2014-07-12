@@ -252,7 +252,9 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
 
   def handlePackage(p : Package, pMsg : Option[TransportMessage]) : Unit = {
     pMsg match {
-      case Some(m) => handleActor ! PackageToSend(p.replyWith(m).right)
+      case Some(m) =>
+        log.info(s"m: $m")
+        handleActor ! PackageToSend(p.replyWith(m).right)
       case None =>
     }
 
