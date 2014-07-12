@@ -13,8 +13,8 @@ class ApiKernel extends Bootable {
   implicit val system = ActorSystem("secret-api-server")
 
   def startup = {
-    implicit val session = DBConnector.session
-    implicit val service = system.actorOf(Props[Server], "api-service")
+    val session = DBConnector.session
+    implicit val service = system.actorOf(Props(new Server(session)), "api-service")
     IO(Tcp) ! Bind(service, new InetSocketAddress("0.0.0.0", 8080))
   }
 

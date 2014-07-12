@@ -1,4 +1,4 @@
-package com.secretapp.backend.data
+package com.secretapp.backend.data.models
 
 import com.secretapp.backend.persist.KeyedEntity
 

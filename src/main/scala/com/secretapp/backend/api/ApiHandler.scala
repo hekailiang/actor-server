@@ -19,7 +19,7 @@ with WrappedPackageService with PackageHandler
   val handleActor = self
 
   def receive = {
-    case PackageToSend(pe) => pe match {
+    case PackageToSend(pe) => log.info(s"PackageToSend($pe)"); pe match {
       case \/-(p) =>
         connection ! Write(replyPackage(p))
       case -\/(p) =>

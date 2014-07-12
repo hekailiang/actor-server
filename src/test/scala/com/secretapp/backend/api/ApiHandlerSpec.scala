@@ -9,6 +9,7 @@ import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
 import com.secretapp.backend.data._
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.persist.CassandraWordSpec
 
 class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender with CassandraWordSpec
@@ -20,49 +21,77 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
     TestKit.shutdownActorSystem(system)
   }
 
-  val probe = TestProbe()
-  def getApiActor() = system.actorOf(Props(new ApiHandler(probe.ref) {
-    override lazy val rand = new Random() {
-      override def nextLong() = 12345L
-    }
-  }))
+  def probeAndActor() = {
+    val probe = TestProbe()
+    val actor = system.actorOf(Props(new ApiHandler(probe.ref) {
+      override lazy val rand = new Random() {
+        override def nextLong() = 12345L
+      }
+    }))
+    (probe, actor)
+  }
 
 
   "actor" must {
 
     "reply with auth token to auth request" in {
-      val apiActor = getApiActor()
-      val req = protoWrappedPackage.build(0L, 0L, 1L, RequestAuthId())
-      val res = protoWrappedPackage.build(0L, 0L, 1L, ResponseAuthId(12345L))
+      val (probe, apiActor) = probeAndActor()
+      val req = protoPackageBox.build(0L, 0L, 1L, RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, 1L, ResponseAuthId(12345L))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
     }
 
     "reply pong to ping" in {
 //      TODO: DRY
-      val apiActor = getApiActor()
+      val (probe, apiActor) = probeAndActor()
       val authId = 12345L
       val messageId = 1L
-      val req = protoWrappedPackage.build(0L, 0L, messageId, RequestAuthId())
-      val res = protoWrappedPackage.build(0L, 0L, messageId, ResponseAuthId(authId))
+      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
 
       val randId = 987654321L
       val sessionId = 123L
-      val ping = protoWrappedPackage.build(authId, sessionId, messageId + 1, Ping(randId))
-      val newNewSession = protoWrappedPackage.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-      val pong = protoWrappedPackage.build(authId, sessionId, messageId + 1, Pong(randId))
+      val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
+      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
 
       probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
     }
 
+    "reply pong to ping (10 times)" in {
+      //      TODO: DRY
+      val (probe, apiActor) = probeAndActor()
+      val authId = 12345L
+      val messageId = 1L
+      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
+      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+
+      val randId = 987654321L
+      val sessionId = 123L
+      for (i <- 1 to 10) {
+        val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
+        probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
+      }
+      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+
+      for (i <- 1 to 10) {
+        val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
+        probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
+      }
+    }
+
     "send drop to invalid crc" in {
-      val apiActor = getApiActor()
+      val (probe, apiActor) = probeAndActor()
       val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
-      val res = protoWrappedPackage.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
+      val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
       probe.send(apiActor, Received(ByteString(req)))
       probe.expectMsg(Write(ByteString(res)))
     }

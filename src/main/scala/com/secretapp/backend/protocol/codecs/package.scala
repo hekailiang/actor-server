@@ -10,14 +10,14 @@ package object codecs {
   val protoString = common.StringCodec
 
   // messages
-  val protoMessage = ProtoMessageCodec
+  val protoTransportMessage = message.TransportMessageCodec
 
   // rpc
-  val protoRpcRequest = message.rpc.RpcRequestCodec
-  val protoRpcResponse = message.rpc.RpcResponseCodec
+//  val protoRpcRequest = message.rpc.RpcRequestCodec
+//  val protoRpcResponse = message.rpc.RpcResponseCodec
 
   // transport
   val protoPackage = transport.PackageCodec
-  val protoWrappedPackage = transport.WrappedPackageCodec
+  val protoPackageBox = transport.PackageBoxCodec
 
 }

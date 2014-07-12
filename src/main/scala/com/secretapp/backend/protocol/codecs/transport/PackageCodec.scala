@@ -1,7 +1,8 @@
 package com.secretapp.backend.protocol.codecs.transport
 
-import com.secretapp.backend.protocol.codecs.message.ProtoMessageWrapperCodec
-import com.secretapp.backend.data._
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.secretapp.backend.data.transport._
+import com.secretapp.backend.data.message.{ MessageBox, TransportMessage }
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 import shapeless._
@@ -11,14 +12,14 @@ import scodec.bits._
 
 object PackageCodec extends Codec[Package] {
 
-  private val codec = (int64 :: int64 :: ProtoMessageWrapperCodec).as[Package]
+  private val codec = (int64 :: int64 :: MessageBoxCodec).as[Package]
 
-  def encode(p: Package) = codec.encode(p)
+  def encode(p : Package) = codec.encode(p)
 
-  def decode(buf: BitVector) = codec.decode(buf)
+  def decode(buf : BitVector) = codec.decode(buf)
 
-  def build(authId : Long, sessionId : Long, messageId : Long, body : ProtoMessage) = {
-    encode(Package(authId, sessionId, ProtoMessageWrapper(messageId, body)))
+  def build(authId : Long, sessionId : Long, messageId : Long, message : TransportMessage) = {
+    encode(Package(authId, sessionId, MessageBox(messageId, message)))
   }
 
 }

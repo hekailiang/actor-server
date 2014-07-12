@@ -10,45 +10,43 @@ object Dependencies {
     val newzlyUtil = "0.0.28"
   }
 
-  object CompileDependencies {
+  val compileDependencies = Seq(
 
-    val akkaActor = "com.typesafe.akka" %% "akka-actor" % V.akka
+    "com.typesafe.akka" %% "akka-actor" % V.akka,
 
-    val akkaAgent = "com.typesafe.akka" %% "akka-agent" % V.akka
+    "com.typesafe.akka" %% "akka-agent" % V.akka,
 
-    val akkaRemote = "com.typesafe.akka" %% "akka-remote" % V.akka
+    "com.typesafe.akka" %% "akka-remote" % V.akka,
 
-    val akkaKernel = "com.typesafe.akka" %% "akka-kernel" % V.akka
+    "com.typesafe.akka" %% "akka-kernel" % V.akka,
 
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
-    val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % V.akka
+    "com.typesafe.akka" %% "akka-slf4j" % V.akka,
 
-    val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.1"
+    "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
 
-    val scalazCore = "org.scalaz" %% "scalaz-core" % V.scalaz
+    "org.scalaz" %% "scalaz-core" % V.scalaz,
 
-    val scalazConcurrent = "org.scalaz" %% "scalaz-concurrent" % V.scalaz
+    "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
 
-    val redis = "com.etaty.rediscala" %% "rediscala" % "1.3.1"
+    "ch.qos.logback" % "logback-classic" % "1.1.2",
 
-    val logback = "ch.qos.logback" % "logback-classic" % "1.1.2"
+    "org.typelevel" %% "scodec-core" % "1.1.0",
 
-    val scodec = "org.typelevel" %% "scodec-core" % "1.1.0"
-
-    val scodecBits = "org.typelevel" %% "scodec-bits" % "1.0.1"
+    "org.typelevel" %% "scodec-bits" % "1.0.1",
 
 //    val scodecStream = "org.typelevel" %% "scodec-stream" % "1.0.0-SNAPSHOT"
 
-    val guava = "com.google.guava" % "guava" % "17.0"
+//    "com.google.guava" % "guava" % "17.0",
 
-    val annotationApi = "javax.annotation" % "javax.annotation-api" % "1.2"
+//    "javax.annotation" % "javax.annotation-api" % "1.2",
 
-    val scalaUtils = "org.scalautils" %% "scalautils" % "2.1.3"
+    "org.scalautils" %% "scalautils" % "2.1.3",
 
-    val phantomDsl = "com.newzly"  %% "phantom-dsl" % V.phantom
+    "com.newzly"  %% "phantom-dsl" % V.phantom,
     // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
     // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
-    val newzlyUtil = "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"
+    "com.newzly" %% "util-testing" % V.newzlyUtil % "provided",
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
@@ -58,7 +56,7 @@ object Dependencies {
 //
 //    val macwiew = "com.softwaremill.macwire" %% "macros" % "0.6"
 //
-    val shapeless = "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT"
+  "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT",
 //
 //    val optional = "org.nalloc" %% "optional" % "0.1.0"
 //
@@ -82,43 +80,22 @@ object Dependencies {
 //
 //    val scalacache = "com.github.cb372" %% "scalacache-guava" % "0.3.0"
 
-    val logging = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.0.4"
+    "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
+    "io.spray" %% "spray-caching" % V.spray,
+    "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.8"
+  )
 
-    val sprayCaching = "io.spray" %% "spray-caching" % V.spray
+  val deployDependencies = Seq(
+    "com.typesafe.atmos" % "trace-akka-2.2.1_2.11.0-M3" % "1.3.1"
+  )
 
-  }
+  val testDependencies = Seq(
+    "org.scalatest" %% "scalatest" % "2.2.0" % "test",
+    "com.typesafe.akka" %% "akka-testkit" % V.akka % "test",
+    "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test",
+    "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
+  )
 
-  object DeployDependencies {
-
-    val atmos = "com.typesafe.atmos" % "trace-akka-2.2.1_2.11.0-M3" % "1.3.1"
-
-  }
-
-  object TestDependencies {
-    val scalatest = "org.scalatest" %% "scalatest" % "2.2.0" % "test"
-
-    val akkaTest = "com.typesafe.akka" %% "akka-testkit" % V.akka % "test"
-
-    val scalaMockTest = "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test"
-
-    val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
-  }
-
-
-  import CompileDependencies._
-  import DeployDependencies._
-  import TestDependencies._
-
-  val akka = Seq(akkaKernel, akkaActor, akkaAgent, akkaRemote, akkaSlf4j, logback)
-
-  val scalaz = Seq(scalazCore, scalazConcurrent)
-
-  val dbs = Seq(redis)
-
-  val cassandra = Seq(phantomDsl, newzlyUtil)
-
-  val etc = Seq(guava, annotationApi, scodec, scodecBits, shapeless, scalaUtils, dispatch, sprayCaching)
-
-  val testDependencies = Seq(scalatest, akkaTest, scalaCheck, scalaMockTest)
+  lazy val rootDependencies = compileDependencies ++ testDependencies
 
 }

@@ -7,7 +7,7 @@ import org.scalatest._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 
-trait CassandraSpec { self: BeforeAndAfterAll =>
+trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
   lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
   val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
@@ -45,7 +45,11 @@ trait CassandraSpec { self: BeforeAndAfterAll =>
     dropKeySpace(keySpace)
   }
 
+  override def afterEach(): Unit = {
+    DBConnector.truncateTables(session).sync()
+  }
+
 }
 
-trait CassandraFlatSpec extends FlatSpec with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec
-trait CassandraWordSpec extends WordSpecLike with BeforeAndAfterAll with Matchers with Assertions with CassandraSpec
+trait CassandraFlatSpec extends FlatSpec with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Assertions with CassandraSpec
+trait CassandraWordSpec extends WordSpecLike with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Assertions with CassandraSpec

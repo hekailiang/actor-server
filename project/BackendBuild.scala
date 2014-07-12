@@ -13,14 +13,10 @@ object BackendBuild extends Build {
   val ScalaVersion = "2.10.4"
 
   import Dependencies._
-  import TestDependencies._
-  import CompileDependencies._
 
   val appName = "backend"
   val appClass = "com.secretapp.backend.ApiKernel"
   val appClassMock = "com.secretapp.backend.Main"
-
-  lazy val rootDependencies = akka ++ scalaz ++ cassandra ++ etc ++ testDependencies
 
   lazy val root = Project(
     appName,

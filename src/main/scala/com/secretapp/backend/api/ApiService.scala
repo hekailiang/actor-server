@@ -8,6 +8,9 @@ import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import com.secretapp.backend.data.transport._
+import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.models._
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -16,7 +19,6 @@ import scala.util.{ Success, Failure, Random }
 import scodec.bits._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.data
 import java.util.concurrent.ConcurrentLinkedQueue
 import com.datastax.driver.core.{ Session => CSession }
 
@@ -42,8 +44,8 @@ trait PackageAckService extends PackageCommon { this: Actor =>
   val unackedSizeLimit = 1024 * 100
   val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
 
-  def registerSentMessage(m: ProtoMessageWrapper, b: ByteString): Unit = m match {
-    case ProtoMessageWrapper(mid, m) =>
+  def registerSentMessage(mb : MessageBox, b : ByteString): Unit = mb match {
+    case MessageBox(mid, m) =>
       m match {
         case _: Pong =>
         case _ => ackTracker ! RegisterMessage(mid, b)
@@ -51,14 +53,14 @@ trait PackageAckService extends PackageCommon { this: Actor =>
   }
 
   def acknowledgeReceivedPackage(p : Package) : Unit = {
-    p.message match {
-      case ProtoMessageWrapper(_, m : Ping) =>
+    p.messageBox match {
+      case MessageBox(_, m : Ping) =>
         log.info("Ping got, no need in acknowledgement")
       case _ =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(ProtoMessageAck(Array(p.message.messageId))).right
+        val reply = p.replyWith(MessageAck(Array(p.messageBox.messageId))).right
         handleActor ! PackageToSend(reply)
     }
   }
@@ -79,7 +81,7 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
 
   lazy val rand = new Random()
 
-  final def handlePackage(p : Package)(f : (Package, Option[ProtoMessage]) => Unit) : Unit = {
+  final def handlePackage(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
     @inline
     def updateCurrentSession() : Unit = {
       if (currentSessionId == 0L) {
@@ -133,7 +135,7 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
                   SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
                     case Success(_) =>
                       updateCurrentSession()
-                      f(p, Some(NewSession(p.sessionId, p.message.messageId)))
+                      f(p, Some(NewSession(p.sessionId, p.messageBox.messageId)))
                     case Failure(e) => sendDrop(p, e)
                   }
               }
@@ -172,7 +174,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   case class WrappedPackageParsing(bitsLen : Long) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
-  type PackageFunc = (Package, Option[ProtoMessage]) => Unit
+  type PackageFunc = (Package, Option[TransportMessage]) => Unit
 
   val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
@@ -198,7 +200,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
       case pp@WrappedPackageParsing(bitsLen) =>
         if (buf.length >= bitsLen) {
-          protoWrappedPackage.decode(buf) match {
+          protoPackageBox.decode(buf) match {
             case \/-((remain, wp)) =>
               handlePackage(wp.p)(f)
               (WrappedPackageSizeParsing(), remain).right
@@ -235,10 +237,10 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 
   def replyPackage(p : Package) : ByteString = {
-    protoWrappedPackage.encode(p) match {
+    protoPackageBox.encode(p) match {
       case \/-(bv) =>
         val bs = ByteString(bv.toByteArray)
-        registerSentMessage(p.message, bs)
+        registerSentMessage(p.messageBox, bs)
         bs
       case -\/(e) => ByteString(e)
     }
@@ -248,9 +250,11 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
 
-  def handlePackage(p : Package, pMsg : Option[ProtoMessage]) : Unit = {
+  def handlePackage(p : Package, pMsg : Option[TransportMessage]) : Unit = {
     pMsg match {
-      case Some(m) => handleActor ! PackageToSend(p.replyWith(m).right)
+      case Some(m) =>
+        log.info(s"m: $m")
+        handleActor ! PackageToSend(p.replyWith(m).right)
       case None =>
     }
 
@@ -259,7 +263,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
       handleActor ! PackageToSend(reply)
     } else {
       acknowledgeReceivedPackage(p)
-      p.message.body match { // TODO: move into pluggable traits
+      p.messageBox.body match { // TODO: move into pluggable traits
         case Ping(randomId) =>
           val reply = p.replyWith(Pong(randomId)).right
           handleActor ! PackageToSend(reply)
@@ -273,7 +277,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
         //
         //          s"rpc message#$rpcMessage is not implemented yet".left
         //        case _ => s"unknown case for message".left
-        case ProtoMessageAck(mids) =>
+        case MessageAck(mids) =>
           ackTracker ! RegisterMessageAcks(mids.toList)
         case _ =>
       }
@@ -282,7 +286,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
 
   def handleError(e : HandleError) : Unit = e match {
     case ParseError(msg) =>
-      val reply = Package(0L, 0L, ProtoMessageWrapper(0L, Drop(0L, msg))).left
+      val reply = Package(0L, 0L, MessageBox(0L, Drop(0L, msg))).left
       handleActor ! PackageToSend(reply)
     case _ => log.error("unknown handle error")
   }
