@@ -15,7 +15,6 @@ import com.datastax.driver.core.{ Session => CSession }
 class ApiHandler(connection : ActorRef, val session : CSession) extends Actor with ActorLogging
 with WrappedPackageService with PackageHandler
 {
-
   val handleActor = self
 
   def receive = {

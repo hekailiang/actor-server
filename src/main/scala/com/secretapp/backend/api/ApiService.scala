@@ -12,6 +12,7 @@ import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
 import scala.collection.JavaConversions._
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.annotation.tailrec
@@ -24,23 +25,18 @@ import com.datastax.driver.core.{ Session => CSession }
 
 
 trait LoggerService {
-
   def log : LoggingAdapter
-
 }
 
 trait PackageCommon extends LoggerService {
-
   val handleActor : ActorRef
 
   type PackageEither = Package \/ Package
 
   case class PackageToSend(p : PackageEither)
-
 }
 
 trait PackageAckService extends PackageCommon { this: Actor =>
-
   val unackedSizeLimit = 1024 * 100
   val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
 
@@ -64,12 +60,10 @@ trait PackageAckService extends PackageCommon { this: Actor =>
         handleActor ! PackageToSend(reply)
     }
   }
-
 }
 
 
 trait PackageManagerService extends PackageCommon { self : Actor =>
-
   import context._
 
   implicit val session : CSession
@@ -110,11 +104,28 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
 
   private def checkPackageSession(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
     @inline
-    def updateCurrentSession() : Unit = {
+    def updateCurrentSession(sessionId: Long) : Unit = {
       if (currentSessionId == 0L) {
-        currentSessionId = p.sessionId
+        currentSessionId = sessionId
       }
-      currentSessions.add(p.sessionId)
+      currentSessions.add(sessionId)
+    }
+
+    /**
+      * Gets existing session from database or creates new
+      *
+      * @param authId aith id
+      * @param sessionId session id
+      *
+      * @return Left[Long] if existing session got or Right[Long] if new session created
+      *         Perhaps we need something more convenient that Eigher here
+      */
+    def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
+      SessionIdRecord.getEntity(authId, sessionId).flatMap {
+        case s@Some(sessionIdRecord) => Future { Left(sessionId) }
+        case None =>
+          SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
+      }
     }
 
     if (p.authId == currentAuthId) {
@@ -124,18 +135,14 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
         if (p.sessionId == currentSessionId || currentSessions.contains(p.sessionId)) {
           f(p, None)
         } else {
-          SessionIdRecord.getEntity(p.authId, p.sessionId).onComplete {
-            case Success(res) => res match {
-              case Some(sessionIdRecord) =>
-                updateCurrentSession()
+          getOrCreateSession(p.authId, p.sessionId).andThen {
+            case Success(ms) => ms match {
+              case Left(sessionId) =>
+                updateCurrentSession(sessionId)
                 f(p, None)
-              case None =>
-                SessionIdRecord.insertEntity(SessionId(p.authId, p.sessionId)).onComplete {
-                  case Success(_) =>
-                    updateCurrentSession()
-                    f(p, Some(NewSession(p.sessionId, p.messageBox.messageId)))
-                  case Failure(e) => sendDrop(p, e)
-                }
+              case Right(sessionId) =>
+                updateCurrentSession(sessionId)
+                f(p, Some(NewSession(sessionId, p.messageBox.messageId)))
             }
             case Failure(e) => sendDrop(p, e)
           }
@@ -162,8 +169,8 @@ trait PackageManagerService extends PackageCommon { self : Actor =>
     val reply = p.replyWith(Drop(_, msg)).left
     handleActor ! PackageToSend(reply)
   }
-  private def sendDrop(p : Package, e : Throwable) : Unit = sendDrop(p, e.getMessage)
 
+  private def sendDrop(p : Package, e : Throwable) : Unit = sendDrop(p, e.getMessage)
 }
 
 sealed trait HandleError
