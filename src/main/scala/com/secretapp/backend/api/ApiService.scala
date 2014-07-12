@@ -91,7 +91,8 @@ trait SessionManager {
           case Some(f) => f
         }
 
-        f map (sessionId => sender() ! sessionId)
+        val replyTo = sender()
+        f map (sessionId => replyTo ! sessionId)
     }
   }))
 
