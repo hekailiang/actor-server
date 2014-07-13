@@ -1,8 +1,8 @@
 package com.secretapp.backend.data.message.rpc.update
 
-import com.secretapp.backend.data.message.rpc.RpcRequestMessage
+import com.secretapp.backend.data.message.rpc._
 
 case class CommonUpdateTooLong() extends RpcRequestMessage
-object CommonUpdateTooLong {
-  val header = 0x19
+object CommonUpdateTooLong extends RpcResponseMessageObject {
+  val responseType = 0x19
 }

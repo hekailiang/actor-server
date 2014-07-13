@@ -90,7 +90,11 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
     )
   }
 
-  //  RPC Response
+  //  RPC Requests
+
+
+
+  //  RPC Responses
 
   "ProtoMessage" should "encode and decode RpcResponse.CommonUpdate" in {
     val encoded = hex"0400000000000000010d08011203010203186422020506".bits
