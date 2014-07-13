@@ -3,6 +3,7 @@ package com.secretapp.backend.protocol.codecs.message
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.message.update._
 import scodec.bits._
 import org.scalatest._
 import scalaz._
@@ -48,6 +49,16 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   "ProtoMessage" should "encode and decode Drop" in {
     val encoded = hex"0d000000000000000515737472d182d0b5d181d182cea9e28988c3a7e2889a".bits
     val decoded = Drop(5L, "strтестΩ≈ç√")
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode Update" in {
+    val encoded = hex"050d08011203010203186422020506".bits
+    val decoded = UpdateBox(CommonUpdate(1, List(1, 2, 3), 100, List(5 ,6)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
