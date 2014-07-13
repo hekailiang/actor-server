@@ -3,7 +3,6 @@ package com.secretapp.backend.data.message
 import com.secretapp.backend.data.message._
 
 package object rpc {
-
   trait RpcRequest
   trait RpcResponse
 
@@ -12,7 +11,12 @@ package object rpc {
   trait RpcResponseMessage extends RpcMessage
   trait RpcBidirectionalMessage extends RpcMessage
 
-
+  trait RpcRequestObject {
+    val rpcType : Int
+  }
+  trait RpcResponseObject {
+    val rpcType : Int
+  }
   trait RpcRequestMessageObject {
     val requestType : Int
   }
@@ -22,5 +26,4 @@ package object rpc {
   trait RpcBidirectionalMessageObject {
     val bidirectionalType : Int
   }
-
 }

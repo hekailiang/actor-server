@@ -1,8 +1,8 @@
 package com.secretapp.backend.data.message
 
-import com.secretapp.backend.data.message.rpc.RpcResponseMessage
+import com.secretapp.backend.data.message.rpc.RpcResponse
 
-case class RpcResponseBox(messageId : Long, body : RpcResponseMessage) extends TransportMessage
-object RpcResponseBox {
+case class RpcResponseBox(messageId : Long, body : RpcResponse) extends TransportMessage
+object RpcResponseBox extends TransportMessageMessageObject {
   val header = 0x4
 }

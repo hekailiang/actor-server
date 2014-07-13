@@ -1,7 +1,7 @@
 package com.secretapp.backend.protocol.codecs.common
 
 import scodec.bits._
-import scodec.{ Codec, DecodingContext }
+import scodec.Codec
 import scodec.codecs._
 import shapeless._
 import scalaz._

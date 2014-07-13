@@ -1,7 +1,7 @@
 package com.secretapp.backend.api
 
 import com.secretapp.backend.data.models.AuthId
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.{MessageBox, Package}
 import com.secretapp.backend.protocol.codecs._
 import org.scalatest._
 import akka.testkit._

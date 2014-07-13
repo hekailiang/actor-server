@@ -64,7 +64,7 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   //  Updates
 
   "ProtoMessage" should "encode and decode Update.Message" in {
-    val encoded = hex"0501087b10c803180a20b32b280132030102033a03040506".bits
+    val encoded = hex"0500000001087b10c803180a20b32b280132030102033a03040506".bits
     val decoded = UpdateBox(Message(123, 456, 10, 5555L, true, Some(List(1, 2, 3)), List(4, 5, 6)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
@@ -74,7 +74,7 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode Update.NewDevice" in {
-    val encoded = hex"0502087b10e707".bits
+    val encoded = hex"0500000002087b10e707".bits
     val decoded = UpdateBox(NewDevice(123, 999L))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
@@ -84,7 +84,7 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode Update.NewYourDevice" in {
-    val encoded = hex"0503087b10e7071a03010203".bits
+    val encoded = hex"0500000003087b10e7071a03010203".bits
     val decoded = UpdateBox(NewYourDevice(123, 999L, List(1, 2, 3)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
@@ -96,8 +96,8 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   //  RPC Requests
 
   "ProtoMessage" should "encode and decode RpcRequest.RequestAuthCode" in {
-    val encoded = hex"03010888a0a5bda90210b9601a09776f776170696b6579".bits
-    val decoded = RpcRequestBox(RequestAuthCode(79853867016L, 12345, "wowapikey"))
+    val encoded = hex"0301000000010888a0a5bda90210b9601a09776f776170696b6579".bits
+    val decoded = RpcRequestBox(Request(RequestAuthCode(79853867016L, 12345, "wowapikey")))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -106,8 +106,8 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode RpcRequest.RequestSignIn" in {
-    val encoded = hex"03030888a0a5bda9021209736d736861736831321a063630353036302203010203".bits
-    val decoded = RpcRequestBox(RequestSignIn(79853867016L, "smshash12", "605060", List(1, 2, 3)))
+    val encoded = hex"0301000000030888a0a5bda9021209736d736861736831321a063630353036302203010203".bits
+    val decoded = RpcRequestBox(Request(RequestSignIn(79853867016L, "smshash12", "605060", List(1, 2, 3))))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -116,8 +116,8 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode RpcRequest.RequestSignUp" in {
-    val encoded = hex"03040888a0a5bda9021209736d736861736831321a06363035303630220754696d6f7468792a044b6c696d3203010203".bits
-    val decoded = RpcRequestBox(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, List(1, 2, 3)))
+    val encoded = hex"0301000000040888a0a5bda9021209736d736861736831321a06363035303630220754696d6f7468792a044b6c696d3203010203".bits
+    val decoded = RpcRequestBox(Request(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, List(1, 2, 3))))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -128,8 +128,8 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   //  RPC Responses
 
   "ProtoMessage" should "encode and decode RpcResponse.CommonUpdate" in {
-    val encoded = hex"0400000000000000010d08011203010203186422020506".bits
-    val decoded = RpcResponseBox(1L, CommonUpdate(1, List(1, 2, 3), 100, List(5 ,6)))
+    val encoded = hex"040000000000000001010000000d08011203010203186422020506".bits
+    val decoded = RpcResponseBox(1L, Ok(CommonUpdate(1, List(1, 2, 3), 100, List(5 ,6))))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -138,9 +138,9 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode RpcResponse.ResponseAuth" in {
-    val encoded = hex"0400000000000000010508cec2f105121c080110b9601a0754696d6f74687922044b6c696d2802300130023003".bits
+    val encoded = hex"040000000000000001010000000508cec2f105121c080110b9601a0754696d6f74687922044b6c696d2802300130023003".bits
     val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))
-    val decoded = RpcResponseBox(1L, ResponseAuth(12345678L, user))
+    val decoded = RpcResponseBox(1L, Ok(ResponseAuth(12345678L, user)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -149,8 +149,8 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode RpcResponse.ResponseAuthCode" in {
-    val encoded = hex"040000000000000001020a07736d73686173681001".bits
-    val decoded = RpcResponseBox(1L, ResponseAuthCode("smshash", true))
+    val encoded = hex"04000000000000000101000000020a07736d73686173681001".bits
+    val decoded = RpcResponseBox(1L, Ok(ResponseAuthCode("smshash", true)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (

@@ -6,6 +6,7 @@ import akka.testkit._
 import akka.util.ByteString
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
 import org.scalatest._

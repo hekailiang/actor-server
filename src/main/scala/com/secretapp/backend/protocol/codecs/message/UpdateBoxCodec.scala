@@ -5,11 +5,11 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.protocol.codecs.message.update._
 import scodec.bits._
-import scodec.{ Codec, DecodingContext }
+import scodec.Codec
 import scodec.codecs._
 
 object UpdateBoxCodec extends Codec[UpdateBox] {
-  private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint8)
+  private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
     .\(Message.updateType) { case m : Message => m } (MessageCodec)
     .\(NewDevice.updateType) { case n : NewDevice => n } (NewDeviceCodec)
     .\(NewYourDevice.updateType) { case n : NewYourDevice => n } (NewYourDeviceCodec)

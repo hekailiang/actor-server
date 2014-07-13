@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
-import scodec.{ Codec, DecodingContext }
+import scodec.Codec
 import scodec.codecs._
 import scalaz._
 import Scalaz._

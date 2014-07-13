@@ -1,9 +1,10 @@
 package com.secretapp.backend.protocol.codecs.message
 
+import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message._
 import scodec.bits._
-import scodec.{ Codec, DecodingContext }
+import scodec.Codec
 import scodec.codecs._
 
 object MessageBoxCodec extends Codec[MessageBox] {

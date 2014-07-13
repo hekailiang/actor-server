@@ -4,7 +4,7 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
-import scodec.{ Codec, DecodingContext }
+import scodec.Codec
 import scodec.codecs._
 import scalaz._
 import Scalaz._

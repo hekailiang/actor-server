@@ -3,8 +3,8 @@ package com.secretapp.backend.protocol.codecs.transport
 import com.secretapp.backend.protocol.codecs.utils._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.data.message.{ MessageBox, TransportMessage }
-import scodec.{ Codec, DecodingContext }
+import com.secretapp.backend.data.message.TransportMessage
+import scodec.Codec
 import scodec.codecs._
 import shapeless._
 import scalaz._

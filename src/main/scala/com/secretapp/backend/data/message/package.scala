@@ -5,4 +5,8 @@ package object message {
   trait TransportMessage
   trait ProtobufMessage
 
+  trait TransportMessageMessageObject {
+    val header : Int
+  }
+
 }

@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.transport
 
-import com.secretapp.backend.data.message.{ MessageBox, TransportMessage }
+import com.secretapp.backend.data.message.TransportMessage
 
 case class Package(authId : Long, sessionId : Long, messageBox : MessageBox) {
 
