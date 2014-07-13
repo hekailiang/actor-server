@@ -3,15 +3,17 @@ package com.secretapp.backend.protocol.codecs.message.rpc
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.protocol.codecs.message.rpc.update._
 import scodec.bits._
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 
-object RpcResponseCodec extends Codec[RpcResponseBox] {
+object RpcResponseBoxCodec extends Codec[RpcResponseBox] {
 
   private val rpcResponseCodec: Codec[RpcResponseMessage] = discriminated[RpcResponseMessage].by(uint8)
-  //    .\(SentSMSCode.header) { case sms: SentSMSCode => sms } (sentSMSCode)
-  //    .\(Authorization.header) { case a: Authorization => a } (authorization)
+    .\(CommonUpdate.responseType) { case c: CommonUpdate => c } (CommonUpdateCodec)
+
   private val codec = (int64 :: rpcResponseCodec).as[RpcResponseBox]
 
   def encode(r : RpcResponseBox) = codec.encode(r)

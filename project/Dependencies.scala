@@ -56,7 +56,7 @@ object Dependencies {
 //
 //    val macwiew = "com.softwaremill.macwire" %% "macros" % "0.6"
 //
-  "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT",
+  "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT" changing(),
 //
 //    val optional = "org.nalloc" %% "optional" % "0.1.0"
 //

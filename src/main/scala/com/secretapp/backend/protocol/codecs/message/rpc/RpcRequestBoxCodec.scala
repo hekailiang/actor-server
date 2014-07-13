@@ -7,7 +7,7 @@ import scodec.bits._
 import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 
-object RpcRequestCodec extends Codec[RpcRequestBox] {
+object RpcRequestBoxCodec extends Codec[RpcRequestBox] {
 
   private val rpcRequestCodec: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint8)
   //    .\(SendSMSCode.header) { case sms@SendSMSCode(_, _, _) => sms}(sendSMSCode)

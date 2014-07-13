@@ -11,4 +11,11 @@ package object rpc {
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
 
+  trait RpcRequestMessageObject {
+    val requestType : Int
+  }
+  trait RpcResponseMessageObject {
+    val responseType : Int
+  }
+
 }

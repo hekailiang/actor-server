@@ -10,7 +10,9 @@ import scodec.codecs._
 
 object UpdateBoxCodec extends Codec[UpdateBox] {
   private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint8)
-    .\(CommonUpdate.header) { case c : CommonUpdate => c } (CommonUpdateCodec)
+    .\(Message.updateType) { case m : Message => m } (MessageCodec)
+    .\(NewDevice.updateType) { case n : NewDevice => n } (NewDeviceCodec)
+    .\(NewYourDevice.updateType) { case n : NewYourDevice => n } (NewYourDeviceCodec)
 
   private val codec = updateCodec.pxmap[UpdateBox](UpdateBox.apply, UpdateBox.unapply)
 
