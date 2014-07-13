@@ -22,6 +22,9 @@ object TransportMessageCodec extends Codec[TransportMessage] {
       .\(Pong.header) { case p : Pong => p } (PongCodec)
       .\(Drop.header) { case d : Drop => d } (DropCodec)
       .\(NewSession.header) { case s : NewSession => s } (NewSessionCodec)
+      .\(UnsentMessage.header) { case m : UnsentMessage => m } (UnsentMessageCodec)
+      .\(UnsentResponse.header) { case m : UnsentResponse => m } (UnsentResponseCodec)
+      .\(RequestResend.header) { case r : RequestResend => r } (RequestResendCodec)
   }
 
   def encode(tm : TransportMessage) = codec.encode(tm)

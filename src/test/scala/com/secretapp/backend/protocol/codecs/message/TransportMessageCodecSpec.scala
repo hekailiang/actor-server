@@ -61,6 +61,36 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
     )
   }
 
+  "ProtoMessage" should "encode and decode UnsentMessage" in {
+    val encoded = hex"0700000000000000050000007b".bits
+    val decoded = UnsentMessage(5L, 123)
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode UnsentResponse" in {
+    val encoded = hex"08000000000000000100000000000000050000007b".bits
+    val decoded = UnsentResponse(1L, 5L, 123)
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode RequestResend" in {
+    val encoded = hex"090000000000000001".bits
+    val decoded = RequestResend(1L)
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
   //  Updates
 
   "ProtoMessage" should "encode and decode Update.Message" in {
