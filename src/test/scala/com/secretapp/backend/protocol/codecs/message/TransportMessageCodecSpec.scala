@@ -7,6 +7,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.rpc.update.{ State => StateU }
 import com.secretapp.backend.data.message.struct._
 import scala.collection.immutable.Seq
 import scodec.bits._
@@ -125,9 +126,29 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
 
   //  RPC Requests
 
+  "ProtoMessage" should "encode and decode RpcRequest.RequestGetDifference" in {
+    val encoded = hex"03010000000b087b1203010203".bits
+    val decoded = RpcRequestBox(Request(RequestGetDifference(123, List(1, 2, 3))))
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
   "ProtoMessage" should "encode and decode RpcRequest.RequestAuthCode" in {
     val encoded = hex"0301000000010888a0a5bda90210b9601a09776f776170696b6579".bits
     val decoded = RpcRequestBox(Request(RequestAuthCode(79853867016L, 12345, "wowapikey")))
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode RpcRequest.RequestGetState" in {
+    val encoded = hex"030100000009".bits
+    val decoded = RpcRequestBox(Request(RequestGetState()))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
@@ -160,6 +181,38 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   "ProtoMessage" should "encode and decode RpcResponse.CommonUpdate" in {
     val encoded = hex"040000000000000001010000000d08011203010203186422020506".bits
     val decoded = RpcResponseBox(1L, Ok(CommonUpdate(1, List(1, 2, 3), 100, List(5 ,6))))
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode RpcResponse.CommonUpdateTooLong" in {
+    val encoded = hex"0400000000000000010100000019".bits
+    val decoded = RpcResponseBox(1L, Ok(CommonUpdateTooLong()))
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode RpcResponse.Difference" in {
+    val encoded = hex"040000000000000001010000000c08e70712030304051a1c080110b9601a0754696d6f74687922044b6c696d2802300130023003220d08011203010203186422020506".bits
+    val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))
+    val update = CommonUpdate(1, List(1, 2, 3), 100, List(5 ,6))
+    val decoded = RpcResponseBox(1L, Ok(Difference(999, List(3, 4, 5), Seq(user), Seq(update))))
+
+    protoTransportMessage.encode(decoded) should === (encoded.right)
+    protoTransportMessage.decode(encoded).toOption should === (
+      Some((BitVector.empty, decoded))
+    )
+  }
+
+  "ProtoMessage" should "encode and decode RpcResponse.State" in {
+    val encoded = hex"040000000000000001010000000a087b1203010203".bits
+    val decoded = RpcResponseBox(1L, Ok(StateU(123, List(1, 2, 3))))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (

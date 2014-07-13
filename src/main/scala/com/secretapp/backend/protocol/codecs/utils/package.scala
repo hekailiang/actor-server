@@ -7,7 +7,6 @@ import scalaz._
 import Scalaz._
 
 package object utils {
-
   def encodeCRCR32(buf : BitVector) : BitVector = {
     val crc32 = new CRC32()
     crc32.update(buf.toByteArray)
@@ -22,5 +21,4 @@ package object utils {
       }
     }
   }
-
 }
