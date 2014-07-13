@@ -8,20 +8,18 @@ import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 import scalaz._
 import Scalaz._
-import scala.util.{ Try, Success, Failure }
+import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
-object NewYourDeviceCodec extends Codec[NewYourDevice] {
+object NewYourDeviceCodec extends Codec[NewYourDevice] with utils.ProtobufCodec {
   def encode(n : NewYourDevice) = {
     val boxed = protobuf.UpdateNewYourDevice(n.uid, n.keyHash, n.key)
     encodeToBitVector(boxed)
   }
 
   def decode(buf : BitVector) = {
-    Try(protobuf.UpdateNewYourDevice.parseFrom(buf.toByteArray)) match {
-      case Success(protobuf.UpdateNewYourDevice(uid, keyHash, key)) =>
-        (BitVector.empty, NewYourDevice(uid, keyHash, key)).right
-      case Failure(e) => s"parse error: ${e.getMessage}".left
+    decodeProtobuf(protobuf.UpdateNewYourDevice.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.UpdateNewYourDevice(uid, keyHash, key)) => NewYourDevice(uid, keyHash, key)
     }
   }
 }

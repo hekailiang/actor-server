@@ -8,20 +8,19 @@ import scodec.{ Codec, DecodingContext }
 import scodec.codecs._
 import scalaz._
 import Scalaz._
-import scala.util.{ Try, Success, Failure }
+import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
-object CommonUpdateCodec extends Codec[CommonUpdate] {
+object CommonUpdateCodec extends Codec[CommonUpdate] with utils.ProtobufCodec {
   def encode(u : CommonUpdate) = {
     val boxed = protobuf.CommonUpdate(u.seq, u.state, u.updateId, u.update)
     encodeToBitVector(boxed)
   }
 
   def decode(buf : BitVector) = {
-    Try(protobuf.CommonUpdate.parseFrom(buf.toByteArray)) match {
+    decodeProtobuf(protobuf.CommonUpdate.parseFrom(buf.toByteArray)) {
       case Success(protobuf.CommonUpdate(seq, state, updateId, update)) =>
-        (BitVector.empty, CommonUpdate(seq, state, updateId, update)).right
-      case Failure(e) => s"parse error: ${e.getMessage}".left
+        CommonUpdate(seq, state, updateId, update)
     }
   }
 }
