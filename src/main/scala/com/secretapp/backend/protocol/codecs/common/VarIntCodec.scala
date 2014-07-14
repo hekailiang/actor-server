@@ -27,7 +27,7 @@ object VarIntCodec extends Codec[Long] {
   }
 
   def decode(buf: BitVector) = {
-    @tailrec
+    @tailrec @inline
     def f(buf: ByteVector, position: Int = 0, acc: Long = 0): Long = {
       if (buf.isEmpty) {
         acc
@@ -64,7 +64,7 @@ object VarIntCodec extends Codec[Long] {
   }
 
   private def varIntLen(buf: BitVector): Int = {
-    @tailrec
+    @tailrec @inline
     def f(buf: BitVector, len: Int = 1): Int = {
       if (buf.isEmpty || !buf.head) {
         len

@@ -58,7 +58,7 @@ trait PackageAckService extends PackageCommon { this: Actor =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(MessageAck(Array(p.messageBox.messageId))).right
+        val reply = p.replyWith(p.messageBox.messageId, MessageAck(Array(p.messageBox.messageId))).right
         handleActor ! PackageToSend(reply)
     }
   }
@@ -151,7 +151,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
             currentUser = authIdRecord.user
-            handlePackage(p)(f)
+            handlePackageAuthentication(p)(f)
           case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
         }
         case Failure(e) => sendDrop(p, e)
@@ -193,7 +193,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
     }
   }
 
-  final def handlePackage(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
+  final def handlePackageAuthentication(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
     if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
       checkPackageAuth(p)(f)
     } else {
@@ -206,7 +206,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
   def getSessionId = currentSessionId
 
   private def sendDrop(p : Package, msg : String) : Unit = {
-    val reply = p.replyWith(Drop(_, msg)).left
+    val reply = p.replyWith(p.messageBox.messageId, Drop(p.messageBox.messageId, msg)).left
     handleActor ! PackageToSend(reply)
   }
 
@@ -230,7 +230,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
-  @tailrec
+  @tailrec @inline
   private final def parseByteStream(state : ParseState, buf : BitVector)(f : PackageFunc) : HandleError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
@@ -253,7 +253,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
         if (buf.length >= bitsLen) {
           protoPackageBox.decode(buf) match {
             case \/-((remain, wp)) =>
-              handlePackage(wp.p)(f)
+              handlePackageAuthentication(wp.p)(f)
               log.info(s"remain: $remain, buf: $buf")
               parseByteStream(WrappedPackageSizeParsing(), remain)(f)
             case -\/(e) => ParseError(e).left
@@ -302,36 +302,44 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
 
+  def handleMessage(p : Package, m : MessageBox) : Unit = {
+    acknowledgeReceivedPackage(p)
+    m.body match { // TODO: move into pluggable traits
+      case Ping(randomId) =>
+        val reply = p.replyWith(p.messageBox.messageId, Pong(randomId)).right
+        handleActor ! PackageToSend(reply)
+      //        case RpcRequest(rpcMessage) =>
+      //          rpcMessage match {
+      //            case SendSMSCode(phoneNumber, _, _) =>
+      //
+      //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
+      //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
+      //          }
+      //
+      //          s"rpc message#$rpcMessage is not implemented yet".left
+      //        case _ => s"unknown case for message".left
+      case MessageAck(mids) =>
+        ackTracker ! RegisterMessageAcks(mids.toList)
+      case _ =>
+    }
+  }
+
   def handlePackage(p : Package, pMsg : Option[TransportMessage]) : Unit = {
     pMsg match {
       case Some(m) =>
         log.info(s"m: $m")
-        handleActor ! PackageToSend(p.replyWith(m).right)
+        val messageId = p.messageBox.messageId * System.currentTimeMillis() // TODO
+        handleActor ! PackageToSend(p.replyWith(messageId, m).right)
       case None =>
     }
 
     if (p.authId == 0L && p.sessionId == 0L) {
-      val reply = p.replyWith(ResponseAuthId(getAuthId)).right
+      val reply = p.replyWith(p.messageBox.messageId, ResponseAuthId(getAuthId)).right
       handleActor ! PackageToSend(reply)
     } else {
-      acknowledgeReceivedPackage(p)
-      p.messageBox.body match { // TODO: move into pluggable traits
-        case Ping(randomId) =>
-          val reply = p.replyWith(Pong(randomId)).right
-          handleActor ! PackageToSend(reply)
-        //        case RpcRequest(rpcMessage) =>
-        //          rpcMessage match {
-        //            case SendSMSCode(phoneNumber, _, _) =>
-        //
-        //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
-        //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
-        //          }
-        //
-        //          s"rpc message#$rpcMessage is not implemented yet".left
-        //        case _ => s"unknown case for message".left
-        case MessageAck(mids) =>
-          ackTracker ! RegisterMessageAcks(mids.toList)
-        case _ =>
+      p.messageBox.body match {
+        case c@Container(_) => c.messages.foreach(handleMessage(p, _))
+        case _ => handleMessage(p, p.messageBox)
       }
     }
   }
