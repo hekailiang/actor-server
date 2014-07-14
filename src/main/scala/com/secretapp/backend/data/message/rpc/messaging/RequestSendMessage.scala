@@ -6,6 +6,7 @@ import scodec.bits.BitVector
 
 case class RequestSendMessage(uid : Int,
                               accessHash : Long,
+                              randomId : Long,
                               useAesKey : Boolean,
                               aesMessage : Option[BitVector],
                               messages : Seq[EncryptedMessage]) extends RpcRequestMessage

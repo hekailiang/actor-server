@@ -14,6 +14,7 @@ case class CommonUpdate(seq : Int, state : BitVector, body : UpdateMessage) exte
     // TODO: kill me if I don't refactor this within two days since 15.07.14 (SA-19)
     val (updateType, update : BitVector) = body match {
       case m : Message => (Message.updateType, MessageCodec.encode(m).toOption.get)
+      case m : MessageSent => (MessageSent.updateType, MessageSentCodec.encode(m).toOption.get)
       case n : NewDevice => (NewDevice.updateType, NewDeviceCodec.encode(n).toOption.get)
       case n : NewYourDevice => (NewYourDevice.updateType, NewYourDeviceCodec.encode(n).toOption.get)
       case _ => throw new Throwable("refactor this codec!#SA-19")
@@ -29,6 +30,7 @@ object CommonUpdate extends RpcResponseMessageObject {
     case protobuf.CommonUpdate(seq, state, updateId, body) =>
       val update : UpdateMessage = updateId match {
         case Message.updateType => MessageCodec.decode(body).toOption.get._2
+        case MessageSent.updateType => MessageSentCodec.decode(body).toOption.get._2
         case NewDevice.updateType => NewDeviceCodec.decode(body).toOption.get._2
         case NewYourDevice.updateType => NewYourDeviceCodec.decode(body).toOption.get._2
         case _ => throw new Throwable("refactor this codec!#SA-19")

@@ -14,14 +14,14 @@ import com.getsecretapp.{ proto => protobuf }
 
 object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
   def encode(d : Difference) = {
-    val boxed = protobuf.Difference(d.seq, d.state, d.users.map(_.toProto), d.updates.map(_.toProto))
+    val boxed = protobuf.Difference(d.seq, d.state, d.users.map(_.toProto), d.updates.map(_.toProto), d.needMore)
     encodeToBitVector(boxed)
   }
 
   def decode(buf : BitVector) = {
     decodeProtobuf(protobuf.Difference.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.Difference(seq, state, users, updates)) =>
-        Difference(seq, state, users.map(struct.User.fromProto(_)), updates.map(CommonUpdate.fromProto(_)))
+      case Success(protobuf.Difference(seq, state, users, updates, needMore)) =>
+        Difference(seq, state, users.map(struct.User.fromProto(_)), updates.map(CommonUpdate.fromProto(_)), needMore)
     }
   }
 }

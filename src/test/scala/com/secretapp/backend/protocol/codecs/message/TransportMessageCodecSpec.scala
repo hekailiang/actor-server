@@ -199,10 +199,10 @@ class TransportMessageCodecSpec extends FlatSpec with Matchers {
   }
 
   "ProtoMessage" should "encode and decode RpcResponse.Difference" in {
-    val encoded = hex"040000000000000001010000000c08e7071202ac1d1a1c080110b9601a0754696d6f74687922044b6c696d2802300130023003220f08011202ac1d18022205087b10e707".bits
+    val encoded = hex"040000000000000001010000000c08e7071202ac1d1a1c080110b9601a0754696d6f74687922044b6c696d2802300130023003220f08011202ac1d18022205087b10e7072800".bits
     val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))
     val update = CommonUpdate(1, hex"ac1d".bits, NewDevice(123, 999L))
-    val decoded = RpcResponseBox(1L, Ok(Difference(999, hex"ac1d".bits, Seq(user), Seq(update))))
+    val decoded = RpcResponseBox(1L, Ok(Difference(999, hex"ac1d".bits, Seq(user), Seq(update), false)))
 
     protoTransportMessage.encode(decoded) should === (encoded.right)
     protoTransportMessage.decode(encoded).toOption should === (
