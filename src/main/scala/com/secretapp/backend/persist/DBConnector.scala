@@ -9,14 +9,14 @@ object DBConnector {
   val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
   val keySpace = dbConfig.getString("key-space")
 
-  lazy val cluster =  Cluster.builder()
+  val cluster =  Cluster.builder()
     .addContactPoint(dbConfig.getString("contact-point.host"))
     .withPort(dbConfig.getInt("contact-point.port"))
     .withoutJMXReporting()
     .withoutMetrics()
     .build()
 
-  lazy val session = blocking {
+  val session = blocking {
     cluster.connect(keySpace)
   }
 
