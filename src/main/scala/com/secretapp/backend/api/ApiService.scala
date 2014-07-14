@@ -151,7 +151,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
             currentUser = authIdRecord.user
-            handlePackage(p)(f)
+            handlePackageAuthentication(p)(f)
           case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
         }
         case Failure(e) => sendDrop(p, e)
@@ -193,7 +193,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
     }
   }
 
-  final def handlePackage(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
+  final def handlePackageAuthentication(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
     if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
       checkPackageAuth(p)(f)
     } else {
@@ -230,7 +230,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
-  @tailrec
+  @tailrec @inline
   private final def parseByteStream(state : ParseState, buf : BitVector)(f : PackageFunc) : HandleError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
@@ -253,7 +253,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
         if (buf.length >= bitsLen) {
           protoPackageBox.decode(buf) match {
             case \/-((remain, wp)) =>
-              handlePackage(wp.p)(f)
+              handlePackageAuthentication(wp.p)(f)
               log.info(s"remain: $remain, buf: $buf")
               parseByteStream(WrappedPackageSizeParsing(), remain)(f)
             case -\/(e) => ParseError(e).left

@@ -10,26 +10,28 @@ import scalaz._
 import Scalaz._
 
 object ContainerCodec extends Codec[Container] {
+  private val nestedError = "container can't be nested"
+
   def encode(c : Container) = {
     val encodeMessages : Seq[String \/ BitVector] = c.messages.map {
-      case MessageBox(_, Container(_)) => "container can't be nested".left
+      case MessageBox(_, Container(_)) => nestedError.left
       case m : MessageBox => MessageBoxCodec.encode(m)
     }
-    foldEithers(encodeMessages)(BitVector.empty)(_ ++ _)
+    foldEither(encodeMessages)(BitVector.empty)(_ ++ _)
   }
 
   def decode(buf : BitVector) = {
-    @tailrec
+    @tailrec @inline
     def messages(buf : BitVector)(acc : Seq[MessageBox]) : String \/ Seq[MessageBox] = {
       MessageBoxCodec.decode(buf) match {
-        case \/-((buf, m)) => m match {
-          case MessageBox(_, Container(_)) => "container can't be nested".left
+        case \/-((remain, m)) => m match {
+          case MessageBox(_, Container(_)) => nestedError.left
           case m : MessageBox =>
             val res = acc :+ m
-            if (buf.isEmpty) {
+            if (remain.isEmpty) {
               res.right
             } else {
-              messages(buf)(res)
+              messages(remain)(res)
             }
         }
         case l@(-\/(_)) => l
@@ -41,10 +43,10 @@ object ContainerCodec extends Codec[Container] {
     }
   }
 
-  @tailrec
-  private def foldEithers[A, B](seq : Seq[A \/ B])(acc : B)(f : (B, B) => B) : A \/ B = seq match {
+  @tailrec @inline
+  private def foldEither[A, B](seq : Seq[A \/ B])(acc : B)(f : (B, B) => B) : A \/ B = seq match {
     case x :: xs => x match {
-      case \/-(r) => foldEithers(xs)(f(acc, r))(f)
+      case \/-(r) => foldEither(xs)(f(acc, r))(f)
       case l@(-\/(_)) => l
     }
     case Nil => acc.right
