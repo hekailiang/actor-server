@@ -58,7 +58,7 @@ trait PackageAckService extends PackageCommon { this: Actor =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(MessageAck(Array(p.messageBox.messageId))).right
+        val reply = p.replyWith(p.messageBox.messageId, MessageAck(Array(p.messageBox.messageId))).right
         handleActor ! PackageToSend(reply)
     }
   }
@@ -206,7 +206,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
   def getSessionId = currentSessionId
 
   private def sendDrop(p : Package, msg : String) : Unit = {
-    val reply = p.replyWith(Drop(_, msg)).left
+    val reply = p.replyWith(p.messageBox.messageId, Drop(p.messageBox.messageId, msg)).left
     handleActor ! PackageToSend(reply)
   }
 
@@ -302,36 +302,44 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
 
+  def handleMessage(p : Package, m : MessageBox) : Unit = {
+    acknowledgeReceivedPackage(p)
+    m.body match { // TODO: move into pluggable traits
+      case Ping(randomId) =>
+        val reply = p.replyWith(p.messageBox.messageId, Pong(randomId)).right
+        handleActor ! PackageToSend(reply)
+      //        case RpcRequest(rpcMessage) =>
+      //          rpcMessage match {
+      //            case SendSMSCode(phoneNumber, _, _) =>
+      //
+      //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
+      //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
+      //          }
+      //
+      //          s"rpc message#$rpcMessage is not implemented yet".left
+      //        case _ => s"unknown case for message".left
+      case MessageAck(mids) =>
+        ackTracker ! RegisterMessageAcks(mids.toList)
+      case _ =>
+    }
+  }
+
   def handlePackage(p : Package, pMsg : Option[TransportMessage]) : Unit = {
     pMsg match {
       case Some(m) =>
         log.info(s"m: $m")
-        handleActor ! PackageToSend(p.replyWith(m).right)
+        val messageId = p.messageBox.messageId * System.currentTimeMillis() // TODO
+        handleActor ! PackageToSend(p.replyWith(messageId, m).right)
       case None =>
     }
 
     if (p.authId == 0L && p.sessionId == 0L) {
-      val reply = p.replyWith(ResponseAuthId(getAuthId)).right
+      val reply = p.replyWith(p.messageBox.messageId, ResponseAuthId(getAuthId)).right
       handleActor ! PackageToSend(reply)
     } else {
-      acknowledgeReceivedPackage(p)
-      p.messageBox.body match { // TODO: move into pluggable traits
-        case Ping(randomId) =>
-          val reply = p.replyWith(Pong(randomId)).right
-          handleActor ! PackageToSend(reply)
-        //        case RpcRequest(rpcMessage) =>
-        //          rpcMessage match {
-        //            case SendSMSCode(phoneNumber, _, _) =>
-        //
-        //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
-        //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
-        //          }
-        //
-        //          s"rpc message#$rpcMessage is not implemented yet".left
-        //        case _ => s"unknown case for message".left
-        case MessageAck(mids) =>
-          ackTracker ! RegisterMessageAcks(mids.toList)
-        case _ =>
+      p.messageBox.body match {
+        case c@Container(_) => c.messages.foreach(handleMessage(p, _))
+        case _ => handleMessage(p, p.messageBox)
       }
     }
   }
