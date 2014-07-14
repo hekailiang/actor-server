@@ -50,15 +50,15 @@ trait PackageAckService extends PackageCommon { this: Actor =>
       }
   }
 
-  def acknowledgeReceivedPackage(p : Package) : Unit = {
-    p.messageBox match {
+  def acknowledgeReceivedPackage(p : Package, m : MessageBox) : Unit = {
+    m match {
       case MessageBox(_, m : Ping) =>
         log.info("Ping got, no need in acknowledgement")
       case _ =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(p.messageBox.messageId, MessageAck(Array(p.messageBox.messageId))).right
+        val reply = p.replyWith(m.messageId, MessageAck(Array(m.messageId))).right
         handleActor ! PackageToSend(reply)
     }
   }
@@ -303,7 +303,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
 
   def handleMessage(p : Package, m : MessageBox) : Unit = {
-    acknowledgeReceivedPackage(p)
+    acknowledgeReceivedPackage(p, m)
     m.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
         val reply = p.replyWith(p.messageBox.messageId, Pong(randomId)).right
