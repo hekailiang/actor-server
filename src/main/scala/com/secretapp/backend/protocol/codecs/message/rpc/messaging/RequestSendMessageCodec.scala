@@ -5,7 +5,7 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.data.message.struct
-import scodec.bits._
+import scodec.bits.BitVector
 import scodec.Codec
 import scodec.codecs._
 import scalaz._

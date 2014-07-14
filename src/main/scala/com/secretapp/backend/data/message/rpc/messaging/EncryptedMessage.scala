@@ -6,13 +6,14 @@ import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.getsecretapp.{ proto => protobuf }
+import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
 case class EncryptedMessage(uid : Int,
                             keyHash : Long,
-                            aesEncryptedKey : Option[List[Byte]],
-                            message : Option[List[Byte]]) extends ProtobufMessage
+                            aesEncryptedKey : Option[BitVector],
+                            message : Option[BitVector]) extends ProtobufMessage
 {
   def toProto = protobuf.EncryptedMessage(uid, keyHash, aesEncryptedKey, message)
 }

@@ -12,16 +12,14 @@ import Scalaz._
 import com.secretapp.backend.data.types
 
 package object protobuf {
-  implicit def array2ProtoByteString(arr : Array[Byte]) : ProtoByteString = ProtoByteString.copyFrom(arr)
-  implicit def list2ProtoByteString(list : List[Byte]) : ProtoByteString = array2ProtoByteString(list.toArray)
-  implicit def optList2ProtoByteStringOpt(list : Option[List[Byte]]) : Option[ProtoByteString] = {
-    list.flatMap(list2ProtoByteString(_).some)
+  implicit def bitVector2ProtoByteString(buf : BitVector) : ProtoByteString = ProtoByteString.copyFrom(buf.toByteBuffer)
+  implicit def optBitVector2ProtoByteString(buf : Option[BitVector]) : Option[ProtoByteString] = {
+    buf.flatMap(bitVector2ProtoByteString(_).some)
   }
 
-  implicit def protoByteString2Array(bs : ProtoByteString) : Array[Byte] = bs.toByteArray
-  implicit def protoByteString2List(bs : ProtoByteString) : List[Byte] = bs.toByteArray.toList
-  implicit def optProtoByteString2OptList(bs : Option[ProtoByteString]) : Option[List[Byte]] = {
-    bs.flatMap(_.toByteArray.toList.some)
+  implicit def protoByteString2BitVector(bs : ProtoByteString) : BitVector = BitVector(bs.toByteArray)
+  implicit def optProtoByteString2OptBitVector(bs : Option[ProtoByteString]) : Option[BitVector] = {
+    bs.flatMap(protoByteString2BitVector(_).some)
   }
 
   def encodeToBitVector[T](mb : MessageBuilder[T]) : String \/ BitVector = {
