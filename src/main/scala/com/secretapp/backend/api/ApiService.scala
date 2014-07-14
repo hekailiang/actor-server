@@ -328,7 +328,8 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
     pMsg match {
       case Some(m) =>
         log.info(s"m: $m")
-        val messageId = p.messageBox.messageId * System.currentTimeMillis() // TODO
+//        val messageId = p.messageBox.messageId * System.currentTimeMillis() // TODO
+        val messageId = p.messageBox.messageId
         handleActor ! PackageToSend(p.replyWith(messageId, m).right)
       case None =>
     }
