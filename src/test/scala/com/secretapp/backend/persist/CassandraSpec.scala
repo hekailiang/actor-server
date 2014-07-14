@@ -9,7 +9,7 @@ import com.typesafe.config._
 
 trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
-  lazy val keySpace: String = s"secret_test_${System.nanoTime()}"
+  val keySpace: String = s"secret_test_${System.nanoTime()}"
   val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
 
   val cluster = Cluster.builder()
@@ -19,7 +19,7 @@ trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
     .withoutMetrics()
     .build()
 
-  implicit lazy val session: Session = blocking {
+  implicit val session: Session = blocking {
     cluster.connect()
   }
 
