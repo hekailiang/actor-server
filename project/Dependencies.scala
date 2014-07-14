@@ -84,6 +84,7 @@ object Dependencies {
     "io.spray" %% "spray-caching" % V.spray,
     "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.8",
     "net.sandrogrzicic" %% "scalabuff-compiler" % "1.3.8"
+//    "org.scala-miniboxing.plugins" %% "miniboxing-runtime" % "0.3-SNAPSHOT" TODO: http://scala-miniboxing.org/using_sbt.html
   )
 
   val deployDependencies = Seq(

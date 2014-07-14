@@ -93,15 +93,14 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       }
 
       val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
-      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
-
       val expectedPongs = ids map { (item) =>
         val (msgId, pingVal) = item
         val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
         val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
         Write(res)
       }
-      probe.expectMsgAllOf(expectedPongs :_*)
+      val expectedMsgs = expectedPongs ++ Seq(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+      probe.expectMsgAllOf(expectedMsgs :_*)
     }
 
     "handle container with Ping's" in {

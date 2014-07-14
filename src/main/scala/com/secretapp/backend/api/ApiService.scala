@@ -65,13 +65,13 @@ trait PackageAckService extends PackageCommon { this: Actor =>
 }
 
 trait SessionManager extends ActorLogging {
-  self: Actor  =>
+  self : Actor  =>
 
   import context._
 
   implicit val session : CSession
 
-  private case class GetOrCreate(authId: Long, sessionId: Long)
+  private case class GetOrCreate(authId : Long, sessionId : Long)
 
   private val sessionManager = context.actorOf(Props(new Actor {
     var sessionFutures = new mutable.HashMap[Long, Future[Either[Long, Long]]]()
@@ -308,16 +308,6 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
       case Ping(randomId) =>
         val reply = p.replyWith(p.messageBox.messageId, Pong(randomId)).right
         handleActor ! PackageToSend(reply)
-      //        case RpcRequest(rpcMessage) =>
-      //          rpcMessage match {
-      //            case SendSMSCode(phoneNumber, _, _) =>
-      //
-      //            case SignUp(phoneNumber, smsCodeHash, smsCode, _, _, _, _) =>
-      //            case SignIn(phoneNumber, smsCodeHash, smsCode) =>
-      //          }
-      //
-      //          s"rpc message#$rpcMessage is not implemented yet".left
-      //        case _ => s"unknown case for message".left
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
       case _ =>
