@@ -1,6 +1,7 @@
 package com.secretapp.backend.api
 
-import com.secretapp.backend.data.models.AuthId
+import scala.collection.immutable.Seq
+import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{MessageBox, Package}
 import com.secretapp.backend.protocol.codecs._
 import org.scalatest._
@@ -10,10 +11,9 @@ import akka.io.Tcp._
 import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
-import scala.collection.mutable
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.persist.{AuthIdRecord, CassandraWordSpec}
+import com.secretapp.backend.persist._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
 class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender with CassandraWordSpec
@@ -35,6 +35,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
     (probe, actor)
   }
 
+  val rand = new Random()
 
   "actor" must {
 
@@ -75,10 +76,8 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       probe.expectMsg(Write(ByteString(res)))
     }
 
-
     "parse packages in single stream" in { // TODO: replace by scalacheck
       val (probe, apiActor) = probeAndActor()
-      val rand = new Random()
       val ids = (1L to 100L) map ((_, rand.nextLong))
       val authId = rand.nextLong()
       val sessionId = rand.nextLong()
@@ -102,6 +101,29 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
         val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
         Write(res)
       }
+      probe.expectMsgAllOf(expectedPongs :_*)
+    }
+
+    "handle container with Ping's" in {
+      val (probe, apiActor) = probeAndActor()
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val messageId = rand.nextLong()
+      val pingVal = 5L
+      val messageBoxId = 1L
+      val ping = MessageBox(messageBoxId, Ping(pingVal))
+      val container = Container(Seq(ping, ping, ping))
+      val p = Package(authId, sessionId, MessageBox(messageId, container))
+      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+
+      val expectedPongs = (1 to container.messages.length) map { id =>
+        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
+        Write(res)
+      }
+      probe.send(apiActor, Received(ByteString(buf)))
       probe.expectMsgAllOf(expectedPongs :_*)
     }
   }
