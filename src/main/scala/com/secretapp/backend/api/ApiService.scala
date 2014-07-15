@@ -300,7 +300,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 }
 
-trait PackageHandler extends PackageManagerService with PackageAckService {  self : Actor =>
+trait PackageHandler extends PackageManagerService with PackageAckService with RpcService {  self : Actor =>
 
   def handleMessage(p : Package, m : MessageBox) : Unit = {
     acknowledgeReceivedPackage(p, m)
@@ -310,6 +310,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService {  sel
         handleActor ! PackageToSend(reply)
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
+      case RpcRequestBox(body) => handleRpc(body)
       case _ =>
     }
   }
