@@ -25,7 +25,7 @@ object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
   def decode(buf: BitVector) = {
     Try(protobuf.Difference.parseFrom(buf.toByteArray)) match {
       case Success(protobuf.Difference(seq, state, users, updates, needMore)) =>
-        updates.map(CommonUpdate.fromProto(_)).toList.sequenceU match {
+        updates.map(DifferenceUpdate.fromProto(_)).toList.sequenceU match {
           case \/-(updates) =>
             val unboxed = Difference(seq, state, users.map(struct.User.fromProto(_)), updates, needMore)
             (BitVector.empty, unboxed).right

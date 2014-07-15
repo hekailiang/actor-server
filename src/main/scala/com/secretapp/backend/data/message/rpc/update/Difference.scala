@@ -8,7 +8,7 @@ import scodec.bits.BitVector
 case class Difference(seq: Int,
                       state: BitVector,
                       users: Seq[struct.User],
-                      updates: Seq[CommonUpdate],
+                      updates: Seq[DifferenceUpdate],
                       needMore: Boolean) extends RpcResponseMessage
 object Difference extends RpcResponseMessageObject {
   val responseType = 0xc
