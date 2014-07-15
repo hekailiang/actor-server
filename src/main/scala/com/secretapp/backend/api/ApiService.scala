@@ -27,22 +27,22 @@ import com.datastax.driver.core.{ Session => CSession }
 
 
 trait LoggerService {
-  def log : LoggingAdapter
+  def log: LoggingAdapter
 }
 
 trait PackageCommon extends LoggerService {
-  val handleActor : ActorRef
+  val handleActor: ActorRef
 
   type PackageEither = Package \/ Package
 
-  case class PackageToSend(p : PackageEither)
+  case class PackageToSend(p: PackageEither)
 }
 
 trait PackageAckService extends PackageCommon { this: Actor =>
   val unackedSizeLimit = 1024 * 100
   val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
 
-  def registerSentMessage(mb : MessageBox, b : ByteString): Unit = mb match {
+  def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {
     case MessageBox(mid, m) =>
       m match {
         case _: Pong =>
@@ -50,9 +50,9 @@ trait PackageAckService extends PackageCommon { this: Actor =>
       }
   }
 
-  def acknowledgeReceivedPackage(p : Package, m : MessageBox) : Unit = {
+  def acknowledgeReceivedPackage(p: Package, m: MessageBox): Unit = {
     m match {
-      case MessageBox(_, m : Ping) =>
+      case MessageBox(_, m: Ping) =>
         log.info("Ping got, no need in acknowledgement")
       case _ =>
         // TODO: aggregation
@@ -65,13 +65,13 @@ trait PackageAckService extends PackageCommon { this: Actor =>
 }
 
 trait SessionManager extends ActorLogging {
-  self : Actor  =>
+  self: Actor  =>
 
   import context._
 
-  implicit val session : CSession
+  implicit val session: CSession
 
-  private case class GetOrCreate(authId : Long, sessionId : Long)
+  private case class GetOrCreate(authId: Long, sessionId: Long)
 
   private val sessionManager = context.actorOf(Props(new Actor {
     var sessionFutures = new mutable.HashMap[Long, Future[Either[Long, Long]]]()
@@ -120,19 +120,19 @@ trait SessionManager extends ActorLogging {
   }
 }
 
-trait PackageManagerService extends PackageCommon with SessionManager { self : Actor =>
+trait PackageManagerService extends PackageCommon with SessionManager { self: Actor =>
   import context._
 
-  implicit val session : CSession
+  implicit val session: CSession
 
-  private var currentAuthId : Long = _
-  private var currentSessionId : Long = _
+  private var currentAuthId: Long = _
+  private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
-  private var currentUser : Option[User] = _
+  private var currentUser: Option[User] = _
 
   lazy val rand = new Random()
 
-  private def checkPackageAuth(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
+  private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     if (p.authId == 0L) { // check for auth request - simple key registration
       if (p.sessionId == 0L) {
         val newAuthId = rand.nextLong
@@ -159,9 +159,9 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
     }
   }
 
-  private def checkPackageSession(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
+  private def checkPackageSession(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     @inline
-    def updateCurrentSession(sessionId: Long) : Unit = {
+    def updateCurrentSession(sessionId: Long): Unit = {
       if (currentSessionId == 0L) {
         currentSessionId = sessionId
       }
@@ -193,7 +193,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
     }
   }
 
-  final def handlePackageAuthentication(p : Package)(f : (Package, Option[TransportMessage]) => Unit) : Unit = {
+  final def handlePackageAuthentication(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     if (currentAuthId == 0L) { // check for empty auth id - it mean a new connection
       checkPackageAuth(p)(f)
     } else {
@@ -205,24 +205,24 @@ trait PackageManagerService extends PackageCommon with SessionManager { self : A
 
   def getSessionId = currentSessionId
 
-  private def sendDrop(p : Package, msg : String) : Unit = {
+  private def sendDrop(p: Package, msg: String): Unit = {
     val reply = p.replyWith(p.messageBox.messageId, Drop(p.messageBox.messageId, msg)).left
     handleActor ! PackageToSend(reply)
   }
 
-  private def sendDrop(p : Package, e : Throwable) : Unit = sendDrop(p, e.getMessage)
+  private def sendDrop(p: Package, e: Throwable): Unit = sendDrop(p, e.getMessage)
 }
 
 sealed trait HandleError
-case class ParseError(msg : String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
+case class ParseError(msg: String) extends HandleError // error which caused when package parsing (we can't parse authId/sessionId/messageId)
 
-trait WrappedPackageService extends PackageManagerService with PackageAckService { self : Actor =>
+trait WrappedPackageService extends PackageManagerService with PackageAckService { self: Actor =>
 
   import ByteConstants._
 
   sealed trait ParseState
   case class WrappedPackageSizeParsing() extends ParseState
-  case class WrappedPackageParsing(bitsLen : Long) extends ParseState
+  case class WrappedPackageParsing(bitsLen: Long) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
   type PackageFunc = (Package, Option[TransportMessage]) => Unit
@@ -231,7 +231,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
   @tailrec @inline
-  private final def parseByteStream(state : ParseState, buf : BitVector)(f : PackageFunc) : HandleError \/ ParseResult =
+  private final def parseByteStream(state: ParseState, buf: BitVector)(f: PackageFunc): HandleError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
         if (buf.length >= minParseLength) {
@@ -266,7 +266,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
     }
 
 
-  private var parseState : ParseState = WrappedPackageSizeParsing()
+  private var parseState: ParseState = WrappedPackageSizeParsing()
   private var parseBuffer = BitVector.empty
 
   /**
@@ -276,7 +276,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
    * @param packageFunc handle Package function and maybe additional reply message
    * @param failureFunc handle parsing failures function
    */
-  final def handleByteStream(buf : BitVector)(packageFunc : PackageFunc, failureFunc : (HandleError) => Unit) : Unit = {
+  final def handleByteStream(buf: BitVector)(packageFunc: PackageFunc, failureFunc: (HandleError) => Unit): Unit = {
     parseByteStream(parseState, parseBuffer ++ buf)(packageFunc) match {
       case \/-((newState, remainBuf)) =>
         parseState = newState
@@ -288,7 +288,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   }
 
 
-  def replyPackage(p : Package) : ByteString = {
+  def replyPackage(p: Package): ByteString = {
     protoPackageBox.encode(p) match {
       case \/-(bv) =>
         val bs = ByteString(bv.toByteArray)
@@ -300,9 +300,9 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
 
 }
 
-trait PackageHandler extends PackageManagerService with PackageAckService with RpcService {  self : Actor =>
+trait PackageHandler extends PackageManagerService with PackageAckService with RpcService {  self: Actor =>
 
-  def handleMessage(p : Package, m : MessageBox) : Unit = {
+  def handleMessage(p: Package, m: MessageBox): Unit = {
     acknowledgeReceivedPackage(p, m)
     m.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
@@ -315,7 +315,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService with R
     }
   }
 
-  def handlePackage(p : Package, pMsg : Option[TransportMessage]) : Unit = {
+  def handlePackage(p: Package, pMsg: Option[TransportMessage]): Unit = {
     pMsg match {
       case Some(m) =>
         log.info(s"m: $m")
@@ -336,7 +336,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService with R
     }
   }
 
-  def handleError(e : HandleError) : Unit = e match {
+  def handleError(e: HandleError): Unit = e match {
     case ParseError(msg) =>
       val reply = Package(0L, 0L, MessageBox(0L, Drop(0L, msg))).left
       handleActor ! PackageToSend(reply)

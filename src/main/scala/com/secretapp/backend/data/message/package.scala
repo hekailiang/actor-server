@@ -6,7 +6,7 @@ package object message {
   trait ProtobufMessage
 
   trait TransportMessageMessageObject {
-    val header : Int
+    val header: Int
   }
 
 }

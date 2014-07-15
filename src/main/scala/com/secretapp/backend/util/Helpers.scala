@@ -7,7 +7,7 @@ import Scalaz._
 
 object Helpers {
   @tailrec @inline
-  def foldEither[A, B](seq : Seq[A \/ B])(acc : B)(f : (B, B) => B) : A \/ B = seq match {
+  def foldEither[A, B](seq: Seq[A \/ B])(acc: B)(f: (B, B) => B): A \/ B = seq match {
     case x :: xs => x match {
       case \/-(r) => foldEither(xs)(f(acc, r))(f)
       case l@(-\/(_)) => l

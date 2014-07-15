@@ -14,11 +14,11 @@ object PackageCodec extends Codec[Package] {
 
   private val codec = (int64 :: int64 :: MessageBoxCodec).as[Package]
 
-  def encode(p : Package) = codec.encode(p)
+  def encode(p: Package) = codec.encode(p)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 
-  def build(authId : Long, sessionId : Long, messageId : Long, message : TransportMessage) = {
+  def build(authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
     encode(Package(authId, sessionId, MessageBox(messageId, message)))
   }
 

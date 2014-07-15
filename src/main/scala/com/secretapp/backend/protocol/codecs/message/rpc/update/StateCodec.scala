@@ -12,12 +12,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object StateCodec extends Codec[update.State] with utils.ProtobufCodec {
-  def encode(s : update.State) = {
+  def encode(s: update.State) = {
     val boxed = protobuf.State(s.seq, s.state)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.State.parseFrom(buf.toByteArray)) {
       case Success(protobuf.State(seq, state)) => update.State(seq, state)
     }

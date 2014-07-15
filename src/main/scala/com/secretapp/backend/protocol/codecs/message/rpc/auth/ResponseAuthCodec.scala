@@ -13,12 +13,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object ResponseAuthCodec extends Codec[ResponseAuth] with utils.ProtobufCodec {
-  def encode(r : ResponseAuth) = {
+  def encode(r: ResponseAuth) = {
     val boxed = protobuf.ResponseAuth(r.publicKeyHash, r.user.toProto)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.ResponseAuth.parseFrom(buf.toByteArray)) {
       case Success(protobuf.ResponseAuth(publicKeyHash, user)) =>
         ResponseAuth(publicKeyHash, struct.User.fromProto(user))

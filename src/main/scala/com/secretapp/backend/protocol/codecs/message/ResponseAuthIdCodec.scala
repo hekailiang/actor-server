@@ -12,6 +12,6 @@ object ResponseAuthIdCodec extends Codec[ResponseAuthId] {
 
   def encode(r: ResponseAuthId) = codec.encode(r)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 
 }

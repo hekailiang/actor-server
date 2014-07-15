@@ -13,12 +13,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object ResponseSendMessageCodec extends Codec[ResponseSendMessage] with utils.ProtobufCodec {
-  def encode(r : ResponseSendMessage) = {
+  def encode(r: ResponseSendMessage) = {
     val boxed = protobuf.ResponseSendMessage(r.mid, r.seq, r.state)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.ResponseSendMessage.parseFrom(buf.toByteArray)) {
       case Success(protobuf.ResponseSendMessage(mid, seq, state)) =>
         ResponseSendMessage(mid, seq, state)

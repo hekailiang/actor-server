@@ -21,13 +21,13 @@ sealed class SessionIdRecord extends CassandraTable[SessionIdRecord, SessionId] 
 
 object SessionIdRecord extends SessionIdRecord with DBConnector {
 
-  def insertEntity(item : SessionId)(implicit session : Session) : Future[ResultSet] = {
+  def insertEntity(item: SessionId)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.authId, item.authId)
       .value(_.sessionId, item.sessionId)
       .future()
   }
 
-  def getEntity(authId : Long, sessionId : Long)(implicit session : Session) : Future[Option[SessionId]] = {
+  def getEntity(authId: Long, sessionId: Long)(implicit session: Session): Future[Option[SessionId]] = {
     select.where(_.authId eqs authId).and(_.sessionId eqs sessionId).one()
   }
 

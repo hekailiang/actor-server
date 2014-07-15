@@ -10,8 +10,8 @@ object DropCodec extends Codec[Drop] {
 
   private val codec = (int64 :: protoString).as[Drop]
 
-  def encode(d : Drop) = codec.encode(d)
+  def encode(d: Drop) = codec.encode(d)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 
 }

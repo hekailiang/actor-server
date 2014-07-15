@@ -9,8 +9,8 @@ object PongCodec extends Codec[Pong] {
 
   private val codec = int64.pxmap[Pong](Pong.apply, Pong.unapply)
 
-  def encode(p : Pong) = codec.encode(p)
+  def encode(p: Pong) = codec.encode(p)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 
 }

@@ -16,14 +16,14 @@ import scala.util.{ Try, Failure, Success }
 import com.getsecretapp.{ proto => protobuf }
 
 object CommonUpdateCodec extends Codec[CommonUpdate] with utils.ProtobufCodec {
-  def encode(u : CommonUpdate) = {
+  def encode(u: CommonUpdate) = {
     u.toProto match {
       case \/-(boxed) => encodeToBitVector(boxed)
       case l@(-\/(_)) => l
     }
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     Try(protobuf.CommonUpdate.parseFrom(buf.toByteArray)) match {
       case Success(u@protobuf.CommonUpdate(_, _, _, _)) =>
         CommonUpdate.fromProto(u) match {

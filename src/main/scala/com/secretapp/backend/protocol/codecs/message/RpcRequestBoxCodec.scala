@@ -9,11 +9,11 @@ import scodec.codecs._
 
 object RpcRequestBoxCodec extends Codec[RpcRequestBox] {
   private val rpcRequestCodec: Codec[RpcRequest] = discriminated[RpcRequest].by(uint8)
-    .\(Request.rpcType) { case r : Request => r} (RequestCodec)
+    .\(Request.rpcType) { case r: Request => r} (RequestCodec)
 
   private val codec = rpcRequestCodec.pxmap[RpcRequestBox](RpcRequestBox.apply, RpcRequestBox.unapply)
 
-  def encode(r : RpcRequestBox) = codec.encode(r)
+  def encode(r: RpcRequestBox) = codec.encode(r)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 }

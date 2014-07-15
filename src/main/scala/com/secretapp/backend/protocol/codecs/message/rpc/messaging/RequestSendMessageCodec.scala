@@ -14,12 +14,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object RequestSendMessageCodec extends Codec[RequestSendMessage] with utils.ProtobufCodec {
-  def encode(r : RequestSendMessage) = {
+  def encode(r: RequestSendMessage) = {
     val boxed = protobuf.RequestSendMessage(r.uid, r.accessHash, r.randomId, r.useAesKey, r.aesMessage, r.messages.map(_.toProto))
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestSendMessage.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages)) =>
         RequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages.map(EncryptedMessage.fromProto(_)))

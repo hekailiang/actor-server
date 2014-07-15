@@ -13,21 +13,21 @@ import Scalaz._
 object ContainerCodec extends Codec[Container] {
   private val nestedError = "container can't be nested"
 
-  def encode(c : Container) = {
-    val encodeMessages : Seq[String \/ BitVector] = c.messages.map {
+  def encode(c: Container) = {
+    val encodeMessages: Seq[String \/ BitVector] = c.messages.map {
       case MessageBox(_, Container(_)) => nestedError.left
-      case m : MessageBox => MessageBoxCodec.encode(m)
+      case m: MessageBox => MessageBoxCodec.encode(m)
     }
     foldEither(encodeMessages)(BitVector.empty)(_ ++ _)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     @tailrec @inline
-    def messages(buf : BitVector)(acc : Seq[MessageBox]) : String \/ Seq[MessageBox] = {
+    def messages(buf: BitVector)(acc: Seq[MessageBox]): String \/ Seq[MessageBox] = {
       MessageBoxCodec.decode(buf) match {
         case \/-((remain, m)) => m match {
           case MessageBox(_, Container(_)) => nestedError.left
-          case m : MessageBox =>
+          case m: MessageBox =>
             val res = acc :+ m
             if (remain.isEmpty) {
               res.right

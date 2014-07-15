@@ -13,12 +13,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object UserCodec extends Codec[struct.User] with utils.ProtobufCodec {
-  def encode(u : struct.User) = {
+  def encode(u: struct.User) = {
     val boxed = protobuf.User(u.id, u.accessHash, u.firstName, u.lastName, u.sex.flatMap(_.toProto.some), u.keyHashes)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.User.parseFrom(buf.toByteArray)) {
       case Success(protobuf.User(id, accessHash, firstName, lastName, sex, keyHashes)) =>
         struct.User(id, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes)

@@ -36,7 +36,7 @@ object UserRecord extends UserRecord with DBConnector {
         .future()
   }
 
-  def getEntity(id : Int)(implicit session: Session): Future[Option[Entity[Int, User]]] = {
+  def getEntity(id: Int)(implicit session: Session): Future[Option[Entity[Int, User]]] = {
     select.where(_.id eqs id).one()
   }
 }

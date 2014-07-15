@@ -12,12 +12,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object RequestAuthCodeCodec extends Codec[RequestAuthCode] with utils.ProtobufCodec {
-  def encode(r : RequestAuthCode) = {
+  def encode(r: RequestAuthCode) = {
     val boxed = protobuf.RequestAuthCode(r.phoneNumber, r.appId, r.apiKey)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestAuthCode.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestAuthCode(phoneNumber, appId, apiKey)) =>
         RequestAuthCode(phoneNumber, appId, apiKey)

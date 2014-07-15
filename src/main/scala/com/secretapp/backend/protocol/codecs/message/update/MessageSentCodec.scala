@@ -12,12 +12,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object MessageSentCodec extends Codec[MessageSent] with utils.ProtobufCodec {
-  def encode(m : MessageSent) = {
+  def encode(m: MessageSent) = {
     val boxed = protobuf.UpdateMessageSent(m.mid, m.randomId)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateMessageSent.parseFrom(buf.toByteArray)) {
       case Success(protobuf.UpdateMessageSent(mid, randomId)) => MessageSent(mid, randomId)
     }

@@ -23,14 +23,14 @@ trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
     cluster.connect()
   }
 
-  private def createKeySpace(spaceName: String)(implicit session : Session) = {
+  private def createKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
-      session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 1};")
+      session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
       session.execute(s"use $spaceName;")
     }
   }
 
-  private def dropKeySpace(spaceName: String)(implicit session : Session) = {
+  private def dropKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
       session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
     }

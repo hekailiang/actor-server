@@ -12,12 +12,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object RequestSignUpCodec extends Codec[RequestSignUp] with utils.ProtobufCodec {
-  def encode(r : RequestSignUp) = {
+  def encode(r: RequestSignUp) = {
     val boxed = protobuf.RequestSignUp(r.phoneNumber, r.smsHash, r.smsCode, r.firstName, r.lastName, r.publicKey)
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)) =>
         RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)

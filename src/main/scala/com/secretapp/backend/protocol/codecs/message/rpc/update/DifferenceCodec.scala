@@ -13,7 +13,7 @@ import scala.util.{ Try, Success, Failure }
 import com.getsecretapp.{ proto => protobuf }
 
 object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
-  def encode(d : Difference) = {
+  def encode(d: Difference) = {
     d.updates.map(_.toProto).toList.sequenceU match {
       case \/-(updates) =>
         val boxed = protobuf.Difference(d.seq, d.state, d.users.map(_.toProto), updates, d.needMore)
@@ -22,7 +22,7 @@ object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
     }
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     Try(protobuf.Difference.parseFrom(buf.toByteArray)) match {
       case Success(protobuf.Difference(seq, state, users, updates, needMore)) =>
         updates.map(CommonUpdate.fromProto(_)).toList.sequenceU match {

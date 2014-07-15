@@ -41,9 +41,9 @@ object PackageBoxCodec extends Codec[PackageBox] {
     }
   }
 
-  def encode(p: Package) : String \/ BitVector = encode(PackageBox(p))
+  def encode(p: Package): String \/ BitVector = encode(PackageBox(p))
 
-  def build(authId : Long, sessionId : Long, messageId : Long, message : TransportMessage) = {
+  def build(authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
     encode(Package(authId, sessionId, MessageBox(messageId, message)))
   }
 

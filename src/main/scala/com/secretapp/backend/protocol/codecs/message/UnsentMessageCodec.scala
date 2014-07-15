@@ -8,7 +8,7 @@ import scodec.codecs._
 object UnsentMessageCodec extends Codec[UnsentMessage] {
   private val codec = (int64 :: int32).as[UnsentMessage]
 
-  def encode(m : UnsentMessage) = codec.encode(m)
+  def encode(m: UnsentMessage) = codec.encode(m)
 
-  def decode(buf : BitVector) = codec.decode(buf)
+  def decode(buf: BitVector) = codec.decode(buf)
 }

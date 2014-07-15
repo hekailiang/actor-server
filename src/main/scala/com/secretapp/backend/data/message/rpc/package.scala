@@ -12,18 +12,18 @@ package object rpc {
   trait RpcBidirectionalMessage extends RpcMessage
 
   trait RpcRequestObject {
-    val rpcType : Int
+    val rpcType: Int
   }
   trait RpcResponseObject {
-    val rpcType : Int
+    val rpcType: Int
   }
   trait RpcRequestMessageObject {
-    val requestType : Int
+    val requestType: Int
   }
   trait RpcResponseMessageObject {
-    val responseType : Int
+    val responseType: Int
   }
   trait RpcBidirectionalMessageObject {
-    val bidirectionalType : Int
+    val bidirectionalType: Int
   }
 }

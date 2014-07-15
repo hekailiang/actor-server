@@ -12,12 +12,12 @@ import scala.util.Success
 import com.getsecretapp.{ proto => protobuf }
 
 object CommonUpdateTooLongCodec extends Codec[CommonUpdateTooLong] with utils.ProtobufCodec {
-  def encode(u : CommonUpdateTooLong) = {
+  def encode(u: CommonUpdateTooLong) = {
     val boxed = protobuf.CommonUpdateTooLong()
     encodeToBitVector(boxed)
   }
 
-  def decode(buf : BitVector) = {
+  def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.CommonUpdateTooLong.parseFrom(buf.toByteArray)) {
       case Success(protobuf.CommonUpdateTooLong()) => CommonUpdateTooLong()
     }

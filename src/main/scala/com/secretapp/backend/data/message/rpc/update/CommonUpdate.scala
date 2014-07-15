@@ -11,9 +11,9 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-case class CommonUpdate(seq : Int, state : BitVector, body : UpdateMessage) extends RpcResponseMessage
+case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends RpcResponseMessage
 {
-  def toProto : String \/ protobuf.CommonUpdate = {
+  def toProto: String \/ protobuf.CommonUpdate = {
     for {
       update <- UpdateMessageCodec.encode(body)
     } yield protobuf.CommonUpdate(seq, state, body.updateType, update)
@@ -23,7 +23,7 @@ case class CommonUpdate(seq : Int, state : BitVector, body : UpdateMessage) exte
 object CommonUpdate extends RpcResponseMessageObject {
   val responseType = 0xd
 
-  def fromProto(u : protobuf.CommonUpdate) : String \/ CommonUpdate = u match {
+  def fromProto(u: protobuf.CommonUpdate): String \/ CommonUpdate = u match {
     case protobuf.CommonUpdate(seq, state, updateId, body) =>
       for {
         update <- UpdateMessageCodec.decode(updateId, body)
