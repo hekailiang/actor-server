@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.util.Helpers._
 import scodec.bits.BitVector
 import scodec.Codec
 import scalaz._
@@ -41,14 +42,5 @@ object ContainerCodec extends Codec[Container] {
       case \/-(msgs) => (BitVector.empty, Container(msgs)).right
       case l@(-\/(_)) => l
     }
-  }
-
-  @tailrec @inline
-  private def foldEither[A, B](seq : Seq[A \/ B])(acc : B)(f : (B, B) => B) : A \/ B = seq match {
-    case x :: xs => x match {
-      case \/-(r) => foldEither(xs)(f(acc, r))(f)
-      case l@(-\/(_)) => l
-    }
-    case Nil => acc.right
   }
 }
