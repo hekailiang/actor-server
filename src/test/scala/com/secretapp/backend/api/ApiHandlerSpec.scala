@@ -41,93 +41,93 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
   "actor" must {
 
-//    "reply with auth token to auth request" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val req = protoPackageBox.build(0L, 0L, 1L, RequestAuthId())
-//      val res = protoPackageBox.build(0L, 0L, 1L, ResponseAuthId(12345L))
-//      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
-//      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
-//    }
-//
-//    "reply pong to ping" in {
-////      TODO: DRY
-//      val (probe, apiActor) = probeAndActor()
-//      val authId = 12345L
-//      val messageId = 1L
-//      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
-//      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
-//      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
-//      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
-//
-//      val randId = 987654321L
-//      val sessionId = 123L
-//      val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
-//      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-//      val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
-//
-//      probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
-//      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
-//      probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
-//    }
-//
-//    "send drop to invalid crc" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
-//      val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
-//      probe.send(apiActor, Received(ByteString(req)))
-//      probe.expectMsg(Write(ByteString(res)))
-//    }
-//
-//    "parse packages in single stream" in { // TODO: replace by scalacheck
-//      val (probe, apiActor) = probeAndActor()
-//      val ids = (1L to 100L) map ((_, rand.nextLong))
-//      val authId = rand.nextLong()
-//      val sessionId = rand.nextLong()
-//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-//
-//      val res = ids.map { (item) =>
-//        val (msgId, pingVal) = item
-//        val p = Package(authId, sessionId, MessageBox(msgId, Ping(pingVal)))
-//        protoPackageBox.encode(p).toOption.get
-//      }.foldLeft(BitVector.empty)(_ ++ _).toByteBuffer
-//      ByteString(res).grouped(7) foreach { buf =>
-//        probe.send(apiActor, Received(buf))
-//      }
-//
-//      val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
-//      val expectedPongs = ids map { (item) =>
-//        val (msgId, pingVal) = item
-//        val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
-//        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
-//        Write(res)
-//      }
-//      val expectedMsgs = Seq(Write(ByteString(newNewSession.toOption.get.toByteBuffer))) ++ expectedPongs
-//      probe.expectMsgAllOf(expectedMsgs :_*)
-//    }
-//
-//    "handle container with Ping's" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val authId = rand.nextLong()
-//      val sessionId = rand.nextLong()
-//      val messageId = rand.nextLong()
-//      val pingVal = 5L
-//      val messageBoxId = 1L
-//      val ping = MessageBox(messageBoxId, Ping(pingVal))
-//      val container = Container(Seq(ping, ping, ping))
-//      val p = Package(authId, sessionId, MessageBox(messageId, container))
-//      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
-//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-//      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-//
-//      probe.send(apiActor, Received(ByteString(buf)))
-//
-//      val expectedPongs = (1 to container.messages.length) map { id =>
-//        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
-//        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
-//        Write(res)
-//      }
-//      probe.expectMsgAllOf(expectedPongs :_*)
-//    }
+    "reply with auth token to auth request" in {
+      val (probe, apiActor) = probeAndActor()
+      val req = protoPackageBox.build(0L, 0L, 1L, RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, 1L, ResponseAuthId(12345L))
+      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+    }
+
+    "reply pong to ping" in {
+//      TODO: DRY
+      val (probe, apiActor) = probeAndActor()
+      val authId = 12345L
+      val messageId = 1L
+      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
+      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+
+      val randId = 987654321L
+      val sessionId = 123L
+      val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
+      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
+      val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
+
+      probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
+      probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
+    }
+
+    "send drop to invalid crc" in {
+      val (probe, apiActor) = probeAndActor()
+      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
+      val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
+      probe.send(apiActor, Received(ByteString(req)))
+      probe.expectMsg(Write(ByteString(res)))
+    }
+
+    "parse packages in single stream" in { // TODO: replace by scalacheck
+      val (probe, apiActor) = probeAndActor()
+      val ids = (1L to 100L) map ((_, rand.nextLong))
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+
+      val res = ids.map { (item) =>
+        val (msgId, pingVal) = item
+        val p = Package(authId, sessionId, MessageBox(msgId, Ping(pingVal)))
+        protoPackageBox.encode(p).toOption.get
+      }.foldLeft(BitVector.empty)(_ ++ _).toByteBuffer
+      ByteString(res).grouped(7) foreach { buf =>
+        probe.send(apiActor, Received(buf))
+      }
+
+      val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
+      val expectedPongs = ids map { (item) =>
+        val (msgId, pingVal) = item
+        val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
+        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
+        Write(res)
+      }
+      val expectedMsgs = Seq(Write(ByteString(newNewSession.toOption.get.toByteBuffer))) ++ expectedPongs
+      probe.expectMsgAllOf(expectedMsgs :_*)
+    }
+
+    "handle container with Ping's" in {
+      val (probe, apiActor) = probeAndActor()
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val messageId = rand.nextLong()
+      val pingVal = 5L
+      val messageBoxId = 1L
+      val ping = MessageBox(messageBoxId, Ping(pingVal))
+      val container = Container(Seq(ping, ping, ping))
+      val p = Package(authId, sessionId, MessageBox(messageId, container))
+      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+
+      probe.send(apiActor, Received(ByteString(buf)))
+
+      val expectedPongs = (1 to container.messages.length) map { id =>
+        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
+        Write(res)
+      }
+      probe.expectMsgAllOf(expectedPongs :_*)
+    }
 
     "handle RPC request auth code" in {
       val (probe, apiActor) = probeAndActor()
@@ -144,8 +144,12 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode("12345", false)))
       val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
-      val res = protoPackageBox.encode(resP).toOption.get.toByteBuffer
-      probe.expectMsgAllOf(Write(ByteString(res)))
+      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
+      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+      println(ack, protoPackageBox.encode(ack))
+      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
+      val expectMsgs = Seq(ackRes, res)
+      probe.expectMsgAllOf(expectMsgs :_*)
     }
   }
 }

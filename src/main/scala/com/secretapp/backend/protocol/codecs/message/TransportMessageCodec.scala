@@ -21,6 +21,7 @@ object TransportMessageCodec extends Codec[TransportMessage] {
       .\(UnsentMessage.header) { case m: UnsentMessage => m } (UnsentMessageCodec)
       .\(UnsentResponse.header) { case m: UnsentResponse => m } (UnsentResponseCodec)
       .\(RequestResend.header) { case r: RequestResend => r } (RequestResendCodec)
+      .\(MessageAck.header) { case m: MessageAck => m } (MessageAckCodec)
   }
 
   def encode(tm: TransportMessage) = codec.encode(tm)

@@ -6,10 +6,10 @@ import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
 
-object DropCodec extends Codec[Drop] {
-  private val codec = (int64 :: protoString).as[Drop]
+object MessageAckCodec extends Codec[MessageAck] {
+  private val codec = protoLongs.pxmap[MessageAck](MessageAck.apply, MessageAck.unapply)
 
-  def encode(d: Drop) = codec.encode(d)
+  def encode(a: MessageAck) = codec.encode(a)
 
   def decode(buf: BitVector) = codec.decode(buf)
 }
