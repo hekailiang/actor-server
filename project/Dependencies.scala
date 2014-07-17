@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
   object V {
     val akka = "2.3.3"
-    val scalaz = "7.1.0-RC1"
+    val scalaz = "7.0.6" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
     val phantom = "0.8.0"
@@ -27,13 +27,13 @@ object Dependencies {
 
     "org.scalaz" %% "scalaz-core" % V.scalaz,
     "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
-    "org.typelevel" %% "scalaz-contrib-210"        % V.scalazContrib,
-    "org.typelevel" %% "scalaz-contrib-validation" % V.scalazContrib,
-    "org.typelevel" %% "scalaz-contrib-undo"       % V.scalazContrib,
-    // currently unavailable because there's no 2.11 build of Lift yet
-    // "org.typelevel" %% "scalaz-lift"               % "0.2",
-    "org.typelevel" %% "scalaz-nscala-time"        % V.scalazContrib,
-    "org.typelevel" %% "scalaz-spire"              % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-contrib-210"        % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-contrib-validation" % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-contrib-undo"       % V.scalazContrib,
+//    // currently unavailable because there's no 2.11 build of Lift yet
+//    // "org.typelevel" %% "scalaz-lift"               % "0.2",
+//    "org.typelevel" %% "scalaz-nscala-time"        % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-spire"              % V.scalazContrib,
 
     "ch.qos.logback" % "logback-classic" % "1.1.2",
 

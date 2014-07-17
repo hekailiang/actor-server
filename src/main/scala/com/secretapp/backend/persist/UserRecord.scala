@@ -36,6 +36,7 @@ object UserRecord extends UserRecord with DBConnector {
   def insertEntity(entity: Entity[Int, User])(implicit session: Session): Future[ResultSet] = entity match {
     case Entity(id, user) =>
       insert.value(_.id, id)
+        .value(_.accessHash, user.accessHash)
         .value(_.firstName, user.firstName)
         .value(_.lastName, user.lastName)
         .value(_.sex, user.sex.flatMap(sexToInt(_).some))
