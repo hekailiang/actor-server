@@ -8,21 +8,27 @@ import com.secretapp.backend.data.models._
 import java.util.{ Date, UUID }
 import scala.concurrent.Future
 import scala.math.BigInt
+import scalaz._
+import Scalaz._
 
 sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   override lazy val tableName = "users"
 
   object id extends IntColumn(this) with PartitionKey[Int]
+  object accessHash extends LongColumn(this) {
+    override lazy val name = "access_hash"
+  }
   object firstName extends StringColumn(this) {
     override lazy val name = "first_name"
   }
-  object lastName extends StringColumn(this) {
+  object lastName extends OptionalStringColumn(this) {
     override lazy val name = "last_name"
   }
-  object sex extends IntColumn(this)
+  object sex extends OptionalIntColumn(this)
+//  object keyHashes extends OptionalIntColumn(this)
 
   override def fromRow(row: Row): Entity[Int, User] = {
-    Entity(id(row), User(firstName(row), lastName(row), sex(row)))
+    Entity(id(row), User(accessHash(row), firstName(row), lastName(row), sex(row).flatMap(intToSex(_).some)))
   }
 }
 
@@ -32,7 +38,7 @@ object UserRecord extends UserRecord with DBConnector {
       insert.value(_.id, id)
         .value(_.firstName, user.firstName)
         .value(_.lastName, user.lastName)
-        .value(_.sex, sexToInt(user.sex))
+        .value(_.sex, user.sex.flatMap(sexToInt(_).some))
         .future()
   }
 

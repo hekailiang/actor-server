@@ -1,76 +1,23 @@
 package com.secretapp.backend.api.auth
 
 import akka.actor._
-import com.secretapp.backend.data.message.RpcResponseBox
+import scala.collection.immutable.Seq
 import scala.util.{ Random, Try, Success, Failure }
 import com.typesafe.config.ConfigFactory
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.PackageCommon
+import com.secretapp.backend.data.message.struct.{ User => StructUser }
+import com.secretapp.backend.data.message.{TransportMessage, RpcResponseBox}
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
+import com.secretapp.backend.util.HandleFutureOpt._
+import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
-
-//TODO: move to single file
-//trait SessionManager extends ActorLogging {
-//  self: Actor  =>
-//
-//  import context._
-//
-//  implicit val session: CSession
-//
-//  private case class GetOrCreate(authId: Long, sessionId: Long)
-//
-//  private val sessionManager = context.actorOf(Props(new Actor {
-//    var sessionFutures = new mutable.HashMap[Long, Future[Either[Long, Long]]]()
-//
-//    def receive = {
-//      // TODO: case for forgetting sessions?
-//      case GetOrCreate(authId, sessionId) =>
-//        log.info(s"GetOrCreate $authId, $sessionId")
-//        val f = sessionFutures.get(sessionId) match {
-//          case None =>
-//            log.info(s"GetOrCreate Creating Future")
-//            val f = SessionIdRecord.getEntity(authId, sessionId).flatMap {
-//              case s@Some(sessionIdRecord) => Future { Left(sessionId) }
-//              case None =>
-//                SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
-//            }
-//            sessionFutures.put(sessionId, f)
-//            f
-//          case Some(f) =>
-//            log.info(s"GetOrCreate Returning existing Future")
-//            f map {
-//              // We already sent Right to first future processor
-//              case Right(sessionId) => Left(sessionId)
-//              case left => left
-//            }
-//        }
-//
-//        val replyTo = sender()
-//        f map (sessionId => replyTo ! sessionId)
-//    }
-//  }))
-//
-//  implicit val timeout = Timeout(5 seconds)
-//
-//  /**
-//   * Gets existing session from database or creates new
-//   *
-//   * @param authId auth id
-//   * @param sessionId session id
-//   *
-//   * @return Left[Long] if existing session got or Right[Long] if new session created
-//   *         Perhaps we need something more convenient that Either here
-//   */
-//  protected def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
-//    ask(sessionManager, GetOrCreate(authId, sessionId)).mapTo[Either[Long, Long]]
-//  }
-//}
 
 trait SignService extends PackageCommon { self: Actor =>
   implicit val session: CSession
@@ -79,8 +26,8 @@ trait SignService extends PackageCommon { self: Actor =>
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode => (handleRequestAuthCode(p, messageId) _).tupled(RequestAuthCode.unapply(r).get)
-    case r: RequestSignIn => ???
-    case r: RequestSignUp => ???
+    case r: RequestSignIn => (handleRequestSignIn(p, messageId) _).tupled(RequestSignIn.unapply(r).get)
+    case r: RequestSignUp => (handleRequestSignUp(p, messageId) _).tupled(RequestSignUp.unapply(r).get)
   }
 
   def handleRequestAuthCode(p: Package, messageId: Long)(phoneNumber: Long, appId: Int, apiKey: String): Unit = {
@@ -105,9 +52,65 @@ trait SignService extends PackageCommon { self: Actor =>
         val reply = p.replyWith(messageId, RpcResponseBox(messageId, Ok(res))).right
         handleActor ! PackageToSend(reply)
       case Failure(e) =>
-        val error = Error(0, e.getMessage, e.getMessage, true) // TODO
+        val error = Error(400, "PHONE_NUMBER_INVALID", e.getMessage, true) // TODO
         val reply = p.replyWith(messageId, RpcResponseBox(messageId, error)).right
         handleActor ! PackageToSend(reply)
     }
+  }
+
+  private def validateSignParams(phoneNumber: Long,
+                                 smsHash: String,
+                                 smsCode: String)(smsCodeR: AuthSmsCode): Error \/ Unit = {
+    smsCodeR match {
+      case s if s.smsHash != smsHash =>
+        Error(400, "PHONE_CODE_EXPIRED", "", true).left
+      case s if s.smsCode.isEmpty =>
+        Error(400, "PHONE_CODE_EMPTY", "", true).left
+      case s if s.smsCode != smsCode =>
+        Error(400, "PHONE_CODE_INVALID", "", true).left
+      case _ => ().right
+    }
+  }
+
+  def handleRequestSignIn(p: Package, messageId: Long)(phoneNumber: Long,
+                                                       smsHash: String,
+                                                       smsCode: String,
+                                                       publicKey: BitVector): Unit =
+  {
+    PhoneRecord.getEntity(phoneNumber).onComplete {
+      case Success(Some(phoneR)) => // TODO: remove Success(Some( for pattern matching
+        AuthSmsCodeRecord.getEntity(phoneNumber).onComplete {
+          case Success(Some(smsCodeR)) =>
+            validateSignParams(phoneNumber, smsHash, smsCode)(smsCodeR).rightMap { _ =>
+              phoneR.user.onComplete {
+                case Success(Some(user)) =>
+                  val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex, Seq(1L))
+                  Ok(ResponseAuth(123L, sUser))
+                case _ =>
+//                  Internal error
+              }
+            }
+          case _ =>
+            val error = Error(400, "PHONE_CODE_EMPTY", "", true) // TODO
+            sendPackage(p, messageId)(RpcResponseBox(messageId, error))
+        }
+      case _ =>
+        val error = Error(400, "PHONE_NUMBER_UNOCCUPIED", "", true) // TODO
+        sendPackage(p, messageId)(RpcResponseBox(messageId, error))
+    }
+  }
+
+  def handleRequestSignUp(p: Package, messageId: Long)(phoneNumber: Long,
+                                                       smsHash: String,
+                                                       smsCode: String,
+                                                       firstName: String,
+                                                       lastName: Option[String],
+                                                       publicKey: BitVector): Unit = {
+    ???
+  }
+
+  private def sendPackage(p: Package, messageId: Long)(tm: TransportMessage): Unit = {
+    val reply = p.replyWith(messageId, tm).right
+    handleActor ! PackageToSend(reply)
   }
 }

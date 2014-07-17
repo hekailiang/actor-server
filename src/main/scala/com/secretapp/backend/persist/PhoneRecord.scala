@@ -10,7 +10,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   override lazy val tableName = "phones"
 
   object number extends LongColumn(this) with PartitionKey[Long]
-  object userId extends OptionalIntColumn(this) {
+  object userId extends IntColumn(this) {
     override lazy val name = "user_id"
   }
 

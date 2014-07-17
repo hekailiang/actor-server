@@ -12,7 +12,7 @@ sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, AuthSms
   object phoneNumber extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "phone_number"
   }
-  object smsHash extends StringColumn(this) {
+  object smsHash extends StringColumn(this) { // TODO: with PartitionKey[Long]
     override lazy val name = "sms_hash"
   }
   object smsCode extends StringColumn(this) {
