@@ -28,12 +28,12 @@ trait SignService extends PackageCommon { self: Actor =>
   type RpcResult = HandleResult[Error, RpcResponseMessage]
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
-    case r: RequestAuthCode => (handleRequestAuthCode(p, messageId) _).tupled(RequestAuthCode.unapply(r).get)
-    case r: RequestSignIn => (handleRequestSignIn(p, messageId) _).tupled(RequestSignIn.unapply(r).get)
-    case r: RequestSignUp => (handleRequestSignUp(p, messageId) _).tupled(RequestSignUp.unapply(r).get)
+    case r: RequestAuthCode => sendResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
+    case r: RequestSignIn => sendResult(p, messageId)((handleRequestSignIn _).tupled(RequestSignIn.unapply(r).get))
+    case r: RequestSignUp => sendResult(p, messageId)((handleRequestSignUp _).tupled(RequestSignUp.unapply(r).get))
   }
 
-  def handleRequestAuthCode(p: Package, messageId: Long)(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
+  def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
     val smsCode = rand.nextLong().toString.drop(1).take(6)
     val smsHash = rand.nextLong().toString
 
@@ -47,26 +47,23 @@ trait SignService extends PackageCommon { self: Actor =>
     } yield ResponseAuthCode(smsHash, phoneR.isDefined)
     f.flatMap(r => Future.successful(r.right)).recover {
       case e: Throwable =>
-        Error(400, "PHONE_NUMBER_INVALID", e.getMessage, true).left
+        Error(400, "PHONE_NUMBER_INVALID", e.getMessage).left
     }
   }
 
   private def validateSignParams(smsHash: String, smsCode: String)(smsCodeR: AuthSmsCode): Error \/ Unit = {
     smsCodeR match {
       case s if s.smsHash != smsHash =>
-        Error(400, "PHONE_CODE_EXPIRED", "", true).left
+        Error(400, "PHONE_CODE_EXPIRED", "").left
       case s if s.smsCode != smsCode =>
-        Error(400, "PHONE_CODE_INVALID", "", true).left
+        Error(400, "PHONE_CODE_INVALID", "").left
       case _ => ().right
     }
   }
 
-  def handleRequestSignIn(p: Package, messageId: Long)(phoneNumber: Long,
-                                                       smsHash: String,
-                                                       smsCode: String,
-                                                       publicKey: BitVector): RpcResult = {
+  def handleRequestSignIn(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector): RpcResult = {
     if (smsCode.isEmpty) {
-      Future.successful(Error(400, "PHONE_CODE_EMPTY", "", true).left)
+      Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       for {
         phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", "", true))
@@ -81,21 +78,27 @@ trait SignService extends PackageCommon { self: Actor =>
     }
   }
 
-  def handleRequestSignUp(p: Package, messageId: Long)(phoneNumber: Long,
-                                                       smsHash: String,
-                                                       smsCode: String,
-                                                       firstName: String,
-                                                       lastName: Option[String],
-                                                       publicKey: BitVector): RpcResult = {
+  def handleRequestSignUp(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String, lastName: Option[String],
+                          publicKey: BitVector): RpcResult = {
     if (smsCode.isEmpty) {
-      Future.successful(Error(400, "PHONE_CODE_EMPTY", "", true).left)
+      Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       ???
     }
   }
 
-//  private def sendPackage(p: Package, messageId: Long)(tm: TransportMessage): Unit = {
-//    val reply = p.replyWith(messageId, tm).right
-//    handleActor ! PackageToSend(reply)
-//  }
+  private def sendResult(p: Package, messageId: Long)(res: RpcResult): Unit = {
+    res onComplete {
+      case Success(res) =>
+        val message: RpcResponse = res match {
+          case \/-(okRes) => Ok(okRes)
+          case -\/(errorRes) => errorRes
+        }
+        val reply = RpcResponseBox(messageId, message)
+        handleActor ! p.replyWith(messageId, reply).right
+      case Failure(e) =>
+        val reply = RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))
+        handleActor ! p.replyWith(messageId, reply).right
+    }
+  }
 }
