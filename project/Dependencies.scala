@@ -1,10 +1,10 @@
 import sbt._
 
 object Dependencies {
-
   object V {
     val akka = "2.3.3"
-    val scalaz = "7.0.6"
+    val scalaz = "7.0.6" // "7.1.0-RC1"
+    val scalazContrib = "0.1.5"
     val spray = "1.3.1"
     val phantom = "0.8.0"
     val newzlyUtil = "0.0.28"
@@ -26,8 +26,14 @@ object Dependencies {
     "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
 
     "org.scalaz" %% "scalaz-core" % V.scalaz,
-
     "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
+//    "org.typelevel" %% "scalaz-contrib-210"        % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-contrib-validation" % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-contrib-undo"       % V.scalazContrib,
+//    // currently unavailable because there's no 2.11 build of Lift yet
+//    // "org.typelevel" %% "scalaz-lift"               % "0.2",
+//    "org.typelevel" %% "scalaz-nscala-time"        % V.scalazContrib,
+//    "org.typelevel" %% "scalaz-spire"              % V.scalazContrib,
 
     "ch.qos.logback" % "logback-classic" % "1.1.2",
 
@@ -50,13 +56,15 @@ object Dependencies {
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
-//    val nscalaTime = "com.github.nscala-time" %% "nscala-time" % "1.0.0"
-//
 //    val macrodebug = "com.softwaremill.scalamacrodebug" %% "macros" % "0.4"
 //
 //    val macwiew = "com.softwaremill.macwire" %% "macros" % "0.6"
 //
   "com.chuusai" % "shapeless_2.10.4" % "2.1.0-SNAPSHOT" changing(),
+  "org.typelevel" %% "shapeless-scalacheck" % "0.2",
+  "org.typelevel" %% "shapeless-spire" % "0.2",
+  "org.typelevel" %% "shapeless-scalaz" % "0.2",
+
 //
 //    val optional = "org.nalloc" %% "optional" % "0.1.0"
 //
@@ -79,7 +87,9 @@ object Dependencies {
 //    val monocle = "com.github.julien-truffaut" %% "monocle-core" % "0.3.0"
 //
 //    val scalacache = "com.github.cb372" %% "scalacache-guava" % "0.3.0"
-
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.50",
+    "org.bouncycastle" % "bcprov-ext-jdk15on" % "1.50",
+    "com.github.nscala-time" %% "nscala-time" % "1.2.0",
     "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
     "io.spray" %% "spray-caching" % V.spray,
     "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.8",
@@ -101,5 +111,4 @@ object Dependencies {
   )
 
   lazy val rootDependencies = compileDependencies ++ testDependencies
-
 }

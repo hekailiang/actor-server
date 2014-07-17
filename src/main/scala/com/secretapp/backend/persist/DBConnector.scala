@@ -16,7 +16,7 @@ object DBConnector {
     .withoutMetrics()
     .build()
 
-  val session = blocking {
+  lazy val session = blocking {
     cluster.connect(keySpace)
   }
 
@@ -25,6 +25,8 @@ object DBConnector {
       _ <- UserRecord.createTable(session)
       _ <- AuthIdRecord.createTable(session)
       _ <- SessionIdRecord.createTable(session)
+      _ <- AuthSmsCodeRecord.createTable(session)
+      _ <- PhoneRecord.createTable(session)
     } yield ()
   }
 
@@ -33,6 +35,8 @@ object DBConnector {
       _ <- UserRecord.truncateTable(session)
       _ <- AuthIdRecord.truncateTable(session)
       _ <- SessionIdRecord.truncateTable(session)
+      _ <- AuthSmsCodeRecord.truncateTable(session)
+      _ <- PhoneRecord.truncateTable(session)
     } yield ()
   }
 

@@ -36,6 +36,8 @@ trait PackageCommon extends LoggerService {
   type PackageEither = Package \/ Package
 
   case class PackageToSend(p: PackageEither)
+
+  lazy val rand = new Random() // TODO: for specs (temporarily)
 }
 
 trait PackageAckService extends PackageCommon { this: Actor =>
@@ -129,8 +131,6 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
   private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
   private var currentUser: Option[User] = _
-
-  lazy val rand = new Random()
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     if (p.authId == 0L) { // check for auth request - simple key registration
@@ -265,7 +265,6 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
       case _ => ParseError("internal error: wrong state").left
     }
 
-
   private var parseState: ParseState = WrappedPackageSizeParsing()
   private var parseBuffer = BitVector.empty
 
@@ -287,7 +286,6 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
     }
   }
 
-
   def replyPackage(p: Package): ByteString = {
     protoPackageBox.encode(p) match {
       case \/-(bv) =>
@@ -297,11 +295,9 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
       case -\/(e) => ByteString(e)
     }
   }
-
 }
 
 trait PackageHandler extends PackageManagerService with PackageAckService with RpcService {  self: Actor =>
-
   def handleMessage(p: Package, m: MessageBox): Unit = {
     acknowledgeReceivedPackage(p, m)
     m.body match { // TODO: move into pluggable traits
@@ -310,7 +306,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService with R
         handleActor ! PackageToSend(reply)
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
-      case RpcRequestBox(body) => handleRpc(body)
+      case RpcRequestBox(body) => handleRpc(p, m.messageId)(body)
       case _ =>
     }
   }
@@ -342,5 +338,4 @@ trait PackageHandler extends PackageManagerService with PackageAckService with R
       handleActor ! PackageToSend(reply)
     case _ => log.error("unknown handle error")
   }
-
 }

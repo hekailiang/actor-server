@@ -1,0 +1,7 @@
+sms {
+  clickatell {
+    user = "invalid"
+    password = "invalid"
+    api-id = "invalid"
+  }
+}

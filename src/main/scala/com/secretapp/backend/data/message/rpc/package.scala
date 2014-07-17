@@ -9,7 +9,6 @@ package object rpc {
   trait RpcMessage extends ProtobufMessage
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
-  trait RpcBidirectionalMessage extends RpcMessage
 
   trait RpcRequestObject {
     val rpcType: Int
@@ -22,8 +21,5 @@ package object rpc {
   }
   trait RpcResponseMessageObject {
     val responseType: Int
-  }
-  trait RpcBidirectionalMessageObject {
-    val bidirectionalType: Int
   }
 }

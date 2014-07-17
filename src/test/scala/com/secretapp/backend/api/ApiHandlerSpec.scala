@@ -13,6 +13,8 @@ import scodec.bits._
 import scala.util.Random
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.persist._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
@@ -117,13 +119,37 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
       SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
 
+      probe.send(apiActor, Received(ByteString(buf)))
+
       val expectedPongs = (1 to container.messages.length) map { id =>
         val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
         val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
         Write(res)
       }
-      probe.send(apiActor, Received(ByteString(buf)))
       probe.expectMsgAllOf(expectedPongs :_*)
+    }
+
+    "handle RPC request auth code" in {
+      val (probe, apiActor) = probeAndActor()
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val messageId = rand.nextLong()
+      val rpcReq = RpcRequestBox(Request(RequestAuthCode(79853867016L, 123, "apikey")))
+      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
+      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+
+      probe.send(apiActor, Received(ByteString(buf)))
+
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode("12345", false)))
+      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
+      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
+      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+      println(ack, protoPackageBox.encode(ack))
+      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
+      val expectMsgs = Seq(ackRes, res)
+      probe.expectMsgAllOf(expectMsgs :_*)
     }
   }
 }

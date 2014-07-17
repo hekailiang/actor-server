@@ -8,7 +8,6 @@ import scodec.Codec
 import scodec.codecs._
 
 object MessageBoxCodec extends Codec[MessageBox] {
-
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
   def encode(mb: MessageBox) = {
@@ -27,5 +26,4 @@ object MessageBoxCodec extends Codec[MessageBox] {
       (xs.drop(len * byteSize), MessageBox(messageId, msg))
     }
   }
-
 }

@@ -12,7 +12,7 @@ class UserRecordSpec extends CassandraFlatSpec {
 
   "UserRecord" should "insert/get User Entity" in {
     val entityId = 100
-    val entity = Entity(entityId, User("Wayne", "Brain", Male))
+    val entity = Entity(entityId, User(123L, "Wayne", Some("Brain"), Some(Male)))
     val insertFuture = UserRecord.insertEntity(entity)
 
     val chain = for {
