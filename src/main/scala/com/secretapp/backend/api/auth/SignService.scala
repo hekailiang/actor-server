@@ -105,11 +105,11 @@ trait SignService extends PackageCommon { self: Actor =>
           case \/-(okRes) => Ok(okRes)
           case -\/(errorRes) => errorRes
         }
-        val reply = RpcResponseBox(messageId, message)
-        handleActor ! PackageToSend(p.replyWith(messageId, reply).right)
+        val reply = p.replyWith(messageId, RpcResponseBox(messageId, message)).right
+        handleActor ! PackageToSend(reply)
       case Failure(e) =>
-        val reply = RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", ""))
-        handleActor ! PackageToSend(p.replyWith(messageId, reply).right)
+        val reply = p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", ""))).right
+        handleActor ! PackageToSend(reply)
     }
   }
 }

@@ -151,7 +151,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       println(ack, protoPackageBox.encode(ack))
       val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
       val expectMsgs = Seq(ackRes, res)
-      probe.expectMsgAllOf(expectMsgs :_*)
+      probe.expectMsgAllOf(5 seconds, expectMsgs :_*)
     }
   }
 }
