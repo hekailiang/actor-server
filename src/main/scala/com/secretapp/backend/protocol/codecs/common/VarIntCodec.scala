@@ -36,6 +36,7 @@ object VarIntCodec extends Codec[Long] {
         f(buf.drop(1), position + 1, acc ^ n)
       }
     }
+    @inline
     def decodeVI(buf: BitVector) = f(buf.bytes).abs
 
     val sizeVI = varIntLen(buf)

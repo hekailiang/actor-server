@@ -10,7 +10,7 @@ import scodec.Codec
 import scodec.codecs._
 
 object RequestCodec extends Codec[Request] {
-  private val rpcRequestMessageCodec: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint32)
+  val rpcRequestMessageCodec: Codec[RpcRequestMessage] = discriminated[RpcRequestMessage].by(uint32)
     .\(RequestGetDifference.requestType) { case r: RequestGetDifference => r } (RequestGetDifferenceCodec)
     .\(RequestGetState.requestType) { case r: RequestGetState => r } (RequestGetStateCodec)
     .\(RequestAuthCode.requestType) { case r: RequestAuthCode => r } (RequestAuthCodeCodec)

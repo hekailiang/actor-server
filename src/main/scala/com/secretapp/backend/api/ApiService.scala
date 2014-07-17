@@ -38,6 +38,10 @@ trait PackageCommon extends LoggerService {
   case class PackageToSend(p: PackageEither)
 
   lazy val rand = new Random() // TODO: for specs (temporarily)
+
+  def sendReply(reply: PackageEither): Unit = {
+    handleActor ! PackageToSend(reply)
+  }
 }
 
 trait PackageAckService extends PackageCommon { this: Actor =>

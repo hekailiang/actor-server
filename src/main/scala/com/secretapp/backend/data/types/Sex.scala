@@ -2,18 +2,24 @@ package com.secretapp.backend.data.types
 
 import scala.language.implicitConversions
 import com.getsecretapp.{ proto => protobuf }
+import scalaz._
+import Scalaz._
 
 sealed trait Sex {
   def toProto: protobuf.Sex.EnumVal
+  def toOption: Option[Sex]
 }
 case object NoSex extends Sex {
   def toProto = protobuf.Sex.UNKNOWN
+  def toOption = None
 }
 case object Male extends Sex {
   def toProto = protobuf.Sex.MALE
+  def toOption = Male.some
 }
 case object Female extends Sex {
   def toProto = protobuf.Sex.FEMALE
+  def toOption = Female.some
 }
 
 object Sex {

@@ -9,6 +9,8 @@ trait RpcService extends SignService { self: Actor =>
   def handleRpc(p: Package, messageId: Long): PartialFunction[RpcRequest, Unit] = {
     case Request(body) =>
       handleRpcAuth(p, messageId)(body)
-//    case r: RequestWithInit =>
+    case RequestWithInit(initConnection, body) =>
+//      TODO: initConnection
+      handleRpcAuth(p, messageId)(body)
   }
 }
