@@ -1,6 +1,8 @@
 package com.secretapp.backend.api
 
+import scala.language.postfixOps
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{MessageBox, Package}
 import com.secretapp.backend.protocol.codecs._
