@@ -27,6 +27,8 @@ trait SignService extends PackageCommon { self: Actor =>
 
   type RpcResult = HandleResult[Error, RpcResponseMessage]
 
+  val internalError = Error(400, "INTERNAL_ERROR", "")
+
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode => sendResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
     case r: RequestSignIn => sendResult(p, messageId)((handleRequestSignIn _).tupled(RequestSignIn.unapply(r).get))
@@ -66,9 +68,9 @@ trait SignService extends PackageCommon { self: Actor =>
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       for {
-        phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", "", true))
-        user <- futOptHandle(phoneR.user, Error(400, "INTERNAL_ERROR", "", true))
-        smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "", true))
+        phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", ""))
+        user <- futOptHandle(phoneR.user, internalError)
+        smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
           val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex, Seq(1L))
@@ -83,7 +85,16 @@ trait SignService extends PackageCommon { self: Actor =>
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
-      ???
+
+//      for {
+//        smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
+//      } yield {
+
+        PhoneRecord.getEntity(phoneNumber) flatMap {
+          case Some(phone) => ???
+          case None => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        }
+
     }
   }
 
@@ -97,7 +108,7 @@ trait SignService extends PackageCommon { self: Actor =>
         val reply = RpcResponseBox(messageId, message)
         handleActor ! p.replyWith(messageId, reply).right
       case Failure(e) =>
-        val reply = RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))
+        val reply = RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", ""))
         handleActor ! p.replyWith(messageId, reply).right
     }
   }
