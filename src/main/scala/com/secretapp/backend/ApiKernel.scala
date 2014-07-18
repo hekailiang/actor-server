@@ -17,6 +17,7 @@ class ApiKernel extends Bootable {
 
   def startup = {
     val session = DBConnector.session
+    DBConnector.createTables(session)
     implicit val service = system.actorOf(Props(new Server(session)), "api-service")
     val port = Try(serverConfig.getInt("port")).getOrElse(8080)
     val hostname = Try(serverConfig.getString("hostname")).getOrElse("0.0.0.0")
