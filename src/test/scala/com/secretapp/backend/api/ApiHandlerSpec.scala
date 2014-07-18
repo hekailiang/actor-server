@@ -18,6 +18,8 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
 class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender with CassandraWordSpec
@@ -153,27 +155,62 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       probe.expectMsgAllOf(expectMsgs :_*)
     }
 
-//    "handle RPC request sign up" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val authId = rand.nextLong()
-//      val sessionId = rand.nextLong()
-//      val messageId = rand.nextLong()
-//      val rpcReq = RpcRequestBox(Request(RequestAuthCode(79853867016L, 123, "apikey")))
-//      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
-//      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
-//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-//      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-//
-//      probe.send(apiActor, Received(ByteString(buf)))
-//
-//      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode("12345", false)))
-//      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
-//      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
-//      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-//      println(ack, protoPackageBox.encode(ack))
-//      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
-//      val expectMsgs = Seq(ackRes, res)
-//      probe.expectMsgAllOf(expectMsgs :_*)
-//    }
+    "handle RPC request sign up" in {
+      val (probe, apiActor) = probeAndActor()
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val messageId = rand.nextLong()
+      val phone = 79853867016L
+
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(phone, "wow", "such sms", "Timothy", Some("Klim"), hex"ac1d".bits)))
+      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
+      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, "wow", "such sms")).sync()
+
+      probe.send(apiActor, Received(ByteString(buf)))
+
+      val user = struct.User(1090901, 1, "Timothy", Some("Klim"), None, Seq(1L))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(123, user)))
+      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
+      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
+      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
+      val expectMsgs = Seq(ackRes, res)
+      probe.expectMsgAllOf(expectMsgs :_*)
+    }
+
+    "handle RPC request sign in" in {
+      val (probe, apiActor) = probeAndActor()
+      val authId = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val messageId = rand.nextLong()
+      val phone = 79853867016L
+      val pubKey = hex"ac1d".bits
+      val firstName = "Timothy"
+      val lastName = Some("Klim")
+      val userId = 1090901
+
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(phone, "wow", "such sms", pubKey)))
+      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
+      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, "wow", "such sms")).sync()
+      UserRecord.insertEntity(Entity(userId, User.build(pubKey, firstName, lastName, NoSex)))
+      PhoneRecord.insertEntity(Phone(phone, userId))
+
+      probe.send(apiActor, Received(ByteString(buf)))
+
+      val user = struct.User(userId, 1L, "Timothy", Some("Klim"), None, Seq(1L))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(123, user)))
+      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
+      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
+      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
+      val expectMsgs = Seq(ackRes, res)
+      probe.expectMsgAllOf(expectMsgs :_*)
+    }
   }
 }

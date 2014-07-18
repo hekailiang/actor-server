@@ -89,28 +89,24 @@ trait SignService extends PackageCommon { self: Actor =>
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
-      // TODO: akka service for ID's
-      val userId = rand.nextInt
-      val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
-      val f = PhoneRecord.getEntity(phoneNumber) flatMap {
-        case None => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
-        case Some(phone) =>
-          for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) } yield {
-            validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-              // TODO: Validate ASN.1 structure for publicKey
-
-              val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
-                user.sex.toOption, Seq(user.publicKeyHash))
-              ResponseAuth(123L, sUser)
-            }
+      PhoneRecord.getEntity(phoneNumber) flatMap {
+        case Some(phone) => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        case None =>
+          val f = for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
+          yield validateSignParams(smsHash, smsCode)(smsCodeR)
+          f flatMap {
+            case \/-(res) =>
+              val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
+              // TODO: akka service for ID's
+              val userId = 1090901
+              for { _ <- UserRecord.insertEntity(Entity(userId, user)) } yield {
+                handleActor ! Authenticate(user)
+                val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
+                  user.sex.toOption, Seq(user.publicKeyHash))
+                ResponseAuth(123L, sUser).right
+              }
+            case l@(-\/(_)) => Future.successful(l)
           }
-      }
-      for {
-        res <- f
-        _ <- UserRecord.insertEntity(Entity(userId, user))
-      } yield {
-        handleActor ! Authenticate(user)
-        res
       }
     }
   }
