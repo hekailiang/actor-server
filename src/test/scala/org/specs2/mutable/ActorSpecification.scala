@@ -12,7 +12,7 @@ import org.specs2.matcher._
 import org.specs2.specification._
 import org.specs2.time._
 
-trait ActorSpecification extends SpecificationStructure
+trait ActorLikeSpecification extends SpecificationStructure
 with SpecificationStringContext
 with mutable.FragmentsBuilder
 with mutable.SpecificationInclusion
@@ -24,7 +24,6 @@ with StandardResults
 with StandardMatchResults
 with mutable.Tags
 with AutoExamples
-with TimeConversions
 with PendingUntilFixed
 with Contexts
 with SpecificationNavigation
@@ -44,4 +43,8 @@ with ImplicitSender
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)
+}
+
+trait ActorSpecification extends ActorLikeSpecification {
+  override def is = fragments
 }

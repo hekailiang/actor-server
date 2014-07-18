@@ -8,7 +8,7 @@ import scalaz._
 import Scalaz._
 import org.specs2.mutable._
 
-class ContainerCodecSpec extends Specification {
+class ContainerCodecSpecification extends Specification {
   "container encode" should {
     "pack messages" in {
       val res = hex"03000000000000000109010000000000000005000000000000000109010000000000000005000000000000000109010000000000000005".bits

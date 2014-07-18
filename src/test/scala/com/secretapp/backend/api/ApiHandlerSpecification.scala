@@ -1,16 +1,15 @@
 package com.secretapp.backend.api
 
-import org.specs2.mutable.ActorSpecification
-
 import scala.language.postfixOps
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import akka.testkit._
-import akka.actor.{ ActorSystem, Props }
+import akka.actor.{ Props }
 import akka.io.Tcp._
 import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
+import org.specs2.mutable.ActorLikeSpecification
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{MessageBox, Package}
 import com.secretapp.backend.protocol.codecs._
@@ -23,10 +22,11 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
-class ApiHandlerSpecification extends ActorSpecification with CassandraSpecification
+class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpecification
 {
-
   import system.dispatcher
+
+  override lazy val actorSystemName = "api"
 
   def probeAndActor() = {
     val probe = TestProbe()
