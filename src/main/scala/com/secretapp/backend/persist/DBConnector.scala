@@ -28,6 +28,7 @@ object DBConnector {
       _ <- SessionIdRecord.createTable(session)
       _ <- AuthSmsCodeRecord.createTable(session)
       _ <- PhoneRecord.createTable(session)
+      _ <- CommonUpdateRecord.createTable(session)
     } yield ()
   }
 
@@ -38,6 +39,7 @@ object DBConnector {
       _ <- SessionIdRecord.truncateTable(session)
       _ <- AuthSmsCodeRecord.truncateTable(session)
       _ <- PhoneRecord.truncateTable(session)
+      _ <- CommonUpdateRecord.truncateTable(session)
     } yield ()
   }
 
