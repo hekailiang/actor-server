@@ -82,7 +82,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
       val (probe, apiActor) = probeAndActor()
-      val ids = (1L to 10L) map ((_, rand.nextLong))
+      val ids = (1L to 100L) map ((_, rand.nextLong))
       val authId = rand.nextLong()
       val sessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
