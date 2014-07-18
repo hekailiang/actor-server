@@ -9,10 +9,9 @@ case class User(publicKeyHash: Long,
                 accessSalt: String,
                 firstName: String,
                 lastName: Option[String],
-                sex: Sex) {
+                sex: Sex,
+                keyHashes: Seq[Long] = Seq()) {
   def accessHash: Long = 1L // TODO
-
-  def keyHashes = Seq(1L)
 }
 
 object User {

@@ -22,6 +22,9 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   object publicKey extends BigIntColumn(this) {
     override lazy val name = "public_key"
   }
+  object keyHashes extends SetColumn[UserRecord, Entity[Int, User], Long](this) with StaticColumn[Set[Long]] {
+    override lazy val name = "key_hashes"
+  }
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "access_salt"
   }
@@ -34,8 +37,15 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   object sex extends IntColumn(this) with StaticColumn[Int]
 
   override def fromRow(row: Row): Entity[Int, User] = {
-    Entity(id(row), User(publicKeyHash(row), BitVector(publicKey(row).toByteArray), accessSalt(row), firstName(row),
-      lastName(row), intToSex(sex(row)) ))
+    val user = User(
+      publicKeyHash = publicKeyHash(row),
+      publicKey = BitVector(publicKey(row).toByteArray),
+      keyHashes = keyHashes(row).toIndexedSeq,
+      accessSalt = accessSalt(row),
+      firstName = firstName(row),
+      lastName = lastName(row),
+      sex = intToSex(sex(row)) )
+    Entity(id(row), user)
   }
 }
 
@@ -45,11 +55,24 @@ object UserRecord extends UserRecord with DBConnector {
       insert.value(_.id, id)
         .value(_.publicKeyHash, user.publicKeyHash)
         .value(_.publicKey, BigInt(user.publicKey.toByteArray))
+        .value(_.keyHashes, Set(user.publicKeyHash))
         .value(_.accessSalt, user.accessSalt)
         .value(_.firstName, user.firstName)
         .value(_.lastName, user.lastName)
         .value(_.sex, sexToInt(user.sex))
         .future()
+  }
+
+  def insertPartEntity(entity: Entity[Int, User])(implicit session: Session): Future[ResultSet] = entity match {
+    case Entity(id, user) =>
+      insert.value(_.id, id)
+        .value(_.publicKeyHash, user.publicKeyHash)
+        .value(_.publicKey, BigInt(user.publicKey.toByteArray))
+        .future().flatMap(_ => addKeyHash(id, user))
+  }
+
+  private def addKeyHash(id: Int, user: User)(implicit session: Session) = {
+    update.where(_.id eqs id).modify(_.keyHashes add user.publicKeyHash).future()
   }
 
   def getEntity(id: Int)(implicit session: Session): Future[Option[Entity[Int, User]]] = {
