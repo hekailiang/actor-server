@@ -44,8 +44,9 @@ trait SignService extends PackageCommon { self: Actor =>
     val serverConfig = ConfigFactory.load()
     val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
+    clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: singleton for model
+
     val f = for {
-      _ <- clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: singleton for model
       phoneR <- PhoneRecord.getEntity(phoneNumber)
       _ <- AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
     } yield ResponseAuthCode(smsHash, phoneR.isDefined)

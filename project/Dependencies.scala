@@ -99,10 +99,8 @@ object Dependencies {
   )
 
   val testDependencies = Seq(
-    "org.scalatest" %% "scalatest" % "2.2.0" % "test",
     "org.specs2" %% "specs2" % "2.3.13" % "test",
     "com.typesafe.akka" %% "akka-testkit" % V.akka % "test",
-    "org.scalamock" %% "scalamock-scalatest-support" % "3.0.1" % "test",
     "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test",
     "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
   )

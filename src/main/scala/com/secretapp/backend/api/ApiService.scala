@@ -12,6 +12,7 @@ import com.secretapp.backend.data._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.util.RandomService
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -41,10 +42,8 @@ object PackageCommon {
 }
 import PackageCommon._
 
-trait PackageCommon extends LoggerService {
+trait PackageCommon extends LoggerService with RandomService {
   val handleActor: ActorRef
-
-  lazy val rand = new Random() // TODO: for specs (temporarily)
 
   def sendReply(reply: PackageEither): Unit = {
     handleActor ! PackageToSend(reply)

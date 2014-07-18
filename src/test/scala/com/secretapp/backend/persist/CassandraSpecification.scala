@@ -4,19 +4,19 @@ import scala.concurrent.blocking
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session }
-import org.scalatest._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
 import com.typesafe.scalalogging.slf4j._
 import org.slf4j.LoggerFactory
+import org.specs2.mutable._
+import org.specs2.specification.{ Fragments, Step }
 
-trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
+trait CassandraSpecification extends SpecificationLike {
+  private val keySpace: String = s"secret_test_${System.nanoTime()}"
+  private val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  private val cassndraSpecLog = Logger(LoggerFactory.getLogger(this.getClass))
 
-  val keySpace: String = s"secret_test_${System.nanoTime()}"
-  val dbConfig = ConfigFactory.load().getConfig("cassandra")
-  val log = Logger(LoggerFactory.getLogger(self.getClass))
-
-  val cluster = Cluster.builder()
+  private val cluster = Cluster.builder()
     .addContactPoints(dbConfig.getStringList("contact-points") :_*)
     .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
@@ -29,7 +29,7 @@ trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
   private def createKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
-      log.info(s"CREATE KEYSPACE IF NOT EXISTS $spaceName")
+      cassndraSpecLog.info(s"CREATE KEYSPACE IF NOT EXISTS $spaceName")
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
       session.execute(s"use $spaceName;")
     }
@@ -37,24 +37,19 @@ trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
   private def dropKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
+      cassndraSpecLog.info(s"DROP KEYSPACE IF EXISTS $spaceName")
       session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
     }
   }
 
-  override def beforeAll(): Unit = {
+  private def createDB() {
     createKeySpace(keySpace)
     DBConnector.createTables(session).sync()
   }
 
-  override def afterAll(): Unit = {
+  private def cleanDB() {
     dropKeySpace(keySpace)
   }
 
-  override def afterEach(): Unit = {
-    DBConnector.truncateTables(session).sync()
-  }
-
+  override def map(fs: => Fragments) = Step(createDB) ^ super.map(fs) ^ Step(cleanDB)
 }
-
-trait CassandraFlatSpec extends FlatSpec with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Assertions with CassandraSpec
-trait CassandraWordSpec extends WordSpecLike with BeforeAndAfterAll with BeforeAndAfterEach with Matchers with Assertions with CassandraSpec

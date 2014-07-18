@@ -1,18 +1,19 @@
 package com.secretapp.backend.api
 
+import org.specs2.mutable.ActorSpecification
+
 import scala.language.postfixOps
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.{MessageBox, Package}
-import com.secretapp.backend.protocol.codecs._
-import org.scalatest._
 import akka.testkit._
 import akka.actor.{ ActorSystem, Props }
 import akka.io.Tcp._
 import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
+import com.secretapp.backend.data.models._
+import com.secretapp.backend.data.transport.{MessageBox, Package}
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
@@ -22,17 +23,14 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
-class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender with CassandraWordSpec
+class ApiHandlerSpecification extends ActorSpecification with CassandraSpecification
 {
 
   import system.dispatcher
 
-  override def afterAll() {
-    TestKit.shutdownActorSystem(system)
-  }
-
   def probeAndActor() = {
     val probe = TestProbe()
+    val session = DBConnector.session
     val actor = system.actorOf(Props(new ApiHandler(probe.ref, session) {
       override lazy val rand = new Random() {
         override def nextLong() = 12345L
@@ -43,8 +41,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
   val rand = new Random()
 
-  "actor" must {
-
+  "actor" should {
     "reply with auth token to auth request" in {
       val (probe, apiActor) = probeAndActor()
       val req = protoPackageBox.build(0L, 0L, 1L, RequestAuthId())
