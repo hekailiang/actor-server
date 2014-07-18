@@ -125,7 +125,7 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       probe.send(apiActor, Received(ByteString(buf)))
 
       val expectedPongs = (1 to container.messages.length) map { id =>
-        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+        val p = Package(authId, sessionId, MessageBox(messageBoxId, Pong(pingVal)))
         val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
         Write(res)
       }

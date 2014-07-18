@@ -322,7 +322,7 @@ trait PackageHandler extends PackageManagerService with PackageAckService with R
     acknowledgeReceivedPackage(p, m)
     m.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
-        val reply = p.replyWith(p.messageBox.messageId, Pong(randomId)).right
+        val reply = p.replyWith(m.messageId, Pong(randomId)).right
         handleActor ! PackageToSend(reply)
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
