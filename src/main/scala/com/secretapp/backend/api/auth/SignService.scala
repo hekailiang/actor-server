@@ -17,6 +17,7 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
+import PackageCommon._
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
@@ -74,7 +75,9 @@ trait SignService extends PackageCommon { self: Actor =>
         smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
+          // TODO: do we need to insert new key if keyHashes not contain it?
           val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex.toOption, user.keyHashes)
+          handleActor ! Authenticate(user)
           ResponseAuth(123L, sUser)
         }
       }
@@ -86,20 +89,29 @@ trait SignService extends PackageCommon { self: Actor =>
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
-        PhoneRecord.getEntity(phoneNumber) flatMap {
-          case None => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
-          case Some(phone) =>
-            for {
-              smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
-            } yield {
-              validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-                val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
-//                ResponseAuth(123L, sUser)
-                ???
-              }
-            }
-        }
+      // TODO: akka service for ID's
+      val userId = rand.nextInt
+      val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
+      val f = PhoneRecord.getEntity(phoneNumber) flatMap {
+        case None => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        case Some(phone) =>
+          for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) } yield {
+            validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
+              // TODO: Validate ASN.1 structure for publicKey
 
+              val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
+                user.sex.toOption, Seq(user.publicKeyHash))
+              ResponseAuth(123L, sUser)
+            }
+          }
+      }
+      for {
+        res <- f
+        _ <- UserRecord.insertEntity(Entity(userId, user))
+      } yield {
+        handleActor ! Authenticate(user)
+        res
+      }
     }
   }
 

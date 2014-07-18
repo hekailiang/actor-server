@@ -152,5 +152,28 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
       val expectMsgs = Seq(ackRes, res)
       probe.expectMsgAllOf(expectMsgs :_*)
     }
+
+//    "handle RPC request sign up" in {
+//      val (probe, apiActor) = probeAndActor()
+//      val authId = rand.nextLong()
+//      val sessionId = rand.nextLong()
+//      val messageId = rand.nextLong()
+//      val rpcReq = RpcRequestBox(Request(RequestAuthCode(79853867016L, 123, "apikey")))
+//      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
+//      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+//      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+//
+//      probe.send(apiActor, Received(ByteString(buf)))
+//
+//      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode("12345", false)))
+//      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
+//      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
+//      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+//      println(ack, protoPackageBox.encode(ack))
+//      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
+//      val expectMsgs = Seq(ackRes, res)
+//      probe.expectMsgAllOf(expectMsgs :_*)
+//    }
   }
 }

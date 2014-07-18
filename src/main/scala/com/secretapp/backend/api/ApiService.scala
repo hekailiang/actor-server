@@ -30,12 +30,19 @@ trait LoggerService {
   def log: LoggingAdapter
 }
 
-trait PackageCommon extends LoggerService {
-  val handleActor: ActorRef
-
+object PackageCommon {
   type PackageEither = Package \/ Package
 
-  case class PackageToSend(p: PackageEither)
+  trait PackageServiceMessage
+  case class PackageToSend(p: PackageEither) extends PackageServiceMessage
+
+  trait ServiceMessage
+  case class Authenticate(u: User) extends ServiceMessage
+}
+import PackageCommon._
+
+trait PackageCommon extends LoggerService {
+  val handleActor: ActorRef
 
   lazy val rand = new Random() // TODO: for specs (temporarily)
 
@@ -135,6 +142,13 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
   private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
   private var currentUser: Option[User] = _
+
+  def serviceMessagesPF: PartialFunction[ServiceMessage, Any] = {
+    // TODO: become
+    case Authenticate(u: User) =>
+      log.info(s"Authenticate: $u")
+      currentUser = Some(u)
+  }
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     if (p.authId == 0L) { // check for auth request - simple key registration

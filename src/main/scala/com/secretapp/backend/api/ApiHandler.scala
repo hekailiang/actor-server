@@ -6,6 +6,7 @@ import akka.io.Tcp._
 import scodec.bits._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import PackageCommon._
 import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
@@ -25,6 +26,10 @@ with WrappedPackageService with PackageHandler
         connection ! Write(replyPackage(p))
         connection ! Close
     }
+
+    case m: ServiceMessage =>
+      log.info(s"ServiceMessage: $m")
+      serviceMessagesPF(m)
 
     case Received(data) =>
       log.info(s"Received: $data ${data.length}")
