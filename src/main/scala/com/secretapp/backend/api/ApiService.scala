@@ -223,6 +223,8 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
 
   def getSessionId = currentSessionId
 
+  def getUser = currentUser
+
   private def sendDrop(p: Package, msg: String): Unit = {
     val reply = p.replyWith(p.messageBox.messageId, Drop(p.messageBox.messageId, msg)).left
     handleActor ! PackageToSend(reply)
