@@ -16,15 +16,13 @@ import scalaz.Scalaz._
 import scodec.bits._
 
 class CommonUpdateRecordSpec extends CassandraSpecification {
-  sequential
-  val pubkeyHash = 1L
-
   "CommonUpdateRecord" should {
     "get push" in {
+      val pubkeyHash = 1L
       val updateMessage = updateProto.Message(pubkeyHash, 1L, 1, 10L, false, None, StringCodec.encode("my message here").toOption.get)
       val ef = for {
         _ <- CommonUpdateRecord.push(pubkeyHash, 1l, updateMessage)
-        e <- CommonUpdateRecord.select.one.map(_.get)
+        e <- CommonUpdateRecord.select.where(_.pubkeyHash eqs pubkeyHash).one.map(_.get)
       } yield e
 
       val mf = ef map {
@@ -37,6 +35,7 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
     }
 
     "get difference" in {
+      val pubkeyHash = 2L
       Await.result(CommonUpdateRecord.truncateTable(session), Timeout(5000000).duration)
 
       val initialSeq = 0L
