@@ -15,7 +15,7 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 
-class CommonUpdateRecordSpec extends CassandraSpecification with NoConcurrentExecutionContext {
+class CommonUpdateRecordSpec extends CassandraSpecification {
   sequential
   val pubkeyHash = 1L
 
