@@ -30,7 +30,6 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val session = DBConnector.session
     val actor = system.actorOf(Props(new ApiHandler(probe.ref, session) {
       override lazy val rand = new Random() {
         override def nextLong() = 12345L
@@ -48,6 +47,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       val res = protoPackageBox.build(0L, 0L, 1L, ResponseAuthId(12345L))
       probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+      success
     }
 
     "reply pong to ping" in {
@@ -69,6 +69,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
       probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
+      success
     }
 
     "send drop to invalid crc" in {
@@ -77,6 +78,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
       probe.send(apiActor, Received(ByteString(req)))
       probe.expectMsg(Write(ByteString(res)))
+      success
     }
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
@@ -103,6 +105,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
         Write(res)
       }
       probe.expectMsgAllOf(expectedPongs :_*)
+      success
     }
 
     "handle container with Ping's" in {
@@ -127,6 +130,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
         Write(res)
       }
       probe.expectMsgAllOf(expectedPongs :_*)
+      success
     }
 
     "handle RPC request auth code" in {
@@ -150,6 +154,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
       val expectMsgs = Seq(ackRes, res)
       probe.expectMsgAllOf(expectMsgs :_*)
+      success
     }
 
     "handle RPC request sign up" in {
@@ -176,6 +181,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
       val expectMsgs = Seq(ackRes, res)
       probe.expectMsgAllOf(expectMsgs :_*)
+      success
     }
 
     "handle RPC request sign in" in {
@@ -208,6 +214,7 @@ class ApiHandlerSpecification extends ActorSpecification with CassandraSpecifica
       val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
       val expectMsgs = Seq(ackRes, res)
       probe.expectMsgAllOf(expectMsgs :_*)
+      success
     }
   }
 }

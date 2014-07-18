@@ -44,12 +44,4 @@ with ImplicitSender
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)
-
-  implicit def writeAsResult = new AsResult[Write] {
-    def asResult(r: => Write) = success
-  }
-
-  implicit def writeSeqAsResult = new AsResult[Seq[Write]] {
-    def asResult(r: => Seq[Write]) = success
-  }
 }
