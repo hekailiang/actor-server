@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
   object V {
-    val akka = "2.3.3"
+    val akka = "2.3.4"
     val scalaz = "7.0.6" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
@@ -11,15 +11,12 @@ object Dependencies {
   }
 
   val compileDependencies = Seq(
-
     "com.typesafe.akka" %% "akka-actor" % V.akka,
-
     "com.typesafe.akka" %% "akka-agent" % V.akka,
-
     "com.typesafe.akka" %% "akka-remote" % V.akka,
-
     "com.typesafe.akka" %% "akka-kernel" % V.akka,
-
+    "com.typesafe.akka" %% "akka-persistence-experimental" % V.akka,
+    "com.github.krasserm" %% "akka-persistence-cassandra" % "0.3.2",
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
     "com.typesafe.akka" %% "akka-slf4j" % V.akka,
 

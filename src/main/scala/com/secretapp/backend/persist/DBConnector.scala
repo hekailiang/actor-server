@@ -1,17 +1,18 @@
 package com.secretapp.backend.persist
 
 import scala.concurrent. { blocking, Future }
+import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session }
 import com.newzly.phantom.Implicits._
 import com.typesafe.config._
 
 object DBConnector {
-  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
-  val keySpace = dbConfig.getString("key-space")
+  val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  val keySpace = dbConfig.getString("keyspace")
 
   val cluster =  Cluster.builder()
-    .addContactPoint(dbConfig.getString("contact-point.host"))
-    .withPort(dbConfig.getInt("contact-point.port"))
+    .addContactPoints(dbConfig.getStringList("contact-points") :_*)
+    .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
     .withoutMetrics()
     .build()

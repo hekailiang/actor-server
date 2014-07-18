@@ -2,6 +2,7 @@ package com.secretapp.backend.protocol.codecs.message
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.util.Helpers._
@@ -18,29 +19,35 @@ object ContainerCodec extends Codec[Container] {
       case MessageBox(_, Container(_)) => nestedError.left
       case m: MessageBox => MessageBoxCodec.encode(m)
     }
-    foldEither(encodeMessages)(BitVector.empty)(_ ++ _)
+    for {
+      res <- foldEither(encodeMessages)(BitVector.empty)(_ ++ _)
+      size <- varint.encode(encodeMessages.length)
+    } yield (size ++ res)
   }
 
   def decode(buf: BitVector) = {
     @tailrec @inline
-    def messages(buf: BitVector)(acc: Seq[MessageBox]): String \/ Seq[MessageBox] = {
+    def messages(buf: BitVector, size: Int)(acc: Seq[MessageBox], countOfMsg: Int = 0): String \/ Seq[MessageBox] = {
       MessageBoxCodec.decode(buf) match {
         case \/-((remain, m)) => m match {
           case MessageBox(_, Container(_)) => nestedError.left
           case m: MessageBox =>
             val res = acc :+ m
-            if (remain.isEmpty) {
+            if (size == countOfMsg + 1) {
               res.right
+            } else if (remain.isEmpty) {
+              s"Container.count($size) doesn't match with count of messages($countOfMsg)}".left
             } else {
-              messages(remain)(res)
+              messages(remain, size)(res, countOfMsg + 1)
             }
         }
         case l@(-\/(_)) => l
       }
     }
-    messages(buf)(Seq()) match {
-      case \/-(msgs) => (BitVector.empty, Container(msgs)).right
-      case l@(-\/(_)) => l
-    }
+
+    for {
+      s <- varint.decode(buf); (xs, size) = s
+      msgs <- messages(xs, size.toInt)(Seq())
+    } yield (BitVector.empty, Container(msgs))
   }
 }

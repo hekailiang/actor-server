@@ -16,22 +16,22 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   override lazy val tableName = "users"
 
   object id extends IntColumn(this) with PartitionKey[Int]
-  object publicKeyHash extends LongColumn(this) {
+  object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "public_key_hash"
   }
   object publicKey extends BigIntColumn(this) {
     override lazy val name = "public_key"
   }
-  object accessSalt extends StringColumn(this) {
+  object accessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "access_salt"
   }
-  object firstName extends StringColumn(this) {
+  object firstName extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "first_name"
   }
-  object lastName extends OptionalStringColumn(this) {
+  object lastName extends OptionalStringColumn(this) with StaticColumn[Option[String]] {
     override lazy val name = "last_name"
   }
-  object sex extends IntColumn(this)
+  object sex extends IntColumn(this) with StaticColumn[Int]
 
   override def fromRow(row: Row): Entity[Int, User] = {
     Entity(id(row), User(publicKeyHash(row), BitVector(publicKey(row).toByteArray), accessSalt(row), firstName(row),

@@ -75,5 +75,4 @@ object VarIntCodec extends Codec[Long] {
     }
     f(buf)
   }
-
 }

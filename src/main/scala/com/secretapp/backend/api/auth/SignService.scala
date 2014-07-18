@@ -74,8 +74,7 @@ trait SignService extends PackageCommon { self: Actor =>
         smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-          val accessHash = 1L // TODO
-          val sUser = StructUser(phoneR.userId, accessHash, user.firstName, user.lastName, user.sex.toOption, Seq(1L))
+          val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex.toOption, user.keyHashes)
           ResponseAuth(123L, sUser)
         }
       }

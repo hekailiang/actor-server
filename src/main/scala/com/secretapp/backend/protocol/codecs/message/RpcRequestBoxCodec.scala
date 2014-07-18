@@ -1,5 +1,6 @@
 package com.secretapp.backend.protocol.codecs.message
 
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.protocol.codecs.message.rpc._
@@ -12,7 +13,7 @@ object RpcRequestBoxCodec extends Codec[RpcRequestBox] {
     .\(Request.rpcType) { case r: Request => r} (RequestCodec)
     .\(RequestWithInit.rpcType) { case r: RequestWithInit => r} (RequestWithInitCodec)
 
-  private val codec = rpcRequestCodec.pxmap[RpcRequestBox](RpcRequestBox.apply, RpcRequestBox.unapply)
+  private val codec = protoPayload(rpcRequestCodec).pxmap[RpcRequestBox](RpcRequestBox.apply, RpcRequestBox.unapply)
 
   def encode(r: RpcRequestBox) = codec.encode(r)
 

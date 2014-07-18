@@ -1,20 +1,19 @@
 package com.secretapp.backend.protocol.codecs.common
 
+import com.secretapp.backend.protocol.codecs._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
 import shapeless._
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.protocol.codecs._
 
 object BytesCodec extends Codec[BitVector] {
-
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
   def encode(xs: BitVector) = {
     for {
-      len <- varint.encode(xs.length.toInt / byteSize)
+      len <- varint.encode(xs.length / byteSize)
     } yield len ++ xs
   }
 
@@ -26,5 +25,4 @@ object BytesCodec extends Codec[BitVector] {
       (xs.drop(bitsLen), xs.take(bitsLen))
     }
   }
-
 }

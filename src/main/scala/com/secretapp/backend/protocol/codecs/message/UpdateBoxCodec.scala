@@ -3,6 +3,7 @@ package com.secretapp.backend.protocol.codecs.message
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.update._
 import scodec.bits._
 import scodec.Codec
@@ -15,7 +16,7 @@ object UpdateBoxCodec extends Codec[UpdateBox] {
     .\(NewDevice.updateType) { case n: NewDevice => n } (NewDeviceCodec)
     .\(NewYourDevice.updateType) { case n: NewYourDevice => n } (NewYourDeviceCodec)
 
-  private val codec = updateCodec.pxmap[UpdateBox](UpdateBox.apply, UpdateBox.unapply)
+  private val codec = protoPayload(updateCodec).pxmap[UpdateBox](UpdateBox.apply, UpdateBox.unapply)
 
   def encode(u: UpdateBox) = codec.encode(u)
 

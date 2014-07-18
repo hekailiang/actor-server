@@ -82,10 +82,11 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
       val (probe, apiActor) = probeAndActor()
-      val ids = (1L to 100L) map ((_, rand.nextLong))
+      val ids = (1L to 10L) map ((_, rand.nextLong))
       val authId = rand.nextLong()
       val sessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
 
       val res = ids.map { (item) =>
         val (msgId, pingVal) = item
@@ -96,15 +97,13 @@ class ApiHandlerSpec extends TestKit(ActorSystem("api")) with ImplicitSender wit
         probe.send(apiActor, Received(buf))
       }
 
-      val newNewSession = protoPackageBox.build(authId, sessionId, ids.head._1, NewSession(sessionId, ids.head._1))
       val expectedPongs = ids map { (item) =>
         val (msgId, pingVal) = item
         val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
         val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
         Write(res)
       }
-      val expectedMsgs = Seq(Write(ByteString(newNewSession.toOption.get.toByteBuffer))) ++ expectedPongs
-      probe.expectMsgAllOf(expectedMsgs :_*)
+      probe.expectMsgAllOf(expectedPongs :_*)
     }
 
     "handle container with Ping's" in {

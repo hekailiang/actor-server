@@ -1,11 +1,14 @@
 package com.secretapp.backend.protocol
 
+import scodec.Codec
+
 package object codecs {
 
   //  common types
   val varint = common.VarIntCodec
   val protoLongs = common.LongsCodec
   val protoBytes = common.BytesCodec
+  def protoPayload[A](payloadCodec: Codec[A]) = new common.PayloadBytesCodec[A](payloadCodec)
   val protoSex = common.SexCodec
   val protoString = common.StringCodec
 

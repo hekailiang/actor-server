@@ -27,10 +27,10 @@ object PackageBoxCodec extends Codec[PackageBox] {
     varint.decode(buf) match { // read varint length of Package: body + crc32
       case \/-((xs, len)) =>
         val bodyLen = (len - crcByteSize) * byteSize // get body size without crc32
-      val body = xs.take(bodyLen)
+        val body = xs.take(bodyLen)
         val crc = xs.drop(bodyLen).take(crcByteSize * byteSize)
         val varIntSize = varint.sizeOf(len) * byteSize // varint bit size
-      val crcBody = buf.take(varIntSize + bodyLen) // crc body: package len + package body
+        val crcBody = buf.take(varIntSize + bodyLen) // crc body: package len + package body
         if (crc == encodeCRCR32(crcBody)) {
           for {
             pt <- protoPackage.decode(body) ; (_, p) = pt

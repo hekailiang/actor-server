@@ -12,18 +12,16 @@ object MessageBoxCodec extends Codec[MessageBox] {
 
   def encode(mb: MessageBox) = {
     for {
-      body <- protoTransportMessage.encode(mb.body)
-      len <- varint.encode(body.length / byteSize)
-    } yield (BitVector.fromLong(mb.messageId) ++ len ++ body)
+      body <- protoPayload(protoTransportMessage).encode(mb.body)
+    } yield (BitVector.fromLong(mb.messageId) ++ body)
   }
 
   def decode(buf: BitVector) = {
     for {
-      l <- varint.decode(buf.drop(longSize)); (xs, len) = l
-      m <- protoTransportMessage.decode(xs.take(len * byteSize)); (remain, msg) = m
+      m <- protoPayload(protoTransportMessage).decode(buf.drop(longSize)); (remain, msg) = m
     } yield {
       val messageId = buf.take(longSize).toLong()
-      (xs.drop(len * byteSize), MessageBox(messageId, msg))
+      (remain, MessageBox(messageId, msg))
     }
   }
 }

@@ -2,19 +2,23 @@ package com.secretapp.backend.persist
 
 import scala.concurrent.blocking
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session }
 import org.scalatest._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.config._
+import com.typesafe.scalalogging.slf4j._
+import org.slf4j.LoggerFactory
 
 trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
   val keySpace: String = s"secret_test_${System.nanoTime()}"
-  val dbConfig = ConfigFactory.load().getConfig("secret.persist.cassandra")
+  val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  val log = Logger(LoggerFactory.getLogger(self.getClass))
 
   val cluster = Cluster.builder()
-    .addContactPoint(dbConfig.getString("contact-point.host"))
-    .withPort(dbConfig.getInt("contact-point.port"))
+    .addContactPoints(dbConfig.getStringList("contact-points") :_*)
+    .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
     .withoutMetrics()
     .build()
@@ -25,6 +29,7 @@ trait CassandraSpec { self: BeforeAndAfterAll with BeforeAndAfterEach =>
 
   private def createKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
+      log.info(s"CREATE KEYSPACE IF NOT EXISTS $spaceName")
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
       session.execute(s"use $spaceName;")
     }
