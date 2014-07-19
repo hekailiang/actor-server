@@ -27,6 +27,9 @@ object Dependencies {
 
     "org.scalaz" %% "scalaz-core" % V.scalaz,
     "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
+    "org.scalaz" %% "scalaz-effect" % V.scalaz,
+    "org.scalaz" %% "scalaz-typelevel" % V.scalaz,
+    "org.scalaz" %% "scalaz-iteratee" % V.scalaz,
 //    "org.typelevel" %% "scalaz-contrib-210"        % V.scalazContrib,
 //    "org.typelevel" %% "scalaz-contrib-validation" % V.scalazContrib,
 //    "org.typelevel" %% "scalaz-contrib-undo"       % V.scalazContrib,

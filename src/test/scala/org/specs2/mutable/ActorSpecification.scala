@@ -34,7 +34,6 @@ with SpecificationNavigation
 with ContextsInjection
 with Debug
 with TestKitBase
-with ImplicitSender
 {
   sequential
 
@@ -47,10 +46,6 @@ with ImplicitSender
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)
-
-  def codecRes2BS(res: String \/ BitVector): ByteString = {
-    ByteString(res.toOption.get.toByteBuffer)
-  }
 }
 
 trait ActorSpecification extends ActorLikeSpecification {
