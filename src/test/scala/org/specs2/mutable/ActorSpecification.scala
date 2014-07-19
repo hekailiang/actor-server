@@ -3,6 +3,7 @@ package org.specs2.mutable
 import akka.testkit._
 import akka.actor._
 import akka.io.Tcp._
+import akka.util.ByteString
 import scala.collection.immutable.Seq
 import org.specs2._
 import org.specs2.control._
@@ -11,6 +12,9 @@ import org.specs2.main.ArgumentsShortcuts
 import org.specs2.matcher._
 import org.specs2.specification._
 import org.specs2.time._
+import scodec.bits._
+import scalaz._
+import Scalaz._
 
 trait ActorLikeSpecification extends SpecificationStructure
 with SpecificationStringContext
@@ -43,6 +47,10 @@ with ImplicitSender
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)
+
+  def codecRes2BS(res: String \/ BitVector): ByteString = {
+    ByteString(res.toOption.get.toByteBuffer)
+  }
 }
 
 trait ActorSpecification extends ActorLikeSpecification {

@@ -21,6 +21,7 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
+import java.util.concurrent.atomic.AtomicLong
 
 class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpecification
 {
@@ -53,22 +54,23 @@ class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpeci
     "reply pong to ping" in {
 //      TODO: DRY
       val (probe, apiActor) = probeAndActor()
-      val authId = 12345L
-      val messageId = 1L
-      val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
-      val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(authId))
-      probe.send(apiActor, Received(ByteString(req.toOption.get.toByteBuffer)))
-      probe.expectMsg(Write(ByteString(res.toOption.get.toByteBuffer)))
+      val authId = 12345L // TODO: mocks!
+      val messageId = new AtomicLong(1L)
+      val req = protoPackageBox.build(0L, 0L, messageId.get(), RequestAuthId())
+      val res = protoPackageBox.build(0L, 0L, messageId.get(), ResponseAuthId(authId))
+      probe.send(apiActor, Received(codecRes2BS(req)))
+      probe.expectMsg(Write(codecRes2BS(res)))
 
-      val randId = 987654321L
-      val sessionId = 123L
-      val ping = protoPackageBox.build(authId, sessionId, messageId + 1, Ping(randId))
-      val newNewSession = protoPackageBox.build(authId, sessionId, messageId + 1, NewSession(sessionId, messageId + 1))
-      val pong = protoPackageBox.build(authId, sessionId, messageId + 1, Pong(randId))
+      val pingVal = rand.nextLong()
+      val sessionId = rand.nextLong()
+      val ping = protoPackageBox.build(authId, sessionId, messageId.incrementAndGet(), Ping(pingVal))
+      probe.send(apiActor, Received(codecRes2BS(ping)))
 
-      probe.send(apiActor, Received(ByteString(ping.toOption.get.toByteBuffer)))
-      probe.expectMsg(Write(ByteString(newNewSession.toOption.get.toByteBuffer)))
-      probe.expectMsg(Write(ByteString(pong.toOption.get.toByteBuffer)))
+      val newNewSession = protoPackageBox.build(authId, sessionId, messageId.get(), NewSession(sessionId, messageId.get()))
+      val pong = protoPackageBox.build(authId, sessionId, messageId.get(), Pong(pingVal))
+      val ack = protoPackageBox.build(authId, sessionId, messageId.get(), MessageAck(Array(messageId.get())))
+      val expectedMsg = Seq(newNewSession, pong, ack)
+      probe.expectMsgAllOf(expectedMsg.map(m => Write(codecRes2BS(m))) :_*)
       success
     }
 
@@ -83,53 +85,54 @@ class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpeci
 
     "parse packages in single stream" in { // TODO: replace by scalacheck
       val (probe, apiActor) = probeAndActor()
-      val ids = (1L to 100L) map ((_, rand.nextLong))
       val authId = rand.nextLong()
       val sessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
       SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
 
-      val res = ids.map { (item) =>
-        val (msgId, pingVal) = item
-        val p = Package(authId, sessionId, MessageBox(msgId, Ping(pingVal)))
-        protoPackageBox.encode(p).toOption.get
-      }.foldLeft(BitVector.empty)(_ ++ _).toByteBuffer
-      ByteString(res).grouped(7) foreach { buf =>
+      val messages: Seq[MessageBox] = (1 to 2).map { _ =>
+        MessageBox(rand.nextLong, Ping(rand.nextLong))
+      }
+      val packages = messages.map(m => codecRes2BS(protoPackageBox.encode(Package(authId, sessionId, m))))
+      val req = packages.foldLeft(ByteString.empty)(_ ++ _)
+      req.grouped(7) foreach { buf =>
         probe.send(apiActor, Received(buf))
       }
 
-      val expectedPongs = ids map { (item) =>
-        val (msgId, pingVal) = item
-        val p = Package(authId, sessionId, MessageBox(msgId, Pong(pingVal)))
-        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
-        Write(res)
+      val expectedPongs = messages flatMap { message =>
+        val messageId = message.messageId
+        val pingVal = message.body.asInstanceOf[Ping].randomId
+        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+        Seq(codecRes2BS(protoPackageBox.encode(p)), codecRes2BS(protoPackageBox.encode(ack)))
       }
-      probe.expectMsgAllOf(expectedPongs :_*)
+      probe.expectMsgAllOf(expectedPongs.map(Write(_)) :_*)
       success
     }
 
     "handle container with Ping's" in {
       val (probe, apiActor) = probeAndActor()
-      val authId = rand.nextLong()
-      val sessionId = rand.nextLong()
-      val messageId = rand.nextLong()
-      val pingVal = 5L
-      val messageBoxId = 1L
-      val ping = MessageBox(messageBoxId, Ping(pingVal))
-      val container = Container(Seq(ping, ping, ping))
-      val p = Package(authId, sessionId, MessageBox(messageId, container))
-      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
+      val authId = rand.nextLong
+      val sessionId = rand.nextLong
+      val messages: Seq[MessageBox] = (1 to 2).map { _ =>
+        MessageBox(rand.nextLong, Ping(rand.nextLong))
+      }
+      val container = MessageBox(rand.nextLong, Container(messages))
+      val p = Package(authId, sessionId, container)
+      val packageBlob = Received(codecRes2BS(protoPackageBox.encode(p)))
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
       SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
 
-      probe.send(apiActor, Received(ByteString(buf)))
+      probe.send(apiActor, packageBlob)
 
-      val expectedPongs = (1 to container.messages.length) map { id =>
-        val p = Package(authId, sessionId, MessageBox(messageBoxId, Pong(pingVal)))
-        val res = ByteString(protoPackageBox.encode(p).toOption.get.toByteBuffer)
-        Write(res)
+      val expectedPongs = messages flatMap { message =>
+        val messageId = message.messageId
+        val pingVal = message.body.asInstanceOf[Ping].randomId
+        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+        Seq(codecRes2BS(protoPackageBox.encode(p)), codecRes2BS(protoPackageBox.encode(ack)))
       }
-      probe.expectMsgAllOf(expectedPongs :_*)
+      probe.expectMsgAllOf(expectedPongs.map(Write(_)) :_*)
       success
     }
 
@@ -150,7 +153,6 @@ class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpeci
       val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
       val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
       val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-      println(ack, protoPackageBox.encode(ack))
       val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
       val expectMsgs = Seq(ackRes, res)
       probe.expectMsgAllOf(expectMsgs :_*)

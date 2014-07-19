@@ -15,10 +15,10 @@ object ContainerCodec extends Codec[Container] {
   private val nestedError = "container can't be nested"
 
   def encode(c: Container) = {
-    val encodeMessages: Seq[String \/ BitVector] = c.messages.map {
+    val encodeMessages: List[String \/ BitVector] = c.messages.map {
       case MessageBox(_, Container(_)) => nestedError.left
       case m: MessageBox => MessageBoxCodec.encode(m)
-    }
+    }.toList
     for {
       res <- foldEither(encodeMessages)(BitVector.empty)(_ ++ _)
       size <- varint.encode(encodeMessages.length)

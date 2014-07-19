@@ -64,8 +64,6 @@ trait PackageAckService extends PackageCommon { this: Actor =>
 
   def acknowledgeReceivedPackage(p: Package, m: MessageBox): Unit = {
     m match {
-      case MessageBox(_, m: Ping) =>
-        log.info("Ping got, no need in acknowledgement")
       case _ =>
         // TODO: aggregation
         log.info(s"Sending acknowledgement for $p")
