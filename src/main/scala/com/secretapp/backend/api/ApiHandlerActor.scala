@@ -4,6 +4,9 @@ import akka.actor.{ Actor, ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
 import scodec.bits._
+import com.secretapp.backend.services.transport._
+import com.secretapp.backend.services.common.PackageCommon
+import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import PackageCommon._
@@ -13,8 +16,8 @@ import com.datastax.driver.core.{ Session => CSession }
 
 
 // TODO: replace connection: ActorRef hack with real sender (or forget it?)
-class ApiHandler(connection: ActorRef, val session: CSession) extends Actor with ActorLogging
-with WrappedPackageService with PackageHandler
+class ApiHandlerActor(connection: ActorRef, val session: CSession) extends Actor with ActorLogging
+with WrappedPackageService with PackageService
 {
   val handleActor = self
 
