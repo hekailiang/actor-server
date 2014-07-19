@@ -5,6 +5,7 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
 import com.secretapp.backend.protocol.codecs.message.UpdateMessageCodec
+import com.gilt.timeuuid._
 import java.util.UUID
 import collection.JavaConversions._
 import scala.concurrent.Future
@@ -19,8 +20,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "pubkey_hash"
   }
   object uuid extends TimeUUIDColumn(this) with PrimaryKey[UUID]
-  object seq extends LongColumn(this)
-  object userIds extends SetColumn[CommonUpdateRecord, Entity[(Long, UUID), StoredCommonUpdate], Long](this) {
+  object seq extends IntColumn(this)
+  object userIds extends SetColumn[CommonUpdateRecord, Entity[(Long, UUID), StoredCommonUpdate], Int](this) {
     override lazy val name = "user_ids"
   }
 
@@ -31,10 +32,10 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   /**
     * UpdateMessage
     */
-  object senderUID extends LongColumn(this) {
+  object senderUID extends IntColumn(this) {
     override lazy val name = "sender_uid"
   }
-  object destUID extends LongColumn(this) {
+  object destUID extends IntColumn(this) {
     override lazy val name = "dest_uid"
   }
   object mid extends IntColumn(this)
@@ -45,10 +46,10 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "use_aes_key"
   }
   // TODO: Blob type when phanton implements its support in upcoming release
-  object aesKeyHex extends OptionalBigIntColumn(this) {
+  object aesKeyHex extends OptionalStringColumn(this) {
     override lazy val name = "aes_key_hex"
   }
-  object message extends BigIntColumn(this)
+  object message extends StringColumn(this)
 
   override def fromRow(row: Row): Entity[(Long, UUID), StoredCommonUpdate] = {
     updateId(row) match {
@@ -57,7 +58,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
           StoredCommonUpdate(
             seq(row),
             updateProto.Message(senderUID(row), destUID(row), mid(row), keyHash(row), useAesKey(row),
-              aesKeyHex(row) map (x => BitVector(x.toByteArray)), BitVector(message(row).toByteArray))
+              aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
           ))
     }
 
@@ -76,21 +77,23 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
     CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.pubkeyHash eqs pubkeyHash).and(_.uuid gt state).limit(limit).fetch
   }
 
-  def push(pubkeyHash: Long, seq: Long, update: updateProto.UpdateMessage)(implicit session: Session) = Future {
+  def push(pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future {
     update match {
       case updateProto.Message(senderUID, destUID, mid, keyHash, useAesKey, aesKey, message) =>
-        val userIds: java.util.Set[Long] = Set(senderUID, destUID)
+        val userIds: java.util.Set[Int] = Set(senderUID, destUID)
+        // TODO: Prepared statement
         session.execute("""
           INSERT INTO common_updates (
             pubkey_hash, uuid, seq, user_ids, update_id,
             sender_uid, dest_uid, mid, key_hash, use_aes_key, aes_key_hex, message
           )
-          VALUES (?, now(), ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, 1,
+                  ?, ?, ?, ?, ?, ?, ?)
         """,
-          new java.lang.Long(pubkeyHash), new java.lang.Long(seq), userIds,
-          new java.lang.Long(senderUID), new java.lang.Long(destUID), new java.lang.Integer(mid),
+          new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), userIds,
+          new java.lang.Integer(senderUID), new java.lang.Integer(destUID), new java.lang.Integer(mid),
           new java.lang.Long(keyHash), new java.lang.Boolean(useAesKey),
-          aesKey map (x => BigInt(x.toByteArray).underlying) getOrElse (null), BigInt(message.toByteArray).underlying)
+          aesKey map (x => x.toHex) getOrElse (null), message.toHex)
     }
   }
 

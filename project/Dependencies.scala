@@ -23,6 +23,8 @@ object Dependencies {
 
     "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
 
+    "com.gilt" %% "gfc-timeuuid" % "0.0.5",
+
     "org.scalaz" %% "scalaz-core" % V.scalaz,
     "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
 //    "org.typelevel" %% "scalaz-contrib-210"        % V.scalazContrib,

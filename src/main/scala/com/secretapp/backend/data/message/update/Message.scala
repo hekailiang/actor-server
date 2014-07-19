@@ -2,8 +2,8 @@ package com.secretapp.backend.data.message.update
 
 import scodec.bits.BitVector
 
-case class Message(senderUID: Long,
-                   destUID: Long,
+case class Message(senderUID: Int,
+                   destUID: Int,
                    mid: Int,
                    keyHash: Long,
                    useAesKey: Boolean,

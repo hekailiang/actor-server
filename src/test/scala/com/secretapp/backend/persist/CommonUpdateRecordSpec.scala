@@ -5,7 +5,6 @@ import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.message.{update => updateProto, _}
 import com.secretapp.backend.protocol.codecs.common.StringCodec
 import org.specs2.matcher.NoConcurrentExecutionContext
-import org.specs2.mutable._
 import scala.collection.immutable.Seq
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,10 +17,13 @@ import scodec.bits._
 class CommonUpdateRecordSpec extends CassandraSpecification {
   "CommonUpdateRecord" should {
     "get push" in {
+      val senderUID = 1
+      val destUID = 2
       val pubkeyHash = 1L
-      val updateMessage = updateProto.Message(pubkeyHash, 1L, 1, 10L, false, None, StringCodec.encode("my message here").toOption.get)
+      val mid = 1
+      val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
       val ef = for {
-        _ <- CommonUpdateRecord.push(pubkeyHash, 1l, updateMessage)
+        _ <- CommonUpdateRecord.push(pubkeyHash, 1, updateMessage)
         e <- CommonUpdateRecord.select.where(_.pubkeyHash eqs pubkeyHash).one.map(_.get)
       } yield e
 
@@ -35,11 +37,14 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
     }
 
     "get difference" in {
+      val senderUID = 1
+      val destUID = 2
       val pubkeyHash = 2L
+      val mid = 1
       Await.result(CommonUpdateRecord.truncateTable(session), Timeout(5000000).duration)
 
       val initialSeq = 0L
-      val updateMessage = updateProto.Message(pubkeyHash, initialSeq, 1, 10L, false, None, StringCodec.encode("my message here").toOption.get)
+      val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
 
       1 to 1003 foreach { i =>
         Await.result(CommonUpdateRecord.push(pubkeyHash, i, updateMessage), Timeout(5000000).duration)
