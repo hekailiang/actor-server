@@ -38,7 +38,7 @@ object PackageCommon {
   case class PackageToSend(p: PackageEither) extends PackageServiceMessage
 
   trait ServiceMessage
-  case class Authenticate(u: User) extends ServiceMessage
+  case class Authenticate(userId: Long, u: User) extends ServiceMessage
 }
 import PackageCommon._
 
@@ -130,7 +130,13 @@ trait SessionManager extends ActorLogging {
   }
 }
 
-trait PackageManagerService extends PackageCommon with SessionManager { self: Actor =>
+trait UserManagerService {
+  protected var currentUser: Option[(Long, User)] = _
+
+  def getUser = currentUser
+}
+
+trait PackageManagerService extends PackageCommon with SessionManager with UserManagerService { self: Actor =>
   import context._
 
   implicit val session: CSession
@@ -138,13 +144,12 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
   private var currentAuthId: Long = _
   private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
-  private var currentUser: Option[User] = _
 
   def serviceMessagesPF: PartialFunction[ServiceMessage, Any] = {
     // TODO: become
-    case Authenticate(u: User) =>
+    case Authenticate(userId: Long, u: User) =>
       log.info(s"Authenticate: $u")
-      currentUser = Some(u)
+      currentUser = Some(userId, u)
   }
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
@@ -165,7 +170,7 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
         case Success(res) => res match {
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
-            currentUser = authIdRecord.user
+            currentUser = authIdRecord.user.map(u => (authIdRecord.userId.get, u)) // TODO: remove Entity class
             handlePackageAuthentication(p)(f)
           case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
         }
@@ -219,8 +224,6 @@ trait PackageManagerService extends PackageCommon with SessionManager { self: Ac
   def getAuthId = currentAuthId
 
   def getSessionId = currentSessionId
-
-  def getUser = currentUser
 
   private def sendDrop(p: Package, msg: String): Unit = {
     val reply = p.replyWith(p.messageBox.messageId, Drop(p.messageBox.messageId, msg)).left

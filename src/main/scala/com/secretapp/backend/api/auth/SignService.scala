@@ -78,7 +78,7 @@ trait SignService extends PackageCommon { self: Actor =>
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
           // TODO: do we need to insert new key if keyHashes not contain it?
           val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex.toOption, user.keyHashes)
-          handleActor ! Authenticate(user)
+          handleActor ! Authenticate(phoneR.userId, user)
           ResponseAuth(123L, sUser)
         }
       }
@@ -101,7 +101,7 @@ trait SignService extends PackageCommon { self: Actor =>
               // TODO: akka service for ID's
               val userId = 1090901
               for { _ <- UserRecord.insertEntity(Entity(userId, user)) } yield {
-                handleActor ! Authenticate(user)
+                handleActor ! Authenticate(userId, user)
                 val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
                   user.sex.toOption, Seq(user.publicKeyHash))
                 ResponseAuth(123L, sUser).right

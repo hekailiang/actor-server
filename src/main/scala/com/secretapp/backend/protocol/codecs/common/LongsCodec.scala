@@ -8,10 +8,10 @@ import scalaz._
 import Scalaz._
 import com.secretapp.backend.protocol.codecs._
 
-object LongsCodec extends Codec[Seq[Long]] {
+object LongsCodec extends Codec[Array[Long]] {
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
-  def encode(a: Seq[Long]) = {
+  def encode(a: Array[Long]) = {
     for {
       len <- varint.encode(a.length)
     } yield a.map(BitVector.fromLong(_)).foldLeft(len)(_ ++ _)
@@ -22,7 +22,7 @@ object LongsCodec extends Codec[Seq[Long]] {
       l <- varint.decode(buf); (xs, len) = l
     } yield {
       val bitsLen = len * longSize
-      (xs.drop(bitsLen), xs.take(bitsLen).grouped(longSize).map(_.toLong()))
+      (xs.drop(bitsLen), xs.take(bitsLen).grouped(longSize).map(_.toLong()).toArray)
     }
   }
 }
