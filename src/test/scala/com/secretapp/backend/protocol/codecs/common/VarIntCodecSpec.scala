@@ -9,7 +9,7 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-object VarIntCodecSpecification extends Properties("VarInt") {
+object VarIntCodecSpec extends Properties("VarInt") {
   val integers = Gen.choose(Long.MinValue, Long.MaxValue)
 
   property("encode/decode") = forAll(integers) { (a: Long) =>
@@ -17,7 +17,7 @@ object VarIntCodecSpecification extends Properties("VarInt") {
   }
 }
 
-class VarIntCodecSpecification extends Specification {
+class VarIntCodecSpec extends Specification {
   "VarIntCodec" should {
     "encode VarInt" in {
       varint.encode(150) should_== hex"9601".bits.right

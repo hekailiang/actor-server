@@ -10,13 +10,13 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-object BytesCodecSpecification extends Properties("Bytes") {
+object BytesCodecSpec extends Properties("Bytes") {
   property("encode/decode") = forAll(genBV) { (a: BitVector) =>
     protoBytes.decode(protoBytes.encode(a).toOption.get) == (BitVector.empty, a).right
   }
 }
 
-class BytesCodecSpecification extends Specification {
+class BytesCodecSpec extends Specification {
   "BytesCodec" should {
     "encode ByteVector" in {
       val v = hex"f0aff01".bits

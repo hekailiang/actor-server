@@ -9,7 +9,7 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-class PackageCodecSpecification extends Specification {
+class PackageCodecSpec extends Specification {
   "PackageCodec" should {
     "encode Package" in {
       protoPackage.build(1L, 2L, 3L, RequestAuthId()) should_== {

@@ -12,7 +12,7 @@ import test.utils.specifications.RandSpecification
 import scalaz._
 import Scalaz._
 
-class SessionIdRecordSpecification extends Specification with CassandraSpecification with NoConcurrentExecutionContext
+class SessionIdRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext
 with RandSpecification {
   "SessionId" should {
     "insert/get SessionId item" in {

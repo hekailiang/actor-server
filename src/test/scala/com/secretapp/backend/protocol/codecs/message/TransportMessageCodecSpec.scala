@@ -15,7 +15,7 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-class TransportMessageCodecSpecification extends Specification {
+class TransportMessageCodecSpec extends Specification {
   "TransportMessageCodec" should {
     "encode and decode RequestAuth" in {
       val encoded = hex"f0".bits

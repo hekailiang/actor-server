@@ -9,7 +9,7 @@ import scodec.bits._
 import scalaz._
 import Scalaz._
 
-class PackageBoxCodecSpecification extends Specification {
+class PackageBoxCodecSpec extends Specification {
   "PackageBoxCodec" should {
     "encode Package" in {
       protoPackageBox.build(1L, 2L, 3L, RequestAuthId()) should_== {

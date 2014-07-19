@@ -23,7 +23,7 @@ import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import java.util.concurrent.atomic.AtomicLong
 
-class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpecification
+class ApiHandlerSpec extends ActorLikeSpecification with CassandraSpecification
 {
   import system.dispatcher
 

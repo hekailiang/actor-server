@@ -11,7 +11,7 @@ import org.specs2.matcher.NoConcurrentExecutionContext
 import scalaz._
 import Scalaz._
 
-class UserRecordSpecification extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
+class UserRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
   "UserRecord" should {
     "insert/get User Entity" in {
       val entityId = 100

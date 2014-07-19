@@ -9,7 +9,7 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-object LongsCodecSpecification extends Properties("Longs") {
+object LongsCodecSpec extends Properties("Longs") {
   val genLong = for {
     l <- Gen.choose(Long.MinValue, Long.MaxValue)
     tail <- genLongs
@@ -22,7 +22,7 @@ object LongsCodecSpecification extends Properties("Longs") {
   }
 }
 
-class LongsCodecSpecification extends Specification {
+class LongsCodecSpec extends Specification {
   "LongsCodec" should {
     "encode array of longs" in {
       protoLongs.encode(Array(100L, Long.MaxValue)) should_== hex"0200000000000000647fffffffffffffff".bits.right

@@ -9,13 +9,13 @@ import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
 
-object StringCodecSpecification extends Properties("String") {
+object StringCodecSpec extends Properties("String") {
   property("encode/decode") = forAll { (a: String) =>
     protoString.decode(protoString.encode(a).toOption.get) == (BitVector.empty, a).right
   }
 }
 
-class StringCodecSpecification extends Specification {
+class StringCodecSpec extends Specification {
   "StringCodec" should {
     "encode string" in {
       protoString.encode("strтестΩ≈ç√") should_== hex"15737472d182d0b5d181d182cea9e28988c3a7e2889a".bits.right

@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.specs2.mutable.ActorSpecification
 
-class AckTrackerSpecSpecification extends ActorSpecification {
+class AckTrackerSpecSpec extends ActorSpecification {
   import system.dispatcher
 
   override lazy val actorSystemName = "api"
