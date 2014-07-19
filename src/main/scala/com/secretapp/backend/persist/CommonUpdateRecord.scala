@@ -51,6 +51,15 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
   object message extends StringColumn(this)
 
+  /**
+    * UpdateMessageSent
+    */
+  // mid is already defined above
+
+  object randomId extends LongColumn(this) {
+    override lazy val name = "random_id"
+  }
+
   override def fromRow(row: Row): Entity[(Long, UUID), StoredCommonUpdate] = {
     updateId(row) match {
       case 1L =>
@@ -59,6 +68,12 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
             seq(row),
             updateProto.Message(senderUID(row), destUID(row), mid(row), keyHash(row), useAesKey(row),
               aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
+          ))
+      case 4L =>
+        Entity((pubkeyHash(row), uuid(row)),
+          StoredCommonUpdate(
+            seq(row),
+            updateProto.MessageSent(mid(row), randomId(row))
           ))
     }
 
@@ -94,6 +109,17 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           new java.lang.Integer(senderUID), new java.lang.Integer(destUID), new java.lang.Integer(mid),
           new java.lang.Long(keyHash), new java.lang.Boolean(useAesKey),
           aesKey map (x => x.toHex) getOrElse (null), message.toHex)
+      case updateProto.MessageSent(mid, randomId) =>
+        session.execute("""
+          INSERT INTO common_updates (
+            pubkey_hash, uuid, seq, user_ids, update_id,
+            mid, random_id
+          )
+          VALUES (?, ?, ?, ?, 4,
+                  ?, ?)
+        """,
+          new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), Set[Int](): java.util.Set[Int],
+          new java.lang.Integer(mid), new java.lang.Long(randomId))
     }
   }
 

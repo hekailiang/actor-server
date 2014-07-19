@@ -23,6 +23,7 @@ import scala.util.Success
 import scodec.bits._
 import scalaz._
 import Scalaz._
+import scodec.codecs._
 
 trait RpcMessagingService {
   this: RpcService with PackageManagerService with Actor =>
@@ -77,14 +78,20 @@ trait RpcMessagingService {
         } yield {
           val fupdateInserts = mkUpdates(destUserEntity, mid.toInt) map { update =>
             getOrCreateUpdatesManager(update.keyHash) flatMap { updatesManager =>
-              ask(updatesManager, UpdatesProtocol.NewUpdate(destUserEntity.key, update))
+              ask(updatesManager, UpdatesProtocol.NewUpdate(update))
                 .mapTo[(UpdatesManager.State, UUID)]
             }
           }
           // FIXME: handle failures (retry or error, should not break seq)
-          Future.sequence(fupdateInserts) map { _ =>
+          for {
+            // current user's updates manager
+            updatesManager <- getOrCreateUpdatesManager(currentUser._2.publicKeyHash)
+            _ <- Future.sequence(fupdateInserts)
+            s <- ask(updatesManager, UpdatesProtocol.NewUpdate(updateProto.MessageSent(mid.toInt, randomId))).mapTo[(UpdatesManager.State, UUID)]
+          } yield {
+            val rsp = ResponseSendMessage(mid.toInt, s._1.seq, uuid.encode(s._2).toOption.get)
             // TODO: Create UpdateMessageSent update
-            // sendReply(p.replyWith(messageId, RpcResponseBox(messageId, /* reply here */)))
+            sendReply(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
           }
         }
       case None =>

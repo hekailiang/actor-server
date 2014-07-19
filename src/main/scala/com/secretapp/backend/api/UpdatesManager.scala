@@ -8,7 +8,7 @@ import com.secretapp.backend.persist._
 import scala.concurrent.Future
 
 object UpdatesProtocol {
-  case class NewUpdate[A <: updateProto.UpdateMessage](fromUserId: Long, update: A)
+  case class NewUpdate[A <: updateProto.UpdateMessage](update: A)
 }
 
 object UpdatesManager {
@@ -51,13 +51,18 @@ class UpdatesManager(keyHash: Long)(implicit val session: CSession) extends Pers
   var state = UpdatesManager.State(0)
 
   def receiveCommand: Actor.Receive = {
-    case p @ UpdatesProtocol.NewUpdate(fromUserId, update) =>
+    case p @ UpdatesProtocol.NewUpdate(update) =>
       val replyTo = sender
       persist(p) { _ =>
         update match {
           case u: updateProto.UpdateMessage =>
             state = state.incremented
             // FIXME: Handle errors!
+            CommonUpdateRecord.push(keyHash, state.seq, u) map { uuid =>
+              replyTo ! (state, uuid)
+            }
+          case u: updateProto.MessageSent =>
+            state = state.incremented
             CommonUpdateRecord.push(keyHash, state.seq, u) map { uuid =>
               replyTo ! (state, uuid)
             }

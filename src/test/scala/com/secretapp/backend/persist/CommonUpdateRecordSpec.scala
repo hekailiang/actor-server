@@ -22,13 +22,15 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
       val pubkeyHash = 1L
       val mid = 1
       val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
-      val ef = for {
+      val updateMessageSent = updateProto.MessageSent(mid + 1, randomId = 5L)
+      val efs = for {
         _ <- CommonUpdateRecord.push(pubkeyHash, 1, updateMessage)
-        e <- CommonUpdateRecord.select.where(_.pubkeyHash eqs pubkeyHash).one.map(_.get)
-      } yield e
+        _ <- CommonUpdateRecord.push(pubkeyHash, 2, updateMessageSent)
+        f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.pubkeyHash eqs pubkeyHash).fetch
+      } yield f
 
-      val mf = ef map {
-        case Entity(key, first) =>
+      val mf = efs map {
+        case Seq(Entity(key, first), _) =>
           key._1 must equalTo(pubkeyHash)
           first.update.asInstanceOf[updateProto.Message].message must equalTo(StringCodec.encode("my message here").toOption.get)
       }
