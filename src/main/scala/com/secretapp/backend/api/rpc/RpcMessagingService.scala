@@ -2,28 +2,21 @@ package com.secretapp.backend.api.rpc
 
 import akka.actor._
 import akka.pattern.ask
-import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.UpdatesProtocol
-import com.secretapp.backend.api.{ PackageManagerService, UpdatesManager, RpcService, CounterProtocol, CounterState }
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.data.message.rpc.Ok
+import com.datastax.driver.core.{Session => CSession}
+import com.secretapp.backend.api.{ CounterState, CounterProtocol, UpdatesProtocol, UpdatesManager}
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.data.models.SessionId
+import com.secretapp.backend.data.message.rpc.Ok
+import com.secretapp.backend.data.message.{update => updateProto, _}
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
-import com.secretapp.backend.protocol.codecs.message.update.MessageCodec
+import com.secretapp.backend.services._
+import com.secretapp.backend.services.transport._
 import java.util.UUID
 import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.util.Failure
-import scala.util.Success
+import scalaz.Scalaz._
 import scodec.bits._
-import scalaz._
-import Scalaz._
-import scodec.codecs._
+import scodec.codecs.uuid
 
 trait RpcMessagingService {
   this: RpcService with PackageManagerService with Actor =>

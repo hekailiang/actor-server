@@ -108,5 +108,5 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
     handleActor ! PackageToSend(reply)
   }
 
-  private def sendDrop(p: Package, e: Throwable): Unit = sendDrop(p, e.getMessage)
+  protected def sendDrop(p: Package, e: Throwable): Unit = sendDrop(p, e.getMessage)
 }
