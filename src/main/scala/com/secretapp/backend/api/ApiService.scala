@@ -4,7 +4,6 @@ import akka.actor.{ Actor, ActorRef, ActorLogging, Props }
 import akka.util.{ ByteString, Timeout }
 import akka.pattern.ask
 import akka.io.Tcp._
-import akka.event.LoggingAdapter
 import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
@@ -12,7 +11,8 @@ import com.secretapp.backend.data._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.util.RandomService
+import com.secretapp.backend.services._
+import com.secretapp.backend.services.common.{RandomService, LoggerService}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -25,11 +25,6 @@ import scalaz._
 import Scalaz._
 import java.util.concurrent.ConcurrentLinkedQueue
 import com.datastax.driver.core.{ Session => CSession }
-
-
-trait LoggerService {
-  def log: LoggingAdapter
-}
 
 object PackageCommon {
   type PackageEither = Package \/ Package
@@ -71,62 +66,6 @@ trait PackageAckService extends PackageCommon { this: Actor =>
         val reply = p.replyWith(m.messageId, MessageAck(Array(m.messageId))).right
         handleActor ! PackageToSend(reply)
     }
-  }
-}
-
-trait SessionManager extends ActorLogging {
-  self: Actor  =>
-
-  import context._
-
-  implicit val session: CSession
-
-  private case class GetOrCreate(authId: Long, sessionId: Long)
-
-  private val sessionManager = context.actorOf(Props(new Actor {
-    var sessionFutures = new mutable.HashMap[Long, Future[Either[Long, Long]]]()
-
-    def receive = {
-      // TODO: case for forgetting sessions?
-      case GetOrCreate(authId, sessionId) =>
-        log.info(s"GetOrCreate $authId, $sessionId")
-        val f = sessionFutures.get(sessionId) match {
-          case None =>
-            log.info(s"GetOrCreate Creating Future")
-            val f = SessionIdRecord.getEntity(authId, sessionId).flatMap {
-              case s@Some(sessionIdRecord) => Future { Left(sessionId) }
-              case None =>
-                SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
-            }
-            sessionFutures.put(sessionId, f)
-            f
-          case Some(f) =>
-            log.info(s"GetOrCreate Returning existing Future")
-            f map {
-              // We already sent Right to first future processor
-              case Right(sessionId) => Left(sessionId)
-              case left => left
-            }
-        }
-
-        val replyTo = sender()
-        f map (sessionId => replyTo ! sessionId)
-    }
-  }))
-
-  implicit val timeout = Timeout(5 seconds)
-
-  /**
-    * Gets existing session from database or creates new
-    *
-    * @param authId auth id
-    * @param sessionId session id
-    *
-    * @return Left[Long] if existing session got or Right[Long] if new session created
-    *         Perhaps we need something more convenient that Either here
-    */
-  protected def getOrCreateSession(authId: Long, sessionId: Long): Future[Either[Long, Long]] = {
-    ask(sessionManager, GetOrCreate(authId, sessionId)).mapTo[Either[Long, Long]]
   }
 }
 

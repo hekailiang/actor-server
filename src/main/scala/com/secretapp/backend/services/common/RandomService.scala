@@ -1,4 +1,4 @@
-package com.secretapp.backend.util
+package com.secretapp.backend.services.common
 
 import scala.util.Random
 
