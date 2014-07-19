@@ -1,4 +1,4 @@
-package com.secretapp.backend.api.auth
+package com.secretapp.backend.services.auth
 
 import akka.actor._
 import scala.collection.immutable.Seq
@@ -6,7 +6,8 @@ import scala.util.{ Random, Try, Success, Failure }
 import scala.concurrent.Future
 import com.typesafe.config.ConfigFactory
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.PackageCommon
+import com.secretapp.backend.services.common.PackageCommon
+import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.data.message.struct.{ User => StructUser }
 import com.secretapp.backend.data.message.{TransportMessage, RpcResponseBox}
 import com.secretapp.backend.data.message.rpc._
@@ -17,7 +18,6 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
-import PackageCommon._
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
@@ -44,7 +44,7 @@ trait SignService extends PackageCommon { self: Actor =>
     val serverConfig = ConfigFactory.load()
     val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
-    clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: singleton for model
+    clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: move it to actor with persistence
 
     val f = for {
       phoneR <- PhoneRecord.getEntity(phoneNumber)

@@ -23,7 +23,7 @@ import com.secretapp.backend.data.types._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import java.util.concurrent.atomic.AtomicLong
 
-class ApiHandlerSpec extends ActorLikeSpecification with CassandraSpecification
+class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecification
 {
   import system.dispatcher
 
@@ -31,7 +31,7 @@ class ApiHandlerSpec extends ActorLikeSpecification with CassandraSpecification
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandler(probe.ref, session) {
+    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) {
       override lazy val rand = new Random() {
         override def nextLong() = 12345L
       }
