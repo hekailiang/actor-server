@@ -3,13 +3,15 @@ package com.secretapp.backend.api
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
-import akka.util.ByteString
+import akka.util.{ ByteString, Timeout }
+import akka.pattern.ask
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
 import scala.collection.immutable
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.specs2.mutable.ActorSpecification
@@ -22,7 +24,9 @@ class CounterActorSpec extends ActorSpecification {
 
   val probe = TestProbe()
 
-  def getCounterActor(name: String) = system.actorOf(Props(new CounterActor(name)))
+  def getCounterActor(name: String) = system.actorOf(Props(new CounterActor(name)), name)
+
+  implicit val timeout = Timeout(5.seconds)
 
   "CounterActor" should {
     "increment its state" in {
@@ -36,18 +40,24 @@ class CounterActorSpec extends ActorSpecification {
     "recover its state" in {
       val name = s"incrementer-failover-${System.nanoTime()}"
       val counter = getCounterActor(name)
+      println(counter.path.toStringWithoutAddress)
 
-      probe.send(counter, GetNext)
-      probe.send(counter, GetNext)
-      probe.send(counter, GetNext)
-      probe.expectMsgAllOf(5.seconds, CounterState(1L), CounterState(2L), CounterState(3L))
+      val selection = system.actorSelection(s"/user/${name}")
+
+      selection ! GetNext
+      selection ! GetNext
+      selection ! GetNext
+
+      expectMsgAllOf(5.seconds, CounterState(1L), CounterState(2L), CounterState(3L))
 
       system.stop(counter)
 
+      Thread.sleep(1000)
       val recoveredCounter = getCounterActor(name)
 
-      probe.send(recoveredCounter, GetNext)
-      probe.expectMsg(5.seconds, CounterState(4L))
+      selection ! GetNext
+
+      expectMsg(5.seconds, CounterState(4L))
 
       success
     }
