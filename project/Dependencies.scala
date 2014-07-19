@@ -17,10 +17,13 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-kernel" % V.akka,
     "com.typesafe.akka" %% "akka-persistence-experimental" % V.akka,
     "com.github.krasserm" %% "akka-persistence-cassandra" % "0.3.2",
+    "com.typesafe.akka" %% "akka-contrib" % V.akka,
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
     "com.typesafe.akka" %% "akka-slf4j" % V.akka,
 
     "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
+
+    "com.gilt" %% "gfc-timeuuid" % "0.0.5",
 
     "org.scalaz" %% "scalaz-core" % V.scalaz,
     "org.scalaz" %% "scalaz-concurrent" % V.scalaz,
