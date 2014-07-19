@@ -8,8 +8,6 @@ sealed case class Evt(data: String)
 
 case class CounterState(counter: Long) {
   def incremented: CounterState = copy(counter + 1)
-
-  def updated(evt: Evt): CounterState = copy()
 }
 
 object CounterProtocol {
@@ -20,9 +18,6 @@ class CounterActor(name: String, initial: Int = 0) extends PersistentActor {
   override def persistenceId = s"counter-$name"
 
   var state = CounterState(initial)
-
-  def updateState(event: Evt): Unit =
-    state = state.updated(event)
 
   def receiveCommand: Actor.Receive = {
     case CounterProtocol.GetNext =>
