@@ -90,7 +90,7 @@ class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpeci
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
       SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
 
-      val messages: Seq[MessageBox] = (1 to 2).map { _ =>
+      val messages: Seq[MessageBox] = (1 to 100).map { _ =>
         MessageBox(rand.nextLong, Ping(rand.nextLong))
       }
       val packages = messages.map(m => codecRes2BS(protoPackageBox.encode(Package(authId, sessionId, m))))
@@ -114,7 +114,7 @@ class ApiHandlerSpecification extends ActorLikeSpecification with CassandraSpeci
       val (probe, apiActor) = probeAndActor()
       val authId = rand.nextLong
       val sessionId = rand.nextLong
-      val messages: Seq[MessageBox] = (1 to 2).map { _ =>
+      val messages: Seq[MessageBox] = (1 to 100).map { _ =>
         MessageBox(rand.nextLong, Ping(rand.nextLong))
       }
       val container = MessageBox(rand.nextLong, Container(messages))
