@@ -3,13 +3,14 @@ package com.secretapp.backend.services
 import akka.actor.Actor
 import com.secretapp.backend.api._
 import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.services.auth._
 import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
-trait RpcService extends SignService with RpcMessagingService {
+trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService {
   self: Actor with UserManagerService with PackageManagerService =>
 
   def handleRpc(p: Package, messageId: Long): PartialFunction[RpcRequest, Unit] = {
@@ -24,6 +25,13 @@ trait RpcService extends SignService with RpcMessagingService {
     case rq: RequestSendMessage =>
       getUser map { user =>
         (handleRequestSendMessage(p, messageId, user) _).tupled(RequestSendMessage.unapply(rq).get)
+      } getOrElse {
+        sendDrop(p, new RuntimeException("user is not authenticated"))
+      }
+
+    case rq: updateProto.RequestGetState =>
+      getUser map { user =>
+        handleRequestGetState(p, messageId, user)
       } getOrElse {
         sendDrop(p, new RuntimeException("user is not authenticated"))
       }

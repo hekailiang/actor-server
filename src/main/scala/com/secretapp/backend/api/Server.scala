@@ -4,7 +4,7 @@ import akka.actor.{ Actor, ActorLogging, Props }
 import akka.io.Tcp._
 import com.datastax.driver.core.{ Session => CSession }
 
-class Server(session: CSession) extends Actor with ActorLogging with MessageCounter {
+class Server(session: CSession) extends Actor with ActorLogging {
 
   import context.system
 

@@ -16,9 +16,9 @@ case class User(publicKeyHash: Long,
 }
 
 object User {
-  def build(publicKey: BitVector, firstName: String, lastName: Option[String], sex: Sex): User = {
+  def build(publicKey: BitVector, firstName: String, lastName: Option[String], sex: Sex, publicKeyHash: Long = 1L): User = {
     val accessSalt = "salt" // new Random().nextString(30)
-    User(publicKeyHash = 1L,
+    User(publicKeyHash = publicKeyHash,
       publicKey = publicKey,
       accessSalt = accessSalt,
       firstName = firstName,

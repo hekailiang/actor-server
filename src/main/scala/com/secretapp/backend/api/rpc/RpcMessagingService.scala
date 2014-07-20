@@ -2,11 +2,11 @@ package com.secretapp.backend.api.rpc
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.{Session => CSession}
-import com.secretapp.backend.api.{ CounterState, CounterProtocol, UpdatesProtocol, UpdatesManager}
-import com.secretapp.backend.data.message.rpc.messaging._
+import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.api.{ CounterProtocol, CounterState, UpdatesManager, UpdatesProtocol }
+import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.data.message.rpc.Ok
-import com.secretapp.backend.data.message.{update => updateProto, _}
+import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
@@ -14,22 +14,32 @@ import com.secretapp.backend.services._
 import com.secretapp.backend.services.transport._
 import java.util.UUID
 import scala.concurrent.Future
+import scala.util._
 import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
 trait RpcMessagingService {
   this: RpcService with PackageManagerService with Actor =>
-  import context._
+
+  import context.dispatcher
 
   //val updatesManager = context.actorOf(Props(new UpdatesManager(sessionId)))
   val messagesCounter = context.actorSelection("/user/message-counter")
 
+  // TODO: cache result
   protected def getOrCreateUpdatesManager(keyHash: Long): Future[ActorRef] = {
-    val selection = context.actorSelection(s"/user/update-manager/${keyHash.toString}")
+    val selection = context.actorSelection(s"/user/updates-manager-${keyHash.toString}")
+
     selection.resolveOne recover {
       case e: ActorNotFound =>
-        system.actorOf(Props(new UpdatesManager(keyHash)), s"update-manager/${keyHash.toString}")
+        println(s"Creating updates-manager-${keyHash.toString}")
+        val ref = context.system.actorOf(Props(new UpdatesManager(keyHash)), s"updates-manager-${keyHash.toString}")
+        println("Created")
+        ref
+    } andThen {
+      case Failure(e) =>
+        log.error("Cannot resolve updates-manager-${keyHash.toString}", e)
     }
   }
 
@@ -56,8 +66,7 @@ trait RpcMessagingService {
           message = useAesKey match {
             case true => aesMessage.get
             case false => message.message.get
-          }
-        )
+          })
       }
     }
 
@@ -69,8 +78,11 @@ trait RpcMessagingService {
         val fupdates = for {
           mid <- fmid
         } yield {
+          println("destUserGot")
           val fupdateInserts = mkUpdates(destUserEntity, mid.toInt) map { update =>
+            println(s"Update ${update}")
             getOrCreateUpdatesManager(update.keyHash) flatMap { updatesManager =>
+              println("sending updates", updatesManager)
               ask(updatesManager, UpdatesProtocol.NewUpdate(update))
                 .mapTo[(UpdatesManager.State, UUID)]
             }
@@ -78,12 +90,11 @@ trait RpcMessagingService {
           // FIXME: handle failures (retry or error, should not break seq)
           for {
             // current user's updates manager
-            updatesManager <- getOrCreateUpdatesManager(currentUser._2.publicKeyHash)
             _ <- Future.sequence(fupdateInserts)
+            updatesManager <- getOrCreateUpdatesManager(currentUser._2.publicKeyHash)
             s <- ask(updatesManager, UpdatesProtocol.NewUpdate(updateProto.MessageSent(mid.toInt, randomId))).mapTo[(UpdatesManager.State, UUID)]
           } yield {
             val rsp = ResponseSendMessage(mid.toInt, s._1.seq, uuid.encode(s._2).toOption.get)
-            // TODO: Create UpdateMessageSent update
             sendReply(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
           }
         }

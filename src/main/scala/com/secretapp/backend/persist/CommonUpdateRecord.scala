@@ -92,7 +92,12 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
     CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.pubkeyHash eqs pubkeyHash).and(_.uuid gt state).limit(limit).fetch
   }
 
-  def push(pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future {
+  def getState(pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
+    CommonUpdateRecord.select(_.uuid).orderBy(_.uuid.desc).one
+
+  def push(pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future[UUID] {
+    val uuid = TimeUuid()
+
     update match {
       case updateProto.Message(senderUID, destUID, mid, keyHash, useAesKey, aesKey, message) =>
         val userIds: java.util.Set[Int] = Set(senderUID, destUID)
@@ -105,7 +110,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           VALUES (?, ?, ?, ?, 1,
                   ?, ?, ?, ?, ?, ?, ?)
         """,
-          new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), userIds,
+          new java.lang.Long(pubkeyHash), uuid, new java.lang.Integer(seq), userIds,
           new java.lang.Integer(senderUID), new java.lang.Integer(destUID), new java.lang.Integer(mid),
           new java.lang.Long(keyHash), new java.lang.Boolean(useAesKey),
           aesKey map (x => x.toHex) getOrElse (null), message.toHex)
@@ -121,6 +126,8 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), Set[Int](): java.util.Set[Int],
           new java.lang.Integer(mid), new java.lang.Long(randomId))
     }
+
+    uuid
   }
 
 

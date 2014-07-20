@@ -1,6 +1,8 @@
 package com.secretapp.backend.api
 
 import akka.actor._
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
 import com.datastax.driver.core.{Session => CSession}
 import com.secretapp.backend.data.message.{update => updateProto}
@@ -9,61 +11,44 @@ import scala.concurrent.Future
 
 object UpdatesProtocol {
   case class NewUpdate[A <: updateProto.UpdateMessage](update: A)
+  case object GetState
 }
 
 object UpdatesManager {
   case class State(seq: Int) {
     def incremented = copy(seq = seq + 1)
   }
+
+  def topicFor(keyHash: Long) = s"updates-${keyHash.toString()}"
 }
-/*
-class GlobalUpdatesManager(session: CSession) extends Actor with ActorLogging  {
-  import UpdatesProtocol._
-  import context._
 
-  implicit val _session = session
+class UpdatesManager(keyHash: Long)(implicit session: CSession) extends PersistentActor with ActorLogging {
+  override def persistenceId = s"updates-manager-${keyHash.toString()}"
 
-  val mediator = DistributedPubSubExtension(context.system).mediator
-  mediator ! Subscribe("global-updates", self)
-
-  val sequences = mutable.HashMap[Long, Long]()
-
-  def receive = {
-    case NewUpdate(userId, update) =>
-      userSessions(userId) map { sessions =>
-        sessions foreach { sessionId =>
-          //CommonUpdateRecord.push(userId, sessionId, update)
-        }
-      }
-  }
-
-  def userSessions(userId: Long): Future[Set[Long]] = Future {
-    Set(userId)
-  }
-}
- */
-class UpdatesManager(keyHash: Long)(implicit val session: CSession) extends PersistentActor with ActorLogging {
-  import context._
-  import UpdatesManager._
-
-  override def persistenceId = s"updates-manager-${keyHash}"
+  import context.dispatcher
 
   var state = UpdatesManager.State(0)
 
+  val mediator = DistributedPubSubExtension(context.system).mediator
+  val topic = UpdatesManager.topicFor(keyHash)
+
   def receiveCommand: Actor.Receive = {
+    case UpdatesProtocol.GetState =>
+      val replyTo = sender
+      CommonUpdateRecord.getState(keyHash)(session) map { muuid =>
+        replyTo ! (state.seq, muuid)
+      }
     case p @ UpdatesProtocol.NewUpdate(update) =>
+      log.info(s"NewUpdate {}", update)
       val replyTo = sender
       persist(p) { _ =>
         update match {
           case u: updateProto.UpdateMessage =>
             state = state.incremented
             // FIXME: Handle errors!
-            CommonUpdateRecord.push(keyHash, state.seq, u) map { uuid =>
-              replyTo ! (state, uuid)
-            }
-          case u: updateProto.MessageSent =>
-            state = state.incremented
-            CommonUpdateRecord.push(keyHash, state.seq, u) map { uuid =>
+            CommonUpdateRecord.push(keyHash, state.seq, u)(session) map { uuid =>
+              log.info("Pushed update seq={}, state={}", state.seq, uuid)
+              mediator ! Publish(topic, u)
               replyTo ! (state, uuid)
             }
         }
@@ -71,6 +56,9 @@ class UpdatesManager(keyHash: Long)(implicit val session: CSession) extends Pers
   }
 
   def receiveRecover: Actor.Receive = {
-    case _ => state = state.incremented
+    case RecoveryCompleted =>
+    case s =>
+      println(s"Recovering ${s}")
+      state = state.incremented
   }
 }
