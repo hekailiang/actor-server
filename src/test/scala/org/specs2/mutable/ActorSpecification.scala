@@ -13,8 +13,6 @@ import org.specs2.matcher._
 import org.specs2.specification._
 import org.specs2.time._
 import scodec.bits._
-import scalaz._
-import Scalaz._
 
 trait ActorLikeSpecification extends SpecificationStructure
 with SpecificationStringContext

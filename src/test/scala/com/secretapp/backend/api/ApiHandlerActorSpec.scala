@@ -68,45 +68,41 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       implicit val session = SessionIdentifier()
       val pingVal = rand.nextLong()
       insertAuthId()
-      Ping(pingVal) :~> (|@<~(Pong(pingVal), _))
+      Ping(pingVal) :~> @<~:(Pong(pingVal))
     }
 
-//    "send drop to invalid crc" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411".bits.toByteBuffer
-//      val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32")).toOption.get.toByteBuffer
-//      probe.send(apiActor, Received(ByteString(req)))
-//      probe.expectMsg(Write(ByteString(res)))
-//      success
-//    }
-//
-//    "parse packages in single stream" in { // TODO: replace by scalacheck
-//      val (probe, apiActor) = probeAndActor()
-//      val authId = rand.nextLong()
-//      val sessionId = rand.nextLong()
-//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-//      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-//
-//      val messages: Seq[MessageBox] = (1 to 100).map { _ =>
-//        MessageBox(rand.nextLong, Ping(rand.nextLong))
-//      }
-//      val packages = messages.map(m => codecRes2BS(protoPackageBox.encode(Package(authId, sessionId, m))))
-//      val req = packages.foldLeft(ByteString.empty)(_ ++ _)
-//      req.grouped(7) foreach { buf =>
-//        probe.send(apiActor, Received(buf))
-//      }
-//
-//      val expectedPongs = messages flatMap { message =>
-//        val messageId = message.messageId
-//        val pingVal = message.body.asInstanceOf[Ping].randomId
-//        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
-//        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-//        Seq(codecRes2BS(protoPackageBox.encode(p)), codecRes2BS(protoPackageBox.encode(ack)))
-//      }
-//      probe.expectMsgAllOf(expectedPongs.map(Write(_)) :_*)
-//      success
-//    }
-//
+    "send drop to package with invalid crc" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411"
+      probe.send(apiActor, Received(req))
+      val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32"))
+      probe.expectMsg(Write(res))
+      success
+    }
+
+    "parse packages in single stream" in {
+      val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      insertAuthAndSessionId()
+
+      val messages = (1 to 100).map { _ => (Ping(rand.nextLong), rand.nextLong) }
+      val packages = messages.map(t => pack(t._1, t._2))
+      val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
+      req.grouped(7) foreach { buf =>
+        probe.send(apiActor, Received(buf))
+      }
+
+      val expectedPongs = messages flatMap { t =>
+        val pingVal = t._1.randomId
+        val messageId = t._2
+        val p = pack(Pong(pingVal), messageId)
+        val ackPack = ack(messageId)
+        Seq(p, ackPack)
+      }
+      probe.expectMsgAllOf(expectedPongs.map(p => Write(p.blob)) :_*)
+      success
+    }
+
 //    "handle container with Ping's" in {
 //      val (probe, apiActor) = probeAndActor()
 //      val authId = rand.nextLong

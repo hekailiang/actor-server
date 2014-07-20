@@ -108,7 +108,8 @@ object Dependencies {
     "org.specs2" %% "specs2" % "2.3.13" % "test",
     "com.typesafe.akka" %% "akka-testkit" % V.akka % "test",
     "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test",
-    "org.scalacheck" %% "scalacheck" % "1.11.4" % "test"
+    "org.scalacheck" %% "scalacheck" % "1.11.4" % "test",
+    "org.typelevel" %% "scalaz-specs2" % "0.2" % "test"
   )
 
   lazy val rootDependencies = compileDependencies ++ testDependencies
