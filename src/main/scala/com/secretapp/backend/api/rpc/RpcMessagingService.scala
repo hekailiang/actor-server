@@ -25,7 +25,7 @@ trait RpcMessagingService {
   import context.dispatcher
 
   //val updatesManager = context.actorOf(Props(new UpdatesManager(sessionId)))
-  val messagesCounter = context.actorSelection("/user/message-counter")
+  val messageCounter = context.actorSelection("message-counter")
 
   // TODO: cache result
   protected def getOrCreateUpdatesManager(keyHash: Long): Future[ActorRef] = {
@@ -70,7 +70,7 @@ trait RpcMessagingService {
       }
     }
 
-    val fmid = ask(messagesCounter, CounterProtocol.GetNext).mapTo[CounterState] map (_.counter)
+    val fmid = ask(messageCounter, CounterProtocol.GetNext).mapTo[CounterState] map (_.counter)
     val fdestUserEntity = UserRecord.getEntity(currentUser._1.toInt)
 
     fdestUserEntity map {
