@@ -1,7 +1,7 @@
-package com.secretapp.backend.protocol.codecs.message.rpc.update
+package com.secretapp.backend.protocol.codecs.message.update
 
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec

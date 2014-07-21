@@ -15,7 +15,7 @@ object PackageCommon {
   case class MessageBoxToSend(mb: MessageBox) extends PackageServiceMessage
 
   trait ServiceMessage
-  case class Authenticate(userId: Long, u: User) extends ServiceMessage
+  case class Authenticate(u: User) extends ServiceMessage
 }
 import PackageCommon._
 

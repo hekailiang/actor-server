@@ -169,7 +169,7 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       val lastName = Some("Klim")
       insertAuthAndSessionId(userId.some)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, smsHash, smsCode)).sync()
-      UserRecord.insertEntity(Entity(userId, User.build(pubKey, firstName, lastName, NoSex)))
+      UserRecord.insertEntity(User.build(userId, pubKey, firstName, lastName, NoSex))
       PhoneRecord.insertEntity(Phone(phone, userId))
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(phone, smsHash, smsCode, pubKey)))

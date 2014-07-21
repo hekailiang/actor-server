@@ -68,7 +68,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
       SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, "wow", "such sms")).sync()
-      UserRecord.insertEntity(Entity(userId, User.build(pubKey, firstName, lastName, NoSex, pubkeyHash)))
+      UserRecord.insertEntity(User.build(userId, pubKey, firstName, lastName, NoSex, pubkeyHash))
       PhoneRecord.insertEntity(Phone(phone, userId))
 
       probe.send(apiActor, Received(ByteString(buf)))
@@ -85,7 +85,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       // insert second user
       val sndpubkeyHash = 3L
       UserRecord.insertEntity(
-        Entity(3000, User.build(hex"ac1d3000".bits, "Wayne", Some("Brain"), NoSex, sndpubkeyHash))
+        User.build(3000, hex"ac1d3000".bits, "Wayne", Some("Brain"), NoSex, sndpubkeyHash)
       ).sync()
 
       {

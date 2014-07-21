@@ -6,6 +6,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
 import akka.pattern.ask
 import com.secretapp.backend.api.UpdatesManager
 import com.secretapp.backend.api.UpdatesProtocol
+import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.data.message.rpc.Ok
 import com.secretapp.backend.data.message.rpc.update._
@@ -40,13 +41,13 @@ trait RpcUpdatesService {
   lazy val mediator = DistributedPubSubExtension(context.system).mediator
   lazy val pusher = context.actorOf(Props(new PusherActor(handleActor)))
 
-  def handleRequestGetState(p: Package, messageId: Long, currentUser: (Long, User)) = {
-    getOrCreateUpdatesManager(currentUser._2.publicKeyHash) map { manager =>
+  def handleRequestGetState(p: Package, messageId: Long, currentUser: User) = {
+    getOrCreateUpdatesManager(currentUser.publicKeyHash) map { manager =>
       for {
         s <- ask(manager, UpdatesProtocol.GetState).mapTo[(Int, Option[UUID])]; (seq, muuid) = s
       } yield {
         val rsp = State(seq, muuid map (uuid.encode(_).toOption.get) getOrElse (BitVector.empty))
-        mediator ! Subscribe(UpdatesManager.topicFor(currentUser._2.publicKeyHash), pusher)
+        mediator ! Subscribe(UpdatesManager.topicFor(currentUser.publicKeyHash), pusher)
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
       }
     }

@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.message.rpc.update
+package com.secretapp.backend.data.message.update
 
 import scala.language.implicitConversions
 import com.secretapp.backend.protocol.codecs.message.UpdateMessageCodec
@@ -11,8 +11,10 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends RpcResponseMessage
+case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends UpdateMessage
 {
+  val updateType = 0xd
+
   def toProto: String \/ protobuf.CommonUpdate = {
     for {
       update <- UpdateMessageCodec.encode(body)
@@ -20,8 +22,8 @@ case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends
   }
 }
 
-object CommonUpdate extends RpcResponseMessageObject {
-  val responseType = 0xd
+object CommonUpdate extends UpdateMessageObject {
+  val updateType = 0xd
 
   def fromProto(u: protobuf.CommonUpdate): String \/ CommonUpdate = u match {
     case protobuf.CommonUpdate(seq, state, updateId, body) =>

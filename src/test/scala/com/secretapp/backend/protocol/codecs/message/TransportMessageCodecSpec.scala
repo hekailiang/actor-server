@@ -103,6 +103,22 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode Update.CommonUpdate" in {
+      val encoded = hex"05140000000d0f08011202ac1d18022205087b10e707".bits
+      val decoded = UpdateBox(CommonUpdate(1, hex"ac1d".bits, NewDevice(123, 999L)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode Update.CommonUpdateTooLong" in {
+      val encoded = hex"05050000001900".bits
+      val decoded = UpdateBox(CommonUpdateTooLong())
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     //  RPC Requests
 
     "encode and decode RpcRequest.RequestGetDifference" in {
@@ -146,22 +162,6 @@ class TransportMessageCodecSpec extends Specification {
     }
 
     //  RPC Responses
-
-    "encode and decode RpcResponse.CommonUpdate" in {
-      val encoded = hex"04000000000000000115010000000d0f08011202ac1d18022205087b10e707".bits
-      val decoded = RpcResponseBox(1L, Ok(CommonUpdate(1, hex"ac1d".bits, NewDevice(123, 999L))))
-
-      protoTransportMessage.encode(decoded) should_== encoded.right
-      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
-    }
-
-    "encode and decode RpcResponse.CommonUpdateTooLong" in {
-      val encoded = hex"04000000000000000106010000001900".bits
-      val decoded = RpcResponseBox(1L, Ok(CommonUpdateTooLong()))
-
-      protoTransportMessage.encode(decoded) should_== encoded.right
-      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
-    }
 
     "encode and decode RpcResponse.Difference" in {
       val encoded = hex"04000000000000000138010000000c3208e7071202ac1d1a1c080110b9601a0754696d6f74687922044b6c696d2802300130023003220908021205087b10e7072800".bits

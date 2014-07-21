@@ -78,7 +78,7 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
           // TODO: do we need to insert new key if keyHashes not contain it?
           val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex.toOption, user.keyHashes)
-          handleActor ! Authenticate(phoneR.userId, user)
+          handleActor ! Authenticate(user)
           ResponseAuth(123L, sUser)
         }
       }
@@ -97,13 +97,13 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
           yield validateSignParams(smsHash, smsCode)(smsCodeR)
           f flatMap {
             case \/-(_) =>
-              val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
-              // TODO: akka service for ID's
               val userId = genUserId
-              for { _ <- UserRecord.insertEntity(Entity(userId, user)) } yield {
-                handleActor ! Authenticate(userId, user)
+              val user = User.build(userId, publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
+              // TODO: akka service for ID's
+              for { _ <- UserRecord.insertEntity(user) } yield {
+                handleActor ! Authenticate(user)
                 val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
-                  user.sex.toOption, Seq(user.publicKeyHash))
+                  user.sex.toOption, Seq(user.publicKeyHash)) // TODO: move into User model
                 ResponseAuth(123L, sUser).right
               }
             case l@(-\/(_)) => Future.successful(l)

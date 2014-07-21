@@ -15,7 +15,7 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
   "UserRecord" should {
     "insert/get User Entity" in {
       val entityId = 100
-      val entity = Entity(entityId, User(123L, hex"ac1d".bits, "Wayne", "salt", Some("Brain"), Male, Seq(123L)))
+      val entity = User(entityId, 123L, hex"ac1d".bits, "Wayne", "salt", Some("Brain"), Male, Seq(123L))
       val insertFuture = UserRecord.insertEntity(entity)
 
       val chain = for {

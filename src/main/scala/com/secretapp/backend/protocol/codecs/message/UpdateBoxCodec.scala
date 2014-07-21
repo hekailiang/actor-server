@@ -11,6 +11,8 @@ import scodec.codecs._
 
 object UpdateBoxCodec extends Codec[UpdateBox] {
   private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
+    .\(CommonUpdate.updateType) { case c: CommonUpdate => c } (protoPayload(CommonUpdateCodec))
+    .\(CommonUpdateTooLong.updateType) { case c: CommonUpdateTooLong => c } (protoPayload(CommonUpdateTooLongCodec))
     .\(Message.updateType) { case m: Message => m } (MessageCodec)
     .\(MessageSent.updateType) { case m: MessageSent => m } (MessageSentCodec)
     .\(NewDevice.updateType) { case n: NewDevice => n } (NewDeviceCodec)

@@ -1,4 +1,4 @@
-package com.secretapp.backend.protocol.codecs.message.rpc.update
+package com.secretapp.backend.protocol.codecs.message.update
 
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.update._

@@ -5,7 +5,8 @@ import scala.util.Random
 import com.secretapp.backend.data.types._
 import scodec.bits.BitVector
 
-case class User(publicKeyHash: Long,
+case class User(id: Int,
+                publicKeyHash: Long,
                 publicKey: BitVector,
                 accessSalt: String,
                 firstName: String,
@@ -16,9 +17,10 @@ case class User(publicKeyHash: Long,
 }
 
 object User {
-  def build(publicKey: BitVector, firstName: String, lastName: Option[String], sex: Sex, publicKeyHash: Long = 1L): User = {
+  def build(id: Int, publicKey: BitVector, firstName: String, lastName: Option[String], sex: Sex, publicKeyHash: Long = 1L): User = {
     val accessSalt = "salt" // new Random().nextString(30)
-    User(publicKeyHash = publicKeyHash,
+    User(id = id,
+      publicKeyHash = publicKeyHash,
       publicKey = publicKey,
       accessSalt = accessSalt,
       firstName = firstName,

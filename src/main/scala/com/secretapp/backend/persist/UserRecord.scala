@@ -12,7 +12,7 @@ import scala.math.BigInt
 import scalaz._
 import Scalaz._
 
-sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
+sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override lazy val tableName = "users"
 
   object id extends IntColumn(this) with PartitionKey[Int]
@@ -22,7 +22,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   object publicKey extends BigIntColumn(this) {
     override lazy val name = "public_key"
   }
-  object keyHashes extends SetColumn[UserRecord, Entity[Int, User], Long](this) with StaticColumn[Set[Long]] {
+  object keyHashes extends SetColumn[UserRecord, User, Long](this) with StaticColumn[Set[Long]] {
     override lazy val name = "key_hashes"
   }
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
@@ -36,46 +36,45 @@ sealed class UserRecord extends CassandraTable[UserRecord, Entity[Int, User]] {
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
 
-  override def fromRow(row: Row): Entity[Int, User] = {
-    val user = User(
+  override def fromRow(row: Row): User = {
+    User(
+      id = id(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row).toByteArray),
       keyHashes = keyHashes(row).toIndexedSeq,
       accessSalt = accessSalt(row),
       firstName = firstName(row),
       lastName = lastName(row),
-      sex = intToSex(sex(row)) )
-    Entity(id(row), user)
+      sex = intToSex(sex(row))
+    )
   }
 }
 
 object UserRecord extends UserRecord with DBConnector {
-  def insertEntity(entity: Entity[Int, User])(implicit session: Session): Future[ResultSet] = entity match {
-    case Entity(id, user) =>
-      insert.value(_.id, id)
-        .value(_.publicKeyHash, user.publicKeyHash)
-        .value(_.publicKey, BigInt(user.publicKey.toByteArray))
-        .value(_.keyHashes, Set(user.publicKeyHash))
-        .value(_.accessSalt, user.accessSalt)
-        .value(_.firstName, user.firstName)
-        .value(_.lastName, user.lastName)
-        .value(_.sex, sexToInt(user.sex))
-        .future()
+  def insertEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
+    insert.value(_.id, entity.id)
+      .value(_.publicKeyHash, entity.publicKeyHash)
+      .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
+      .value(_.keyHashes, Set(entity.publicKeyHash))
+      .value(_.accessSalt, entity.accessSalt)
+      .value(_.firstName, entity.firstName)
+      .value(_.lastName, entity.lastName)
+      .value(_.sex, sexToInt(entity.sex))
+      .future()
   }
 
-  def insertPartEntity(entity: Entity[Int, User])(implicit session: Session): Future[ResultSet] = entity match {
-    case Entity(id, user) =>
-      insert.value(_.id, id)
-        .value(_.publicKeyHash, user.publicKeyHash)
-        .value(_.publicKey, BigInt(user.publicKey.toByteArray))
-        .future().flatMap(_ => addKeyHash(id, user))
+  def insertPartEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
+    insert.value(_.id, entity.id)
+      .value(_.publicKeyHash, entity.publicKeyHash)
+      .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
+      .future().flatMap(_ => addKeyHash(entity))
   }
 
-  private def addKeyHash(id: Int, user: User)(implicit session: Session) = {
-    update.where(_.id eqs id).modify(_.keyHashes add user.publicKeyHash).future()
+  private def addKeyHash(user: User)(implicit session: Session) = {
+    update.where(_.id eqs user.id).modify(_.keyHashes add user.publicKeyHash).future()
   }
 
-  def getEntity(id: Int)(implicit session: Session): Future[Option[Entity[Int, User]]] = {
+  def getEntity(id: Int)(implicit session: Session): Future[Option[User]] = {
     select.where(_.id eqs id).one()
   }
 }

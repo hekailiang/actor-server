@@ -26,9 +26,9 @@ with GeneratorService { self: Actor =>
 
   def serviceMessagesPF: PartialFunction[ServiceMessage, Any] = {
     // TODO: become
-    case Authenticate(userId: Long, u: User) =>
+    case Authenticate(u: User) =>
       log.info(s"Authenticate: $u")
-      currentUser = Some(userId, u)
+      currentUser = Some(u)
   }
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
@@ -49,7 +49,7 @@ with GeneratorService { self: Actor =>
         case Success(res) => res match {
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
-            currentUser = authIdRecord.user.map(u => (authIdRecord.userId.get, u)) // TODO: remove Entity class
+            currentUser = authIdRecord.user
             handlePackageAuthentication(p)(f)
           case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
         }

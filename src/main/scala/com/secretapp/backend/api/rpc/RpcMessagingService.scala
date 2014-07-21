@@ -43,7 +43,7 @@ trait RpcMessagingService {
     }
   }
 
-  def handleRequestSendMessage(p: Package, messageId: Long, currentUser: (Long, User))(uid: Int,
+  def handleRequestSendMessage(p: Package, messageId: Long, currentUser: User)(uid: Int,
     accessHash: Long,
     randomId: Long,
     useAesKey: Boolean,
@@ -52,13 +52,12 @@ trait RpcMessagingService {
     // TODO: check accessHash SA-21
 
     @inline
-    def mkUpdates(destUserEntity: Entity[Int, User], mid: Int): Seq[updateProto.Message] = {
-      val Entity(destUID, destUser) = destUserEntity
+    def mkUpdates(destUser: User, mid: Int): Seq[updateProto.Message] = {
       messages map { message =>
         // TODO: check conformity of keyHash to uid
         updateProto.Message(
-          senderUID = currentUser._1.toInt,
-          destUID = destUID,
+          senderUID = currentUser.id,
+          destUID = destUser.id,
           mid = mid,
           keyHash = message.keyHash,
           useAesKey = useAesKey,
@@ -71,7 +70,7 @@ trait RpcMessagingService {
     }
 
     val fmid = ask(messageCounter, CounterProtocol.GetNext).mapTo[CounterState] map (_.counter)
-    val fdestUserEntity = UserRecord.getEntity(currentUser._1.toInt)
+    val fdestUserEntity = UserRecord.getEntity(currentUser.id)
 
     fdestUserEntity map {
       case Some(destUserEntity) =>
@@ -91,7 +90,7 @@ trait RpcMessagingService {
           for {
             // current user's updates manager
             _ <- Future.sequence(fupdateInserts)
-            updatesManager <- getOrCreateUpdatesManager(currentUser._2.publicKeyHash)
+            updatesManager <- getOrCreateUpdatesManager(currentUser.publicKeyHash)
             s <- ask(updatesManager, UpdatesProtocol.NewUpdate(updateProto.MessageSent(mid.toInt, randomId))).mapTo[(UpdatesManager.State, UUID)]
           } yield {
             val rsp = ResponseSendMessage(mid.toInt, s._1.seq, uuid.encode(s._2).toOption.get)
