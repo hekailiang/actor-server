@@ -39,7 +39,7 @@ trait ActorServiceHelpers extends RandomService {
     protoPackageBox.build(mockAuthId, sessionId, messageId, NewSession(sessionId, messageId))
   }
 
-  def insertAuthId(userId: Option[Long] = None): Unit = blocking {
+  def insertAuthId(userId: Option[Int] = None): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(mockAuthId, userId)).sync()
   }
 
@@ -47,7 +47,7 @@ trait ActorServiceHelpers extends RandomService {
     SessionIdRecord.insertEntity(SessionId(mockAuthId, s.id)).sync()
   }
 
-  def insertAuthAndSessionId(userId: Option[Long] = None)(implicit s: SessionIdentifier): Unit = {
+  def insertAuthAndSessionId(userId: Option[Int] = None)(implicit s: SessionIdentifier): Unit = {
     insertAuthId(userId)
     insertSessionId
   }
@@ -118,5 +118,9 @@ trait ActorServiceHelpers extends RandomService {
     expectedMsgIds should containAllOf(acks)
     expectedPackages.length should_== messages.length
     expectedPackages should containAllOf(messages)
+  }
+
+  def send(r: PackResult)(implicit probe: TestProbe, destActor: ActorRef) {
+    probe.send(destActor, Received(r.blob))
   }
 }

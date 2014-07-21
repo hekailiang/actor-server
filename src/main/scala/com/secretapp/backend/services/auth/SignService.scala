@@ -18,11 +18,12 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
+import com.secretapp.backend.services.GeneratorService
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-trait SignService extends PackageCommon { self: Actor =>
+trait SignService extends PackageCommon { self: Actor with GeneratorService =>
   implicit val session: CSession
 
   import context._
@@ -38,9 +39,8 @@ trait SignService extends PackageCommon { self: Actor =>
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
-    val smsCode = rand.nextLong().toString.drop(1).take(6)
-    val smsHash = rand.nextLong().toString
-
+    val smsCode = genSmsCode
+    val smsHash = genSmsHash
     val serverConfig = ConfigFactory.load()
     val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
@@ -99,7 +99,7 @@ trait SignService extends PackageCommon { self: Actor =>
             case \/-(res) =>
               val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
               // TODO: akka service for ID's
-              val userId = 1090901
+              val userId = genUserId
               for { _ <- UserRecord.insertEntity(Entity(userId, user)) } yield {
                 handleActor ! Authenticate(userId, user)
                 val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,

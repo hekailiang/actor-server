@@ -10,7 +10,7 @@ sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, AuthId] {
   override lazy val tableName = "auth_ids"
 
   object authId extends LongColumn(this) with PartitionKey[Long]
-  object userId extends OptionalLongColumn(this)
+  object userId extends OptionalIntColumn(this)
 
   override def fromRow(row: Row): AuthId = {
     AuthId(authId(row), userId(row))
