@@ -117,7 +117,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
         val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
         val expectMsgs = immutable.Seq(ackRes, res)
 
-        //probe.expectMsgAllOf(new DurationInt(7).seconds, expectMsgs :_*)
+        probe.expectMsgAllOf(new DurationInt(7).seconds, expectMsgs :_*)
       }
 
       success

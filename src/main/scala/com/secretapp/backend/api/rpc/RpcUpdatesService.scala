@@ -42,7 +42,7 @@ trait RpcUpdatesService {
   lazy val pusher = context.actorOf(Props(new PusherActor(handleActor)))
 
   def handleRequestGetState(p: Package, messageId: Long, currentUser: User) = {
-    getOrCreateUpdatesManager(currentUser.publicKeyHash) map { manager =>
+    updatesManager(currentUser.publicKeyHash) map { manager =>
       for {
         s <- ask(manager, UpdatesProtocol.GetState).mapTo[(Int, Option[UUID])]; (seq, muuid) = s
       } yield {

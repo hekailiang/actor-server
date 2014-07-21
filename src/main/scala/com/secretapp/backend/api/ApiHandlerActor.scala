@@ -39,6 +39,7 @@ class ApiHandlerActor(connection: ActorRef, val session: CSession) extends Actor
       log.info(s"ServiceMessage: $m")
       serviceMessagesPF(m)
 
+
     case Received(data) =>
       log.info(s"Received: $data ${data.length}")
       handleByteStream(BitVector(data.toArray))(handlePackage, handleError)

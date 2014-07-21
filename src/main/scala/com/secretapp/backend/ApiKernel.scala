@@ -10,7 +10,7 @@ import com.secretapp.backend.persist.DBConnector
 import api.Server
 import com.typesafe.config._
 
-class ApiKernel extends Bootable with ExtraActorsInitializer {
+class ApiKernel extends Bootable {
   implicit val serverConfig = ConfigFactory.load().getConfig("secret.server")
 
   implicit val system = ActorSystem("secret-api-server")
@@ -21,7 +21,7 @@ class ApiKernel extends Bootable with ExtraActorsInitializer {
     val session = DBConnector.session
     DBConnector.createTables(session)
     implicit val service = system.actorOf(Props(new Server(session)), "api-service")
-    initExtraActors(system)
+
     IO(Tcp) ! Bind(service, new InetSocketAddress(hostname, port))
   }
 
