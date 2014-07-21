@@ -5,13 +5,14 @@ import akka.io.Tcp.{Write, Received}
 import akka.testkit.{TestProbe, TestKitBase}
 import akka.util.ByteString
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
+import com.secretapp.backend.services.common.PackageCommon.Authenticate
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
 import scala.concurrent.blocking
 import scala.language.implicitConversions
 import com.secretapp.backend.data.message.{Container, MessageAck, TransportMessage, NewSession}
-import com.secretapp.backend.data.models.{SessionId, AuthId}
-import com.secretapp.backend.persist.{SessionIdRecord, AuthIdRecord}
+import com.secretapp.backend.data.models.{Phone, SessionId, AuthId, User}
+import com.secretapp.backend.persist.{PhoneRecord, UserRecord, SessionIdRecord, AuthIdRecord}
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.common.RandomService
 import scodec.bits._
@@ -26,6 +27,7 @@ trait ActorServiceHelpers extends RandomService {
   self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers =>
 
   val mockAuthId = rand.nextLong()
+  val phoneNumber = 79853867016L
 
   implicit val session: CSession
 
@@ -50,6 +52,13 @@ trait ActorServiceHelpers extends RandomService {
   def insertAuthAndSessionId(userId: Option[Int] = None)(implicit s: SessionIdentifier): Unit = {
     insertAuthId(userId)
     insertSessionId
+  }
+
+  def authUser(u: User)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = {
+    insertAuthAndSessionId(u.uid.some)
+    UserRecord.insertEntity(u)
+    PhoneRecord.insertEntity(Phone(phoneNumber, u.uid))
+    destActor ! Authenticate(u)
   }
 
   case class SessionIdentifier(id: Long)

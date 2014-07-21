@@ -14,7 +14,7 @@ import com.getsecretapp.{ proto => protobuf }
 
 object UserCodec extends Codec[struct.User] with utils.ProtobufCodec {
   def encode(u: struct.User) = {
-    val boxed = protobuf.User(u.id, u.accessHash, u.firstName, u.lastName, u.sex.flatMap(_.toProto.some), u.keyHashes)
+    val boxed = protobuf.User(u.uid, u.accessHash, u.firstName, u.lastName, u.sex.flatMap(_.toProto.some), u.keyHashes)
     encodeToBitVector(boxed)
   }
 

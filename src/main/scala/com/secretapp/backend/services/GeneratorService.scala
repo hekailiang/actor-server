@@ -9,5 +9,7 @@ trait GeneratorService extends RandomService {
 
   def genSmsHash = rand.nextLong().toString
 
-  def genUserId = rand.nextInt
+  def genUserId = rand.nextInt // TODO: akka service for ID's
+
+  def genUserAccessSalt = rand.nextString(30)
 }

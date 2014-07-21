@@ -8,12 +8,11 @@ import Tcp._
 import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
 import api.Server
-import com.typesafe.config._
 
 class ApiKernel extends Bootable {
-  implicit val serverConfig = ConfigFactory.load().getConfig("secret.server")
-
   implicit val system = ActorSystem("secret-api-server")
+
+  import Configuration._
 
   def startup = {
     val port = Try(serverConfig.getInt("port")).getOrElse(8080)
@@ -21,7 +20,6 @@ class ApiKernel extends Bootable {
     val session = DBConnector.session
     DBConnector.createTables(session)
     implicit val service = system.actorOf(Props(new Server(session)), "api-service")
-
     IO(Tcp) ! Bind(service, new InetSocketAddress(hostname, port))
   }
 

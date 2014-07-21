@@ -15,7 +15,7 @@ import Scalaz._
 sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override lazy val tableName = "users"
 
-  object id extends IntColumn(this) with PartitionKey[Int]
+  object uid extends IntColumn(this) with PartitionKey[Int]
   object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "public_key_hash"
   }
@@ -38,7 +38,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 
   override def fromRow(row: Row): User = {
     User(
-      id = id(row),
+      uid = uid(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row).toByteArray),
       keyHashes = keyHashes(row).toIndexedSeq,
@@ -52,7 +52,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 
 object UserRecord extends UserRecord with DBConnector {
   def insertEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
-    insert.value(_.id, entity.id)
+    insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.keyHashes, Set(entity.publicKeyHash))
@@ -64,17 +64,17 @@ object UserRecord extends UserRecord with DBConnector {
   }
 
   def insertPartEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
-    insert.value(_.id, entity.id)
+    insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .future().flatMap(_ => addKeyHash(entity))
   }
 
   private def addKeyHash(user: User)(implicit session: Session) = {
-    update.where(_.id eqs user.id).modify(_.keyHashes add user.publicKeyHash).future()
+    update.where(_.uid eqs user.uid).modify(_.keyHashes add user.publicKeyHash).future()
   }
 
-  def getEntity(id: Int)(implicit session: Session): Future[Option[User]] = {
-    select.where(_.id eqs id).one()
+  def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {
+    select.where(_.uid eqs uid).one()
   }
 }

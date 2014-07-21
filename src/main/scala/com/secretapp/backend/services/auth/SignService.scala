@@ -76,10 +76,10 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
         smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-          // TODO: do we need to insert new key if keyHashes not contain it?
-          val sUser = StructUser(phoneR.userId, user.accessHash, user.firstName, user.lastName, user.sex.toOption, user.keyHashes)
+          val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
+            user.keyHashes)
           handleActor ! Authenticate(user)
-          ResponseAuth(123L, sUser)
+          ResponseAuth(user.publicKeyHash, sUser)
         }
       }
     }
@@ -93,18 +93,21 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
       PhoneRecord.getEntity(phoneNumber) flatMap {
         case Some(phone) => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
         case None =>
-          val f = for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
-          yield validateSignParams(smsHash, smsCode)(smsCodeR)
+          val f =
+            for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
+            yield validateSignParams(smsHash, smsCode)(smsCodeR)
+
           f flatMap {
             case \/-(_) =>
               val userId = genUserId
-              val user = User.build(userId, publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
-              // TODO: akka service for ID's
+              val accessSalt = genUserAccessSalt
+              val user = User.build(uid = userId, publicKey = publicKey, accessSalt = accessSalt, firstName = firstName,
+                lastName = lastName)
               for { _ <- UserRecord.insertEntity(user) } yield {
                 handleActor ! Authenticate(user)
-                val sUser = StructUser(userId, user.accessHash, user.firstName, user.lastName,
+                val sUser = StructUser(userId, user.selfAccessHash, user.firstName, user.lastName,
                   user.sex.toOption, Seq(user.publicKeyHash)) // TODO: move into User model
-                ResponseAuth(123L, sUser).right
+                ResponseAuth(user.publicKeyHash, sUser).right
               }
             case l@(-\/(_)) => Future.successful(l)
           }

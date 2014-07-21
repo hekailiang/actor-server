@@ -5,7 +5,6 @@ import akka.io.Tcp._
 import com.datastax.driver.core.{ Session => CSession }
 
 class Server(session: CSession) extends Actor with ActorLogging with ExtraActorsInitializer {
-
   import context.system
 
   def receive = {

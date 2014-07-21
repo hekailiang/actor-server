@@ -1,5 +1,8 @@
 package com.secretapp.backend.api
 
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.language.higherKinds
 import akka.actor._
 import akka.testkit._
 import com.gilt.timeuuid.TimeUuid
@@ -10,6 +13,9 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.{update => updateProto, _}
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.services.GeneratorService
+import com.secretapp.backend.services.common.RandomService
+import org.scalamock.specs2.MockFactory
 import scala.collection.immutable
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist.CassandraSpecification
@@ -20,7 +26,7 @@ import scodec.codecs.uuid
 import scala.concurrent.duration._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import org.specs2.mutable.ActorLikeSpecification
+import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import akka.io.Tcp._
 import akka.util.ByteString
@@ -29,98 +35,79 @@ import scodec.bits._
 import scalaz._
 import Scalaz._
 
-class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification
+class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers
 {
   import system.dispatcher
 
   override lazy val actorSystemName = "api"
 
+  trait RandomServiceMock extends RandomService { self: Actor =>
+    override lazy val rand = mock[Random]
+
+    override def preStart(): Unit = {
+      withExpectations {
+        (rand.nextLong _) stubs() returning(12345L)
+      }
+    }
+  }
+
+  val smsCode = "test_sms_code"
+  val smsHash = "test_sms_hash"
+  val userId = 101
+  val userSalt = "user_salt"
+
+  trait GeneratorServiceMock extends GeneratorService {
+    override def genNewAuthId = mockAuthId
+    override def genSmsCode = smsCode
+    override def genSmsHash = smsHash
+    override def genUserId = userId
+    override def genUserAccessSalt = userSalt
+  }
+
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) {
-      override lazy val rand = new Random() {
-        override def nextLong() = 12345L
-      }
-    }))
+    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 
-  val rand = new Random()
-
   "RpcMessaging" should {
     "reply to SendMessage and push to sequence" in {
-      val (probe, apiActor) = probeAndActor()
-
-      // Sign in
-      val authId = rand.nextLong()
-      val sessionId = rand.nextLong()
-      val messageId = rand.nextLong()
-      val phone = 79853867016L
-      val pubKey = hex"ac1d".bits
-      val pubkeyHash = 1L
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
-      val userId = 1090901
-
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phone, "wow", "such sms", pubKey)))
-      val p = Package(authId, sessionId, MessageBox(messageId, rpcReq))
-      val buf = protoPackageBox.encode(p).toOption.get.toByteBuffer
-      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, "wow", "such sms")).sync()
-      UserRecord.insertEntity(User.build(userId, pubKey, firstName, lastName, NoSex, pubkeyHash))
-      PhoneRecord.insertEntity(Phone(phone, userId))
-
-      probe.send(apiActor, Received(ByteString(buf)))
-
-      val user = struct.User(userId, 1L, "Timothy", Some("Klim"), None, immutable.Seq(1L))
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(123, user)))
-      val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
-      val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
-      val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-      val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
-      val expectMsgs = immutable.Seq(ackRes, res)
-      probe.expectMsgAllOf(expectMsgs :_*)
+      val user = User.build(uid = userId, publicKey = publicKey, accessSalt = userSalt,
+        firstName = firstName, lastName = lastName)
+      val accessHash = User.getAccessHash(publicKey, userId, userSalt)
+      authUser(user)
 
       // insert second user
-      val sndpubkeyHash = 3L
-      UserRecord.insertEntity(
-        User.build(3000, hex"ac1d3000".bits, "Wayne", Some("Brain"), NoSex, sndpubkeyHash)
-      ).sync()
+      val sndPublicKey = hex"ac1d3000".bits
+      val sndUID = 3000
+      val secondUser = User.build(uid = sndUID, publicKey = sndPublicKey, accessSalt = userSalt, firstName = firstName,
+        lastName = lastName)
+      UserRecord.insertEntity(secondUser).sync()
 
-      {
-        val rq = RequestSendMessage(
-          uid = userId, accessHash = 0L,
-          randomId = 555L, useAesKey = false,
-          aesMessage = None,
-          messages = immutable.Seq(
-            EncryptedMessage(uid = 3000, keyHash = sndpubkeyHash, None, Some(BitVector(1,2,3)))
-          )
+      val rq = RequestSendMessage(
+        uid = userId, accessHash = accessHash,
+        randomId = 555L, useAesKey = false,
+        aesMessage = None,
+        messages = immutable.Seq(
+          EncryptedMessage(uid = secondUser.uid, keyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))
         )
-        val mesageId = rand.nextLong()
-        val rpcRq = RpcRequestBox(Request(rq))
-        val p = Package(authId, sessionId, MessageBox(messageId, rpcRq))
+      )
+      val messageId = rand.nextLong()
+      val rpcRq = RpcRequestBox(Request(rq))
+      val packageBlob = pack(MessageBox(messageId, rpcRq))
+      send(packageBlob)
 
-        val encoded = protoPackageBox.encode(p)
-        val buf = encoded.toOption.get.toByteBuffer
-
-        probe.send(apiActor, Received(ByteString(buf)))
-
-        val state = TimeUuid()
-        val rsp = ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
-        val rpcRsp = RpcResponseBox(
-          messageId,
-          Ok(rsp))
-        val resP = Package(authId, sessionId, MessageBox(messageId, rpcRes))
-        val res = Write(ByteString(protoPackageBox.encode(resP).toOption.get.toByteBuffer))
-        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-        val ackRes = Write(ByteString(protoPackageBox.encode(ack).toOption.get.toByteBuffer))
-        val expectMsgs = immutable.Seq(ackRes, res)
-
-        probe.expectMsgAllOf(new DurationInt(7).seconds, expectMsgs :_*)
-      }
-
-      success
+      val state = TimeUuid()
+      val rsp = ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
+      val rpcRes = RpcResponseBox(messageId, Ok(rsp))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
     }
   }
 }

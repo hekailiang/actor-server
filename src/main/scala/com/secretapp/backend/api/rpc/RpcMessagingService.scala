@@ -53,8 +53,8 @@ trait RpcMessagingService {
       messages map { message =>
         // TODO: check conformity of keyHash to uid
         updateProto.Message(
-          senderUID = currentUser.id,
-          destUID = destUser.id,
+          senderUID = currentUser.uid,
+          destUID = destUser.uid,
           mid = mid,
           keyHash = message.keyHash,
           useAesKey = useAesKey,
@@ -67,7 +67,7 @@ trait RpcMessagingService {
     }
 
     val fmid = messageCounter.flatMap(ask(_, CounterProtocol.GetNext).mapTo[CounterState] map (_.counter))
-    val fdestUserEntity = UserRecord.getEntity(currentUser.id)
+    val fdestUserEntity = UserRecord.getEntity(currentUser.uid)
 
     fdestUserEntity map {
       case Some(destUserEntity) =>

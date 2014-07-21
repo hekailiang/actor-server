@@ -45,15 +45,17 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
     }
   }
 
-  val smsCode = "testsmscode"
-  val smsHash = "testsmshash"
+  val smsCode = "test_sms_code"
+  val smsHash = "test_sms_hash"
   val userId = 101
+  val userSalt = "user_salt"
 
   trait GeneratorServiceMock extends GeneratorService {
     override def genNewAuthId = mockAuthId
     override def genSmsCode = smsCode
     override def genSmsHash = smsHash
     override def genUserId = userId
+    override def genUserAccessSalt = userSalt
   }
 
   def probeAndActor() = {
@@ -131,12 +133,12 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       implicit val session = SessionIdentifier()
       insertAuthAndSessionId()
 
-      val rpcReq = RpcRequestBox(Request(RequestAuthCode(79853867016L, rand.nextInt, rand.nextString(10))))
+      val rpcReq = RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt, rand.nextString(10))))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode("testsmshash", false)))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode(smsHash, false)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -144,17 +146,19 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
     "handle RPC request sign up" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      val phone = 79853867016L
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, smsHash, smsCode)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phone, smsHash, smsCode, "Timothy", Some("Klim"), hex"ac1d".bits)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val user = struct.User(userId, 1, "Timothy", Some("Klim"), None, Seq(1L))
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(123, user)))
+      val accessHash = User.getAccessHash(publicKey, userId, userSalt)
+      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Seq(publicKeyHash))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -163,21 +167,23 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val messageId = rand.nextLong()
-      val phone = 79853867016L
-      val pubKey = hex"ac1d".bits
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
       insertAuthAndSessionId(userId.some)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phone, smsHash, smsCode)).sync()
-      UserRecord.insertEntity(User.build(userId, pubKey, firstName, lastName, NoSex))
-      PhoneRecord.insertEntity(Phone(phone, userId))
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      UserRecord.insertEntity(User.build(uid = userId, publicKey = publicKey, accessSalt = userSalt,
+        firstName = firstName, lastName = lastName))
+      PhoneRecord.insertEntity(Phone(phoneNumber, userId))
 
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phone, smsHash, smsCode, pubKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val user = struct.User(userId, 1L, firstName, lastName, None, Seq(1L))
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(123, user)))
+      val accessHash = User.getAccessHash(publicKey, userId, userSalt)
+      val user = struct.User(userId, accessHash, firstName, lastName, None, Seq(publicKeyHash))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
