@@ -12,7 +12,6 @@ import Scalaz._
 import scodec.bits._
 
 object PackageBoxCodec extends Codec[PackageBox] {
-
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
   def encode(pb: PackageBox) = {
@@ -46,5 +45,4 @@ object PackageBoxCodec extends Codec[PackageBox] {
   def build(authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
     encode(Package(authId, sessionId, MessageBox(messageId, message)))
   }
-
 }

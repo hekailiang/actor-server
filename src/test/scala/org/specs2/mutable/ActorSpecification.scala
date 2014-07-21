@@ -13,8 +13,6 @@ import org.specs2.matcher._
 import org.specs2.specification._
 import org.specs2.time._
 import scodec.bits._
-import scalaz._
-import Scalaz._
 
 trait ActorLikeSpecification extends SpecificationStructure
 with SpecificationStringContext
@@ -34,7 +32,6 @@ with SpecificationNavigation
 with ContextsInjection
 with Debug
 with TestKitBase
-with ImplicitSender
 {
   sequential
 
@@ -47,10 +44,6 @@ with ImplicitSender
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)
-
-  def codecRes2BS(res: String \/ BitVector): ByteString = {
-    ByteString(res.toOption.get.toByteBuffer)
-  }
 }
 
 trait ActorSpecification extends ActorLikeSpecification {

@@ -9,7 +9,6 @@ object HandleFutureOpt {
   type HandleFutureOpt[A] = Future[Option[A]]
 
   final case class Handle[+A, E](optF: HandleFutureOpt[A], e: E) {
-//    TODO: implicit scalaz.Functor instead
     def flatMap[U](f: A => HandleResult[E, U])(implicit ec: ExecutionContext): HandleResult[E, U] = {
       optF flatMap {
         case Some(res) => f(res)

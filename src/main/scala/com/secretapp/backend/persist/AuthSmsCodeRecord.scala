@@ -1,9 +1,10 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
+import com.datastax.driver.core.{ ResultSet, Row }
+import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.data.models.AuthSmsCode
 import scala.concurrent.Future
 
 sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, AuthSmsCode] {
@@ -25,15 +26,14 @@ sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, AuthSms
 }
 
 object AuthSmsCodeRecord extends AuthSmsCodeRecord with DBConnector {
-  def insertEntity(entity: AuthSmsCode)(implicit session: Session): Future[ResultSet] = entity match {
-    case AuthSmsCode(phoneNumber, smsHash, smsCode) =>
-      insert.value(_.phoneNumber, phoneNumber)
-        .value(_.smsHash, smsHash)
-        .value(_.smsCode, smsCode)
-        .future()
+  def insertEntity(entity: AuthSmsCode)(implicit session: CSession): Future[ResultSet] = {
+    insert.value(_.phoneNumber, entity.phoneNumber)
+      .value(_.smsHash, entity.smsHash)
+      .value(_.smsCode, entity.smsCode)
+      .future()
   }
 
-  def getEntity(phoneNumber: Long)(implicit session: Session): Future[Option[AuthSmsCode]] = {
+  def getEntity(phoneNumber: Long)(implicit session: CSession): Future[Option[AuthSmsCode]] = {
     select.where(_.phoneNumber eqs phoneNumber).one()
   }
 }

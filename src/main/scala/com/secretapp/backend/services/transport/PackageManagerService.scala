@@ -6,15 +6,16 @@ import com.secretapp.backend.data.message.{Drop, NewSession, TransportMessage}
 import com.secretapp.backend.data.models.{AuthId, User}
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.AuthIdRecord
-import com.secretapp.backend.services.{UserManagerService, SessionManager}
-import com.secretapp.backend.services.common.PackageCommon
+import com.secretapp.backend.services.{GeneratorService, UserManagerService, SessionManager}
+import com.secretapp.backend.services.common.{RandomService, PackageCommon}
 import com.secretapp.backend.services.common.PackageCommon.{PackageToSend, Authenticate, ServiceMessage}
 import scala.util.{Failure, Success}
 import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
 
-trait PackageManagerService extends PackageCommon with SessionManager with UserManagerService { self: Actor =>
+trait PackageManagerService extends PackageCommon with SessionManager with UserManagerService
+with GeneratorService { self: Actor =>
   import context._
 
   implicit val session: CSession
@@ -33,7 +34,7 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
     if (p.authId == 0L) { // check for auth request - simple key registration
       if (p.sessionId == 0L) {
-        val newAuthId = rand.nextLong
+        val newAuthId = genNewAuthId
         AuthIdRecord.insertEntity(AuthId(newAuthId, None)).onComplete {
           case Success(_) =>
             currentAuthId = newAuthId
