@@ -7,6 +7,7 @@ case class RequestSignIn(phoneNumber: Long,
                          smsHash: String,
                          smsCode: String,
                          publicKey: BitVector) extends RpcRequestMessage
+
 object RequestSignIn extends RpcRequestMessageObject {
   val requestType = 0x3
 }

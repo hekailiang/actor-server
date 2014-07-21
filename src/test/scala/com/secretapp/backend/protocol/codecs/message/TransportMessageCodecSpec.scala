@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.update.{ State => StateU }
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct._
 import scala.collection.immutable.Seq
 import scodec.bits._
@@ -171,6 +172,17 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode RpcRequest.RequestImportContacts" in {
+      val encoded = hex"03270100000007210a0908011089a0a5bda9020a090802108aa0a5bda9020a090803108ba0a5bda902".bits
+      val contacts = (1L to 3L).map { id =>
+        ContactToImport(id, 79853867016L + id)
+      }
+      val decoded = RpcRequestBox(Request(RequestImportContacts(contacts)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     //  RPC Responses
 
     "encode and decode RpcResponse.Difference" in {
@@ -211,6 +223,18 @@ class TransportMessageCodecSpec extends Specification {
     "encode and decode RpcResponse.ResponseSendMessage" in {
       val encoded = hex"0400000000000000010e010000000f08080110021a02ac1d".bits
       val decoded = RpcResponseBox(1L, Ok(ResponseSendMessage(1, 2, hex"ac1d".bits)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.ResponseImportedContacts" in {
+      val encoded = hex"0400000000000000012b0100000008250a1c080110b9601a0754696d6f74687922044b6c696d280230013002300312050889061001".bits
+      val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))
+      val users = Seq(user)
+      val contact = ImportedContact(777L, user.uid)
+      val contacts = Seq(contact)
+      val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
