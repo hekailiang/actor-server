@@ -4,7 +4,7 @@ USE secret;
 
 CREATE TABLE auth_ids (
   authid bigint,
-  userid bigint,
+  userid int,
   PRIMARY KEY ((authid))
 );
 
@@ -13,6 +13,23 @@ CREATE TABLE auth_sms_codes (
   sms_code text,
   sms_hash text,
   PRIMARY KEY ((phone_number))
+);
+
+CREATE TABLE common_updates (
+  pubkey_hash bigint,
+  uuid timeuuid,
+  aes_key_hex text,
+  dest_uid int,
+  key_hash bigint,
+  message text,
+  mid int,
+  random_id bigint,
+  sender_uid int,
+  seq int,
+  update_id int,
+  use_aes_key boolean,
+  user_ids set<int>,
+  PRIMARY KEY ((pubkey_hash), uuid)
 );
 
 CREATE TABLE phones (
@@ -29,9 +46,12 @@ CREATE TABLE sessions (
 
 CREATE TABLE users (
   id int,
-  access_hash bigint,
-  first_name text,
-  last_name text,
-  sex int,
-  PRIMARY KEY ((id))
+  public_key_hash bigint,
+  access_salt text static,
+  first_name text static,
+  key_hashes set<bigint> static,
+  last_name text static,
+  public_key varint,
+  sex int static,
+  PRIMARY KEY ((id), public_key_hash)
 );
