@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.specs2.mutable.ActorSpecification
 
-class CounterActorSpec extends ActorSpecification {
+class CounterActorSpec extends ActorSpecification with ImplicitSender {
   import system.dispatcher
   import CounterProtocol._
 

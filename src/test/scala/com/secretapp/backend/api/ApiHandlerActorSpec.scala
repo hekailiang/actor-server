@@ -10,9 +10,10 @@ import akka.util.ByteString
 import scodec.bits._
 import scala.util.Random
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
+import org.specs2.matcher.TraversableMatchers
 import org.scalamock.specs2.MockFactory
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.{MessageBox, Package}
+import com.secretapp.backend.data.transport._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
@@ -81,51 +82,43 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
     }
 
     "parse packages in single stream" in {
-      val (probe, apiActor) = probeAndActor()
+      implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       insertAuthAndSessionId()
-
-      val messages = (1 to 100).map { _ => (Ping(rand.nextLong), rand.nextLong) }
-      val packages = messages.map(t => pack(t._1, t._2))
+      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
+      val packages = messages.map(pack(_))
       val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
       req.grouped(7) foreach { buf =>
         probe.send(apiActor, Received(buf))
       }
-
-      val expectedPongs = messages flatMap { t =>
-        val pingVal = t._1.randomId
-        val messageId = t._2
-        val p = pack(Pong(pingVal), messageId)
-        val ackPack = ack(messageId)
-        Seq(p, ackPack)
+      val expectedPongs = messages map { m =>
+        val messageId = m.messageId
+        val pingVal = m.body.asInstanceOf[Ping].randomId
+        MessageBox(messageId, Pong(pingVal))
       }
-      probe.expectMsgAllOf(expectedPongs.map(p => Write(p.blob)) :_*)
-      success
+      expectMsgWithAck(expectedPongs :_*)
     }
 
 //    "handle container with Ping's" in {
 //      val (probe, apiActor) = probeAndActor()
-//      val authId = rand.nextLong
-//      val sessionId = rand.nextLong
-//      val messages: Seq[MessageBox] = (1 to 100).map { _ =>
-//        MessageBox(rand.nextLong, Ping(rand.nextLong))
-//      }
-//      val container = MessageBox(rand.nextLong, Container(messages))
-//      val p = Package(authId, sessionId, container)
-//      val packageBlob = Received(codecRes2BS(protoPackageBox.encode(p)))
-//      AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-//      SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
+//      implicit val session = SessionIdentifier()
+//      insertAuthAndSessionId()
 //
-//      probe.send(apiActor, packageBlob)
+//      val messages = (1 to 100).map { _ => (Ping(rand.nextLong), rand.nextLong) }
+////      val container = MessageBox(rand.nextLong, Container(messages))
+////      val p = Package(authId, sessionId, container)
+////      val packageBlob = Received(codecRes2BS(protoPackageBox.encode(p)))
 //
-//      val expectedPongs = messages flatMap { message =>
-//        val messageId = message.messageId
-//        val pingVal = message.body.asInstanceOf[Ping].randomId
-//        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
-//        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
-//        Seq(codecRes2BS(protoPackageBox.encode(p)), codecRes2BS(protoPackageBox.encode(ack)))
-//      }
-//      probe.expectMsgAllOf(expectedPongs.map(Write(_)) :_*)
+////      probe.send(apiActor, packageBlob)
+////
+////      val expectedPongs = messages flatMap { message =>
+////        val messageId = message.messageId
+////        val pingVal = message.body.asInstanceOf[Ping].randomId
+////        val p = Package(authId, sessionId, MessageBox(messageId, Pong(pingVal)))
+////        val ack = Package(authId, sessionId, MessageBox(messageId, MessageAck(Array(messageId))))
+////        Seq(codecRes2BS(protoPackageBox.encode(p)), codecRes2BS(protoPackageBox.encode(ack)))
+////      }
+////      probe.expectMsgAllOf(expectedPongs.map(Write(_)) :_*)
 //      success
 //    }
 //
