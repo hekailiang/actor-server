@@ -96,7 +96,7 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
           val f = for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
           yield validateSignParams(smsHash, smsCode)(smsCodeR)
           f flatMap {
-            case \/-(res) =>
+            case \/-(_) =>
               val user = User.build(publicKey = publicKey, firstName = firstName, lastName = lastName, sex = NoSex)
               // TODO: akka service for ID's
               val userId = genUserId
