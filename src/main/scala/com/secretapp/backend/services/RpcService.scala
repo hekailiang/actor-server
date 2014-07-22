@@ -7,11 +7,12 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.services.rpc.auth._
+import com.secretapp.backend.services.rpc.contact._
 import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
-trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService {
+trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService {
   self: Actor with PackageManagerService =>
 
   def handleRpc(p: Package, messageId: Long): PartialFunction[RpcRequest, Unit] = {
@@ -45,7 +46,7 @@ trait RpcService extends SignService with RpcMessagingService with RpcUpdatesSer
       //  (handleRequestGetDifference(p, messageId, user) _).tupled(updateProto.RequestGetDifference.unapply(rq).get)
 
       case _ =>
-        handleRpcAuth(p, messageId)(body)
+        handleRpcAuth(p, messageId).orElse(handleRpcContact(p, messageId))(body)
     }
   }
 

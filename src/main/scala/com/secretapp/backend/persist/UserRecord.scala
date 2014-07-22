@@ -28,6 +28,9 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "access_salt"
   }
+  object phoneNumber extends LongColumn(this) with StaticColumn[Long] {
+    override lazy val name = "phone_number"
+  }
   object firstName extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "first_name"
   }
@@ -43,6 +46,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       publicKey = BitVector(publicKey(row).toByteArray),
       keyHashes = keyHashes(row).toIndexedSeq,
       accessSalt = accessSalt(row),
+      phoneNumber = phoneNumber(row),
       firstName = firstName(row),
       lastName = lastName(row),
       sex = intToSex(sex(row))
@@ -57,6 +61,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.keyHashes, Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
+      .value(_.phoneNumber, entity.phoneNumber)
       .value(_.firstName, entity.firstName)
       .value(_.lastName, entity.lastName)
       .value(_.sex, sexToInt(entity.sex))
@@ -71,7 +76,8 @@ object UserRecord extends UserRecord with DBConnector {
   }
 
   private def addKeyHash(user: User)(implicit session: Session) = {
-    update.where(_.uid eqs user.uid).modify(_.keyHashes add user.publicKeyHash).future()
+    update.where(_.uid eqs user.uid).modify(_.keyHashes add user.publicKeyHash).
+      future().flatMap(_ => PhoneRecord.addKeyHash(user.phoneNumber, user.publicKeyHash))
   }
 
   def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {

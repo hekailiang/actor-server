@@ -98,8 +98,8 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
             case \/-(_) =>
               val userId = genUserId
               val accessSalt = genUserAccessSalt
-              val user = User.build(uid = userId, publicKey = publicKey, accessSalt = accessSalt, firstName = firstName,
-                lastName = lastName)
+              val user = User.build(uid = userId, publicKey = publicKey, accessSalt = accessSalt,
+                phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
               for { _ <- UserRecord.insertEntity(user) } yield {
                 handleActor ! Authenticate(user)
                 val sUser = StructUser(userId, user.selfAccessHash, user.firstName, user.lastName,
