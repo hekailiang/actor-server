@@ -109,6 +109,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val rpcRes = RpcResponseBox(messageId, Ok(rsp))
       val expectMsg = MessageBox(messageId, rpcRes)
       //expectMsgWithAck(expectMsg)
+      success
     }
   }
 }
