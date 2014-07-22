@@ -8,6 +8,8 @@ import com.secretapp.backend.Configuration
 import scodec.bits.BitVector
 import java.security.MessageDigest
 import java.nio.ByteBuffer
+import scalaz._
+import Scalaz._
 
 case class User(uid: Int,
                 publicKeyHash: Long,
@@ -46,6 +48,10 @@ object User {
   }
 
   def getAccessHash(senderPublicKey: BitVector, user: User): Long = getAccessHash(senderPublicKey, user.uid, user.accessSalt)
+
+  def checkPublicKey(publicKey: BitVector): String \/ Unit = {
+    ??? // TODO
+  }
 
   def getPublicKeyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")

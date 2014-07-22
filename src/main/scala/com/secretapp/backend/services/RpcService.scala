@@ -6,7 +6,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.services.auth._
+import com.secretapp.backend.services.rpc.auth._
 import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._

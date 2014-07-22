@@ -1,4 +1,4 @@
-package com.secretapp.backend.services.auth
+package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
 import scala.collection.immutable.Seq
@@ -19,23 +19,20 @@ import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
 import com.secretapp.backend.services.GeneratorService
+import com.secretapp.backend.services.rpc.RpcCommon
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-trait SignService extends PackageCommon { self: Actor with GeneratorService =>
+trait SignService extends PackageCommon with RpcCommon { self: Actor with GeneratorService =>
   implicit val session: CSession
 
   import context._
 
-  type RpcResult = HandleResult[Error, RpcResponseMessage]
-
-  val internalError = Error(400, "INTERNAL_ERROR", "")
-
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
-    case r: RequestAuthCode => sendResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
-    case r: RequestSignIn => sendResult(p, messageId)((handleRequestSignIn _).tupled(RequestSignIn.unapply(r).get))
-    case r: RequestSignUp => sendResult(p, messageId)((handleRequestSignUp _).tupled(RequestSignUp.unapply(r).get))
+    case r: RequestAuthCode => sendRpcResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
+    case r: RequestSignIn => sendRpcResult(p, messageId)((handleRequestSignIn _).tupled(RequestSignIn.unapply(r).get))
+    case r: RequestSignUp => sendRpcResult(p, messageId)((handleRequestSignUp _).tupled(RequestSignUp.unapply(r).get))
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
@@ -112,19 +109,6 @@ trait SignService extends PackageCommon { self: Actor with GeneratorService =>
             case l@(-\/(_)) => Future.successful(l)
           }
       }
-    }
-  }
-
-  private def sendResult(p: Package, messageId: Long)(res: RpcResult): Unit = {
-    res onComplete {
-      case Success(res) =>
-        val message: RpcResponse = res match {
-          case \/-(okRes) => Ok(okRes)
-          case -\/(errorRes) => errorRes
-        }
-        sendReply(p.replyWith(messageId, RpcResponseBox(messageId, message)).right)
-      case Failure(e) =>
-        sendReply(p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", ""))).right)
     }
   }
 }
