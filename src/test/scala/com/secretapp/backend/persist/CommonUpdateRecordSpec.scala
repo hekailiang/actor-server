@@ -28,7 +28,7 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
       val efs = for {
         _ <- CommonUpdateRecord.push(uid, pubkeyHash, 1, updateMessage)
         _ <- CommonUpdateRecord.push(uid, pubkeyHash, 2, updateMessageSent)
-        f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).fetch
+        f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).fetch
       } yield f
 
       val mf = efs map {
@@ -41,25 +41,26 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
     }
 
     "get difference" in {
-      val uid = 1
+      val uid = 3
+      val publicKeyHash = 2L
 
-      val senderUID = 1
+      val senderUID = 3
       val destUID = 2
-      val pubkeyHash = 2L
+      val destPublicKeyHash = 3L
       val mid = 1
       Await.result(CommonUpdateRecord.truncateTable(session), Timeout(5000000).duration)
 
       val initialSeq = 0L
-      val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
+      val updateMessage = updateProto.Message(senderUID, destUID, mid, destPublicKeyHash, false, None, StringCodec.encode("my message here").toOption.get)
 
       1 to 1003 foreach { i =>
-        Await.result(CommonUpdateRecord.push(uid, pubkeyHash, i, updateMessage), Timeout(5000000).duration)
+        Await.result(CommonUpdateRecord.push(uid, publicKeyHash, i, updateMessage), Timeout(5000000).duration)
       }
 
       val fDiffOne = for {
-        first <- CommonUpdateRecord.select.one.map(_.get); firstState = first.key._2
-        diff1 <- CommonUpdateRecord.getDifference(uid, pubkeyHash, firstState, 1); secondState = diff1(0).key._2
-        diff500 <- CommonUpdateRecord.getDifference(uid, pubkeyHash, secondState, 500)
+        first <- CommonUpdateRecord.select.where(_.uid eqs uid).and(_.publicKeyHash eqs publicKeyHash).orderBy(_.uuid asc).one.map(_.get); firstState = first.key._2
+        diff1 <- CommonUpdateRecord.getDifference(uid, publicKeyHash, firstState, 1); secondState = diff1(0).key._2
+        diff500 <- CommonUpdateRecord.getDifference(uid, publicKeyHash, secondState, 500)
       } yield {
         val firstts = firstState.timestamp()
         diff1.length must equalTo(1)

@@ -19,8 +19,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   object uid extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "uid"
   }
-  object pubkeyHash extends LongColumn(this) with PartitionKey[Long] {
-    override lazy val name = "pubkey_hash"
+  object publicKeyHash extends LongColumn(this) with PartitionKey[Long] {
+    override lazy val name = "public_key_hash"
   }
   object uuid extends TimeUUIDColumn(this) with PrimaryKey[UUID]
   object seq extends IntColumn(this)
@@ -43,7 +43,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
   object mid extends IntColumn(this)
   object keyHash extends LongColumn(this) {
-    override lazy val name = "key_hash"
+    override lazy val name = "dest_key_hash"
   }
   object useAesKey extends BooleanColumn(this) {
     override lazy val name = "use_aes_key"
@@ -66,7 +66,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   override def fromRow(row: Row): Entity[(Long, UUID), CommonUpdate] = {
     updateId(row) match {
       case 1L =>
-        Entity((pubkeyHash(row), uuid(row)),
+        Entity((publicKeyHash(row), uuid(row)),
           CommonUpdate(
             seq(row),
             uuidCodec.encodeValid(uuid(row)),
@@ -74,7 +74,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
               aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
           ))
       case 4L =>
-        Entity((pubkeyHash(row), uuid(row)),
+        Entity((publicKeyHash(row), uuid(row)),
           CommonUpdate(
             seq(row),
             uuidCodec.encodeValid(uuid(row)),
@@ -95,12 +95,12 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
     //  .fetch
 
     CommonUpdateRecord.select.orderBy(_.uuid.asc)
-      .where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).and(_.uuid gt state)
+      .where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).and(_.uuid gt state)
       .limit(limit).fetch
   }
 
   def getState(uid: Int, pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
-    CommonUpdateRecord.select(_.uuid).where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).orderBy(_.uuid.desc).one
+    CommonUpdateRecord.select(_.uuid).where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).orderBy(_.uuid.desc).one
 
   def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future[UUID] {
     val uuid = TimeUuid()
@@ -111,8 +111,8 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         // TODO: Prepared statement
         session.execute("""
           INSERT INTO common_updates (
-            uid, pubkey_hash, uuid, seq, user_ids, update_id,
-            sender_uid, dest_uid, mid, key_hash, use_aes_key, aes_key_hex, message
+            uid, public_key_hash, uuid, seq, user_ids, update_id,
+            sender_uid, dest_uid, mid, dest_key_hash, use_aes_key, aes_key_hex, message
           )
           VALUES (?, ?, ?, ?, ?, 1,
                   ?, ?, ?, ?, ?, ?, ?)
@@ -124,7 +124,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
       case updateProto.MessageSent(mid, randomId) =>
         session.execute("""
           INSERT INTO common_updates (
-            uid, pubkey_hash, uuid, seq, user_ids, update_id,
+            uid, public_key_hash, uuid, seq, user_ids, update_id,
             mid, random_id
           )
           VALUES (?, ?, ?, ?, ?, 4,
