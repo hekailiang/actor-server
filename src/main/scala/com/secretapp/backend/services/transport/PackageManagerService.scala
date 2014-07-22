@@ -49,7 +49,6 @@ with GeneratorService { self: Actor =>
         case Success(res) => res match {
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
-            println("$$$ ", authIdRecord.user)
             authIdRecord.user onComplete {
               case Success(user) =>
                 currentUser = user

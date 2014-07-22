@@ -21,7 +21,6 @@ trait PackageService extends PackageManagerService with PackageAckService with R
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
       case RpcRequestBox(body) =>
-        println("@@@@@@", currentUser)
         handleRpc(p, m.messageId)(body)
       case _ =>
     }
