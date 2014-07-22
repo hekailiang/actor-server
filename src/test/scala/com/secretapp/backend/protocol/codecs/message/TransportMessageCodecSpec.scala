@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.update.{ State => StateU }
+import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct._
 import scala.collection.immutable.Seq
 import scodec.bits._
@@ -161,6 +162,15 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode RpcRequest.RequestSendMessage" in {
+      val encoded = hex"0320010000000e1a08011002180320012a020ae5320c080110021a020ae52202ac1d".bits
+      val message = EncryptedMessage(1, 2L, hex"ae5".bits.some, hex"ac1d".bits.some)
+      val decoded = RpcRequestBox(Request(RequestSendMessage(1, 2L, 3L, true, hex"ae5".bits.some, Seq(message))))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     //  RPC Responses
 
     "encode and decode RpcResponse.Difference" in {
@@ -193,6 +203,14 @@ class TransportMessageCodecSpec extends Specification {
     "encode and decode RpcResponse.ResponseAuthCode" in {
       val encoded = hex"0400000000000000011101000000020b0a07736d73686173681001".bits
       val decoded = RpcResponseBox(1L, Ok(ResponseAuthCode("smshash", true)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.ResponseSendMessage" in {
+      val encoded = hex"0400000000000000010e010000000f08080110021a02ac1d".bits
+      val decoded = RpcResponseBox(1L, Ok(ResponseSendMessage(1, 2, hex"ac1d".bits)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some

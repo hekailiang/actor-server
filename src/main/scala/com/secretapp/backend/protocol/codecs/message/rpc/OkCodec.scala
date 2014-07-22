@@ -4,9 +4,11 @@ import com.secretapp.backend.data.message.update.{CommonUpdateTooLong, CommonUpd
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
+import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.rpc.messaging._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
@@ -17,6 +19,7 @@ object OkCodec extends Codec[Ok] {
     .\(Difference.responseType) { case d: Difference => d } (protoPayload(DifferenceCodec))
     .\(ResponseAuth.responseType) { case r: ResponseAuth => r } (protoPayload(ResponseAuthCodec))
     .\(ResponseAuthCode.responseType) { case r: ResponseAuthCode => r } (protoPayload(ResponseAuthCodeCodec))
+    .\(ResponseSendMessage.responseType) { case r: ResponseSendMessage => r } (protoPayload(ResponseSendMessageCodec))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)
 
