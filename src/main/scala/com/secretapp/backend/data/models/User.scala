@@ -49,10 +49,6 @@ object User {
 
   def getAccessHash(senderPublicKey: BitVector, user: User): Long = getAccessHash(senderPublicKey, user.uid, user.accessSalt)
 
-  def checkPublicKey(publicKey: BitVector): String \/ Unit = {
-    ??? // TODO
-  }
-
   def getPublicKeyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")
     val buf = BitVector(digest.digest(pk.toByteArray))
