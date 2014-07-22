@@ -14,13 +14,18 @@ import Scalaz._
 class UserRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
   "UserRecord" should {
     "insert/get User Entity" in {
-      val entityId = 100
-      val entity = User(entityId, 123L, hex"ac1d".bits, "Wayne", "salt", Some("Brain"), Male, Seq(123L))
+      val entity = User.build(uid = 100,
+        publicKey = hex"ac1d".bits,
+        accessSalt = "salt",
+        phoneNumber = 79853867016L,
+        firstName = "Wayne",
+        lastName = Some("Brain"),
+        sex = Male)
       val insertFuture = UserRecord.insertEntity(entity)
 
       val chain = for {
         insertDone <- insertFuture
-        oneSelect <- UserRecord.getEntity(entityId)
+        oneSelect <- UserRecord.getEntity(entity.uid)
       } yield oneSelect
 
       chain must be_== (entity.some).await

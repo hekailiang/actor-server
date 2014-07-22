@@ -9,6 +9,7 @@ case class RequestSignUp(phoneNumber: Long,
                          firstName: String,
                          lastName: Option[String],
                          publicKey: BitVector) extends RpcRequestMessage
+
 object RequestSignUp extends RpcRequestMessageObject {
   val requestType = 0x4
 }

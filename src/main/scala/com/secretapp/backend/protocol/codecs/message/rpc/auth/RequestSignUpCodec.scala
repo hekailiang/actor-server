@@ -3,6 +3,7 @@ package com.secretapp.backend.protocol.codecs.message.rpc.auth
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
+import com.secretapp.backend.crypto.ec.PublicKey
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
@@ -18,9 +19,13 @@ object RequestSignUpCodec extends Codec[RequestSignUp] with utils.ProtobufCodec 
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)) =>
-        RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)
+        if (PublicKey.isPrime192v1(publicKey)) {
+          RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey).right
+        } else {
+          "invalid public key".left
+        }
     }
   }
 }

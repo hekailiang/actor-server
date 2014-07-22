@@ -5,10 +5,12 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
 import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
+import com.secretapp.backend.protocol.codecs.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.contact._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
@@ -20,6 +22,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseAuth.responseType) { case r: ResponseAuth => r } (protoPayload(ResponseAuthCodec))
     .\(ResponseAuthCode.responseType) { case r: ResponseAuthCode => r } (protoPayload(ResponseAuthCodeCodec))
     .\(ResponseSendMessage.responseType) { case r: ResponseSendMessage => r } (protoPayload(ResponseSendMessageCodec))
+    .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r } (protoPayload(ResponseImportedContactsCodec))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)
 

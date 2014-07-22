@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.update.{ State => StateU }
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct._
 import scala.collection.immutable.Seq
 import scodec.bits._
@@ -154,18 +155,36 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
-    "encode and decode RpcRequest.RequestSignUp" in {
-      val encoded = hex"033301000000042d0888a0a5bda9021209736d736861736831321a06363035303630220754696d6f7468792a044b6c696d3202ac1d".bits
-      val decoded = RpcRequestBox(Request(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, hex"ac1d".bits)))
+    "encode and decode RpcRequest.RequestSignUp with valid public key" in {
+      val encoded = hex"037c0100000004760888a0a5bda9021209736d736861736831321a06363035303630220754696d6f7468792a044b6c696d324b3049301306072a8648ce3d020106082a8648ce3d03010103320004d547575bae9d648b8f6636cf7c8865d95871dff0575e8538697a4ac06132fce3ec279540e12f14a35fb5ca28e0c37721".bits
+      val publicKey = hex"3049301306072a8648ce3d020106082a8648ce3d03010103320004d547575bae9d648b8f6636cf7c8865d95871dff0575e8538697a4ac06132fce3ec279540e12f14a35fb5ca28e0c37721".bits
+      val decoded = RpcRequestBox(Request(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, publicKey)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcRequest.RequestSignUp with invalid public key" in {
+      val decoded = RpcRequestBox(Request(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, hex"ac1d".bits)))
+      val res = protoTransportMessage.decode(protoTransportMessage.encode(decoded).toOption.get)
+      res.toOption should_== None
     }
 
     "encode and decode RpcRequest.RequestSendMessage" in {
       val encoded = hex"0320010000000e1a08011002180320012a020ae5320c080110021a020ae52202ac1d".bits
       val message = EncryptedMessage(1, 2L, hex"ae5".bits.some, hex"ac1d".bits.some)
       val decoded = RpcRequestBox(Request(RequestSendMessage(1, 2L, 3L, true, hex"ae5".bits.some, Seq(message))))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcRequest.RequestImportContacts" in {
+      val encoded = hex"03270100000007210a0908011089a0a5bda9020a090802108aa0a5bda9020a090803108ba0a5bda902".bits
+      val contacts = (1L to 3L).map { id =>
+        ContactToImport(id, 79853867016L + id)
+      }
+      val decoded = RpcRequestBox(Request(RequestImportContacts(contacts)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -211,6 +230,18 @@ class TransportMessageCodecSpec extends Specification {
     "encode and decode RpcResponse.ResponseSendMessage" in {
       val encoded = hex"0400000000000000010e010000000f08080110021a02ac1d".bits
       val decoded = RpcResponseBox(1L, Ok(ResponseSendMessage(1, 2, hex"ac1d".bits)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.ResponseImportedContacts" in {
+      val encoded = hex"0400000000000000012b0100000008250a1c080110b9601a0754696d6f74687922044b6c696d280230013002300312050889061001".bits
+      val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))
+      val users = Seq(user)
+      val contact = ImportedContact(777L, user.uid)
+      val contacts = Seq(contact)
+      val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some

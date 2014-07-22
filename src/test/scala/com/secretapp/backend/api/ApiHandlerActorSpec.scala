@@ -146,7 +146,7 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
     "handle RPC request sign up" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      val publicKey = hex"ac1d".bits
+      val publicKey = hex"3049301306072a8648ce3d020106082a8648ce3d03010103320004d547575bae9d648b8f6636cf7c8865d95871dff0575e8538697a4ac06132fce3ec279540e12f14a35fb5ca28e0c37721".bits
       val publicKeyHash = User.getPublicKeyHash(publicKey)
       insertAuthAndSessionId()
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
@@ -171,19 +171,18 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       val publicKeyHash = User.getPublicKeyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
-      insertAuthAndSessionId(userId.some)
+      val user = User.build(uid = userId, publicKey = publicKey, accessSalt = userSalt, phoneNumber = phoneNumber,
+        firstName = firstName, lastName = lastName)
+      authUser(user)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      UserRecord.insertEntity(User.build(uid = userId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName))
-      PhoneRecord.insertEntity(Phone(phoneNumber, userId))
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val accessHash = User.getAccessHash(publicKey, userId, userSalt)
-      val user = struct.User(userId, accessHash, firstName, lastName, None, Seq(publicKeyHash))
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
+      val sUser = struct.User(userId, accessHash, firstName, lastName, None, Seq(publicKeyHash))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, sUser)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
