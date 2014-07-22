@@ -17,6 +17,8 @@ import scodec.bits._
 class CommonUpdateRecordSpec extends CassandraSpecification {
   "CommonUpdateRecord" should {
     "get push" in {
+      val uid = 1
+
       val senderUID = 1
       val destUID = 2
       val pubkeyHash = 1L
@@ -24,21 +26,23 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
       val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
       val updateMessageSent = updateProto.MessageSent(mid + 1, randomId = 5L)
       val efs = for {
-        _ <- CommonUpdateRecord.push(pubkeyHash, 1, updateMessage)
-        _ <- CommonUpdateRecord.push(pubkeyHash, 2, updateMessageSent)
-        f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.pubkeyHash eqs pubkeyHash).fetch
+        _ <- CommonUpdateRecord.push(uid, pubkeyHash, 1, updateMessage)
+        _ <- CommonUpdateRecord.push(uid, pubkeyHash, 2, updateMessageSent)
+        f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).fetch
       } yield f
 
       val mf = efs map {
         case Seq(Entity(key, first), _) =>
           key._1 must equalTo(pubkeyHash)
-          first.update.asInstanceOf[updateProto.Message].message must equalTo(StringCodec.encode("my message here").toOption.get)
+          first.body.asInstanceOf[updateProto.Message].message must equalTo(StringCodec.encode("my message here").toOption.get)
       }
 
       mf.await
     }
 
     "get difference" in {
+      val uid = 1
+
       val senderUID = 1
       val destUID = 2
       val pubkeyHash = 2L
@@ -49,13 +53,13 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
       val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
 
       1 to 1003 foreach { i =>
-        Await.result(CommonUpdateRecord.push(pubkeyHash, i, updateMessage), Timeout(5000000).duration)
+        Await.result(CommonUpdateRecord.push(uid, pubkeyHash, i, updateMessage), Timeout(5000000).duration)
       }
 
       val fDiffOne = for {
         first <- CommonUpdateRecord.select.one.map(_.get); firstState = first.key._2
-        diff1 <- CommonUpdateRecord.getDifference(pubkeyHash, firstState, 1); secondState = diff1(0).key._2
-        diff500 <- CommonUpdateRecord.getDifference(pubkeyHash, secondState, 500)
+        diff1 <- CommonUpdateRecord.getDifference(uid, pubkeyHash, firstState, 1); secondState = diff1(0).key._2
+        diff500 <- CommonUpdateRecord.getDifference(uid, pubkeyHash, secondState, 500)
       } yield {
         val firstts = firstState.timestamp()
         diff1.length must equalTo(1)

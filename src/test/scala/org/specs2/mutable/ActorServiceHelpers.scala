@@ -110,7 +110,13 @@ trait ActorServiceHelpers extends RandomService {
     val receivedPackages = probe.receiveN(messages.size * 2)
     val unboxed = for ( p <- receivedPackages ) yield {
       p match {
-        case Write(bs, _) => protoPackageBox.decode(bs).toOption.get._2
+        case Write(bs, _) =>
+          protoPackageBox.decode(bs) match {
+            case -\/(e) =>
+              throw new Exception(s"Cannot decode PackageBox $e")
+            case \/-(p) =>
+              p._2
+          }
       }
     }
     val mboxes = unboxed flatMap {

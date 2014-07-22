@@ -33,7 +33,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
 
       probe.send(counter, GetNext)
-      probe.expectMsg(5.seconds, CounterState(1L))
+      probe.expectMsg(5.seconds, 1L)
       success
     }
 
@@ -48,7 +48,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       selection ! GetNext
       selection ! GetNext
 
-      expectMsgAllOf(5.seconds, CounterState(1L), CounterState(2L), CounterState(3L))
+      expectMsgAllOf(5.seconds, 1L, 2L, 3L)
 
       system.stop(counter)
 
@@ -57,7 +57,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       selection ! GetNext
 
-      expectMsg(5.seconds, CounterState(4L))
+      expectMsg(5.seconds, 4L)
 
       success
     }

@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.newzly.phantom.query.ExecutableStatement
+import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
@@ -10,18 +11,20 @@ import java.util.UUID
 import collection.JavaConversions._
 import scala.concurrent.Future
 import scodec.bits._
+import scodec.codecs.{ uuid => uuidCodec }
 
-case class StoredCommonUpdate(seq: Long, update: updateProto.UpdateMessage)
-
-sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entity[(Long, UUID), StoredCommonUpdate]]{
+sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entity[(Long, UUID), CommonUpdate]]{
   override lazy val tableName = "common_updates"
 
+  object uid extends IntColumn(this) with PartitionKey[Int] {
+    override lazy val name = "uid"
+  }
   object pubkeyHash extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "pubkey_hash"
   }
   object uuid extends TimeUUIDColumn(this) with PrimaryKey[UUID]
   object seq extends IntColumn(this)
-  object userIds extends SetColumn[CommonUpdateRecord, Entity[(Long, UUID), StoredCommonUpdate], Int](this) {
+  object userIds extends SetColumn[CommonUpdateRecord, Entity[(Long, UUID), CommonUpdate], Int](this) {
     override lazy val name = "user_ids"
   }
 
@@ -60,19 +63,21 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "random_id"
   }
 
-  override def fromRow(row: Row): Entity[(Long, UUID), StoredCommonUpdate] = {
+  override def fromRow(row: Row): Entity[(Long, UUID), CommonUpdate] = {
     updateId(row) match {
       case 1L =>
         Entity((pubkeyHash(row), uuid(row)),
-          StoredCommonUpdate(
+          CommonUpdate(
             seq(row),
+            uuidCodec.encodeValid(uuid(row)),
             updateProto.Message(senderUID(row), destUID(row), mid(row), keyHash(row), useAesKey(row),
               aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
           ))
       case 4L =>
         Entity((pubkeyHash(row), uuid(row)),
-          StoredCommonUpdate(
+          CommonUpdate(
             seq(row),
+            uuidCodec.encodeValid(uuid(row)),
             updateProto.MessageSent(mid(row), randomId(row))
           ))
     }
@@ -85,17 +90,19 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
   //import com.newzly.phantom.query.QueryCondition
 
   // TODO: limit by size, not rows count
-  def getDifference(pubkeyHash: Long, state: UUID, limit: Int = 500)(implicit session: Session): Future[Seq[Entity[(Long, UUID), StoredCommonUpdate]]] = {
+  def getDifference(uid: Int, pubkeyHash: Long, state: UUID, limit: Int = 500)(implicit session: Session): Future[Seq[Entity[(Long, UUID), CommonUpdate]]] = {
     //select.where(c => QueryCondition(QueryBuilder.gte(c.uuid.name, QueryBuilder.fcall("maxTimeuuid")))).limit(limit)
     //  .fetch
 
-    CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.pubkeyHash eqs pubkeyHash).and(_.uuid gt state).limit(limit).fetch
+    CommonUpdateRecord.select.orderBy(_.uuid.asc)
+      .where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).and(_.uuid gt state)
+      .limit(limit).fetch
   }
 
-  def getState(pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
-    CommonUpdateRecord.select(_.uuid).orderBy(_.uuid.desc).one
+  def getState(uid: Int, pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
+    CommonUpdateRecord.select(_.uuid).where(_.uid eqs uid).and(_.pubkeyHash eqs pubkeyHash).orderBy(_.uuid.desc).one
 
-  def push(pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future[UUID] {
+  def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future[UUID] {
     val uuid = TimeUuid()
 
     update match {
@@ -104,26 +111,26 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         // TODO: Prepared statement
         session.execute("""
           INSERT INTO common_updates (
-            pubkey_hash, uuid, seq, user_ids, update_id,
+            uid, pubkey_hash, uuid, seq, user_ids, update_id,
             sender_uid, dest_uid, mid, key_hash, use_aes_key, aes_key_hex, message
           )
-          VALUES (?, ?, ?, ?, 1,
+          VALUES (?, ?, ?, ?, ?, 1,
                   ?, ?, ?, ?, ?, ?, ?)
         """,
-          new java.lang.Long(pubkeyHash), uuid, new java.lang.Integer(seq), userIds,
+          new java.lang.Integer(uid), new java.lang.Long(pubkeyHash), uuid, new java.lang.Integer(seq), userIds,
           new java.lang.Integer(senderUID), new java.lang.Integer(destUID), new java.lang.Integer(mid),
           new java.lang.Long(keyHash), new java.lang.Boolean(useAesKey),
           aesKey map (x => x.toHex) getOrElse (null), message.toHex)
       case updateProto.MessageSent(mid, randomId) =>
         session.execute("""
           INSERT INTO common_updates (
-            pubkey_hash, uuid, seq, user_ids, update_id,
+            uid, pubkey_hash, uuid, seq, user_ids, update_id,
             mid, random_id
           )
-          VALUES (?, ?, ?, ?, 4,
+          VALUES (?, ?, ?, ?, ?, 4,
                   ?, ?)
         """,
-          new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), Set[Int](): java.util.Set[Int],
+          new java.lang.Integer(uid), new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), Set[Int](): java.util.Set[Int],
           new java.lang.Integer(mid), new java.lang.Long(randomId))
     }
 

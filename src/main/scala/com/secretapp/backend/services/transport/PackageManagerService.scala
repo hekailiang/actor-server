@@ -28,7 +28,7 @@ with GeneratorService { self: Actor =>
     // TODO: become
     case Authenticate(u: User) =>
       log.info(s"Authenticate: $u")
-      currentUser = Some(u)
+      this.currentUser = Some(u)
   }
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
@@ -49,8 +49,14 @@ with GeneratorService { self: Actor =>
         case Success(res) => res match {
           case Some(authIdRecord) =>
             currentAuthId = authIdRecord.authId
-            currentUser = authIdRecord.user
-            handlePackageAuthentication(p)(f)
+            println("$$$ ", authIdRecord.user)
+            authIdRecord.user onComplete {
+              case Success(user) =>
+                currentUser = user
+                handlePackageAuthentication(p)(f)
+              case Failure(e) =>
+                sendDrop(p, s"ERROR ${e}") // TODO: humanize error
+            }
           case None => sendDrop(p, s"unknown auth id(${p.authId}) or session id(${p.sessionId})")
         }
         case Failure(e) => sendDrop(p, e)

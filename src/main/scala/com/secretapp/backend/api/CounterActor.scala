@@ -6,10 +6,6 @@ import akka.persistence._
 sealed case class Cmd(data: String)
 sealed case class Evt(data: String)
 
-case class CounterState(counter: Long) {
-  def incremented: CounterState = copy(counter + 1)
-}
-
 object CounterProtocol {
   case object GetNext
 }
@@ -17,19 +13,19 @@ object CounterProtocol {
 class CounterActor(name: String, initial: Int = 0) extends PersistentActor {
   override def persistenceId = s"counter-$name"
 
-  var state = CounterState(initial)
+  var count = initial
 
   def receiveCommand: Actor.Receive = {
     case CounterProtocol.GetNext =>
       val replyTo = sender
       persist(CounterProtocol.GetNext) { _ =>
-        state = state.incremented
-        replyTo ! state
+        count += 1
+        replyTo ! count
       }
   }
 
   def receiveRecover: Actor.Receive = {
     case CounterProtocol.GetNext =>
-      state = state.incremented
+      count += 1
   }
 }

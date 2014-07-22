@@ -13,7 +13,7 @@ object SharedActors {
     * Resolves ActorRef by path and creates a new actor if is is absent
     */
   def lookup(path: String)(f: => ActorRef)(implicit system: ActorSystem, timeout: Timeout): Future[ActorRef] = {
-    val spath = s"shared/$path"
+    val spath = s"shared~$path"
     val selection = system.actorSelection(spath)
     import system.dispatcher
 
@@ -25,7 +25,7 @@ object SharedActors {
         ref
     } andThen {
       case Failure(e) =>
-        log.error(s"Cannot resolve $spath", e)
+        log.error(s"Cannot resolve $spath {}", e)
     }
   }
 }

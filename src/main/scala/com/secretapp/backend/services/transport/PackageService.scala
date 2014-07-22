@@ -9,7 +9,9 @@ import com.secretapp.backend.services.common.PackageCommon.PackageToSend
 import scalaz._
 import Scalaz._
 
-trait PackageService extends PackageManagerService with PackageAckService with RpcService {  self: Actor =>
+trait PackageService extends PackageManagerService with PackageAckService with RpcService {
+  self: Actor =>
+
   def handleMessage(p: Package, m: MessageBox): Unit = {
     acknowledgeReceivedPackage(p, m)
     m.body match { // TODO: move into pluggable traits
@@ -18,7 +20,9 @@ trait PackageService extends PackageManagerService with PackageAckService with R
         handleActor ! PackageToSend(reply)
       case MessageAck(mids) =>
         ackTracker ! RegisterMessageAcks(mids.toList)
-      case RpcRequestBox(body) => handleRpc(p, m.messageId)(body)
+      case RpcRequestBox(body) =>
+        println("@@@@@@", currentUser)
+        handleRpc(p, m.messageId)(body)
       case _ =>
     }
   }

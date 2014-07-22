@@ -16,6 +16,7 @@ CREATE TABLE auth_sms_codes (
 );
 
 CREATE TABLE common_updates (
+  uid int,
   pubkey_hash bigint,
   uuid timeuuid,
   aes_key_hex text,
