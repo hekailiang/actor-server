@@ -3,6 +3,8 @@ package com.secretapp.backend.api
 import akka.actor.{ Actor, ActorLogging, Props }
 import akka.io.Tcp._
 import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.protocol.codecs.common.VarIntCodec
+import scodec.bits.BitVector
 
 class Server(session: CSession) extends Actor with ActorLogging with ExtraActorsInitializer {
   import context.system

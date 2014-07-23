@@ -102,39 +102,28 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
   def getState(uid: Int, pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
     CommonUpdateRecord.select(_.uuid).where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).orderBy(_.uuid.desc).one
 
-  def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session) = Future[UUID] {
+  def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session): Future[UUID] = {
     val uuid = TimeUuid()
 
-    update match {
+    val q = update match {
       case updateProto.Message(senderUID, destUID, mid, keyHash, useAesKey, aesKey, message) =>
-        val userIds: java.util.Set[Int] = Set(senderUID, destUID)
-        // TODO: Prepared statement
-        session.execute("""
-          INSERT INTO common_updates (
-            uid, public_key_hash, uuid, seq, user_ids, update_id,
-            sender_uid, dest_uid, mid, dest_key_hash, use_aes_key, aes_key_hex, message
-          )
-          VALUES (?, ?, ?, ?, ?, 1,
-                  ?, ?, ?, ?, ?, ?, ?)
-        """,
-          new java.lang.Integer(uid), new java.lang.Long(pubkeyHash), uuid, new java.lang.Integer(seq), userIds,
-          new java.lang.Integer(senderUID), new java.lang.Integer(destUID), new java.lang.Integer(mid),
-          new java.lang.Long(keyHash), new java.lang.Boolean(useAesKey),
-          aesKey map (x => x.toHex) getOrElse (null), message.toHex)
+        val userIds = Set(senderUID, destUID)
+        insert.value(_.uid, uid).value(_.publicKeyHash, pubkeyHash).value(_.uuid, uuid)
+        .value(_.seq, seq).value(_.userIds, userIds).value(_.updateId, 1)
+        .value(_.senderUID, senderUID).value(_.destUID, destUID)
+        .value(_.mid, mid).value(_.keyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
+        .value(_.message, message.toHex)
       case updateProto.MessageSent(mid, randomId) =>
-        session.execute("""
-          INSERT INTO common_updates (
-            uid, public_key_hash, uuid, seq, user_ids, update_id,
-            mid, random_id
-          )
-          VALUES (?, ?, ?, ?, ?, 4,
-                  ?, ?)
-        """,
-          new java.lang.Integer(uid), new java.lang.Long(pubkeyHash), TimeUuid(), new java.lang.Integer(seq), Set[Int](): java.util.Set[Int],
-          new java.lang.Integer(mid), new java.lang.Long(randomId))
+        insert.value(_.uid, uid).value(_.publicKeyHash, pubkeyHash).value(_.uuid, uuid)
+        .value(_.seq, seq).value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
+        .value(_.randomId, randomId)
+      case _ =>
+        throw new Exception("Unknown UpdateMessage")
     }
 
-    uuid
+    val f = q.future
+
+    f map (_ => uuid)
   }
 
 

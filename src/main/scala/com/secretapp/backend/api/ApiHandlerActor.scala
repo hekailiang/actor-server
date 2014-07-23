@@ -3,6 +3,7 @@ package com.secretapp.backend.api
 import akka.actor.{ Actor, ActorRef, ActorLogging }
 import akka.util.ByteString
 import akka.io.Tcp._
+import com.secretapp.backend.data.transport.MessageBox
 import scodec.bits._
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.services.transport._
@@ -33,6 +34,12 @@ class ApiHandlerActor(connection: ActorRef, val session: CSession) extends Actor
     case MessageBoxToSend(mb) =>
       log.info(s"MessageBoxToSend($mb)")
       val p = Package(getAuthId, getSessionId, mb)
+      connection ! Write(replyPackage(p))
+
+    case UpdateBoxToSend(ub) =>
+      log.info(s"UpdateBoxToSend($ub)")
+      // FIXME: real message id SA-32
+      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
       connection ! Write(replyPackage(p))
 
     case m: ServiceMessage =>

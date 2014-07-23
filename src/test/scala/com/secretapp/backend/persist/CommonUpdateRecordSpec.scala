@@ -1,43 +1,50 @@
 package com.secretapp.backend.persist
 
 import akka.util.Timeout
+import com.datastax.driver.core.ConsistencyLevel
 import com.newzly.phantom.Implicits._
-import com.secretapp.backend.data.message.{update => updateProto, _}
+import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
-import org.specs2.matcher.NoConcurrentExecutionContext
 import scala.collection.immutable.Seq
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{ Await }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.Failure
+import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
+import com.newzly.util.testing.AsyncAssertionsHelper._
 
 class CommonUpdateRecordSpec extends CassandraSpecification {
   "CommonUpdateRecord" should {
     "get push" in {
-      val uid = 1
+      val uid = 123
 
-      val senderUID = 1
+      val senderUID = 123
       val destUID = 2
       val pubkeyHash = 1L
       val mid = 1
       val updateMessage = updateProto.Message(senderUID, destUID, mid, pubkeyHash, false, None, StringCodec.encode("my message here").toOption.get)
       val updateMessageSent = updateProto.MessageSent(mid + 1, randomId = 5L)
+
       val efs = for {
-        _ <- CommonUpdateRecord.push(uid, pubkeyHash, 1, updateMessage)
-        _ <- CommonUpdateRecord.push(uid, pubkeyHash, 2, updateMessageSent)
+        x <- CommonUpdateRecord.push(uid, pubkeyHash, 1, updateMessage)
+        y <- CommonUpdateRecord.push(uid, pubkeyHash, 2, updateMessageSent)
         f <- CommonUpdateRecord.select.orderBy(_.uuid.asc).where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).fetch
-      } yield f
+      } yield {
+        f
+      }
 
       val mf = efs map {
         case Seq(Entity(key, first), _) =>
           key._1 must equalTo(pubkeyHash)
           first.body.asInstanceOf[updateProto.Message].message must equalTo(StringCodec.encode("my message here").toOption.get)
+        case x => throw new Exception(s"Unexpected updates count $x")
       }
 
-      mf.await
+      mf.await(timeout = DurationInt(10).seconds)
     }
 
     "get difference" in {

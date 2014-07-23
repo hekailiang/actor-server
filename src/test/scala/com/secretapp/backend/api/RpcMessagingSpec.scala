@@ -36,8 +36,7 @@ import scodec.bits._
 import scalaz._
 import Scalaz._
 
-class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers
-{
+class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
   import system.dispatcher
 
   override lazy val actorSystemName = "api"
@@ -105,10 +104,11 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       send(packageBlob)
 
       val state = TimeUuid()
-      val rsp = ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
+
+      val rsp = new ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
       val rpcRes = RpcResponseBox(messageId, Ok(rsp))
       val expectMsg = MessageBox(messageId, rpcRes)
-//      expectMsgWithAck(expectMsg)
+      //expectMsgWithAck(expectMsg)
       success
     }
   }

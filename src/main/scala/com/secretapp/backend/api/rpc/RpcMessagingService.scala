@@ -33,8 +33,6 @@ trait RpcMessagingService {
     messagingManager ! RpcProtocol.Request(p, messageId, rq)
   }
 
-  //val updatesManager = context.actorOf(Props(new UpdatesManager(sessionId)))
-
   // TODO: cache result
   protected def updatesManager(uid: Int, keyHash: Long): Future[ActorRef] = {
     val path = s"updates-manager-${keyHash.toString}"

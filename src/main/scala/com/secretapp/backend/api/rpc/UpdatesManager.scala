@@ -7,6 +7,7 @@ import akka.util.Timeout
 import com.datastax.driver.core.{Session => CSession}
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc.Ok
 import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
 import com.secretapp.backend.data.message.update.CommonUpdate
@@ -98,7 +99,7 @@ sealed class PusherActor(handleActor: ActorRef) extends Actor with ActorLogging 
   def receive = {
     case (u: updateProto.Message, seq: Int, state: UUID) =>
       val upd = CommonUpdate(seq, uuid.encode(state).toOption.get, u)
-      //val mb = MessageBox(rand.nextLong, upd)
-      //handleActor ! MessageBoxToSend(mb)
+      val ub = UpdateBox(upd)
+      handleActor ! UpdateBoxToSend(ub)
   }
 }

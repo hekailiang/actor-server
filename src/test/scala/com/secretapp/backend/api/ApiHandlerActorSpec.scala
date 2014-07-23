@@ -3,6 +3,7 @@ package com.secretapp.backend.api
 import scala.language.{ postfixOps, higherKinds }
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
+import com.newzly.util.testing.AsyncAssertionsHelper._
 import akka.testkit._
 import akka.actor.{ Props, Actor }
 import akka.io.Tcp._
@@ -25,7 +26,6 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
