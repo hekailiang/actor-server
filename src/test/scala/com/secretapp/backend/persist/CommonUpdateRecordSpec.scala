@@ -48,7 +48,6 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
       val destUID = 2
       val destPublicKeyHash = 3L
       val mid = 1
-      Await.result(CommonUpdateRecord.truncateTable(session), Timeout(5000000).duration)
 
       val initialSeq = 0L
       val updateMessage = updateProto.Message(senderUID, destUID, mid, destPublicKeyHash, false, None, StringCodec.encode("my message here").toOption.get)
