@@ -139,6 +139,15 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode RpcRequest.RequestAuthCode with InitConnection" in {
+      val encoded = hex"0347022b080110021a056170706c6522086970686f6e6520302a07656e676c6973683207656e676c6973683a02757300000001150888a0a5bda90210b9601a09776f776170696b6579".bits
+      val initCon = InitConnection(1, 2, "apple", "iphone 0", "english", "english", "us".some)
+      val decoded = RpcRequestBox(RequestWithInit(initCon, RequestAuthCode(79853867016L, 12345, "wowapikey")))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     "encode and decode RpcRequest.RequestGetState" in {
       val encoded = hex"0306010000000900".bits
       val decoded = RpcRequestBox(Request(RequestGetState()))

@@ -11,7 +11,7 @@ import scodec.Codec
 import scodec.codecs._
 
 object RequestWithInitCodec extends Codec[RequestWithInit] {
-  private val codec = (protoBytes :: RequestCodec.rpcRequestMessageCodec).as[RequestWithInit]
+  private val codec = (protoPayload(InitConnectionCodec) :: RequestCodec.rpcRequestMessageCodec).as[RequestWithInit]
 
   def encode(r: RequestWithInit) = codec.encode(r)
 
