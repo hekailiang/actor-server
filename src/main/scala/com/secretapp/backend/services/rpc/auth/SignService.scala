@@ -1,6 +1,8 @@
 package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
+import com.secretapp.backend.data.Implicits._
+import scala.collection.immutable
 import scala.collection.immutable.Seq
 import scala.util.{ Random, Try, Success, Failure }
 import scala.concurrent.Future
@@ -75,6 +77,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
           val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
             user.keyHashes)
+//          TODO: insert new publicKey
           handleActor ! Authenticate(user)
           ResponseAuth(user.publicKeyHash, sUser)
         }
@@ -88,7 +91,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       PhoneRecord.getEntity(phoneNumber) flatMap {
-        case Some(phone) => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        case Some(_) => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
         case None =>
           val f =
             for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
@@ -100,7 +103,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
               val accessSalt = genUserAccessSalt
               val user = User.build(uid = userId, publicKey = publicKey, accessSalt = accessSalt,
                 phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-              for { _ <- UserRecord.insertEntity(user) } yield {
+              for { _ <- UserRecord.insertEntityWithPhone(user) } yield {
                 handleActor ! Authenticate(user)
                 val sUser = StructUser(userId, user.selfAccessHash, user.firstName, user.lastName,
                   user.sex.toOption, Seq(user.publicKeyHash)) // TODO: move into User model

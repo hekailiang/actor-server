@@ -56,10 +56,7 @@ trait ActorServiceHelpers extends RandomService {
 
   def authUser(u: User)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
     insertAuthAndSessionId(u.uid.some)
-    UserRecord.insertEntity(u).sync()
-    val phone = Phone(number = phoneNumber, userId = u.uid, userAccessSalt = u.accessSalt, userKeyHashes = u.keyHashes,
-      userFirstName = u.firstName, userLastName = u.lastName, userSex = u.sex)
-    PhoneRecord.insertEntity(phone).sync()
+    UserRecord.insertEntityWithPhone(u).sync()
     destActor ! Authenticate(u)
   }
 

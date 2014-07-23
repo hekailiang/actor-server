@@ -26,8 +26,8 @@ case class User(uid: Int,
 
   def selfAccessHash = accessHash(publicKey)
 
-  def toStruct = {
-    struct.User(uid = this.uid, accessHash = User.getAccessHash(publicKey, this.uid, this.accessSalt),
+  def toStruct(senderPublicKey: BitVector = publicKey) = {
+    struct.User(uid = this.uid, accessHash = User.getAccessHash(senderPublicKey, this.uid, this.accessSalt),
       keyHashes = this.keyHashes, firstName = this.firstName, lastName = this.lastName, sex = this.sex.toOption)
   }
 }

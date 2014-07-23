@@ -19,6 +19,7 @@ import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types._
@@ -180,9 +181,35 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val accessHash = User.getAccessHash(publicKey, userId, userSalt)
-      val sUser = struct.User(userId, accessHash, firstName, lastName, None, Seq(publicKeyHash))
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, sUser)))
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user.toStruct())))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    }
+
+    "handle RPC request import contacts" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val messageId = rand.nextLong()
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val firstName = "Timothy"
+      val lastName = Some("Klim")
+      val clientPhoneId = rand.nextLong()
+      val user = User.build(uid = userId, publicKey = publicKey, accessSalt = userSalt, phoneNumber = phoneNumber,
+        firstName = firstName, lastName = lastName)
+      authUser(user)
+      val secondUser = User.build(uid = userId + 1, publicKey = publicKey, accessSalt = userSalt,
+        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
+      UserRecord.insertEntityWithPhone(secondUser).sync()
+
+      val reqContacts = Seq(ContactToImport(clientPhoneId, secondUser.phoneNumber))
+      val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val resContacts = Seq(ImportedContact(clientPhoneId, secondUser.uid))
+      val resBody = ResponseImportedContacts(Seq(secondUser.toStruct(user.publicKey)), resContacts)
+      val rpcRes = RpcResponseBox(messageId, Ok(resBody))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }

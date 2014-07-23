@@ -9,6 +9,7 @@ import java.util.{ Date, UUID }
 import scodec.bits.BitVector
 import scala.concurrent.Future
 import scala.math.BigInt
+import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
@@ -55,7 +56,11 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 }
 
 object UserRecord extends UserRecord with DBConnector {
-  def insertEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
+  def insertEntityWithPhone(entity: User)(implicit session: Session): Future[ResultSet] = {
+    val phone = Phone(number = entity.phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
+      userKeyHashes = immutable.Seq(entity.publicKeyHash), userFirstName = entity.firstName,
+      userLastName = entity.lastName, userSex = sexToInt(entity.sex))
+
     insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
@@ -65,7 +70,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.firstName, entity.firstName)
       .value(_.lastName, entity.lastName)
       .value(_.sex, sexToInt(entity.sex))
-      .future()
+      .future().flatMap(_ => PhoneRecord.insertEntity(phone))
   }
 
   def insertPartEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
