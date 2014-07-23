@@ -30,7 +30,7 @@ object BackendBuild extends Build {
       Seq(
         libraryDependencies ++= rootDependencies,
         resolvers ++= Resolvers.seq,
-        distJvmOptions in Dist := "-Xms256M -Xmx1024M",
+        distJvmOptions in Dist := "-server -Xms256M -Xmx1024M",
         distBootClass in Dist := appClass,
         outputDirectory in Dist := file("target/dist"),
         Revolver.reStartArgs := Seq(appClassMock),
