@@ -51,10 +51,12 @@ class UpdatesBroker(val userId: Int, val publicKeyHash: Long)(implicit session: 
           case u: updateProto.CommonUpdateMessage =>
             seq += 1
             // FIXME: Handle errors!
-            CommonUpdateRecord.push(userId, publicKeyHash, this.seq, u)(session) map { uuid =>
-              log.info("Pushed update seq={}, state={}", this.seq, uuid)
+            CommonUpdateRecord.push(userId, publicKeyHash, u)(session) map { uuid =>
               mediator ! Publish(topic, u)
               replyTo ! (seq, uuid)
+              log.info(
+                s"Pushed update uid=$userId publicKeyHash=$publicKeyHash seq=${this.seq}, state=$uuid update=$update"
+              )
             }
         }
       }
