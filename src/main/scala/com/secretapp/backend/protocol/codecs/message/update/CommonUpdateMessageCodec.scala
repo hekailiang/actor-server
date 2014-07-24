@@ -1,4 +1,4 @@
-package com.secretapp.backend.protocol.codecs.message
+package com.secretapp.backend.protocol.codecs.message.update
 
 import scala.util.{ Try, Success, Failure }
 import com.secretapp.backend.data.message.update._
@@ -7,8 +7,8 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-object UpdateMessageCodec {
-  def encode(body: UpdateMessage): String \/ BitVector = {
+object CommonUpdateMessageCodec {
+  def encode(body: CommonUpdateMessage): String \/ BitVector = {
     body match {
       case m: Message => MessageCodec.encode(m)
       case m: MessageSent => MessageSentCodec.encode(m)
@@ -17,12 +17,12 @@ object UpdateMessageCodec {
     }
   }
 
-  def decode(updateType: Int, buf: BitVector): String \/ UpdateMessage = {
-    val tryed = Try(updateType match {
-      case Message.updateType => MessageCodec.decode(buf)
-      case MessageSent.updateType => MessageSentCodec.decode(buf)
-      case NewDevice.updateType => NewDeviceCodec.decode(buf)
-      case NewYourDevice.updateType => NewYourDeviceCodec.decode(buf)
+  def decode(commonUpdateType: Int, buf: BitVector): String \/ CommonUpdateMessage = {
+    val tryed = Try(commonUpdateType match {
+      case Message.commonUpdateType => MessageCodec.decode(buf)
+      case MessageSent.commonUpdateType => MessageSentCodec.decode(buf)
+      case NewDevice.commonUpdateType => NewDeviceCodec.decode(buf)
+      case NewYourDevice.commonUpdateType => NewYourDeviceCodec.decode(buf)
     })
     tryed match {
       case Success(res) => res match {

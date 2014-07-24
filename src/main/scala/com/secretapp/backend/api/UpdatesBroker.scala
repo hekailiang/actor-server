@@ -12,7 +12,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import scala.concurrent.Future
 
 object UpdatesBroker {
-  case class NewUpdate[A <: updateProto.UpdateMessage](update: A)
+  case class NewUpdate[A <: updateProto.CommonUpdateMessage](update: A)
   case object GetSeq
 
   def topicFor(userId: Long, publicKeyHash: Long): String = s"updates-${userId.toString}-${publicKeyHash.toString}"
@@ -48,13 +48,15 @@ class UpdatesBroker(val userId: Int, val publicKeyHash: Long)(implicit session: 
       val replyTo = sender
       persist(p) { _ =>
         update match {
-          case u: updateProto.UpdateMessage =>
+          case u: updateProto.CommonUpdateMessage =>
             seq += 1
             // FIXME: Handle errors!
-            CommonUpdateRecord.push(userId, publicKeyHash, this.seq, u)(session) map { uuid =>
-              log.info("Pushed update seq={}, state={}", this.seq, uuid)
+            CommonUpdateRecord.push(userId, publicKeyHash, u)(session) map { uuid =>
               mediator ! Publish(topic, u)
               replyTo ! (seq, uuid)
+              log.info(
+                s"Pushed update uid=$userId publicKeyHash=$publicKeyHash seq=${this.seq}, state=$uuid update=$update"
+              )
             }
         }
       }

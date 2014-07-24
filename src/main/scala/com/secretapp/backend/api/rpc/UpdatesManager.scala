@@ -4,11 +4,15 @@ import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.util.Timeout
+import akka.pattern.ask
 import com.datastax.driver.core.{Session => CSession}
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc.Ok
+import com.secretapp.backend.data.message.rpc.update.Difference
+import com.secretapp.backend.data.message.rpc.update.DifferenceUpdate
 import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{update => updateProto}
@@ -21,8 +25,9 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Random
 import scala.util.Success
+import scala.collection.immutable
 import scala.concurrent.duration._
-import scodec.codecs.uuid
+import scodec.codecs.{ uuid => uuidCodec }
 import scodec.bits._
 import scalaz._
 import akka.pattern.ask
@@ -36,8 +41,9 @@ class UpdatesManager(val handleActor: ActorRef, val uid: Int, val publicKeyHash:
 
   def receive = {
     case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetDifference(seq, state)) =>
-      val stateUuid = uuid.decodeValidValue(state)
-      CommonUpdateRecord.getDifference(uid, publicKeyHash, stateUuid)
+      handleRequestGetDifference(p, messageId)(seq, state)
+    case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetState()) =>
+      handleRequestGetState(p, messageId)
   }
 }
 
@@ -50,21 +56,36 @@ sealed trait UpdatesService {
   private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor)))
   private val fupdatesBroker = UpdatesBroker.lookup(uid, publicKeyHash)
   private var subscribedToUpdates = false
+  private val differenceSize = 500
 
-  protected def handleRequestGetDifference(p: Package, messageId: Long, currentUser: User)(
+  protected def handleRequestGetDifference(p: Package, messageId: Long)(
     seq: Int, state: BitVector
   ) = {
-
+    uuidCodec.decodeValue(state) match {
+      case \/-(uuid) =>
+        for {
+          updatesBroker <- fupdatesBroker
+          seq <- ask(updatesBroker, UpdatesBroker.GetSeq).mapTo[Int]
+          difference <- CommonUpdateRecord.getDifference(
+            uid, publicKeyHash, uuid, differenceSize + 1
+          ) flatMap (mkDifference(seq, _))
+        } yield {
+          handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)
+        }
+      case -\/(e) =>
+        // TODO: handle properly
+        throw new Exception("Wrong state format")
+    }
   }
 
-  protected def handleRequestGetState(p: Package, messageId: Long, currentUser: User) = {
-    subscribeToUpdates(currentUser)
+  protected def handleRequestGetState(p: Package, messageId: Long) = {
+    subscribeToUpdates(uid, publicKeyHash)
 
-    val f = getState(currentUser)
+    val f = getState(uid, publicKeyHash)
 
     f onComplete {
       case Success((seq, muuid)) =>
-        val rsp = updateRpcProto.State(seq, muuid map (uuid.encodeValid) getOrElse BitVector.empty)
+        val rsp = updateRpcProto.State(seq, muuid map (uuidCodec.encodeValid) getOrElse BitVector.empty)
         handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
       case Failure(err) =>
         // TODO: Handle failure
@@ -72,17 +93,26 @@ sealed trait UpdatesService {
     }
   }
 
-  protected def subscribeToUpdates(currentUser: User) = {
+  protected def mkDifference(seq: Int, allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
+    val needMore = allUpdates.length > differenceSize
+    val updates = allUpdates.tail
+    val users = Future { List[struct.User]() }
+    users map (Difference(seq, uuidCodec.encodeValid(updates.head.key), _,
+      updates map {u => DifferenceUpdate(u.value)}, needMore))
+  }
+
+  protected def subscribeToUpdates(uid: Int, publicKeyHash: Long) = {
     if (!subscribedToUpdates) {
-      log.info("Subscribing to updates {}", currentUser)
-      mediator ! Subscribe(UpdatesBroker.topicFor(currentUser), updatesPusher)
+      log.info("Subscribing to updates uid={} publicKeyHash={}", uid, publicKeyHash)
+      mediator ! Subscribe(UpdatesBroker.topicFor(uid, publicKeyHash), updatesPusher)
     }
   }
 
-  protected def getState(currentUser: User)(implicit session: CSession): Future[(Int, Option[UUID])] = {
+  @inline
+  protected def getState(uid: Int, publicKeyHash: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     for {
       seq <- getSeq()
-      muuid <- CommonUpdateRecord.getState(currentUser.uid, currentUser.publicKeyHash)
+      muuid <- CommonUpdateRecord.getState(uid, publicKeyHash)
     } yield {
       (seq, muuid)
     }
@@ -98,7 +128,7 @@ sealed class PusherActor(handleActor: ActorRef) extends Actor with ActorLogging 
 
   def receive = {
     case (u: updateProto.Message, seq: Int, state: UUID) =>
-      val upd = CommonUpdate(seq, uuid.encode(state).toOption.get, u)
+      val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
       val ub = UpdateBox(upd)
       handleActor ! UpdateBoxToSend(ub)
   }
