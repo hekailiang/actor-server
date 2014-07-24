@@ -88,7 +88,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+      addUser(mockAuthId, sessionId.id, user)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
@@ -110,7 +110,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+      addUser(mockAuthId, sessionId.id, user)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val newPublicKey = hex"3049301306072a8648ce3d020106082a8648ce3d03010103320004c16cf4eff9c8dc49745ad01566e7535d3a7ce09ba6ed1b012cf5f4bc5905435e08809649336621b5c4ec1a22ef4be591".bits
@@ -148,7 +148,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+      addUser(mockAuthId, sessionId.id, user)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
@@ -156,6 +156,63 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       send(packageBlob)
 
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user.toStruct(mockAuthId))))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    }
+
+    "success with second public key and authId" in {
+      implicit val sessionId = SessionIdentifier()
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val firstName = "Timothy"
+      val lastName = Some("Klim")
+      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user)
+
+      val newPublicKey = hex"ac1d".bits
+      val newPublicKeyHash = User.getPublicKeyHash(publicKey)
+      val newAuthId = rand.nextLong()
+      val newSessionId = rand.nextLong()
+      AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
+      SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
+      UserRecord.insertPartEntity(userId, newAuthId, newPublicKey, phoneNumber).sync()
+
+      Seq((mockAuthId, sessionId.id, publicKey), (newAuthId, newSessionId, newPublicKey)) foreach { (t) =>
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        implicit val (probe, apiActor) = probeAndActor()
+        val (authId, sessionId, publicKey) = t
+        val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
+        val messageId = rand.nextLong()
+        val packageBlob = codecRes2BS(protoPackageBox.build(authId, sessionId, messageId, rpcReq))
+        probe.send(apiActor, Received(packageBlob))
+
+        val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user.toStruct(authId))))
+        val expectMsg = MessageBox(messageId, rpcRes)
+        expectMsgWithAck(expectMsg)
+      }
+      success
+    }
+
+    "failed with new public key and valid authId" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val messageId = rand.nextLong()
+      val publicKey = hex"ac1d".bits
+      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val firstName = "Timothy"
+      val lastName = Some("Klim")
+      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, hex"dead".bits)))
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_PUBLIC_KEY", ""))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
