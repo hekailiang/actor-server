@@ -22,7 +22,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object authId extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "auth_id"
   }
-  object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
+  object publicKeyHash extends LongColumn(this) {
     override lazy val name = "public_key_hash"
   }
   object publicKey extends BigIntColumn(this) {
@@ -80,40 +80,29 @@ object UserRecord extends UserRecord with DBConnector {
       .future().flatMap(_ => PhoneRecord.insertEntity(phone))
   }
 
-  def insertPartEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
-    insert.value(_.uid, entity.uid)
-      .value(_.authId, entity.authId)
-      .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
-      .future().flatMap(_ => addKeyHash(entity))
+  def insertPartEntity(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long)(implicit session: Session): Future[ResultSet] = {
+    val publicKeyHash = PublicKey.keyHash(publicKey)
+    insert.value(_.uid, uid)
+      .value(_.authId, authId)
+      .value(_.publicKeyHash, publicKeyHash)
+      .value(_.publicKey, BigInt(publicKey.toByteArray))
+      .future().flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
   }
 
-  private def addKeyHash(user: User)(implicit session: Session) = {
-    update.where(_.uid eqs user.uid).modify(_.keyHashes add user.publicKeyHash).
-      future().flatMap(_ => PhoneRecord.addKeyHash(user.phoneNumber, user.publicKeyHash))
+  private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
+    update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).
+      future().flatMap(_ => PhoneRecord.addKeyHash(phoneNumber, publicKeyHash))
+  }
+
+  def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
+    select.where(_.uid eqs uid).fetch()
   }
 
   def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {
     select.where(_.uid eqs uid).one()
   }
 
-  def getEntity(uid: Int, authId: Long, publicKey: BitVector)(implicit session: Session): Future[Option[User]] = {
-    val publicKeyHash = PublicKey.keyHash(publicKey)
-    val f = select.where(_.uid eqs uid)
-      .and(_.authId eqs authId)
-      .and(_.publicKeyHash eqs publicKeyHash)
-      .one()
-
-    f.flatMap {
-      case Some(u) =>
-        Future.successful {
-          if (u.publicKey == publicKey) {
-            u.some
-          } else {
-            None
-          }
-        }
-      case _ => Future.successful(None)
-    }
+  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[User]] = {
+    select.where(_.uid eqs uid).and(_.authId eqs authId).one()
   }
 }

@@ -22,6 +22,7 @@ import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcCommon
+import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
@@ -71,15 +72,19 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     } else {
       for {
         phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", ""))
-        user <- futOptHandle(UserRecord.getEntity(phoneR.userId, p.authId, publicKey), internalError) // TODO: authId or publicKey not found
+        user <- futOptHandle(UserRecord.getEntity(phoneR.userId, p.authId), Error(400, "INVALID_AUTH", ""))
         smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
-        validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-          AuthSmsCodeRecord.dropEntity(phoneNumber)
-          val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
-            user.keyHashes)
-          handleActor ! Authenticate(user)
-          ResponseAuth(user.publicKeyHash, sUser)
+        if (user.publicKey != publicKey) {
+          Error(400, "INVALID_PUBLIC_KEY", "").left
+        } else {
+          validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
+            AuthSmsCodeRecord.dropEntity(phoneNumber)
+            val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
+              user.keyHashes)
+            handleActor ! Authenticate(user)
+            ResponseAuth(user.publicKeyHash, sUser)
+          }
         }
       }
     }
@@ -87,30 +92,51 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
 
   def handleRequestSignUp(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String,
                                       lastName: Option[String], publicKey: BitVector): RpcResult = {
+
+    @inline
+    def signUp(userIdOpt: Option[Int]): RpcResult = {
+      val f =
+        for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
+        yield validateSignParams(smsHash, smsCode)(smsCodeR)
+
+      f flatMap {
+        case \/-(_) =>
+          AuthSmsCodeRecord.dropEntity(phoneNumber)
+          val authId = p.authId // TODO
+          userIdOpt match {
+            case None =>
+              val userId = genUserId
+              val accessSalt = genUserAccessSalt
+              val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
+              for { _ <- UserRecord.insertEntityWithPhone(user) } yield {
+                handleActor ! Authenticate(user)
+                ResponseAuth(user.publicKeyHash, user.toStruct(authId)).right
+              }
+            case Some(userId) =>
+              for {
+                _ <- UserRecord.insertPartEntity(userId, authId, publicKey, phoneNumber)
+                user <- futOptHandle(UserRecord.getEntity(userId), internalError)
+              } yield {
+                handleActor ! Authenticate(user)
+                val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+                ResponseAuth(publicKeyHash, user.toStruct(authId)).right
+              }
+          }
+        case l@(-\/(_)) => Future.successful(l)
+      }
+    }
+
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       PhoneRecord.getEntity(phoneNumber) flatMap {
-        case Some(_) => handleRequestSignIn(p)(phoneNumber, smsHash, smsCode, publicKey)
-        case None =>
-          val f =
-            for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
-            yield validateSignParams(smsHash, smsCode)(smsCodeR)
-
-          f flatMap {
-            case \/-(_) =>
-              val userId = genUserId
-              val accessSalt = genUserAccessSalt
-              val authId = p.authId // TODO
-              val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-              for { _ <- UserRecord.insertEntityWithPhone(user) } yield {
-                AuthSmsCodeRecord.dropEntity(phoneNumber)
-                handleActor ! Authenticate(user)
-                ResponseAuth(user.publicKeyHash, user.toStruct(authId)).right
-              }
-            case l@(-\/(_)) => Future.successful(l)
+        case Some(phoneR) =>
+          UserRecord.getEntity(phoneR.userId, p.authId) flatMap {
+            case Some(u) => handleRequestSignIn(p)(phoneNumber, smsHash, smsCode, publicKey)
+            case None => signUp(phoneR.userId.some)
           }
+        case None => signUp(None)
       }
     }
   }

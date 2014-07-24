@@ -31,20 +31,5 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
 
       chain must be_== (entity.some).await
     }
-
-    "return None for entity with invalid public key" in {
-      val authId = 10L
-      val entity = User.build(uid = 100,
-        authId = authId,
-        publicKey = hex"ac1d".bits,
-        accessSalt = "salt",
-        phoneNumber = 79853867016L,
-        firstName = "Wayne",
-        lastName = Some("Brain"),
-        sex = Male)
-      UserRecord.insertEntityWithPhone(entity).sync()
-
-      UserRecord.getEntity(entity.uid, authId, hex"dead".bits) must be_== (None).await
-    }
   }
 }
