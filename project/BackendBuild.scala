@@ -54,7 +54,7 @@ object BackendBuild extends Build {
     resolvers ++= Resolvers.seq,
     scalacOptions ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature"), //, "-Xprint:typer"
     javacOptions ++= Seq(
-      "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation",
+      "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"
     ),
     parallelExecution in Test := true,
     fork in Test := true
