@@ -8,6 +8,7 @@ package object codecs {
   val varint = common.VarIntCodec
   val protoLongs = common.LongsCodec
   val protoBytes = common.BytesCodec
+  val protoBool = common.BooleanCodec
   def protoPayload[A](payloadCodec: Codec[A]) = new common.PayloadBytesCodec[A](payloadCodec)
   val protoSex = common.SexCodec
   val protoString = common.StringCodec

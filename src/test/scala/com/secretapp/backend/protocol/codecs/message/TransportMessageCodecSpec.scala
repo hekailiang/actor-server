@@ -244,6 +244,38 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode RpcResponse.Error" in {
+      val encoded = hex"0400000000000000012202000000010b3430305f554e4b4e4f574e0f776f772c2073756368206572726f7201".bits
+      val decoded = RpcResponseBox(1L, Error(1, "400_UNKNOWN", "wow, such error", true))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.ConnectionNotInitedError" in {
+      val encoded = hex"0400000000000000010105".bits
+      val decoded = RpcResponseBox(1L, ConnectionNotInitedError())
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.FloodWait" in {
+      val encoded = hex"04000000000000000105030000007b".bits
+      val decoded = RpcResponseBox(1L, FloodWait(123))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.InternalError" in {
+      val encoded = hex"04000000000000000106040100000063".bits
+      val decoded = RpcResponseBox(1L, InternalError(true, 99))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     "encode and decode RpcResponse.ResponseImportedContacts" in {
       val encoded = hex"0400000000000000012b0100000008250a1c080110b9601a0754696d6f74687922044b6c696d280230013002300312050889061001".bits
       val user = User(1, 12345L, "Timothy", Some("Klim"), Some(types.Male), Seq(1L, 2L, 3L))

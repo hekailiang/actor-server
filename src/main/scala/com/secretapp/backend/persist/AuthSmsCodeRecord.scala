@@ -6,6 +6,7 @@ import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models.AuthSmsCode
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, AuthSmsCode] {
   override lazy val tableName = "auth_sms_codes"
@@ -30,10 +31,15 @@ object AuthSmsCodeRecord extends AuthSmsCodeRecord with DBConnector {
     insert.value(_.phoneNumber, entity.phoneNumber)
       .value(_.smsHash, entity.smsHash)
       .value(_.smsCode, entity.smsCode)
+      .ttl(15.minutes.toSeconds.toInt)
       .future()
   }
 
   def getEntity(phoneNumber: Long)(implicit session: CSession): Future[Option[AuthSmsCode]] = {
     select.where(_.phoneNumber eqs phoneNumber).one()
+  }
+
+  def dropEntity(phoneNumber: Long)(implicit session: CSession) = {
+    delete.where(_.phoneNumber eqs phoneNumber).future()
   }
 }

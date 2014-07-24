@@ -5,6 +5,7 @@ import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.crypto.ec.PublicKey
 import java.util.{ Date, UUID }
 import scodec.bits.BitVector
 import scala.concurrent.Future
@@ -12,11 +13,15 @@ import scala.math.BigInt
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
+import scala.util.{ Success, Failure }
 
 sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override lazy val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
+  object authId extends LongColumn(this) with PrimaryKey[Long] {
+    override lazy val name = "auth_id"
+  }
   object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "public_key_hash"
   }
@@ -43,6 +48,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override def fromRow(row: Row): User = {
     User(
       uid = uid(row),
+      authId = authId(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row).toByteArray),
       keyHashes = keyHashes(row).toIndexedSeq,
@@ -62,6 +68,7 @@ object UserRecord extends UserRecord with DBConnector {
       userLastName = entity.lastName, userSex = sexToInt(entity.sex))
 
     insert.value(_.uid, entity.uid)
+      .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.keyHashes, Set(entity.publicKeyHash))
@@ -75,6 +82,7 @@ object UserRecord extends UserRecord with DBConnector {
 
   def insertPartEntity(entity: User)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, entity.uid)
+      .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .future().flatMap(_ => addKeyHash(entity))
@@ -87,5 +95,25 @@ object UserRecord extends UserRecord with DBConnector {
 
   def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {
     select.where(_.uid eqs uid).one()
+  }
+
+  def getEntity(uid: Int, authId: Long, publicKey: BitVector)(implicit session: Session): Future[Option[User]] = {
+    val publicKeyHash = PublicKey.keyHash(publicKey)
+    val f = select.where(_.uid eqs uid)
+      .and(_.authId eqs authId)
+      .and(_.publicKeyHash eqs publicKeyHash)
+      .one()
+
+    f.flatMap {
+      case Some(u) =>
+        Future.successful {
+          if (u.publicKey == publicKey) {
+            u.some
+          } else {
+            None
+          }
+        }
+      case _ => Future.successful(None)
+    }
   }
 }

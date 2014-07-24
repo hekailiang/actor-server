@@ -33,8 +33,8 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode => sendRpcResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
-    case r: RequestSignIn => sendRpcResult(p, messageId)((handleRequestSignIn _).tupled(RequestSignIn.unapply(r).get))
-    case r: RequestSignUp => sendRpcResult(p, messageId)((handleRequestSignUp _).tupled(RequestSignUp.unapply(r).get))
+    case r: RequestSignIn => sendRpcResult(p, messageId)((handleRequestSignIn(p) _).tupled(RequestSignIn.unapply(r).get))
+    case r: RequestSignUp => sendRpcResult(p, messageId)((handleRequestSignUp(p) _).tupled(RequestSignUp.unapply(r).get))
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
@@ -65,19 +65,19 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     }
   }
 
-  def handleRequestSignIn(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector): RpcResult = {
+  def handleRequestSignIn(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector): RpcResult = {
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       for {
         phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", ""))
-        user <- futOptHandle(phoneR.user, internalError)
+        user <- futOptHandle(UserRecord.getEntity(phoneR.userId, p.authId, publicKey), internalError) // TODO: authId or publicKey not found
         smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
       } yield {
         validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
+          AuthSmsCodeRecord.dropEntity(phoneNumber)
           val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
             user.keyHashes)
-//          TODO: insert new publicKey
           handleActor ! Authenticate(user)
           ResponseAuth(user.publicKeyHash, sUser)
         }
@@ -85,13 +85,13 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     }
   }
 
-  def handleRequestSignUp(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String, lastName: Option[String],
-                          publicKey: BitVector): RpcResult = {
+  def handleRequestSignUp(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String,
+                                      lastName: Option[String], publicKey: BitVector): RpcResult = {
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
       PhoneRecord.getEntity(phoneNumber) flatMap {
-        case Some(_) => handleRequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        case Some(_) => handleRequestSignIn(p)(phoneNumber, smsHash, smsCode, publicKey)
         case None =>
           val f =
             for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
@@ -101,13 +101,13 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
             case \/-(_) =>
               val userId = genUserId
               val accessSalt = genUserAccessSalt
-              val user = User.build(uid = userId, publicKey = publicKey, accessSalt = accessSalt,
+              val authId = p.authId // TODO
+              val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
                 phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
               for { _ <- UserRecord.insertEntityWithPhone(user) } yield {
+                AuthSmsCodeRecord.dropEntity(phoneNumber)
                 handleActor ! Authenticate(user)
-                val sUser = StructUser(userId, user.selfAccessHash, user.firstName, user.lastName,
-                  user.sex.toOption, Seq(user.publicKeyHash)) // TODO: move into User model
-                ResponseAuth(user.publicKeyHash, sUser).right
+                ResponseAuth(user.publicKeyHash, user.toStruct(authId)).right
               }
             case l@(-\/(_)) => Future.successful(l)
           }

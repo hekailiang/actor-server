@@ -27,6 +27,9 @@ class StringCodecSpec extends Specification {
       res._1 should_== BitVector.empty
       res._2 should_== "strтестΩ≈ç√"
 
+      val resWithTailRes = protoString.decode(hex"15737472d182d0b5d181d182cea9e28988c3a7e2889a1c1d".bits)
+      resWithTailRes should_== (hex"1c1d".bits, "strтестΩ≈ç√").right
+
       val resWithTail = protoString.decode(hex"0000000000000000647fffffffffffffff".bits).toOption.get
       resWithTail._1 should_== hex"00000000000000647fffffffffffffff".bits
       resWithTail._2 should_== ""
