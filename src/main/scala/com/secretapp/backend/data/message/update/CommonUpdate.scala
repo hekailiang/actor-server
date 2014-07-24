@@ -11,9 +11,9 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends UpdateMessage
+case class CommonUpdate(seq: Int, state: BitVector, body: UpdateMessage) extends CommonUpdateMessage
 {
-  val updateType = 0xd
+  val commonUpdateType = 0xd
 
   def toProto: String \/ protobuf.CommonUpdate = {
     for {

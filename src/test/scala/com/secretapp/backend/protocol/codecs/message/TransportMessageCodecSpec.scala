@@ -83,7 +83,7 @@ class TransportMessageCodecSpec extends Specification {
 
     "encode and decode Update.Message" in {
       val encoded = hex"051800000001087b10c803180a20b32b28013202ac1d3a021001".bits
-      val decoded = UpdateBox(Message(123, 456, 10, 5555L, true, Some(hex"ac1d".bits), hex"1001".bits))
+      val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, Message(123, 456, 10, 5555L, true, Some(hex"ac1d".bits), hex"1001".bits)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -91,7 +91,7 @@ class TransportMessageCodecSpec extends Specification {
 
     "encode and decode Update.NewDevice" in {
       val encoded = hex"050900000002087b10e707".bits
-      val decoded = UpdateBox(NewDevice(123, 999L))
+      val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, NewDevice(123, 999L)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -99,7 +99,7 @@ class TransportMessageCodecSpec extends Specification {
 
     "encode and decode Update.NewYourDevice" in {
       val encoded = hex"050d00000003087b10e7071a02ac1d".bits
-      val decoded = UpdateBox(NewYourDevice(123, 999L, hex"ac1d".bits))
+      val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, NewYourDevice(123, 999L, hex"ac1d".bits)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
