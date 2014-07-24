@@ -9,7 +9,6 @@ import Scalaz._
 import com.secretapp.backend.protocol.codecs._
 
 object StringCodec extends Codec[String] {
-
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
   def encode(s: String) = {
@@ -23,9 +22,8 @@ object StringCodec extends Codec[String] {
     for {
       l <- varint.decode(buf); (xs, len) = l
     } yield {
-      val bitsLen = len * longSize
+      val bitsLen = len * byteSize
       (xs.drop(bitsLen), new String(xs.take(bitsLen).toByteArray))
     }
   }
-
 }

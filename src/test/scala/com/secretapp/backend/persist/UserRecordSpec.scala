@@ -15,6 +15,7 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
   "UserRecord" should {
     "insert/get User Entity" in {
       val entity = User.build(uid = 100,
+        authId = 10L,
         publicKey = hex"ac1d".bits,
         accessSalt = "salt",
         phoneNumber = 79853867016L,

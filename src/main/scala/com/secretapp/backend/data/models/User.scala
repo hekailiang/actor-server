@@ -14,6 +14,7 @@ import scalaz._
 import Scalaz._
 
 case class User(uid: Int,
+                authId: Long,
                 publicKeyHash: Long,
                 publicKey: BitVector,
                 accessSalt: String,
@@ -22,12 +23,12 @@ case class User(uid: Int,
                 lastName: Option[String],
                 sex: Sex,
                 keyHashes: Seq[Long] = Seq()) {
-  def accessHash(senderPublicKey: BitVector): Long = User.getAccessHash(senderPublicKey, this)
+  def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
-  def selfAccessHash = accessHash(publicKey)
+  def selfAccessHash = accessHash(authId)
 
-  def toStruct(senderPublicKey: BitVector = publicKey) = {
-    struct.User(uid = this.uid, accessHash = User.getAccessHash(senderPublicKey, this.uid, this.accessSalt),
+  def toStruct(senderAuthId: Long) = {
+    struct.User(uid = this.uid, accessHash = User.getAccessHash(senderAuthId, this.uid, this.accessSalt),
       keyHashes = this.keyHashes, firstName = this.firstName, lastName = this.lastName, sex = this.sex.toOption)
   }
 }
@@ -36,10 +37,11 @@ object User {
   import ByteConstants._
   import Configuration._
 
-  def build(uid: Int, publicKey: BitVector, accessSalt: String, phoneNumber: Long, firstName: String,
+  def build(uid: Int, authId: Long, publicKey: BitVector, accessSalt: String, phoneNumber: Long, firstName: String,
             lastName: Option[String], sex: Sex = NoSex) = {
     val publicKeyHash = getPublicKeyHash(publicKey)
     User(uid = uid,
+      authId = authId,
       publicKey = publicKey,
       publicKeyHash = publicKeyHash,
       accessSalt = accessSalt,
@@ -50,14 +52,14 @@ object User {
       keyHashes = Seq(publicKeyHash))
   }
 
-  def getAccessHash(senderPublicKey: BitVector, uid: Int, accessSalt: String): Long = {
-    val str = s"${senderPublicKey.toHex}:$uid:$accessSalt:$secretKey"
+  def getAccessHash(authId: Long, uid: Int, accessSalt: String): Long = {
+    val str = s"$authId:$uid:$accessSalt:$secretKey"
     val digest = MessageDigest.getInstance("MD5")
     val res = digest.digest(str.getBytes)
     ByteBuffer.wrap(res).getLong
   }
 
-  def getAccessHash(senderPublicKey: BitVector, user: User): Long = getAccessHash(senderPublicKey, user.uid, user.accessSalt)
+  def getAccessHash(authId: Long, user: User): Long = getAccessHash(authId, user.uid, user.accessSalt)
 
   def getPublicKeyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")
