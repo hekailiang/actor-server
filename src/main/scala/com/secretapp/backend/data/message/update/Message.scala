@@ -8,11 +8,11 @@ case class Message(senderUID: Int,
                    keyHash: Long,
                    useAesKey: Boolean,
                    aesKey: Option[BitVector],
-                   message: BitVector) extends UpdateMessage
+                   message: BitVector) extends CommonUpdateMessage
 {
-  val updateType = Message.updateType
+  val commonUpdateType = Message.commonUpdateType
 }
 
-object Message extends UpdateMessageObject {
-  val updateType = 0x1
+object Message extends CommonUpdateMessageObject {
+  val commonUpdateType = 0x1
 }

@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
-import com.secretapp.backend.protocol.codecs.message.UpdateMessageCodec
+import com.secretapp.backend.protocol.codecs.message.update.CommonUpdateMessageCodec
 import com.gilt.timeuuid._
 import java.util.UUID
 import collection.JavaConversions._
@@ -102,7 +102,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
   def getState(uid: Int, pubkeyHash: Long)(implicit session: Session): Future[Option[UUID]] =
     CommonUpdateRecord.select(_.uuid).where(_.uid eqs uid).and(_.publicKeyHash eqs pubkeyHash).orderBy(_.uuid.desc).one
 
-  def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.UpdateMessage)(implicit session: Session): Future[UUID] = {
+  def push(uid: Int, pubkeyHash: Long, seq: Int, update: updateProto.CommonUpdateMessage)(implicit session: Session): Future[UUID] = {
     val uuid = TimeUuid()
 
     val q = update match {

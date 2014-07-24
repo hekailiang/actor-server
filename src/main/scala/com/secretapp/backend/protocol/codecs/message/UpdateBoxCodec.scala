@@ -10,7 +10,7 @@ import scodec.Codec
 import scodec.codecs._
 
 object UpdateBoxCodec extends Codec[UpdateBox] {
-  private val updateCodec: Codec[CommonUpdateMessage] = discriminated[CommonUpdateMessage].by(uint32)
+  private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
     .\(CommonUpdate.updateType) { case c: CommonUpdate => c } (protoPayload(CommonUpdateCodec))
     .\(CommonUpdateTooLong.updateType) { case c: CommonUpdateTooLong => c } (protoPayload(CommonUpdateTooLongCodec))
   /*

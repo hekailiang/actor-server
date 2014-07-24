@@ -4,7 +4,6 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.protocol.codecs.message.UpdateMessageCodec
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._

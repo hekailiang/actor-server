@@ -82,7 +82,7 @@ class TransportMessageCodecSpec extends Specification {
     //  Updates
 
     "encode and decode Update.Message" in {
-      val encoded = hex"051800000001087b10c803180a20b32b28013202ac1d3a021001".bits
+      val encoded = hex"05210000000d1c0801120018012214087b10c803180a20b32b28013202ac1d3a021001".bits
       val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, Message(123, 456, 10, 5555L, true, Some(hex"ac1d".bits), hex"1001".bits)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
@@ -90,7 +90,7 @@ class TransportMessageCodecSpec extends Specification {
     }
 
     "encode and decode Update.NewDevice" in {
-      val encoded = hex"050900000002087b10e707".bits
+      val encoded = hex"05120000000d0d0801120018022205087b10e707".bits
       val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, NewDevice(123, 999L)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
@@ -98,7 +98,7 @@ class TransportMessageCodecSpec extends Specification {
     }
 
     "encode and decode Update.NewYourDevice" in {
-      val encoded = hex"050d00000003087b10e7071a02ac1d".bits
+      val encoded = hex"05160000000d110801120018032209087b10e7071a02ac1d".bits
       val decoded = UpdateBox(CommonUpdate(1, BitVector.empty, NewYourDevice(123, 999L, hex"ac1d".bits)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
