@@ -73,7 +73,6 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(mockAuthId))
       probe.send(apiActor, Received(codecRes2BS(req)))
       probe.expectMsg(Write(codecRes2BS(res)))
-      success
     }
 
     "reply pong to ping" in {
@@ -90,7 +89,6 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       probe.send(apiActor, Received(req))
       val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32"))
       probe.expectMsg(Write(res))
-      success
     }
 
     "parse packages in single stream" in {

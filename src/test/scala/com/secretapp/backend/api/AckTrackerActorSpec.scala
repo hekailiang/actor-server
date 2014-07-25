@@ -32,7 +32,6 @@ class AckTrackerActorSpec extends ActorSpecification {
       probe.send(tracker, GetUnackdMessages)
       val expected = immutable.Map[Long, ByteString]() + Tuple2(123L, bytes)
       probe.expectMsg(500.millis, UnackdMessages(expected))
-      success
     }
 
     "track its status" in {
@@ -41,7 +40,6 @@ class AckTrackerActorSpec extends ActorSpecification {
       probe.send(tracker, GetUnackdMessages)
       val expected = immutable.Map[Long, ByteString]()
       probe.expectMsg(500.millis, UnackdMessages(expected))
-      success
     }
 
     "forget when it's delivered" in {
@@ -49,7 +47,6 @@ class AckTrackerActorSpec extends ActorSpecification {
       probe.send(tracker, RegisterMessage(message.messageId, bytes))
       probe.send(tracker, RegisterMessage(124L, bytes))
       probe.expectMsg(500.millis, MessagesSizeOverflow)
-      success
     }
   }
 }

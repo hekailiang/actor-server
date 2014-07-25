@@ -191,7 +191,6 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
         val expectMsg = MessageBox(messageId, rpcRes)
         expectMsgWithAck(expectMsg)
       }
-      success
     }
 
     "failed with new public key and valid authId" in {

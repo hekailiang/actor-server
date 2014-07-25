@@ -82,7 +82,6 @@ trait ActorServiceHelpers extends RandomService {
       val r = pack(m)
       probe.send(destActor, Received(r.blob))
       wp.f(r.messageId)
-      success
     }
   }
 
