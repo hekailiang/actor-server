@@ -6,7 +6,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.protocol.codecs.common.VarIntCodec
 import scodec.bits.BitVector
 
-class Server(session: CSession) extends Actor with ActorLogging with ExtraActorsInitializer {
+class Server(session: CSession) extends Actor with ActorLogging {
   import context.system
 
   def receive = {
