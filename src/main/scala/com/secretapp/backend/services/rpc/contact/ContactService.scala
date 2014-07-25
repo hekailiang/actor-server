@@ -24,16 +24,15 @@ trait ContactService extends PackageCommon with RpcCommon { self: Actor with Gen
   import context._
 
   def handleRpcContact(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
-    case r: RequestImportContacts =>
-      sendRpcResult(p, messageId)(handleRequestImportContacts(p)(r.contacts))
+    case RequestImportContacts(contacts) =>
+      sendRpcResult(p, messageId)(handleRequestImportContacts(p)(contacts))
   }
 
   def handleRequestImportContacts(p: Package)(contacts: immutable.Seq[ContactToImport]): RpcResult = {
-    val publicKey = getUser.get.publicKey
     val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
     val authId = p.authId // TODO
     for {
-      items <- PhoneRecord.getEntities(contacts.map(_.phoneNumber).toList) run Iteratee.chunks()
+      items <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
     } yield {
       val authId = p.authId
       val users = items.map { item =>

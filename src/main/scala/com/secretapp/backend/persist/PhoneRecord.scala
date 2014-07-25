@@ -4,8 +4,8 @@ import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.newzly.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
+import scala.collection.immutable
 import scala.concurrent.Future
-import play.api.libs.iteratee.Enumerator
 
 sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   override lazy val tableName = "phones"
@@ -66,7 +66,10 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     select.where(_.number eqs number).one()
   }
 
-  def getEntities(numbers: List[Long])(implicit session: Session): Enumerator[Phone] = {
-    select.where(_.number in numbers).fetchEnumerator()
+  def getEntities(numbers: immutable.Seq[Long])(implicit session: Session): Future[immutable.Seq[Phone]] = {
+    val q = numbers.map { number =>
+      select.where(_.number eqs number).one()
+    }
+    Future.sequence(q).map(_.filter(_.isDefined).map(_.get))
   }
 }

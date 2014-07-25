@@ -19,11 +19,12 @@ object RequestImportContactsCodec extends Codec[RequestImportContacts] with util
 
   def decode(buf: BitVector) = {
     decodeProtobufEither(protobuf.RequestImportContacts.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestImportContacts(contacts)) => contacts.length match {
-        case 0 => "empty contacts".left
-        case x if x > 1000 => "maximum limit is 1000".left
-        case _ => RequestImportContacts(contacts.map(ContactToImport.fromProto(_))).right
+      case Success(protobuf.RequestImportContacts(contacts)) =>
+        if (contacts.length > 1000) {
+          "TOO_MANY".left
+        } else {
+          RequestImportContacts(contacts.map(ContactToImport.fromProto(_))).right
+        }
       }
     }
-  }
 }

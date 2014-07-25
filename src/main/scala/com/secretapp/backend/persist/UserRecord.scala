@@ -95,7 +95,7 @@ object UserRecord extends UserRecord with DBConnector {
   }
 
   def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
-    select.where(_.uid eqs uid).fetch()
+    select.where(_.uid eqs uid).limit(100).fetch()
   }
 
   def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {

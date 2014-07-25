@@ -46,7 +46,9 @@ trait RpcService extends SignService with RpcMessagingService with RpcUpdatesSer
       //  (handleRequestGetDifference(p, messageId, user) _).tupled(updateProto.RequestGetDifference.unapply(rq).get)
 
       case _ =>
-        handleRpcAuth(p, messageId).orElse(handleRpcContact(p, messageId))(body)
+        handleRpcAuth(p, messageId).
+          orElse(handleRpcContact(p, messageId)).
+          orElse(handleRpcContact(p, messageId))(body)
     }
   }
 

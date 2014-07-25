@@ -23,6 +23,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseAuthCode.responseType) { case r: ResponseAuthCode => r } (protoPayload(ResponseAuthCodeCodec))
     .\(ResponseSendMessage.responseType) { case r: ResponseSendMessage => r } (protoPayload(ResponseSendMessageCodec))
     .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r } (protoPayload(ResponseImportedContactsCodec))
+    .\(ResponsePublicKeys.responseType) { case r: ResponsePublicKeys => r } (protoPayload(ResponsePublicKeysCodec))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)
 
