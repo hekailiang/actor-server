@@ -101,14 +101,14 @@ sealed trait UpdatesService {
       updates map {u => DifferenceUpdate(u.value)}, needMore))
   }
 
-  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[immutable.Seq[struct.User]] = {
+  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     @inline
     def getUserStruct(uid: Int): Future[Option[struct.User]] = {
       UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
     }
 
     val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
-    Future.sequence(userIds.map(getUserStruct(_)).toList) map (_.flatten)
+    Future.sequence(userIds.map(getUserStruct(_)).toVector) map (_.flatten)
   }
 
   protected def subscribeToUpdates(uid: Int, publicKeyHash: Long) = {
