@@ -97,7 +97,8 @@ sealed trait UpdatesService {
     val needMore = allUpdates.length > differenceSize
     val updates = allUpdates.tail
     val users = mkUsers(authId, updates)
-    users map (Difference(seq, uuidCodec.encodeValid(updates.head.key), _,
+    val state = uuidCodec.encodeValid(updates.last.key)
+    users map (Difference(seq, state, _,
       updates map {u => DifferenceUpdate(u.value)}, needMore))
   }
 
