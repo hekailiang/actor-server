@@ -22,8 +22,6 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
   override lazy val actorSystemName = "api"
 
-  val probe = TestProbe()
-
   def getCounterActor(name: String) = system.actorOf(Props(new CounterActor(name)), name)
 
   implicit val timeout = Timeout(5.seconds)
@@ -32,23 +30,32 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
     "increment its state" in {
       val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
 
-      probe.send(counter, GetNext)
-      probe.expectMsg(5.seconds, 1L)
-      success
+      counter ! GetNext
+      expectMsg(5.seconds, 1)
+    }
+
+    "get bulk" in {
+      val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
+
+      counter ! GetNext
+      counter ! GetBulk(100)
+      expectMsg(5.seconds, 1)
+
+      expectMsg(5.seconds, Bulk(2, 101))
     }
 
     "recover its state" in {
       val name = s"incrementer-failover-${System.nanoTime()}"
       val counter = getCounterActor(name)
-      println(counter.path.toStringWithoutAddress)
 
       val selection = system.actorSelection(s"/user/${name}")
 
       selection ! GetNext
       selection ! GetNext
       selection ! GetNext
+      selection ! GetBulk(100)
 
-      expectMsgAllOf(5.seconds, 1L, 2L, 3L)
+      expectMsgAllOf(5.seconds, 1, 2, 3, Bulk(4, 103))
 
       system.stop(counter)
 
@@ -57,9 +64,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       selection ! GetNext
 
-      expectMsg(5.seconds, 4L)
-
-      success
+      expectMsg(5.seconds, 104)
     }
   }
 }
