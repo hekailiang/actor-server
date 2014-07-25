@@ -84,14 +84,14 @@ sealed trait MessagingService {
     }
 
     @inline
-    def pushUpdates(updates: Seq[((Int, Long), updateProto.Message)]): Seq[Future[Any]] = {
+    def pushUpdates(updates: Seq[((Int, Long), updateProto.Message)]): Unit = {
       updates map {
         case ((uid, keyHash), update) =>
           for {
             updatesBroker <- UpdatesBroker.lookup(uid, keyHash)
           } yield {
             log.info("Update {}", update)
-            ask(updatesBroker, UpdatesBroker.NewUpdate(update))
+            updatesBroker ! UpdatesBroker.NewUpdate(update)
           }
       }
     }
@@ -104,11 +104,11 @@ sealed trait MessagingService {
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
 
+        fmid onSuccess { case mid => pushUpdates(mkUpdates(mid.toInt)) }
+
         // FIXME: handle failures (retry or error, should not break seq)
-        // TODO: don't wait until all updates pushed to its sequences
         for {
           mid <- fmid
-          _ <- Future.sequence(pushUpdates(mkUpdates(mid.toInt)))
           updatesManager <- UpdatesBroker.lookup(currentUser.uid, currentUser.publicKeyHash)
           s <- ask(
             updatesManager, UpdatesBroker.NewUpdate(updateProto.MessageSent(mid.toInt, randomId))).mapTo[(Int, UUID)]
