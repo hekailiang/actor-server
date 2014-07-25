@@ -54,8 +54,9 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       selection ! GetNext
       selection ! GetNext
       selection ! GetBulk(100)
+      selection ! GetNext
 
-      expectMsgAllOf(5.seconds, 1, 2, 3, Bulk(4, 103))
+      expectMsgAllOf(5.seconds, 1, 2, 3, Bulk(4, 103), 104)
 
       system.stop(counter)
 
@@ -64,7 +65,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       selection ! GetNext
 
-      expectMsg(5.seconds, 104)
+      expectMsg(5.seconds, 105)
     }
   }
 }

@@ -96,7 +96,8 @@ sealed trait MessagingService {
       }
     }
 
-    val fmid: Future[Int] = messageCounter.flatMap(ask(_, CounterProtocol.GetNext).mapTo[Int])
+    val fmid: Future[CounterProtocol.StateType] =
+      messageCounter.flatMap(ask(_, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType])
     val fdestUserEntity = UserRecord.getEntity(uid)
 
     fdestUserEntity onComplete {
@@ -104,16 +105,16 @@ sealed trait MessagingService {
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
 
-        fmid onSuccess { case mid => pushUpdates(mkUpdates(mid.toInt)) }
+        fmid onSuccess { case mid => pushUpdates(mkUpdates(mid)) }
 
         // FIXME: handle failures (retry or error, should not break seq)
         for {
           mid <- fmid
           updatesManager <- UpdatesBroker.lookup(currentUser.uid, currentUser.publicKeyHash)
           s <- ask(
-            updatesManager, UpdatesBroker.NewUpdate(updateProto.MessageSent(mid.toInt, randomId))).mapTo[(Int, UUID)]
+            updatesManager, UpdatesBroker.NewUpdate(updateProto.MessageSent(mid, randomId))).mapTo[(Int, UUID)]
         } yield {
-          val rsp = ResponseSendMessage(mid.toInt, s._1, uuid.encodeValid(s._2))
+          val rsp = ResponseSendMessage(mid, s._1, uuid.encodeValid(s._2))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         }
 

@@ -7,41 +7,64 @@ sealed case class Cmd(data: String)
 sealed case class Evt(data: String)
 
 object CounterProtocol {
+  type StateType = Int
+
   sealed trait Request
 
   case object GetNext extends Request
-  case class GetBulk(size: Int) extends Request
+  case class GetBulk(size: StateType) extends Request
 
   sealed trait Response
-  case class Bulk(first: Int, last: Int) extends Response
+  case class Bulk(first: StateType, last: StateType) extends Response
 }
 
-class CounterActor(name: String, initial: Int = 0) extends PersistentActor {
+class CounterActor(name: String, initial: CounterProtocol.StateType = 0) extends PersistentActor with ActorLogging {
+  import CounterProtocol._
+
   override def persistenceId = s"counter-$name"
 
   var count = initial
+  var lastSnapshottedAt: StateType = 0
+  val minSnapshotStep: StateType  = 100
 
   def receiveCommand: Actor.Receive = {
-    case CounterProtocol.GetNext =>
+    case GetNext =>
       val replyTo = sender
-      persist(CounterProtocol.GetNext) { _ =>
+      persist(GetNext) { _ =>
         count += 1
         replyTo ! count
+        maybeSnapshot()
       }
-    case CounterProtocol.GetBulk(size) =>
+    case GetBulk(size) =>
       val replyTo = sender
-      persist(CounterProtocol.GetBulk(size)) { _ =>
+      persist(GetBulk(size)) { _ =>
         val first = count + 1
         val last = count + size
         count = last
-        replyTo ! CounterProtocol.Bulk(first, last)
+        replyTo ! Bulk(first, last)
+        maybeSnapshot()
       }
+    case s: SaveSnapshotSuccess =>
+      log.debug("SaveSnapshotSuccess {}", s)
+    case e: SaveSnapshotFailure =>
+      log.error("SaveSnapshotFailure {}", e)
   }
 
   def receiveRecover: Actor.Receive = {
-    case CounterProtocol.GetNext =>
+    case SnapshotOffer(metadata, offeredSnapshot) =>
+      log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
+      count = offeredSnapshot.asInstanceOf[StateType]
+    case GetNext =>
       count += 1
-    case CounterProtocol.GetBulk(size) =>
+    case GetBulk(size) =>
       count += size
+  }
+
+  private def maybeSnapshot(): Unit = {
+    if (count - lastSnapshottedAt >= minSnapshotStep) {
+      log.debug("Saving snapshot count={} lastSnapshottedAt={}", count, lastSnapshottedAt)
+      lastSnapshottedAt = count
+      saveSnapshot(count)
+    }
   }
 }
