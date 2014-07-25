@@ -26,7 +26,9 @@ trait RpcUpdatesService {
 
   import context.dispatcher
 
-  lazy val updatesManager = context.actorOf(Props(new UpdatesManager(handleActor, getUser.get.uid, getUser.get.publicKeyHash)), "updates-manager")
+  lazy val updatesManager = context.actorOf(Props(
+    new UpdatesManager(handleActor, getUser.get.uid, getUser.get.publicKeyHash, getUser.get.authId)
+  ), "updates-manager")
 
   private var subscribedToUpdates = false
 

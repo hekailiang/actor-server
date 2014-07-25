@@ -7,6 +7,8 @@ package object update {
 
   trait CommonUpdateMessage extends ProtobufMessage {
     val commonUpdateType: Int
+
+    def userIds: Set[Int]
   }
 
   trait UpdateMessageObject {

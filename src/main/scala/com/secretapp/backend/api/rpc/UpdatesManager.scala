@@ -33,7 +33,7 @@ import scalaz._
 import akka.pattern.ask
 import Scalaz._
 
-class UpdatesManager(val handleActor: ActorRef, val uid: Int, val publicKeyHash: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+class UpdatesManager(val handleActor: ActorRef, val uid: Int, val publicKeyHash: Long, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   val mediator = DistributedPubSubExtension(context.system).mediator
@@ -96,9 +96,19 @@ sealed trait UpdatesService {
   protected def mkDifference(seq: Int, allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
     val updates = allUpdates.tail
-    val users = Future { List[struct.User]() }
+    val users = mkUsers(authId, updates)
     users map (Difference(seq, uuidCodec.encodeValid(updates.head.key), _,
       updates map {u => DifferenceUpdate(u.value)}, needMore))
+  }
+
+  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[immutable.Seq[struct.User]] = {
+    @inline
+    def getUserStruct(uid: Int): Future[Option[struct.User]] = {
+      UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
+    }
+
+    val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
+    Future.sequence(userIds.map(getUserStruct(_)).toList) map (_.flatten)
   }
 
   protected def subscribeToUpdates(uid: Int, publicKeyHash: Long) = {

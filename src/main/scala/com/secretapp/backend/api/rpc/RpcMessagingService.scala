@@ -34,10 +34,10 @@ trait RpcMessagingService {
   }
 
   // TODO: cache result
-  protected def updatesManager(uid: Int, keyHash: Long): Future[ActorRef] = {
+  protected def updatesManager(uid: Int, keyHash: Long, authId: Long): Future[ActorRef] = {
     val path = s"updates-manager-${keyHash.toString}"
     SharedActors.lookup(path) {
-      system.actorOf(Props(new UpdatesManager(handleActor, uid, keyHash)), path)
+      system.actorOf(Props(new UpdatesManager(handleActor, uid, keyHash, authId)), path)
     }
   }
 }

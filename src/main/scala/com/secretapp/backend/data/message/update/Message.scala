@@ -11,6 +11,8 @@ case class Message(senderUID: Int,
                    message: BitVector) extends CommonUpdateMessage
 {
   val commonUpdateType = Message.commonUpdateType
+
+  def userIds: Set[Int] = Set(senderUID, destUID)
 }
 
 object Message extends CommonUpdateMessageObject {
