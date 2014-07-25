@@ -109,17 +109,18 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
               val accessSalt = genUserAccessSalt
               val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
                 phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-              for { _ <- UserRecord.insertEntityWithPhone(user) } yield {
+              for { _ <- UserRecord.insertEntityWithPhoneAndPK(user) } yield {
                 handleActor ! Authenticate(user)
                 ResponseAuth(user.publicKeyHash, user.toStruct(authId)).right
               }
             case Some(userId) =>
               for {
-                _ <- UserRecord.insertPartEntity(userId, authId, publicKey, phoneNumber)
-                user <- futOptHandle(UserRecord.getEntity(userId), internalError)
+                userR <- futOptHandle(UserRecord.getEntity(userId), internalError)
+                _ <- UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, userR.accessSalt)
               } yield {
-                handleActor ! Authenticate(user)
                 val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+                val user = userR.copy(keyHashes = userR.keyHashes :+ publicKeyHash)
+                handleActor ! Authenticate(user)
                 ResponseAuth(publicKeyHash, user.toStruct(authId)).right
               }
           }

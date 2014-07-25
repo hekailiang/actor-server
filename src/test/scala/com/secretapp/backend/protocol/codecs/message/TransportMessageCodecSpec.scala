@@ -199,6 +199,17 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
+    "encode and decode RpcRequest.RequestPublicKeys" in {
+      val encoded = hex"032a0100000006240a0a08011088ad4b18b3f6780a0a08021089ad4b18b4f6780a0a0803108aad4b18b5f678".bits
+      val keys = (1 to 3).map { id =>
+        PublicKeyRequest(id, 1234567L + id, 1981234L + id)
+      }
+      val decoded = RpcRequestBox(Request(RequestPublicKeys(keys)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
     //  RPC Responses
 
     "encode and decode RpcResponse.Difference" in {
@@ -283,6 +294,17 @@ class TransportMessageCodecSpec extends Specification {
       val contact = ImportedContact(777L, user.uid)
       val contacts = Seq(contact)
       val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
+
+      protoTransportMessage.encode(decoded) should_== encoded.right
+      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+    }
+
+    "encode and decode RpcResponse.ResponsePublicKeys" in {
+      val encoded = hex"0400000000000000013301000000182d0a0d08011088ad4b1a0561633164310a0d08021089ad4b1a0561633164320a0d0803108aad4b1a056163316433".bits
+      val keys = (1 to 3).map { id =>
+        PublicKeyResponse(id, 1234567L + id, BitVector(s"ac1d${id}".getBytes))
+      }
+      val decoded = RpcResponseBox(1L, Ok(ResponsePublicKeys(keys)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some

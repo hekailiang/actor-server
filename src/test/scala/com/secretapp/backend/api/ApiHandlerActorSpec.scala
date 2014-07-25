@@ -143,33 +143,5 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
-
-    "handle RPC request import contacts" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val sessionId = SessionIdentifier()
-      val messageId = rand.nextLong()
-      val publicKey = hex"ac1d".bits
-      val publicKeyHash = User.getPublicKeyHash(publicKey)
-      val firstName = "Timothy"
-      val lastName = Some("Klim")
-      val clientPhoneId = rand.nextLong()
-      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
-      val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
-      UserRecord.insertEntityWithPhone(secondUser).sync()
-
-      val reqContacts = Seq(ContactToImport(clientPhoneId, secondUser.phoneNumber))
-      val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
-      val packageBlob = pack(MessageBox(messageId, rpcReq))
-      send(packageBlob)
-
-      val resContacts = Seq(ImportedContact(clientPhoneId, secondUser.uid))
-      val resBody = ResponseImportedContacts(Seq(secondUser.toStruct(mockAuthId)), resContacts)
-      val rpcRes = RpcResponseBox(messageId, Ok(resBody))
-      val expectMsg = MessageBox(messageId, rpcRes)
-      expectMsgWithAck(expectMsg)
-    }
   }
 }

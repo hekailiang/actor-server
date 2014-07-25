@@ -21,7 +21,6 @@ import com.newzly.util.testing.AsyncAssertionsHelper._
 import scodec.bits._
 import scalaz._
 import Scalaz._
-
 import scala.util.Random
 
 class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
@@ -176,7 +175,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
-      UserRecord.insertPartEntity(userId, newAuthId, newPublicKey, phoneNumber).sync()
+      UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber, userSalt).sync()
 
       Seq((mockAuthId, sessionId.id, publicKey), (newAuthId, newSessionId, newPublicKey)) foreach { (t) =>
         AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()

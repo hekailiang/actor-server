@@ -88,7 +88,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val sndUID = 3000
       val secondUser = User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      UserRecord.insertEntityWithPhone(secondUser).sync()
+      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
       val rq = RequestSendMessage(
         uid = userId, accessHash = accessHash,
