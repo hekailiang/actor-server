@@ -62,10 +62,12 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 }
 
 object UserRecord extends UserRecord with DBConnector {
-  def insertEntityWithPhone(entity: User)(implicit session: Session): Future[ResultSet] = {
+  def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
     val phone = Phone(number = entity.phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
       userKeyHashes = immutable.Seq(entity.publicKeyHash), userFirstName = entity.firstName,
       userLastName = entity.lastName, userSex = sexToInt(entity.sex))
+    val userPK = UserPublicKey(uid = entity.uid,
+      publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey)
 
     insert.value(_.uid, entity.uid)
       .value(_.authId, entity.authId)
@@ -77,16 +79,24 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.firstName, entity.firstName)
       .value(_.lastName, entity.lastName)
       .value(_.sex, sexToInt(entity.sex))
-      .future().flatMap(_ => PhoneRecord.insertEntity(phone))
+      .future().
+      flatMap(_ => PhoneRecord.insertEntity(phone)).
+      flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
   }
 
-  def insertPartEntity(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long)(implicit session: Session): Future[ResultSet] = {
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String)
+                      (implicit session: Session): Future[ResultSet] = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
+    val userPK = UserPublicKey(uid = uid,
+      publicKeyHash = publicKeyHash, userAccessSalt = accessSalt, publicKey = publicKey)
+
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, BigInt(publicKey.toByteArray))
-      .future().flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
+      .future().
+      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
+      flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
   }
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {

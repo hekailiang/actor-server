@@ -12,14 +12,14 @@ import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
-trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService {
+trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService
+with PublicKeysService {
   self: Actor with PackageManagerService =>
 
   def handleRpc(p: Package, messageId: Long): PartialFunction[RpcRequest, Unit] = {
     case Request(body) =>
       runHandler(p, messageId, body)
     case RequestWithInit(initConnection, body) =>
-      //      TODO: initConnection
       runHandler(p, messageId, body)
   }
 
@@ -48,7 +48,7 @@ trait RpcService extends SignService with RpcMessagingService with RpcUpdatesSer
       case _ =>
         handleRpcAuth(p, messageId).
           orElse(handleRpcContact(p, messageId)).
-          orElse(handleRpcContact(p, messageId))(body)
+          orElse(handleRpcPublicKeys(p, messageId))(body)
     }
   }
 

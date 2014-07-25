@@ -19,7 +19,7 @@ trait PublicKeysService extends PackageCommon with RpcCommon { self: Actor with 
 
   import context._
 
-  def handleRpcContact(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
+  def handleRpcPublicKeys(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case RequestPublicKeys(keys) =>
       sendRpcResult(p, messageId)(handleRequestPublicKeys(p)(keys))
   }

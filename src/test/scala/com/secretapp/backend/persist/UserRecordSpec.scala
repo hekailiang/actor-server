@@ -22,7 +22,7 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
         firstName = "Wayne",
         lastName = Some("Brain"),
         sex = Male)
-      val insertFuture = UserRecord.insertEntityWithPhone(entity)
+      val insertFuture = UserRecord.insertEntityWithPhoneAndPK(entity)
 
       val chain = for {
         insertDone <- insertFuture
