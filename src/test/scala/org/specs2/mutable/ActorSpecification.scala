@@ -48,4 +48,11 @@ with TestKitBase
 
 trait ActorSpecification extends ActorLikeSpecification {
   override def is = fragments
+
+  implicit def anyToSuccess[T]: AsResult[T] = new AsResult[T] {
+    def asResult(t: =>T) = {
+      t
+      Success()
+    }
+  }
 }
