@@ -8,7 +8,9 @@ import scalaz._
 import Scalaz._
 
 class DiscriminatedErrorCodec[T, B](codecName: String) extends Codec[T] {
+  import ByteConstants._
+
   def encode(a: T) = s"$codecName.type is unknown for ${a.getClass.getCanonicalName}. You should add codec for that.".left
 
-  def decode(buf: BitVector) = s"$codecName.type is unknown. Body: '${buf.toHex}', length: ${buf.length / 8}".left
+  def decode(buf: BitVector) = s"$codecName.type is unknown. Body: '${buf.toHex}', length: ${buf.length / byteSize}".left
 }

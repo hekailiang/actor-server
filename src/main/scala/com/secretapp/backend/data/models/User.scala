@@ -17,7 +17,6 @@ case class User(uid: Int,
                 publicKeyHash: Long,
                 publicKey: BitVector,
                 accessSalt: String,
-                phoneNumber: Long,
                 firstName: String,
                 lastName: Option[String],
                 sex: Sex,
@@ -36,7 +35,7 @@ object User {
   import ByteConstants._
   import Configuration._
 
-  def build(uid: Int, authId: Long, publicKey: BitVector, accessSalt: String, phoneNumber: Long, firstName: String,
+  def build(uid: Int, authId: Long, publicKey: BitVector, accessSalt: String, firstName: String,
             lastName: Option[String], sex: Sex = NoSex) = {
     val publicKeyHash = getPublicKeyHash(publicKey)
     User(uid = uid,
@@ -44,7 +43,6 @@ object User {
       publicKey = publicKey,
       publicKeyHash = publicKeyHash,
       accessSalt = accessSalt,
-      phoneNumber = phoneNumber,
       firstName = firstName,
       lastName = lastName,
       sex = sex,

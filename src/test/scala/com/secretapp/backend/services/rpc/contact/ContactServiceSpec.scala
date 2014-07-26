@@ -68,13 +68,13 @@ class ContactServiceSpec extends ActorLikeSpecification with CassandraSpecificat
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+        firstName = firstName, lastName = lastName)
+      authUser(user, phoneNumber)
       val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+        firstName = firstName, lastName = lastName)
+      UserRecord.insertEntityWithPhoneAndPK(secondUser, phoneNumber + 1).sync()
 
-      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, secondUser.phoneNumber))
+      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, phoneNumber + 1))
       val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)

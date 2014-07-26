@@ -54,15 +54,15 @@ trait ActorServiceHelpers extends RandomService {
     insertSessionId
   }
 
-  def addUser(authId: Long, sessionId: Long, u: User): Unit = blocking {
+  def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(authId, u.uid.some)).sync()
     SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithPhoneAndPK(u, phoneNumber).sync()
   }
 
-  def authUser(u: User)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
+  def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
     insertAuthAndSessionId(u.uid.some)
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithPhoneAndPK(u, phoneNumber).sync()
     destActor ! Authenticate(u)
   }
 

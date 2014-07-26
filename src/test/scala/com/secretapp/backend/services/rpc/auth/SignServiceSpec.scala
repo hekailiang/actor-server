@@ -86,8 +86,8 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user)
+        firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
@@ -108,8 +108,8 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user)
+        firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val newPublicKey = hex"3049301306072a8648ce3d020106082a8648ce3d03010103320004c16cf4eff9c8dc49745ad01566e7535d3a7ce09ba6ed1b012cf5f4bc5905435e08809649336621b5c4ec1a22ef4be591".bits
@@ -146,8 +146,8 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user)
+        firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
@@ -166,8 +166,8 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user)
+        firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, phoneNumber)
 
       val newPublicKey = hex"ac1d".bits
       val newPublicKeyHash = User.getPublicKeyHash(publicKey)
@@ -175,7 +175,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
-      UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber, userSalt).sync()
+      UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
 
       Seq((mockAuthId, sessionId.id, publicKey), (newAuthId, newSessionId, newPublicKey)) foreach { (t) =>
         AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
@@ -202,8 +202,8 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user)
+        firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, hex"dead".bits)))

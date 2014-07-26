@@ -68,12 +68,12 @@ class PublicKeysServiceSpec extends ActorLikeSpecification with CassandraSpecifi
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+        firstName = firstName, lastName = lastName)
+      authUser(user, phoneNumber)
       val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
+        firstName = firstName, lastName = lastName)
       val accessHash = User.getAccessHash(mockAuthId, secondUser.uid, secondUser.accessSalt)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+      UserRecord.insertEntityWithPhoneAndPK(secondUser, phoneNumber + 1).sync()
 
       val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
       val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
