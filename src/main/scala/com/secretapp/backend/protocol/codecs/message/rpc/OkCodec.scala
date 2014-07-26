@@ -24,6 +24,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseSendMessage.responseType) { case r: ResponseSendMessage => r } (protoPayload(ResponseSendMessageCodec))
     .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r } (protoPayload(ResponseImportedContactsCodec))
     .\(ResponsePublicKeys.responseType) { case r: ResponsePublicKeys => r } (protoPayload(ResponsePublicKeysCodec))
+    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)
 

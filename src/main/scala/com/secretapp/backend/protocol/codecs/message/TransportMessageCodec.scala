@@ -1,6 +1,7 @@
 package com.secretapp.backend.protocol.codecs.message
 
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.protocol.codecs.DiscriminatedErrorCodec
 import scodec.bits.BitVector
 import scodec.Codec
 import scodec.codecs._
@@ -22,6 +23,7 @@ object TransportMessageCodec extends Codec[TransportMessage] {
       .\(UnsentResponse.header) { case m: UnsentResponse => m } (UnsentResponseCodec)
       .\(RequestResend.header) { case r: RequestResend => r } (RequestResendCodec)
       .\(MessageAck.header) { case m: MessageAck => m } (MessageAckCodec)
+      .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("TransportMessage"))
   }
 
   def encode(tm: TransportMessage) = codec.encode(tm)

@@ -24,6 +24,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestSendMessage.requestType) { case r: RequestSendMessage => r } (protoPayload(RequestSendMessageCodec))
     .\(RequestImportContacts.requestType) { case r: RequestImportContacts => r } (protoPayload(RequestImportContactsCodec))
     .\(RequestPublicKeys.requestType) { case r: RequestPublicKeys => r } (protoPayload(RequestPublicKeysCodec))
+    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)
 

@@ -123,6 +123,11 @@ class TransportMessageCodecSpec extends Specification {
 
     //  RPC Requests
 
+    "describe error for invalid data in RpcRequest" in {
+      val encoded = hex"030cff".bits
+      protoTransportMessage.decode(encoded) should_== "RpcRequestBox.type is unknown. Body: '', length: 0".left
+    }
+
     "encode and decode RpcRequest.RequestGetDifference" in {
       val encoded = hex"030c010000000b06087b1202ac1d".bits
       val decoded = RpcRequestBox(Request(RequestGetDifference(123, hex"ac1d".bits)))

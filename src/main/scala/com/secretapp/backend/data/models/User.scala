@@ -1,7 +1,6 @@
 package com.secretapp.backend.data.models
 
 import com.secretapp.backend.data.message.struct
-
 import scala.collection.immutable.Seq
 import scala.util.Random
 import com.secretapp.backend.data.types._

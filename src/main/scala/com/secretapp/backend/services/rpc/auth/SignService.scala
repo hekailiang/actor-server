@@ -92,7 +92,6 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
 
   def handleRequestSignUp(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String,
                                       lastName: Option[String], publicKey: BitVector): RpcResult = {
-
     @inline
     def signUp(userIdOpt: Option[Int]): RpcResult = {
       val f =
