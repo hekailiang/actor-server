@@ -179,12 +179,6 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
-    "encode and decode RpcRequest.RequestSignUp with invalid public key" in {
-      val decoded = RpcRequestBox(Request(RequestSignUp(79853867016L, "smshash12", "605060", "Timothy", "Klim".some, hex"ac1d".bits)))
-      val res = protoTransportMessage.decode(protoTransportMessage.encode(decoded).toOption.get)
-      res.toOption should_== None
-    }
-
     "encode and decode RpcRequest.RequestSendMessage" in {
       val encoded = hex"0320010000000e1a08011002180320012a020ae5320c080110021a020ae52202ac1d".bits
       val message = EncryptedMessage(1, 2L, hex"ae5".bits.some, hex"ac1d".bits.some)

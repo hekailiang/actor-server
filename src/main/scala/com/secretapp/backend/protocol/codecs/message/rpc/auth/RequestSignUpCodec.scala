@@ -19,13 +19,9 @@ object RequestSignUpCodec extends Codec[RequestSignUp] with utils.ProtobufCodec 
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobufEither(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
+    decodeProtobuf(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)) =>
-        if (PublicKey.isPrime192v1(publicKey)) {
-          RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey).right
-        } else {
-          "invalid public key".left
-        }
+        RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, publicKey)
     }
   }
 }

@@ -103,9 +103,9 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
       }
     }
 
-    if (smsCode.isEmpty) {
-      Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
-    } else {
+    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
+    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "").left)
+    else {
       val f = for {
         smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
         phoneR <- PhoneRecord.getEntity(phoneNumber)
