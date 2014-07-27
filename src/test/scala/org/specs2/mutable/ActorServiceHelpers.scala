@@ -42,7 +42,7 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def genPublicKey = {
-    val arr: Array[Byte] = Array.fill(192)(0)
+    val arr: Array[Byte] = Array.fill(24)(0)
     rand.nextBytes(arr)
     BitVector(arr)
   }

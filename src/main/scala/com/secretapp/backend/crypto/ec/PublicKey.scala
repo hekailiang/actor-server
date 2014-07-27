@@ -5,7 +5,7 @@ import scodec.bits.BitVector
 import java.security.MessageDigest
 
 object PublicKey {
-  def isPrime192v1(buf: BitVector): Boolean = buf.length / byteSize == 192
+  def isPrime192v1(buf: BitVector): Boolean = buf.length == 192
 
   def keyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")
