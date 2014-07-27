@@ -53,6 +53,10 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     update.where(_.number eqs phoneNumber).modify(_.userKeyHashes add keyHash).future()
   }
 
+  def removeKeyHash(phoneNumber: Long, keyHash: Long)(implicit session: Session) = {
+    update.where(_.number eqs phoneNumber).modify(_.userKeyHashes remove keyHash).future()
+  }
+
   def updateUser(phoneNumber: Long, user: User)(implicit session: Session) = {
     update.
       where(_.number eqs phoneNumber).

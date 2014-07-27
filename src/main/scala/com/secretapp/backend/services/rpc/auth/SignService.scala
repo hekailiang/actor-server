@@ -34,8 +34,10 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode => sendRpcResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
-    case r: RequestSignIn => sendRpcResult(p, messageId)((handleRequestSignIn(p) _).tupled(RequestSignIn.unapply(r).get))
-    case r: RequestSignUp => sendRpcResult(p, messageId)((handleRequestSignUp(p) _).tupled(RequestSignUp.unapply(r).get))
+    case r: RequestSignIn =>
+      sendRpcResult(p, messageId)(handleSign(p)(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.left))
+    case r: RequestSignUp =>
+      sendRpcResult(p, messageId)(handleSign(p)(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.right))
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
@@ -49,94 +51,92 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     val f = for {
       phoneR <- PhoneRecord.getEntity(phoneNumber)
       _ <- AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
-    } yield ResponseAuthCode(smsHash, phoneR.isDefined)
-    f.flatMap(r => Future.successful(r.right)).recover {
-      case e: Throwable =>
-        Error(400, "PHONE_NUMBER_INVALID", e.getMessage).left
+    } yield ResponseAuthCode(smsHash, phoneR.isDefined).right
+    f.recover {
+      case e: Throwable => Error(400, "PHONE_NUMBER_INVALID", e.getMessage).left
     }
   }
 
-  private def validateSignParams(smsHash: String, smsCode: String)(smsCodeR: AuthSmsCode): Error \/ Unit = {
-    smsCodeR match {
-      case s if s.smsHash != smsHash =>
-        Error(400, "PHONE_CODE_EXPIRED", "").left
-      case s if s.smsCode != smsCode =>
-        Error(400, "PHONE_CODE_INVALID", "").left
-      case _ => ().right
-    }
-  }
+  private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)
+                (m: RequestSignIn \/ RequestSignUp): RpcResult = {
+    val authId = p.authId // TODO
 
-  def handleRequestSignIn(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector): RpcResult = {
-    if (smsCode.isEmpty) {
-      Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
-    } else {
+    @inline
+    def auth(u: User) = {
+      handleActor ! Authenticate(u)
+      ResponseAuth(u.publicKeyHash, u.toStruct(authId)).right
+    }
+
+    @inline
+    def signIn(userId: Int): RpcResult = {
+      @inline
+      def updateUserRecord(): Unit = m match {
+        case -\/(_: RequestSignIn) =>
+          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber)
+        case \/-(req: RequestSignUp) =>
+          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, req.firstName,
+            req.lastName)
+      }
+
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       for {
-        phoneR <- futOptHandle(PhoneRecord.getEntity(phoneNumber), Error(400, "PHONE_NUMBER_UNOCCUPIED", ""))
-        user <- futOptHandle(UserRecord.getEntity(phoneR.userId, p.authId), Error(400, "INVALID_AUTH", ""))
-        smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", ""))
+        userAuthR <- UserRecord.getEntity(userId, authId)
+        userR <- UserRecord.getEntity(userId) // remove it when it cause bottleneck
       } yield {
-        if (user.publicKey != publicKey) {
-          Error(400, "INVALID_PUBLIC_KEY", "").left
-        } else {
-          validateSignParams(smsHash, smsCode)(smsCodeR).rightMap { _ =>
-            AuthSmsCodeRecord.dropEntity(phoneNumber)
-            val sUser = StructUser(phoneR.userId, user.selfAccessHash, user.firstName, user.lastName, user.sex.toOption,
-              user.keyHashes)
-            handleActor ! Authenticate(user)
-            ResponseAuth(user.publicKeyHash, sUser)
-          }
+        if (userR.isEmpty) internalError.left
+        else userAuthR match {
+          case None =>
+            updateUserRecord()
+            val user = userR.get
+            val keyHashes = user.keyHashes :+ publicKeyHash
+            val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes.sorted)
+            auth(newUser)
+          case Some(userAuth) =>
+            if (userAuth.publicKey != publicKey) {
+              UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
+              updateUserRecord()
+              val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) :+ publicKeyHash
+              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes.sorted)
+              auth(newUser)
+            } else auth(userAuth.copy(keyHashes = userAuth.keyHashes.sorted))
         }
       }
     }
-  }
-
-  def handleRequestSignUp(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, firstName: String,
-                                      lastName: Option[String], publicKey: BitVector): RpcResult = {
-    @inline
-    def signUp(userIdOpt: Option[Int]): RpcResult = {
-      val f =
-        for { smsCodeR <- futOptHandle(AuthSmsCodeRecord.getEntity(phoneNumber), Error(400, "PHONE_CODE_EXPIRED", "")) }
-        yield validateSignParams(smsHash, smsCode)(smsCodeR)
-
-      f flatMap {
-        case \/-(_) =>
-          AuthSmsCodeRecord.dropEntity(phoneNumber)
-          val authId = p.authId // TODO
-          userIdOpt match {
-            case None =>
-              val userId = genUserId
-              val accessSalt = genUserAccessSalt
-              val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-              for { _ <- UserRecord.insertEntityWithPhoneAndPK(user) } yield {
-                handleActor ! Authenticate(user)
-                ResponseAuth(user.publicKeyHash, user.toStruct(authId)).right
-              }
-            case Some(userId) =>
-              for {
-                userR <- futOptHandle(UserRecord.getEntity(userId), internalError)
-                _ <- UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, userR.accessSalt)
-              } yield {
-                val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-                val user = userR.copy(keyHashes = userR.keyHashes :+ publicKeyHash)
-                handleActor ! Authenticate(user)
-                ResponseAuth(publicKeyHash, user.toStruct(authId)).right
-              }
-          }
-        case l@(-\/(_)) => Future.successful(l)
-      }
-    }
 
     if (smsCode.isEmpty) {
       Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
     } else {
-      PhoneRecord.getEntity(phoneNumber) flatMap {
-        case Some(phoneR) =>
-          UserRecord.getEntity(phoneR.userId, p.authId) flatMap {
-            case Some(u) => handleRequestSignIn(p)(phoneNumber, smsHash, smsCode, publicKey)
-            case None => signUp(phoneR.userId.some)
-          }
-        case None => signUp(None)
+      val f = for {
+        smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
+        phoneR <- PhoneRecord.getEntity(phoneNumber)
+      } yield (smsCodeR, phoneR)
+      f.flatMap { t =>
+        val (smsCodeR, phoneR) = t
+        if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "").left)
+        else smsCodeR.get match {
+          case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "").left)
+          case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "").left)
+          case _ =>
+            AuthSmsCodeRecord.dropEntity(phoneNumber)
+            m match {
+              case -\/(_: RequestSignIn) => phoneR match {
+                case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left)
+                case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
+              }
+              case \/-(req: RequestSignUp) =>
+                AuthSmsCodeRecord.dropEntity(phoneNumber)
+                phoneR match {
+                  case None =>
+                    val userId = genUserId
+                    val accessSalt = genUserAccessSalt
+                    val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                      firstName = req.firstName, lastName = req.lastName)
+                    UserRecord.insertEntityWithPhoneAndPK(user, phoneNumber)
+                    Future.successful(auth(user))
+                  case Some(rec) => signIn(rec.userId)
+                }
+            }
+        }
       }
     }
   }

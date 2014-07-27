@@ -23,6 +23,7 @@ import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.crypto.ec
 import scodec.codecs.uuid
 import scala.concurrent.duration._
 import com.secretapp.backend.protocol.codecs._
@@ -75,20 +76,20 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = hex"ac1d".bits
-      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
-      val user = User.build(uid = userId, authId = 123L, publicKey = publicKey, accessSalt = userSalt, phoneNumber = phoneNumber,
+      val user = User.build(uid = userId, authId = 123L, publicKey = publicKey, accessSalt = userSalt,
         firstName = firstName, lastName = lastName)
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      authUser(user)
+      authUser(user, phoneNumber)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
       val secondUser = User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+        firstName = firstName, lastName = lastName)
+      UserRecord.insertEntityWithPhoneAndPK(secondUser, phoneNumber).sync()
 
       val rq = RequestSendMessage(
         uid = userId, accessHash = accessHash,

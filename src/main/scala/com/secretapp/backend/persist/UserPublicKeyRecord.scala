@@ -24,7 +24,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
   object publicKey extends BigIntColumn(this) {
     override lazy val name = "public_key"
   }
-  object userAccessSalt extends StringColumn(this) {
+  object userAccessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "user_access_salt"
   }
 
@@ -44,6 +44,13 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.userAccessSalt, entity.userAccessSalt)
+      .future()
+  }
+
+  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector)(implicit session: Session): Future[ResultSet] = {
+    insert.value(_.uid, uid)
+      .value(_.publicKeyHash, publicKeyHash)
+      .value(_.publicKey, BigInt(publicKey.toByteArray))
       .future()
   }
 

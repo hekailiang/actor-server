@@ -41,6 +41,12 @@ trait ActorServiceHelpers extends RandomService {
     protoPackageBox.build(mockAuthId, sessionId, messageId, NewSession(sessionId, messageId))
   }
 
+  def genPublicKey = {
+    val arr: Array[Byte] = Array.fill(192)(0)
+    rand.nextBytes(arr)
+    BitVector(arr)
+  }
+
   def insertAuthId(userId: Option[Int] = None): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(mockAuthId, userId)).sync()
   }
@@ -54,15 +60,15 @@ trait ActorServiceHelpers extends RandomService {
     insertSessionId
   }
 
-  def addUser(authId: Long, sessionId: Long, u: User): Unit = blocking {
+  def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(authId, u.uid.some)).sync()
     SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithPhoneAndPK(u, phoneNumber).sync()
   }
 
-  def authUser(u: User)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
+  def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
     insertAuthAndSessionId(u.uid.some)
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithPhoneAndPK(u, phoneNumber).sync()
     destActor ! Authenticate(u)
   }
 

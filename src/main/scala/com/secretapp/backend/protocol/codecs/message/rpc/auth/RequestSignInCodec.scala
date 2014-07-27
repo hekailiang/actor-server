@@ -1,7 +1,9 @@
 package com.secretapp.backend.protocol.codecs.message.rpc.auth
 
+import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.protocol.codecs.message.rpc.auth.RequestSignUpCodec._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec
@@ -18,9 +20,13 @@ object RequestSignInCodec extends Codec[RequestSignIn] with utils.ProtobufCodec 
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestSignIn.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.RequestSignIn.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)) =>
-        RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
+        if (PublicKey.isPrime192v1(publicKey)) {
+          RequestSignIn(phoneNumber, smsHash, smsCode, publicKey).right
+        } else {
+          "invalid public key".left
+        }
     }
   }
 }

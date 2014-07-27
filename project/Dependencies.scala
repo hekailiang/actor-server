@@ -90,8 +90,8 @@ object Dependencies {
 //    val monocle = "com.github.julien-truffaut" %% "monocle-core" % "0.3.0"
 //
 //    val scalacache = "com.github.cb372" %% "scalacache-guava" % "0.3.0"
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.50",
-    "org.bouncycastle" % "bcprov-ext-jdk15on" % "1.50",
+//    "org.bouncycastle" % "bcprov-jdk15on" % "1.50",
+//    "org.bouncycastle" % "bcprov-ext-jdk15on" % "1.50",
     "com.github.nscala-time" %% "nscala-time" % "1.2.0",
     "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
     "io.spray" %% "spray-caching" % V.spray,

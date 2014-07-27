@@ -15,6 +15,7 @@ import com.secretapp.backend.data.message.rpc.contact.{ResponseImportedContacts,
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.crypto.ec
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import com.newzly.util.testing.AsyncAssertionsHelper._
@@ -63,18 +64,18 @@ class ContactServiceSpec extends ActorLikeSpecification with CassandraSpecificat
       implicit val sessionId = SessionIdentifier()
       val messageId = rand.nextLong()
       val publicKey = hex"ac1d".bits
-      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user)
+        firstName = firstName, lastName = lastName)
+      authUser(user, phoneNumber)
       val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+        firstName = firstName, lastName = lastName)
+      UserRecord.insertEntityWithPhoneAndPK(secondUser, phoneNumber + 1).sync()
 
-      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, secondUser.phoneNumber))
+      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, phoneNumber + 1))
       val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
