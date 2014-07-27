@@ -87,14 +87,14 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
           case None =>
             updateUserRecord()
             val user = userR.get
-            val keyHashes = user.keyHashes :+ publicKeyHash
+            val keyHashes = user.keyHashes + publicKeyHash
             val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
             auth(newUser)
           case Some(userAuth) =>
             if (userAuth.publicKey != publicKey) {
               UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
               updateUserRecord()
-              val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) :+ publicKeyHash
+              val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
               val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
               auth(newUser)
             } else auth(userAuth)

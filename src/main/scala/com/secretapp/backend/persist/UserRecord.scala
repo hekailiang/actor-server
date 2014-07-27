@@ -49,7 +49,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       authId = authId(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row).toByteArray),
-      keyHashes = keyHashes(row).toIndexedSeq,
+      keyHashes = keyHashes(row),
       accessSalt = accessSalt(row),
       firstName = firstName(row),
       lastName = lastName(row),
@@ -61,7 +61,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 object UserRecord extends UserRecord with DBConnector {
   def insertEntityWithPhoneAndPK(entity: User, phoneNumber: Long)(implicit session: Session): Future[ResultSet] = {
     val phone = Phone(number = phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
-      userKeyHashes = immutable.Seq(entity.publicKeyHash), userFirstName = entity.firstName,
+      userKeyHashes = Set(entity.publicKeyHash), userFirstName = entity.firstName,
       userLastName = entity.lastName, userSex = sexToInt(entity.sex))
     val userPK = UserPublicKey(uid = entity.uid,
       publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey)

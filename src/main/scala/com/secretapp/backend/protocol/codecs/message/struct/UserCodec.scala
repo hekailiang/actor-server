@@ -14,14 +14,15 @@ import com.getsecretapp.{ proto => protobuf }
 
 object UserCodec extends Codec[struct.User] with utils.ProtobufCodec {
   def encode(u: struct.User) = {
-    val boxed = protobuf.User(u.uid, u.accessHash, u.firstName, u.lastName, u.sex.flatMap(_.toProto.some), u.keyHashes)
+    val boxed = protobuf.User(u.uid, u.accessHash, u.firstName, u.lastName, u.sex.flatMap(_.toProto.some),
+      u.keyHashes.toIndexedSeq)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.User.parseFrom(buf.toByteArray)) {
       case Success(protobuf.User(id, accessHash, firstName, lastName, sex, keyHashes)) =>
-        struct.User(id, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes)
+        struct.User(id, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes.toSet)
     }
   }
 }

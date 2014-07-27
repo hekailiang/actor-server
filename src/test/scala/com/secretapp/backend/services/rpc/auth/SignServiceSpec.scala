@@ -73,7 +73,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, immutable.Seq(publicKeyHash))
+      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(publicKeyHash))
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -98,7 +98,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, immutable.Seq(newPublicKeyHash))
+      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(newPublicKeyHash))
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -128,14 +128,14 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       probe.send(apiActor, Received(packageBlob))
 
       val accessHash = User.getAccessHash(newAuthId, userId, userSalt)
-      val keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash)
+      val keyHashes = Set(publicKeyHash, newPublicKeyHash)
       val newUser = user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
         keyHashes = keyHashes)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(newAuthId))))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
 
-      def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes.sorted)).sortBy(_.publicKeyHash)
+      def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
       val users = UserRecord.getEntities(userId).map(usrs => sortU(usrs))
       val expectUsers = sortU(immutable.Seq(user, newUser))
@@ -238,7 +238,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
       UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
 
-      val newUser = user.copy(keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash))
+      val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
       val s = Seq((mockAuthId, sessionId.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
       s foreach { (t) =>
         AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
@@ -274,7 +274,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val newUser = user.copy(keyHashes = immutable.Seq(newPublicKeyHash))
+      val newUser = user.copy(keyHashes = Set(newPublicKeyHash))
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(mockAuthId))))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)

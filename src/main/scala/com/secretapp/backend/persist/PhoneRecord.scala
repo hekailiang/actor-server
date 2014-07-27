@@ -33,7 +33,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   override def fromRow(row: Row): Phone = {
     Phone(number = number(row), userId = userId(row), userAccessSalt = userAccessSalt(row),
       userFirstName = userFirstName(row), userLastName = userLastName(row),
-      userKeyHashes = userKeyHashes(row).toIndexedSeq, userSex = intToSex(userSex(row)))
+      userKeyHashes = userKeyHashes(row), userSex = intToSex(userSex(row)))
   }
 }
 

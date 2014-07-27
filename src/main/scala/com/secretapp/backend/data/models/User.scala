@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.models
 
 import com.secretapp.backend.data.message.struct
-import scala.collection.immutable.Seq
+import scala.collection.immutable
 import scala.util.Random
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.protocol.codecs.ByteConstants
@@ -21,7 +21,7 @@ case class User(uid: Int,
                 firstName: String,
                 lastName: Option[String],
                 sex: Sex,
-                keyHashes: Seq[Long] = Seq()) {
+                keyHashes: immutable.Set[Long] = Set()) {
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
   def selfAccessHash = accessHash(authId)
@@ -47,7 +47,7 @@ object User {
       firstName = firstName,
       lastName = lastName,
       sex = sex,
-      keyHashes = Seq(publicKeyHash))
+      keyHashes = Set(publicKeyHash))
   }
 
   def getAccessHash(authId: Long, uid: Int, accessSalt: String): Long = {

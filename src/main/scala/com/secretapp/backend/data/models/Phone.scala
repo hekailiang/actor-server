@@ -7,4 +7,4 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.data.types._
 
 case class Phone(number: Long, userId: Int, userAccessSalt: String, userFirstName: String, userLastName: Option[String],
-                 userKeyHashes: immutable.Seq[Long], userSex: Sex = NoSex)
+                 userKeyHashes: immutable.Set[Long], userSex: Sex = NoSex)
