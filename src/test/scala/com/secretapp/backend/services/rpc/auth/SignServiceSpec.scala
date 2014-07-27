@@ -128,15 +128,18 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       probe.send(apiActor, Received(packageBlob))
 
       val accessHash = User.getAccessHash(newAuthId, userId, userSalt)
-      val keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash).sorted
+      val keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash)
       val newUser = user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
         keyHashes = keyHashes)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(newAuthId))))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
 
-      val users = UserRecord.getEntities(userId).map(_.map(u => u.copy(keyHashes = u.keyHashes.sorted)).sortBy(_.publicKeyHash))
-      users must be_== (immutable.Seq(user.copy(keyHashes = keyHashes), newUser).sortBy(_.publicKeyHash)).await
+      def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes.sorted)).sortBy(_.publicKeyHash)
+
+      val users = UserRecord.getEntities(userId).map(usrs => sortU(usrs))
+      val expectUsers = sortU(immutable.Seq(user, newUser))
+      users must be_== (expectUsers).await
     }
 
     "failed with invalid sms code" in {
@@ -201,7 +204,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
 
     "success with second public key and authId" in {
       implicit val sessionId = SessionIdentifier()
-      val publicKey = genPublicKey
+      val publicKey = hex"4b46c6ef956e537eb1477b0c8cba40879ea879a3f09e8879".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
@@ -209,7 +212,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
         firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
 
-      val newPublicKey = genPublicKey
+      val newPublicKey = hex"fe8ff8dc4dab632b452149087a656257a5dee3fd2ec88b8c".bits
       val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
       val newAuthId = rand.nextLong()
       val newSessionId = rand.nextLong()
@@ -217,7 +220,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
       UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
 
-      val newUser = user.copy(keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash).sorted)
+      val newUser = user.copy(keyHashes = immutable.Seq(publicKeyHash, newPublicKeyHash))
       val s = Seq((mockAuthId, sessionId.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
       s foreach { (t) =>
         AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
