@@ -41,20 +41,18 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
+//    TODO: validate phone number
+
     val smsCode = genSmsCode
     val smsHash = genSmsHash
     val serverConfig = ConfigFactory.load()
     val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
     clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: move it to actor with persistence
+    AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
 
-    val f = for {
-      phoneR <- PhoneRecord.getEntity(phoneNumber)
-      _ <- AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
-    } yield ResponseAuthCode(smsHash, phoneR.isDefined).right
-    f.recover {
-      case e: Throwable => Error(400, "PHONE_NUMBER_INVALID", e.getMessage, false).left
-    }
+    for { phoneR <- PhoneRecord.getEntity(phoneNumber) }
+    yield ResponseAuthCode(smsHash, phoneR.isDefined).right
   }
 
   private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)
