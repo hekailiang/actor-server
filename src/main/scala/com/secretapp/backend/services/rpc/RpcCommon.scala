@@ -15,7 +15,7 @@ trait RpcCommon { self: Actor with PackageCommon =>
 
   type RpcResult = HandleResult[Error, RpcResponseMessage]
 
-  val internalError = Error(400, "INTERNAL_ERROR", "")
+  val internalError = Error(400, "INTERNAL_ERROR", "", true)
 
   def sendRpcResult(p: Package, messageId: Long)(res: RpcResult): Unit = {
     res onComplete {
@@ -26,7 +26,7 @@ trait RpcCommon { self: Actor with PackageCommon =>
         }
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, message)).right)
       case Failure(e) =>
-        sendReply(p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", ""))).right)
+        sendReply(p.replyWith(messageId, RpcResponseBox(messageId, internalError)).right)
     }
   }
 }

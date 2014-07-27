@@ -53,7 +53,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
       _ <- AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
     } yield ResponseAuthCode(smsHash, phoneR.isDefined).right
     f.recover {
-      case e: Throwable => Error(400, "PHONE_NUMBER_INVALID", e.getMessage).left
+      case e: Throwable => Error(400, "PHONE_NUMBER_INVALID", e.getMessage, false).left
     }
   }
 
@@ -103,8 +103,8 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
       }
     }
 
-    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "").left)
-    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "").left)
+    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
+    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
     else {
       val f = for {
         smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
@@ -112,15 +112,15 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
       } yield (smsCodeR, phoneR)
       f.flatMap { t =>
         val (smsCodeR, phoneR) = t
-        if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "").left)
+        if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
         else smsCodeR.get match {
-          case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "").left)
-          case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "").left)
+          case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
+          case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false).left)
           case _ =>
             AuthSmsCodeRecord.dropEntity(phoneNumber)
             m match {
               case -\/(_: RequestSignIn) => phoneR match {
-                case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left)
+                case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false).left)
                 case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
               }
               case \/-(req: RequestSignUp) =>

@@ -155,7 +155,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -173,7 +173,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -191,7 +191,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -296,7 +296,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -317,7 +317,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -338,7 +338,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", true))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
