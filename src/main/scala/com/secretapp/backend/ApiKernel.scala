@@ -5,7 +5,6 @@ import akka.actor.{ ActorSystem, Props }
 import akka.io.{ IO, Tcp }
 import akka.kernel.Bootable
 import Tcp._
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
 import api.Server
