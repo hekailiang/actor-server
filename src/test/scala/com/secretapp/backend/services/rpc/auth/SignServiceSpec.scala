@@ -222,7 +222,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
 
     "success with second public key and authId" in {
       implicit val sessionId = SessionIdentifier()
-      val publicKey = hex"4b46c6ef956e537eb1477b0c8cba40879ea879a3f09e8879".bits
+      val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
@@ -230,7 +230,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
         firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
 
-      val newPublicKey = hex"fe8ff8dc4dab632b452149087a656257a5dee3fd2ec88b8c".bits
+      val newPublicKey = genPublicKey
       val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
       val newAuthId = rand.nextLong()
       val newSessionId = rand.nextLong()

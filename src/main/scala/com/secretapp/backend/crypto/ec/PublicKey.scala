@@ -1,11 +1,25 @@
 package com.secretapp.backend.crypto.ec
 
 import com.secretapp.backend.protocol.codecs.ByteConstants._
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
+import org.bouncycastle.math.ec.ECCurve
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import scodec.bits.BitVector
-import java.security.MessageDigest
+import java.security.{ Security, MessageDigest }
 
 object PublicKey {
-  def isPrime192v1(buf: BitVector): Boolean = buf.length == 192
+  Security.addProvider(new BouncyCastleProvider())
+
+  val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
+
+  def isPrime192v1(buf: BitVector): Boolean = {
+    val curve: ECCurve = ecSpec.getCurve
+    try {
+      curve.decodePoint(buf.toByteArray)
+      true
+    } catch { case _: Throwable => false }
+  }
 
   def keyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")

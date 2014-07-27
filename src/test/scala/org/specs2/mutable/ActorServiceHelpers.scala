@@ -6,6 +6,10 @@ import akka.testkit.{TestProbe, TestKitBase}
 import akka.util.ByteString
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
 import com.secretapp.backend.services.common.PackageCommon.Authenticate
+import org.bouncycastle.jce.ECNamedCurveTable
+import org.bouncycastle.jce.interfaces.ECPublicKey
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
 import scala.concurrent.blocking
@@ -22,9 +26,12 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.util.concurrent.atomic.AtomicLong
+import java.security.{Security, KeyPairGenerator, SecureRandom}
 
 trait ActorServiceHelpers extends RandomService {
   self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers =>
+
+  Security.addProvider(new BouncyCastleProvider())
 
   val mockAuthId = rand.nextLong()
   val phoneNumber = 79853867016L
@@ -42,9 +49,12 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def genPublicKey = {
-    val arr: Array[Byte] = Array.fill(24)(0)
-    rand.nextBytes(arr)
-    BitVector(arr)
+    val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
+    val g = KeyPairGenerator.getInstance("ECDSA", "BC")
+    g.initialize(ecSpec, new SecureRandom())
+    val pair = g.generateKeyPair()
+    val pubKey = pair.getPublic.asInstanceOf[ECPublicKey]
+    BitVector(pubKey.getQ.getEncoded)
   }
 
   def insertAuthId(userId: Option[Int] = None): Unit = blocking {
