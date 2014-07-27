@@ -6,11 +6,13 @@ import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
 import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.message.rpc.contact._
+import com.secretapp.backend.protocol.codecs.message.rpc.file._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.contact._
+import com.secretapp.backend.data.message.rpc.file._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
@@ -24,6 +26,10 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseSendMessage.responseType) { case r: ResponseSendMessage => r } (protoPayload(ResponseSendMessageCodec))
     .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r } (protoPayload(ResponseImportedContactsCodec))
     .\(ResponsePublicKeys.responseType) { case r: ResponsePublicKeys => r } (protoPayload(ResponsePublicKeysCodec))
+    .\(ResponseFilePart.responseType) { case r: ResponseFilePart => r } (protoPayload(ResponseFilePartCodec))
+    .\(ResponseUploadStart.responseType) { case r: ResponseUploadStart => r } (protoPayload(ResponseUploadStartCodec))
+    .\(ResponseFileUploadStarted.responseType) { case r: ResponseFileUploadStarted => r } (protoPayload(ResponseFileUploadStartedCodec))
+    .\(FileUploaded.responseType) { case r: FileUploaded => r } (protoPayload(FileUploadedCodec))
     .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)

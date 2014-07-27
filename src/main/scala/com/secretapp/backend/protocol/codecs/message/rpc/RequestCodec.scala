@@ -5,11 +5,13 @@ import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
 import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.message.rpc.contact._
+import com.secretapp.backend.protocol.codecs.message.rpc.file._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.contact._
+import com.secretapp.backend.data.message.rpc.file._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
@@ -24,6 +26,10 @@ object RequestCodec extends Codec[Request] {
     .\(RequestSendMessage.requestType) { case r: RequestSendMessage => r } (protoPayload(RequestSendMessageCodec))
     .\(RequestImportContacts.requestType) { case r: RequestImportContacts => r } (protoPayload(RequestImportContactsCodec))
     .\(RequestPublicKeys.requestType) { case r: RequestPublicKeys => r } (protoPayload(RequestPublicKeysCodec))
+    .\(RequestGetFile.requestType) { case r: RequestGetFile => r } (protoPayload(RequestGetFileCodec))
+    .\(RequestUploadStart.requestType) { case r: RequestUploadStart => r } (protoPayload(RequestUploadStartCodec))
+    .\(RequestUploadFile.requestType) { case r: RequestUploadFile => r } (protoPayload(RequestUploadFileCodec))
+    .\(RequestCompleteUpload.requestType) { case r: RequestCompleteUpload => r } (protoPayload(RequestCompleteUploadCodec))
     .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)
