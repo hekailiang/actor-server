@@ -23,6 +23,7 @@ import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.crypto.ec
 import scodec.codecs.uuid
 import scala.concurrent.duration._
 import com.secretapp.backend.protocol.codecs._
@@ -75,7 +76,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = hex"ac1d".bits
-      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = 123L, publicKey = publicKey, accessSalt = userSalt,

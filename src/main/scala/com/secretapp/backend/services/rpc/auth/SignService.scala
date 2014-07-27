@@ -57,17 +57,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     }
   }
 
-  private def validateSignParams(smsHash: String, smsCode: String)(smsCodeR: AuthSmsCode): Error \/ Unit = {
-    smsCodeR match {
-      case s if s.smsHash != smsHash =>
-        Error(400, "PHONE_CODE_EXPIRED", "").left
-      case s if s.smsCode != smsCode =>
-        Error(400, "PHONE_CODE_INVALID", "").left
-      case _ => ().right
-    }
-  }
-
-  def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)
+  private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)
                 (m: RequestSignIn \/ RequestSignUp): RpcResult = {
     val authId = p.authId // TODO
 
@@ -99,16 +89,16 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
             updateUserRecord()
             val user = userR.get
             val keyHashes = user.keyHashes :+ publicKeyHash
-            val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
+            val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes.sorted)
             auth(newUser)
           case Some(userAuth) =>
             if (userAuth.publicKey != publicKey) {
               UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
               updateUserRecord()
               val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) :+ publicKeyHash
-              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
+              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes.sorted)
               auth(newUser)
-            } else auth(userAuth)
+            } else auth(userAuth.copy(keyHashes = userAuth.keyHashes.sorted))
         }
       }
     }
@@ -147,17 +137,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
                 }
             }
         }
-
-
       }
     }
   }
-
-
-
-
-
-
-
-
 }

@@ -6,6 +6,7 @@ import scala.util.Random
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.Configuration
+import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import java.security.MessageDigest
 import java.nio.ByteBuffer
@@ -37,7 +38,7 @@ object User {
 
   def build(uid: Int, authId: Long, publicKey: BitVector, accessSalt: String, firstName: String,
             lastName: Option[String], sex: Sex = NoSex) = {
-    val publicKeyHash = getPublicKeyHash(publicKey)
+    val publicKeyHash = ec.PublicKey.keyHash(publicKey)
     User(uid = uid,
       authId = authId,
       publicKey = publicKey,
@@ -57,11 +58,4 @@ object User {
   }
 
   def getAccessHash(authId: Long, user: User): Long = getAccessHash(authId, user.uid, user.accessSalt)
-
-  def getPublicKeyHash(pk: BitVector): Long = {
-    val digest = MessageDigest.getInstance("SHA-256")
-    val buf = BitVector(digest.digest(pk.toByteArray))
-    buf.take(longSize).toLong() ^ buf.drop(longSize).take(longSize).toLong() ^
-      buf.drop(longSize * 2).take(longSize).toLong() ^ buf.drop(longSize * 3).take(longSize).toLong()
-  }
 }

@@ -41,6 +41,12 @@ trait ActorServiceHelpers extends RandomService {
     protoPackageBox.build(mockAuthId, sessionId, messageId, NewSession(sessionId, messageId))
   }
 
+  def genPublicKey = {
+    val arr: Array[Byte] = Array.fill(192)(0)
+    rand.nextBytes(arr)
+    BitVector(arr)
+  }
+
   def insertAuthId(userId: Option[Int] = None): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(mockAuthId, userId)).sync()
   }

@@ -15,6 +15,7 @@ import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.crypto.ec
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import com.newzly.util.testing.AsyncAssertionsHelper._
@@ -63,7 +64,7 @@ class PublicKeysServiceSpec extends ActorLikeSpecification with CassandraSpecifi
       implicit val sessionId = SessionIdentifier()
       val messageId = rand.nextLong()
       val publicKey = hex"ac1d".bits
-      val publicKeyHash = User.getPublicKeyHash(publicKey)
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
