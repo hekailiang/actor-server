@@ -61,6 +61,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
 
     @inline
     def auth(u: User) = {
+      AuthSmsCodeRecord.dropEntity(phoneNumber)
       handleActor ! Authenticate(u)
       ResponseAuth(u.publicKeyHash, u.toStruct(authId)).right
     }
@@ -115,7 +116,6 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
           case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
           case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false).left)
           case _ =>
-            AuthSmsCodeRecord.dropEntity(phoneNumber)
             m match {
               case -\/(_: RequestSignIn) => phoneR match {
                 case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false).left)
