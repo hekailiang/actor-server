@@ -35,6 +35,9 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "access_salt"
   }
+  object phoneNumber extends LongColumn(this) with StaticColumn[Long] {
+    override lazy val name = "phone_number"
+  }
   object firstName extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "first_name"
   }
@@ -51,6 +54,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       publicKey = BitVector(publicKey(row).toByteArray),
       keyHashes = keyHashes(row),
       accessSalt = accessSalt(row),
+      phoneNumber = phoneNumber(row),
       firstName = firstName(row),
       lastName = lastName(row),
       sex = intToSex(sex(row))
@@ -59,8 +63,8 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 }
 
 object UserRecord extends UserRecord with DBConnector {
-  def insertEntityWithPhoneAndPK(entity: User, phoneNumber: Long)(implicit session: Session): Future[ResultSet] = {
-    val phone = Phone(number = phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
+  def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
+    val phone = Phone(number = entity.phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
       userKeyHashes = Set(entity.publicKeyHash), userFirstName = entity.firstName,
       userLastName = entity.lastName, userSex = sexToInt(entity.sex))
     val userPK = UserPublicKey(uid = entity.uid,
@@ -72,6 +76,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.keyHashes, Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
+      .value(_.phoneNumber, entity.phoneNumber)
       .value(_.firstName, entity.firstName)
       .value(_.lastName, entity.lastName)
       .value(_.sex, sexToInt(entity.sex))

@@ -15,7 +15,7 @@ object RpcResponseBoxCodec extends Codec[RpcResponseBox] {
     .\(ConnectionNotInitedError.rpcType) { case c: ConnectionNotInitedError => c } (ConnectionNotInitedErrorCodec)
     .\(FloodWait.rpcType) { case f: FloodWait => f } (FloodWaitCodec)
     .\(InternalError.rpcType) { case e: InternalError => e } (InternalErrorCodec)
-    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("RpcResponseBox"))
+    .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("RpcResponseBox"))
 
   private val codec = (int64 :: protoPayload(rpcResponseCodec)).as[RpcResponseBox]
 

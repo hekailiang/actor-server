@@ -30,7 +30,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestUploadStart.requestType) { case r: RequestUploadStart => r } (protoPayload(RequestUploadStartCodec))
     .\(RequestUploadFile.requestType) { case r: RequestUploadFile => r } (protoPayload(RequestUploadFileCodec))
     .\(RequestCompleteUpload.requestType) { case r: RequestCompleteUpload => r } (protoPayload(RequestCompleteUploadCodec))
-    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
+    .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)
 

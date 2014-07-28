@@ -30,7 +30,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseUploadStart.responseType) { case r: ResponseUploadStart => r } (protoPayload(ResponseUploadStartCodec))
     .\(ResponseFileUploadStarted.responseType) { case r: ResponseFileUploadStarted => r } (protoPayload(ResponseFileUploadStartedCodec))
     .\(FileUploaded.responseType) { case r: FileUploaded => r } (protoPayload(FileUploadedCodec))
-    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("RpcOk"))
+    .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)
 

@@ -13,14 +13,16 @@ case class User(uid: Int,
                 firstName: String,
                 lastName: Option[String],
                 sex: Option[types.Sex],
-                keyHashes: immutable.Set[Long]) extends ProtobufMessage
+                keyHashes: immutable.Set[Long],
+                phoneNumber: Long) extends ProtobufMessage
 {
-  def toProto = protobuf.User(uid, accessHash, firstName, lastName, sex.flatMap(_.toProto.some), keyHashes.toIndexedSeq)
+  def toProto = protobuf.User(uid, accessHash, firstName, lastName, sex.flatMap(_.toProto.some),
+    keyHashes.toIndexedSeq, phoneNumber)
 }
 
 object User {
   def fromProto(u: protobuf.User): User = u match {
-    case protobuf.User(uid, accessHash, firstName, lastName, sex, keyHashes) =>
-      User(uid, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes.toSet)
+    case protobuf.User(uid, accessHash, firstName, lastName, sex, keyHashes, phoneNumber) =>
+      User(uid, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes.toSet, phoneNumber)
   }
 }

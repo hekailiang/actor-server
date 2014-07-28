@@ -17,6 +17,7 @@ case class User(uid: Int,
                 authId: Long,
                 publicKeyHash: Long,
                 publicKey: BitVector,
+                phoneNumber: Long,
                 accessSalt: String,
                 firstName: String,
                 lastName: Option[String],
@@ -28,7 +29,8 @@ case class User(uid: Int,
 
   def toStruct(senderAuthId: Long) = {
     struct.User(uid = this.uid, accessHash = User.getAccessHash(senderAuthId, this.uid, this.accessSalt),
-      keyHashes = this.keyHashes, firstName = this.firstName, lastName = this.lastName, sex = this.sex.toOption)
+      keyHashes = this.keyHashes, firstName = this.firstName, lastName = this.lastName, sex = this.sex.toOption,
+      phoneNumber = this.phoneNumber)
   }
 }
 
@@ -36,13 +38,14 @@ object User {
   import ByteConstants._
   import Configuration._
 
-  def build(uid: Int, authId: Long, publicKey: BitVector, accessSalt: String, firstName: String,
+  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, firstName: String,
             lastName: Option[String], sex: Sex = NoSex) = {
     val publicKeyHash = ec.PublicKey.keyHash(publicKey)
     User(uid = uid,
       authId = authId,
       publicKey = publicKey,
       publicKeyHash = publicKeyHash,
+      phoneNumber = phoneNumber,
       accessSalt = accessSalt,
       firstName = firstName,
       lastName = lastName,

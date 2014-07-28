@@ -18,10 +18,11 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
         authId = 10L,
         publicKey = hex"ac1d".bits,
         accessSalt = "salt",
+        phoneNumber = 79853867016L,
         firstName = "Wayne",
         lastName = Some("Brain"),
         sex = Male)
-      val insertFuture = UserRecord.insertEntityWithPhoneAndPK(entity, 79853867016L)
+      val insertFuture = UserRecord.insertEntityWithPhoneAndPK(entity)
 
       val chain = for {
         insertDone <- insertFuture

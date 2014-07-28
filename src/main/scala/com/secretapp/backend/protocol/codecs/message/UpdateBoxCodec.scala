@@ -13,7 +13,7 @@ object UpdateBoxCodec extends Codec[UpdateBox] {
   private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
     .\(CommonUpdate.updateType) { case c: CommonUpdate => c } (protoPayload(CommonUpdateCodec))
     .\(CommonUpdateTooLong.updateType) { case c: CommonUpdateTooLong => c } (protoPayload(CommonUpdateTooLongCodec))
-    .\(0, _ => true ) { case a: Any => a } (new DiscriminatedErrorCodec("UpdateBox"))
+    .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("UpdateBox"))
 
   private val codec = protoPayload(updateCodec).pxmap[UpdateBox](UpdateBox.apply, UpdateBox.unapply)
 

@@ -33,7 +33,8 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
   import context._
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
-    case r: RequestAuthCode => sendRpcResult(p, messageId)((handleRequestAuthCode _).tupled(RequestAuthCode.unapply(r).get))
+    case r: RequestAuthCode =>
+      sendRpcResult(p, messageId)(handleRequestAuthCode(r.phoneNumber, r.appId, r.apiKey))
     case r: RequestSignIn =>
       sendRpcResult(p, messageId)(handleSign(p)(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.left))
     case r: RequestSignUp =>
@@ -135,8 +136,8 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
                     val userId = genUserId
                     val accessSalt = genUserAccessSalt
                     val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                      firstName = req.firstName, lastName = req.lastName)
-                    UserRecord.insertEntityWithPhoneAndPK(user, phoneNumber)
+                      phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
+                    UserRecord.insertEntityWithPhoneAndPK(user)
                     Future.successful(auth(user))
                   case Some(rec) => signIn(rec.userId)
                 }

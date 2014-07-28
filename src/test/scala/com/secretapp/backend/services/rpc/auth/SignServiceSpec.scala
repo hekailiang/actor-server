@@ -90,7 +90,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(publicKeyHash))
+      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(publicKeyHash), phoneNumber)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -105,7 +105,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -115,7 +115,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(newPublicKeyHash))
+      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(newPublicKeyHash), phoneNumber)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -129,7 +129,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -224,7 +224,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -244,7 +244,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
 
       val newPublicKey = genPublicKey
@@ -281,7 +281,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -305,7 +305,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -326,7 +326,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
@@ -347,7 +347,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        firstName = firstName, lastName = lastName)
+        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       addUser(mockAuthId, sessionId.id, user, phoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
