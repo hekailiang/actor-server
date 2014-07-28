@@ -11,7 +11,7 @@ import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
-import com.secretapp.backend.data.message.rpc.auth.{RequestSignIn, ResponseAuth, RequestSignUp}
+import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
@@ -56,6 +56,23 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
     val probe = TestProbe()
     val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
+  }
+
+  "auth code" should {
+    "send sms code" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      insertAuthAndSessionId()
+
+      val rpcReq = RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt, rand.nextString(10))))
+      val messageId = rand.nextLong
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode(smsHash, false)))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    }
   }
 
   "sign up" should {

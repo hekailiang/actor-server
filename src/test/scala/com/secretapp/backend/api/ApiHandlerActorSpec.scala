@@ -126,20 +126,5 @@ class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecifica
       }
       expectMsgWithAck(expectedPongs :_*)
     }
-
-    "handle RPC request auth code" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      insertAuthAndSessionId()
-
-      val rpcReq = RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt, rand.nextString(10))))
-      val messageId = rand.nextLong
-      val packageBlob = pack(MessageBox(messageId, rpcReq))
-      send(packageBlob)
-
-      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuthCode(smsHash, false)))
-      val expectMsg = MessageBox(messageId, rpcRes)
-      expectMsgWithAck(expectMsg)
-    }
   }
 }

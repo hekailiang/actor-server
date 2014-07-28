@@ -62,9 +62,9 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   private var parseBuffer = BitVector.empty
 
   /**
-   * Parse bit stream, handle Package's and parsing failures.
+   * Parse byte stream, handle Package's and parsing failures.
    *
-   * @param buf bit stream for parsing and handling
+   * @param buf byte stream for parsing and handling
    * @param packageFunc handle Package function and maybe additional reply message
    * @param failureFunc handle parsing failures function
    */
