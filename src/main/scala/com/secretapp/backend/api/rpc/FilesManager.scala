@@ -8,15 +8,17 @@ import com.google.protobuf.{ ByteString => ProtoByteString }
 import com.secretapp.backend.api.{ CounterActor, CounterProtocol, SharedActors }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.Ok
-import com.secretapp.backend.data.message.rpc.file.{ RequestUploadStart, ResponseUploadStart, UploadConfig }
+import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.FileBlockRecord
 import com.secretapp.backend.services.common.PackageCommon._
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{ Failure, Success }
 import scalaz._
 import scalaz.Scalaz._
+import scodec.bits._
 import scodec.codecs.{ int32 => int32codec }
 
 class FilesManager(val handleActor: ActorRef, val currentUser: User, val fileBlockRecord: FileBlockRecord)(implicit val session: CSession) extends Actor with ActorLogging with FilesService {
@@ -34,6 +36,8 @@ class FilesManager(val handleActor: ActorRef, val currentUser: User, val fileBlo
     case RpcProtocol.Request(p, messageId,
       RequestUploadStart()) =>
       handleRequestUploadStart(p, messageId)()
+    case RpcProtocol.Request(p, messageId, RequestUploadFile(config, offset, data)) =>
+      handleRequestUploadFile(p, messageId)(config, offset, data)
   }
 }
 
@@ -50,5 +54,19 @@ trait FilesService {
       val rsp = ResponseUploadStart(UploadConfig(config))
       handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
     }
+  }
+
+  protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: ProtoByteString) = {
+    // TODO: handle failures
+    val fileId = int32codec.decodeValidValue(BitVector(config.serverData.toByteArray()))
+    fileBlockRecord.write(fileId, offset, data.toByteArray()) onComplete {
+      case Success(_) =>
+
+      case Failure(e) =>
+        log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
+    }
+
+    val rsp = ResponseFileUploadStarted()
+    handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
   }
 }
