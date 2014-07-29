@@ -12,7 +12,7 @@ import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
-trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService
+trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with RpcFilesService
 with PublicKeysService {
   self: Actor with PackageManagerService =>
 
