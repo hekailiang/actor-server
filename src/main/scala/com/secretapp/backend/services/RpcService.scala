@@ -47,6 +47,7 @@ with PublicKeysService {
 
       case _ =>
         handleRpcAuth(p, messageId).
+          orElse(handleRpcFiles(p, messageId)).
           orElse(handleRpcContact(p, messageId)).
           orElse(handleRpcPublicKeys(p, messageId))(body)
     }
