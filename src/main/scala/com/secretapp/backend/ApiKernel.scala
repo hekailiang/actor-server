@@ -7,7 +7,7 @@ import akka.kernel.Bootable
 import Tcp._
 import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
-import api.Server
+import api.{ Server, HeatingUpActor }
 
 class ApiKernel extends Bootable {
   implicit val system = ActorSystem("secret-api-server")
@@ -21,7 +21,9 @@ class ApiKernel extends Bootable {
     val session = DBConnector.session
     DBConnector.createTables(session)
     implicit val service = system.actorOf(Props(new Server(session)), "api-service")
-    IO(Tcp) ! Bind(service, new InetSocketAddress(hostname, port))
+    val address = new InetSocketAddress(hostname, port)
+    IO(Tcp) ! Bind(service, address)
+    system.actorOf(Props(new HeatingUpActor(address)), "heat-service")
   }
 
   def shutdown = {
