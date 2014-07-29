@@ -1,10 +1,11 @@
 package com.secretapp.backend.data.message.rpc.file
 
-import com.google.protobuf.{ ByteString => ProtoByteString }
 import com.secretapp.backend.data.message.ProtobufMessage
+import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.getsecretapp.{ proto => protobuf }
+import scodec.bits.BitVector
 
-case class UploadConfig(serverData: ProtoByteString) extends ProtobufMessage
+case class UploadConfig(serverData: BitVector) extends ProtobufMessage
 {
   def toProto = protobuf.UploadConfig(serverData)
 }

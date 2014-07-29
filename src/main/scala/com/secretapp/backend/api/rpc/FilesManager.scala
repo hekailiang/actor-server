@@ -4,7 +4,6 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
-import com.google.protobuf.{ ByteString => ProtoByteString }
 import com.secretapp.backend.api.{ CounterActor, CounterProtocol, SharedActors }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.Ok
@@ -50,16 +49,15 @@ trait FilesService {
     for {
       fileId <- fileCounter.flatMap(ask(_, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType])
     } yield {
-      val config = ProtoByteString.copyFrom(int32codec.encodeValid(fileId).toByteArray)
-      val rsp = ResponseUploadStart(UploadConfig(config))
+      val rsp = ResponseUploadStart(UploadConfig(int32codec.encodeValid(fileId)))
       handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
     }
   }
 
-  protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: ProtoByteString) = {
+  protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: BitVector) = {
     // TODO: handle failures
-    val fileId = int32codec.decodeValidValue(BitVector(config.serverData.toByteArray()))
-    fileBlockRecord.write(fileId, offset, data.toByteArray()) onComplete {
+    val fileId = int32codec.decodeValidValue(config.serverData)
+    fileBlockRecord.write(fileId, offset, data.toByteArray) onComplete {
       case Success(_) =>
 
       case Failure(e) =>

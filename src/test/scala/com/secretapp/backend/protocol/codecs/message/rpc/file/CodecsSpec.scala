@@ -6,7 +6,6 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.protocol.codecs._
 import scodec.bits._
-import com.google.protobuf.{ ByteString => ProtoByteString }
 
 class CodecsSpec extends Specification {
   "Codecs" should {
@@ -31,8 +30,8 @@ class CodecsSpec extends Specification {
     }
 
     "encode and decode RequestUploadFile" in {
-      val encoded = hex"031401000000140e0a050a0301020310011a03010203".bits
-      val bs = ProtoByteString.copyFrom(Array[Byte](1, 2, 3))
+      val encoded = hex"031201000000140c0a040a02ac1d10011a02ac1d".bits
+      val bs = hex"ac1d".bits
       val conf = UploadConfig(bs)
       val decoded = RpcRequestBox(Request(RequestUploadFile(conf, 1, bs)))
 
@@ -41,8 +40,8 @@ class CodecsSpec extends Specification {
     }
 
     "encode and decode RequestCompleteUpload" in {
-      val encoded = hex"031301000000160d0a050a03010203100118c0c407".bits
-      val bs = ProtoByteString.copyFrom(Array[Byte](1, 2, 3))
+      val encoded = hex"031201000000160c0a040a02ac1d100118c0c407".bits
+      val bs = hex"ac1d".bits
       val conf = UploadConfig(bs)
       val decoded = RpcRequestBox(Request(RequestCompleteUpload(conf, 1, 123456)))
 
@@ -53,17 +52,16 @@ class CodecsSpec extends Specification {
 //    Responses
 
     "encode and decode ResponseFilePart" in {
-      val encoded = hex"0400000000000000010b0100000011050a03010203".bits
-      val bs = ProtoByteString.copyFrom(Array[Byte](1, 2, 3))
-      val decoded = RpcResponseBox(1L, Ok(ResponseFilePart(bs)))
+      val encoded = hex"0400000000000000010a0100000011040a02ac1d".bits
+      val decoded = RpcResponseBox(1L, Ok(ResponseFilePart(hex"ac1d".bits)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
     }
 
     "encode and decode ResponseUploadStart" in {
-      val encoded = hex"0400000000000000010d0100000013070a050a03010203".bits
-      val bs = ProtoByteString.copyFrom(Array[Byte](1, 2, 3))
+      val encoded = hex"0400000000000000010c0100000013060a040a02ac1d".bits
+      val bs = hex"ac1d".bits
       val conf = UploadConfig(bs)
       val decoded = RpcResponseBox(1L, Ok(ResponseUploadStart(conf)))
 
