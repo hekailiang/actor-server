@@ -51,7 +51,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     } yield {
       val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
       val (smsCode, smsHash) = smsR match {
-        case Some(AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
+        case Some(AuthSmsCode(_, sHash, sCode)) => (sCode, sHash)
         case None =>
           val smsCode = genSmsCode
           val smsHash = genSmsHash
