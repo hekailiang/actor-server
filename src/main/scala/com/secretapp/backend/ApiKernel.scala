@@ -11,6 +11,7 @@ import api.Server
 
 class ApiKernel extends Bootable {
   implicit val system = ActorSystem("secret-api-server")
+  import system.dispatcher
 
   import Configuration._
 

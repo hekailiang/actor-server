@@ -1,10 +1,13 @@
 package com.secretapp.backend.persist
 
+import akka.dispatch.Dispatcher
+import java.util.concurrent.Executor
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session }
 import com.newzly.phantom.Implicits._
 import com.typesafe.config._
+import scala.concurrent.ExecutionContext
 
 object DBConnector {
   val dbConfig = ConfigFactory.load().getConfig("cassandra")
@@ -21,7 +24,9 @@ object DBConnector {
     cluster.connect(keySpace)
   }
 
-  def createTables(session: Session) = blocking {
+  def createTables(session: Session)(implicit context: ExecutionContext with Executor) = blocking {
+    val fileBlockRecord = new FileBlockRecord()(session, context)
+
     for {
       _ <- UserRecord.createTable(session)
       _ <- AuthIdRecord.createTable(session)
@@ -30,6 +35,7 @@ object DBConnector {
       _ <- PhoneRecord.createTable(session)
       _ <- CommonUpdateRecord.createTable(session)
       _ <- UserPublicKeyRecord.createTable(session)
+      _ <- fileBlockRecord.createTable(session)
     } yield ()
   }
 

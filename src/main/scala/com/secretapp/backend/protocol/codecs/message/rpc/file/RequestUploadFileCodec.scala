@@ -13,14 +13,14 @@ import com.google.protobuf.{ ByteString => ProtoByteString }
 
 object RequestUploadFileCodec extends Codec[RequestUploadFile] with utils.ProtobufCodec {
   def encode(r: RequestUploadFile) = {
-    val boxed = protobuf.RequestUploadFile(r.config.toProto, r.blockIndex, r.data)
+    val boxed = protobuf.RequestUploadFile(r.config.toProto, r.offset, r.data)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestUploadFile.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestUploadFile(config, blockIndex, data)) =>
-        RequestUploadFile(UploadConfig.fromProto(config), blockIndex, data)
+      case Success(protobuf.RequestUploadFile(config, offset, data)) =>
+        RequestUploadFile(UploadConfig.fromProto(config), offset, data)
     }
   }
 }
