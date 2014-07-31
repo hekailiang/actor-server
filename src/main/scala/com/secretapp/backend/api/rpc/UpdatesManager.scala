@@ -61,6 +61,8 @@ sealed trait UpdatesService {
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
     seq: Int, state: BitVector
   ) = {
+    subscribeToUpdates(uid, publicKeyHash)
+
     uuidCodec.decodeValue(state) match {
       case \/-(uuid) =>
         for {
