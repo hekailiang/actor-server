@@ -2,6 +2,7 @@ package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
 import com.secretapp.backend.data.Implicits._
+import com.secretapp.backend.services.UserManagerService
 import scala.collection.immutable
 import scala.collection.immutable.Seq
 import scala.util.{ Random, Try, Success, Failure }
@@ -27,7 +28,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-trait SignService extends PackageCommon with RpcCommon { self: Actor with GeneratorService =>
+trait SignService extends PackageCommon with RpcCommon { self: Actor with GeneratorService with UserManagerService =>
   implicit val session: CSession
 
   import context._
@@ -70,7 +71,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     @inline
     def auth(u: User) = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
-      handleActor ! Authenticate(u)
+      this.currentUser = Some(u)
       ResponseAuth(u.publicKeyHash, u.toStruct(authId)).right
     }
 
