@@ -82,7 +82,8 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.sex, sexToInt(entity.sex))
       .future().
       flatMap(_ => PhoneRecord.insertEntity(phone)).
-      flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
+      flatMap(_ => UserPublicKeyRecord.insertEntity(userPK)).
+      flatMap(_ => AuthIdRecord.insertEntity(AuthId(entity.authId, entity.uid.some)))
   }
 
   def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long)
@@ -95,7 +96,8 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKey, BigInt(publicKey.toByteArray))
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey))
+      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey)).
+      flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
   def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, firstName: String,
@@ -112,7 +114,8 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.sex, sexToInt(sex))
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey))
+      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey)).
+      flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
