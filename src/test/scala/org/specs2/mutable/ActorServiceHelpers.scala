@@ -71,7 +71,7 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
-    AuthIdRecord.insertEntity(AuthId(authId, u.uid.some)).sync()
+    AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
     SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
   }
