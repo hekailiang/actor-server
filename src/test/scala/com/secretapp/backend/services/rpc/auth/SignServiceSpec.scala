@@ -195,6 +195,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       expectMsgWithAck(expectMsg)
     }
 
+    /*
     "failed with invalid public key" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
@@ -211,7 +212,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
-    }
+    } */
   }
 
   "sign in" should {
@@ -339,6 +340,7 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       expectMsgWithAck(expectMsg)
     }
 
+    /*
     "failed with invalid public key" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
@@ -358,6 +360,6 @@ class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification
       val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
-    }
+    } */
   }
 }
