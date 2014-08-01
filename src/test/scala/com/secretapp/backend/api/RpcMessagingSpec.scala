@@ -96,7 +96,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
         randomId = 555L, useAesKey = false,
         aesMessage = None,
         messages = immutable.Seq(
-          EncryptedMessage(uid = secondUser.uid, keyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))
+          EncryptedMessage(uid = secondUser.uid, publicKeyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))
         )
       )
       val messageId = rand.nextLong()
@@ -109,7 +109,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val rsp = new ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
       val rpcRes = RpcResponseBox(messageId, Ok(rsp))
       val expectMsg = MessageBox(messageId, rpcRes)
-//      expectMsgWithAck(expectMsg)
+      //expectMsgWithAck(expectMsg)
     }
   }
 }

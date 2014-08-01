@@ -19,8 +19,6 @@ class ApiKernel extends Bootable {
 
   import system.dispatcher
 
-  FilesCounter.start(system)
-
   import Configuration._
 
   def startup = {
@@ -32,6 +30,9 @@ class ApiKernel extends Bootable {
     val address = new InetSocketAddress(hostname, port)
     IO(Tcp) ! Bind(service, address)
     system.actorOf(Props(new HeatingUpActor(address)), "heat-service")
+
+    FilesCounter.start(system)
+
   }
 
   def shutdown = {

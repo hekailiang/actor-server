@@ -30,19 +30,12 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
-class MessagingServiceActor(val handleActor: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+class MessagingServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.system
 
   implicit val timeout = Timeout(5.seconds)
 
   val counterId = s"{currentUser.authId}"
-
-  //val fupdatesBroker = UpdatesBroker.lookup(currentUser)
-  val messageCounter: Future[ActorRef] = {
-    SharedActors.lookup(s"mid-counter-${counterId}") {
-      system.actorOf(Props(new CounterActor("message")), s"mid-counter-${counterId}")
-    }
-  }
 
   def receive: Actor.Receive = {
     case RpcProtocol.Request(p, messageId,
@@ -79,47 +72,18 @@ sealed trait MessagingService {
       }
     }
 
-    @inline /**
-      * Generates updates list
-      *
-      * @param mid message id
-      * @return Tuple containing (uid, keyHash) of target updates sequence and Future of update object
-      */
-    def mkUpdates(mid: Int): Seq[((Int, Long), updateProto.Message)] = {
-      messages map { message =>
-        // TODO: check conformity of keyHash to uid
-        // TODO: check if mid is the same as uid or self uid
-        val seqId = (message.uid, message.keyHash)
-
-        (seqId, updateProto.Message(
-          senderUID = currentUser.uid,
-          destUID = uid,
-          mid = mid,
-          keyHash = message.keyHash,
-          useAesKey = useAesKey,
-          aesKey = message.aesEncryptedKey,
-          message = useAesKey match {
-            case true => aesMessage.get
-            case false => message.message.get
-          }))
-      }
-    }
-
     @inline
-    def pushUpdates(updates: Seq[((Int, Long), updateProto.Message)]): Unit = {
-      updates map {
-        case ((uid, keyHash), update) =>
-          for {
-            updatesBroker <- UpdatesBroker.lookup(currentUser.authId)
-          } yield {
-            log.info("Update {}", update)
-            updatesBroker ! UpdatesBroker.NewUpdate(update)
-          }
+    def pushUpdates(): Unit = {
+      messages map { message =>
+        authIdFor(message.uid, message.publicKeyHash) onComplete {
+          case Success(Some(authId)) =>
+            log.info(s"Pushing message ${message}")
+            updatesBrokerRegion ! UpdatesBroker.NewMessage(authId, currentUser.uid, message, aesMessage)
+          case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
+        }
       }
     }
 
-    val fmid: Future[CounterProtocol.StateType] =
-      messageCounter.flatMap(ask(_, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType])
     val fdestUserEntity = UserRecord.getEntity(uid)
 
     fdestUserEntity onComplete {
@@ -127,16 +91,14 @@ sealed trait MessagingService {
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
 
-        fmid onSuccess { case mid => pushUpdates(mkUpdates(mid)) }
+        pushUpdates()
 
         // FIXME: handle failures (retry or error, should not break seq)
         for {
-          mid <- fmid
-          updatesManager <- UpdatesBroker.lookup(currentUser.authId)
           s <- ask(
-            updatesManager, UpdatesBroker.NewUpdate(updateProto.MessageSent(mid, randomId))).mapTo[(Int, UUID)]
+            updatesBrokerRegion, UpdatesBroker.NewMessageSent(currentUser.authId, randomId)).mapTo[UpdatesBroker.State]
         } yield {
-          val rsp = ResponseSendMessage(mid, s._1, uuid.encodeValid(s._2))
+          val rsp = ResponseSendMessage(s._2, s._1, uuid.encodeValid(s._3))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         }
 

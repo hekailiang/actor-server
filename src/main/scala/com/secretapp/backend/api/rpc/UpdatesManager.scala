@@ -33,7 +33,7 @@ import scalaz._
 import akka.pattern.ask
 import Scalaz._
 
-class UpdatesManager(val handleActor: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+class UpdatesManager(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   val mediator = DistributedPubSubExtension(context.system).mediator
@@ -54,7 +54,6 @@ sealed trait UpdatesService {
   implicit val timeout = Timeout(5.seconds)
 
   private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor)))
-  private val fupdatesBroker = UpdatesBroker.lookup(authId)
   private var subscribedToUpdates = false
   private val differenceSize = 500
 
@@ -68,8 +67,7 @@ sealed trait UpdatesService {
         subscribeToUpdates(authId)
 
         for {
-          updatesBroker <- fupdatesBroker
-          seq <- ask(updatesBroker, UpdatesBroker.GetSeq).mapTo[Int]
+          seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(authId)).mapTo[Int]
           difference <- CommonUpdateRecord.getDifference(
             authId, uuid, differenceSize + 1
           ) flatMap (mkDifference(seq, _))
@@ -126,15 +124,15 @@ sealed trait UpdatesService {
   @inline
   protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     for {
-      seq <- getSeq()
+      seq <- getSeq(authId)
       muuid <- CommonUpdateRecord.getState(authId)
     } yield {
       (seq, muuid)
     }
   }
 
-  private def getSeq(): Future[Int] = {
-    fupdatesBroker flatMap (ask(_, UpdatesBroker.GetSeq).mapTo[Int])
+  private def getSeq(authId: Long): Future[Int] = {
+    ask(updatesBrokerRegion, UpdatesBroker.GetSeq(authId)).mapTo[Int]
   }
 }
 
