@@ -3,7 +3,7 @@ package com.secretapp.backend.services.transport
 import akka.actor.{Actor, Props}
 import akka.util.ByteString
 import com.secretapp.backend.api.{AckTrackerActor, RegisterMessage}
-import com.secretapp.backend.data.message.{MessageAck, Pong}
+import com.secretapp.backend.data.message.{MessageAck, Pong, Ping}
 import com.secretapp.backend.data.transport.{MessageBox, Package}
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon.PackageToSend
@@ -17,7 +17,9 @@ trait PackageAckService extends PackageCommon { this: Actor =>
   def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {
     case MessageBox(mid, m) =>
       m match {
+        case _: Ping =>
         case _: Pong =>
+        case _: MessageAck =>
         case _ => ackTracker ! RegisterMessage(mid, b)
       }
   }
@@ -33,4 +35,3 @@ trait PackageAckService extends PackageCommon { this: Actor =>
     }
   }
 }
-
