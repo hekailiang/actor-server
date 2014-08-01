@@ -20,7 +20,7 @@ object DBConnector {
     .withoutMetrics()
     .build()
 
-  val session = blocking {
+  lazy val session = blocking {
     cluster.connect(keySpace)
   }
 
