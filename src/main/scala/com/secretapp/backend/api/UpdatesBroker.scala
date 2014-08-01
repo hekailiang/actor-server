@@ -15,28 +15,24 @@ object UpdatesBroker {
   case class NewUpdate[A <: updateProto.CommonUpdateMessage](update: A)
   case object GetSeq
 
-  def topicFor(userId: Long, publicKeyHash: Long): String = s"updates-${userId.toString}-${publicKeyHash.toString}"
-  def topicFor(user: User): String = topicFor(user.uid, user.publicKeyHash)
+  def topicFor(authId: Long): String = s"updates-${authId.toString}"
 
-  def lookup(userId: Int, publicKeyHash: Long)
+  def lookup(authId: Long)
     (implicit system: ActorSystem, session: CSession, timeout: Timeout): Future[ActorRef] = {
-    val path = s"broker~${UpdatesBroker.topicFor(userId, publicKeyHash)}"
+    val path = s"broker-${UpdatesBroker.topicFor(authId)}"
     SharedActors.lookup(path) {
-      system.actorOf(Props(new UpdatesBroker(userId, publicKeyHash)), path)
+      system.actorOf(Props(new UpdatesBroker(authId)), path)
     }
   }
-  def lookup(user: User)
-    (implicit system: ActorSystem, session: CSession, timeout: Timeout): Future[ActorRef] =
-    lookup(user.uid, user.publicKeyHash)
 }
 
-class UpdatesBroker(val userId: Int, val publicKeyHash: Long)(implicit session: CSession) extends PersistentActor with ActorLogging {
+class UpdatesBroker(val authId: Long)(implicit session: CSession) extends PersistentActor with ActorLogging {
   import context.dispatcher
 
-  override def persistenceId = s"updates-broker-${userId}-${publicKeyHash.toString()}"
+  override def persistenceId = s"updates-broker-${authId.toString}"
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val topic = UpdatesBroker.topicFor(userId, publicKeyHash)
+  val topic = UpdatesBroker.topicFor(authId)
 
   var seq: Int = 0
 
@@ -51,11 +47,11 @@ class UpdatesBroker(val userId: Int, val publicKeyHash: Long)(implicit session: 
           case u: updateProto.CommonUpdateMessage =>
             seq += 1
             // FIXME: Handle errors!
-            CommonUpdateRecord.push(userId, publicKeyHash, u)(session) map { uuid =>
+            CommonUpdateRecord.push(authId, u)(session) map { uuid =>
               mediator ! Publish(topic, u)
               replyTo ! (seq, uuid)
               log.info(
-                s"Pushed update uid=$userId publicKeyHash=$publicKeyHash seq=${this.seq}, state=$uuid update=$update"
+                s"Pushed update authId=$authId seq=${this.seq}, state=$uuid update=$update"
               )
             }
         }

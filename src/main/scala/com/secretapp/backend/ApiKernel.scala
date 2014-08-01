@@ -1,5 +1,6 @@
 package com.secretapp.backend
 
+import akka.cluster.Cluster
 import java.net.InetSocketAddress
 import akka.actor.{ ActorSystem, Props }
 import akka.io.{ IO, Tcp }
@@ -8,10 +9,17 @@ import Tcp._
 import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
 import api.{ Server, HeatingUpActor }
+import com.secretapp.backend.api.counters._
 
 class ApiKernel extends Bootable {
   implicit val system = ActorSystem("secret-api-server")
+
+  val joinAddress = Cluster(system).selfAddress
+  Cluster(system).join(joinAddress)
+
   import system.dispatcher
+
+  FilesCounter.start(system)
 
   import Configuration._
 

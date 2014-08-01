@@ -4,7 +4,9 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.{ CounterActor, CounterProtocol, SharedActors, UpdatesBroker }
+import com.secretapp.backend.api.SharedActors
+import com.secretapp.backend.api.UpdatesBroker
+import com.secretapp.backend.api.counters.{ CounterActor, CounterProtocol }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.Ok
 import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
@@ -12,9 +14,14 @@ import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.common.PackageCommon._
+import akka.persistence._
 import java.util.UUID
+import scala.collection.mutable
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.Future
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Success
@@ -23,19 +30,21 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
-class MessagingManager(val handleActor: ActorRef, val currentUser: User)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+class MessagingServiceActor(val handleActor: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.system
 
   implicit val timeout = Timeout(5.seconds)
 
+  val counterId = s"{currentUser.authId}"
+
   //val fupdatesBroker = UpdatesBroker.lookup(currentUser)
-  def messageCounter: Future[ActorRef] = {
-    SharedActors.lookup("message-counter") {
-      system.actorOf(Props(new CounterActor("message")), "message-counter")
+  val messageCounter: Future[ActorRef] = {
+    SharedActors.lookup(s"mid-counter-${counterId}") {
+      system.actorOf(Props(new CounterActor("message")), s"mid-counter-${counterId}")
     }
   }
 
-  def receive = {
+  def receive: Actor.Receive = {
     case RpcProtocol.Request(p, messageId,
       RequestSendMessage(
         uid, accessHash, randomId, useAesKey, aesMessage, messages
@@ -45,9 +54,12 @@ class MessagingManager(val handleActor: ActorRef, val currentUser: User)(implici
 }
 
 sealed trait MessagingService {
-  self: MessagingManager =>
+  self: MessagingServiceActor =>
 
   import context.{ dispatcher, system }
+
+  // Stores (userId, publicKeyHash) -> authId associations
+  val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
 
   protected def handleRequestSendMessage(p: Package, messageId: Long)(uid: Int,
     accessHash: Long,
@@ -57,11 +69,21 @@ sealed trait MessagingService {
     messages: Seq[EncryptedMessage]) = {
     // TODO: check accessHash SA-21
 
+    def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long]] = {
+      authIds.get((uid, publicKeyHash)) match {
+        case Some(f) => f
+        case None =>
+          val f = UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
+          authIds.put((uid, publicKeyHash), f)
+          f
+      }
+    }
+
     @inline /**
       * Generates updates list
       *
       * @param mid message id
-      * @returns Tuple containing (uid, keyHash) of target updates sequence and update object
+      * @return Tuple containing (uid, keyHash) of target updates sequence and Future of update object
       */
     def mkUpdates(mid: Int): Seq[((Int, Long), updateProto.Message)] = {
       messages map { message =>
@@ -88,7 +110,7 @@ sealed trait MessagingService {
       updates map {
         case ((uid, keyHash), update) =>
           for {
-            updatesBroker <- UpdatesBroker.lookup(uid, keyHash)
+            updatesBroker <- UpdatesBroker.lookup(currentUser.authId)
           } yield {
             log.info("Update {}", update)
             updatesBroker ! UpdatesBroker.NewUpdate(update)
@@ -110,7 +132,7 @@ sealed trait MessagingService {
         // FIXME: handle failures (retry or error, should not break seq)
         for {
           mid <- fmid
-          updatesManager <- UpdatesBroker.lookup(currentUser.uid, currentUser.publicKeyHash)
+          updatesManager <- UpdatesBroker.lookup(currentUser.authId)
           s <- ask(
             updatesManager, UpdatesBroker.NewUpdate(updateProto.MessageSent(mid, randomId))).mapTo[(Int, UUID)]
         } yield {

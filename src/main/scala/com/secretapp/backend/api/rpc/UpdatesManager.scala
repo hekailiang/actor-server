@@ -33,11 +33,11 @@ import scalaz._
 import akka.pattern.ask
 import Scalaz._
 
-class UpdatesManager(val handleActor: ActorRef, val uid: Int, val publicKeyHash: Long, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+class UpdatesManager(val handleActor: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val topic = UpdatesBroker.topicFor(uid, publicKeyHash)
+  val topic = UpdatesBroker.topicFor(authId)
 
   def receive = {
     case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetDifference(seq, state)) =>
@@ -54,22 +54,24 @@ sealed trait UpdatesService {
   implicit val timeout = Timeout(5.seconds)
 
   private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor)))
-  private val fupdatesBroker = UpdatesBroker.lookup(uid, publicKeyHash)
+  private val fupdatesBroker = UpdatesBroker.lookup(authId)
   private var subscribedToUpdates = false
   private val differenceSize = 500
 
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
     seq: Int, state: BitVector
   ) = {
-    subscribeToUpdates(uid, publicKeyHash)
+    subscribeToUpdates(authId)
 
     uuidCodec.decodeValue(state) match {
       case \/-(uuid) =>
+        subscribeToUpdates(authId)
+
         for {
           updatesBroker <- fupdatesBroker
           seq <- ask(updatesBroker, UpdatesBroker.GetSeq).mapTo[Int]
           difference <- CommonUpdateRecord.getDifference(
-            uid, publicKeyHash, uuid, differenceSize + 1
+            authId, uuid, differenceSize + 1
           ) flatMap (mkDifference(seq, _))
         } yield {
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)
@@ -81,9 +83,9 @@ sealed trait UpdatesService {
   }
 
   protected def handleRequestGetState(p: Package, messageId: Long) = {
-    subscribeToUpdates(uid, publicKeyHash)
+    subscribeToUpdates(authId)
 
-    val f = getState(uid, publicKeyHash)
+    val f = getState(authId)
 
     f onComplete {
       case Success((seq, muuid)) =>
@@ -114,18 +116,18 @@ sealed trait UpdatesService {
     Future.sequence(userIds.map(getUserStruct(_)).toVector) map (_.flatten)
   }
 
-  protected def subscribeToUpdates(uid: Int, publicKeyHash: Long) = {
+  protected def subscribeToUpdates(authId: Long) = {
     if (!subscribedToUpdates) {
-      log.info("Subscribing to updates uid={} publicKeyHash={}", uid, publicKeyHash)
-      mediator ! Subscribe(UpdatesBroker.topicFor(uid, publicKeyHash), updatesPusher)
+      log.info("Subscribing to updates authId={}", authId)
+      mediator ! Subscribe(UpdatesBroker.topicFor(authId), updatesPusher)
     }
   }
 
   @inline
-  protected def getState(uid: Int, publicKeyHash: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
+  protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     for {
       seq <- getSeq()
-      muuid <- CommonUpdateRecord.getState(uid, publicKeyHash)
+      muuid <- CommonUpdateRecord.getState(authId)
     } yield {
       (seq, muuid)
     }
