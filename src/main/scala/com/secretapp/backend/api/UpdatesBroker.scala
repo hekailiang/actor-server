@@ -64,8 +64,8 @@ class UpdatesBroker(val userId: Int, val publicKeyHash: Long)(implicit session: 
 
   def receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
-    case s =>
-      println(s"Recovering ${s}")
+    case msg @ UpdatesBroker.NewUpdate(_) =>
+      println(s"Recovering ${msg}")
       this.seq += 1
   }
 }
