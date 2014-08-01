@@ -8,7 +8,7 @@ import com.secretapp.backend.api.SharedActors
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.api.counters.{ CounterActor, CounterProtocol }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.Ok
+import com.secretapp.backend.data.message.rpc.{ Ok, Error }
 import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
 import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
 import com.secretapp.backend.data.message.{ update => updateProto }
@@ -29,20 +29,48 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 
-class MessagingServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
-  import context.system
+class MessagingServiceActor(
+  val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long
+)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+  import context.{ system, become, dispatcher }
 
   implicit val timeout = Timeout(5.seconds)
 
   val counterId = s"{currentUser.authId}"
+
+  val randomIds = new ConcurrentLinkedHashMap.Builder[Long, Boolean]
+    .initialCapacity(10).maximumWeightedCapacity(100).build
 
   def receive: Actor.Receive = {
     case RpcProtocol.Request(p, messageId,
       RequestSendMessage(
         uid, accessHash, randomId, useAesKey, aesMessage, messages
         )) =>
-      handleRequestSendMessage(p, messageId)(uid, accessHash, randomId, useAesKey, aesMessage, messages)
+      Option(randomIds.get(randomId)) match {
+        case Some(_) =>
+          handleActor ! PackageToSend(p.replyWith(messageId,
+            RpcResponseBox(
+              messageId,
+              Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
+            )
+          ).right)
+        case None =>
+          randomIds.put(randomId, true)
+          handleRequestSendMessage(p, messageId)(uid, accessHash, randomId, useAesKey, aesMessage, messages) onFailure {
+            case err =>
+              handleActor ! PackageToSend(p.replyWith(messageId,
+                // TODO: hide error message
+                RpcResponseBox(
+                  messageId,
+                  Error(400, "INTERNAL_SERVER_ERROR", err.getMessage, true)
+                )
+              ).right)
+              randomIds.remove(randomId)
+              log.error(s"Failed to send message ${err}")
+          }
+      }
   }
 }
 
@@ -60,7 +88,7 @@ sealed trait MessagingService {
     randomId: Long,
     useAesKey: Boolean,
     aesMessage: Option[BitVector],
-    messages: Seq[EncryptedMessage]) = {
+    messages: Seq[EncryptedMessage]): Future[Unit] = {
     // TODO: check accessHash SA-21
 
     def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long]] = {
@@ -87,8 +115,8 @@ sealed trait MessagingService {
 
     val fdestUserEntity = UserRecord.getEntity(uid)
 
-    fdestUserEntity onComplete {
-      case Success(Some(destUserEntity)) =>
+    fdestUserEntity map {
+      case Some(destUserEntity) =>
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
 
@@ -102,11 +130,8 @@ sealed trait MessagingService {
           val rsp = ResponseSendMessage(s._2, s._1, uuid.encodeValid(s._3))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         }
-
-      case Success(None) =>
+      case None =>
         throw new RuntimeException("Destination user not found")
-      case _ =>
-      // TODO: handle error
     }
   }
 }

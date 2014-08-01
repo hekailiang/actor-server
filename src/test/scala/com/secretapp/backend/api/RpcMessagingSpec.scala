@@ -102,9 +102,9 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val messageId = rand.nextLong()
       val rpcRq = RpcRequestBox(Request(rq))
       val packageBlob = pack(MessageBox(messageId, rpcRq))
-      send(packageBlob)
 
       {
+        send(packageBlob)
         val msg = receiveOneWithAck
 
         val rsp = new ResponseSendMessage(
@@ -118,6 +118,17 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
               .state
         )
         val rpcRes = RpcResponseBox(messageId, Ok(rsp))
+        val expectMsg = MessageBox(messageId, rpcRes)
+
+        msg must equalTo(expectMsg)
+      }
+
+      {
+        send(packageBlob)
+
+        val msg = receiveOneWithAck
+
+        val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
         val expectMsg = MessageBox(messageId, rpcRes)
 
         msg must equalTo(expectMsg)
