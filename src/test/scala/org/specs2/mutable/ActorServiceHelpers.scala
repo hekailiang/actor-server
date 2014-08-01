@@ -126,7 +126,7 @@ trait ActorServiceHelpers extends RandomService {
     PackResult(codecRes2BS(p), messageId)
   }
 
-  def receiveNWithAck(n: Int)(implicit probe: TestProbe) = {
+  def receiveNWithAck(n: Int)(implicit probe: TestProbe): Seq[MessageBox] = {
     val receivedPackages = probe.receiveN(n * 2)
     val unboxed = for ( p <- receivedPackages ) yield {
       p match {
@@ -149,6 +149,14 @@ trait ActorServiceHelpers extends RandomService {
     }
     ackPackages.length should equalTo(packages.length)
     packages
+  }
+
+  def receiveOneWithAck(implicit probe: TestProbe): MessageBox = {
+    receiveNWithAck(1) match {
+      case Seq(x) => x
+      case Seq() => null
+      case _ => throw new Exception("Received more than one message")
+    }
   }
 
   def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe) = {
