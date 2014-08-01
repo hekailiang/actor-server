@@ -50,6 +50,7 @@ sealed trait MessagingService {
   self: MessagingServiceActor =>
 
   import context.{ dispatcher, system }
+  import UpdatesBroker._
 
   // Stores (userId, publicKeyHash) -> authId associations
   val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
@@ -78,7 +79,7 @@ sealed trait MessagingService {
         authIdFor(message.uid, message.publicKeyHash) onComplete {
           case Success(Some(authId)) =>
             log.info(s"Pushing message ${message}")
-            updatesBrokerRegion ! UpdatesBroker.NewMessage(authId, currentUser.uid, message, aesMessage)
+            updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, message, aesMessage))
           case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
         }
       }
@@ -96,7 +97,7 @@ sealed trait MessagingService {
         // FIXME: handle failures (retry or error, should not break seq)
         for {
           s <- ask(
-            updatesBrokerRegion, UpdatesBroker.NewMessageSent(currentUser.authId, randomId)).mapTo[UpdatesBroker.State]
+            updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(randomId))).mapTo[UpdatesBroker.State]
         } yield {
           val rsp = ResponseSendMessage(s._2, s._1, uuid.encodeValid(s._3))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
