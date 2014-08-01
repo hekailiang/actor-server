@@ -1,41 +1,29 @@
 package com.secretapp.backend.api
 
-import akka.util.Timeout
-import java.util.concurrent.atomic.AtomicLong
-
-import scala.language.higherKinds
 import akka.actor._
+import akka.io.Tcp._
 import akka.testkit._
-import com.gilt.timeuuid.TimeUuid
+import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.{update => updateProto, _}
-import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.models._
+import com.secretapp.backend.data.transport._
+import com.secretapp.backend.data.types._
+import com.secretapp.backend.persist._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import org.scalamock.specs2.MockFactory
+import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
-import com.secretapp.backend.data.transport._
-import com.secretapp.backend.persist.CassandraSpecification
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.types._
-import com.secretapp.backend.persist._
-import com.secretapp.backend.crypto.ec
-import scodec.codecs.uuid
-import scala.concurrent.duration._
-import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
-import com.newzly.util.testing.AsyncAssertionsHelper._
-import akka.io.Tcp._
-import akka.util.ByteString
+import scala.language.higherKinds
 import scala.util.Random
+import scalaz.Scalaz._
 import scodec.bits._
-import scalaz._
-import Scalaz._
+import scodec.codecs.uuid
 
 class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
   import system.dispatcher
@@ -47,7 +35,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
 
     override def preStart(): Unit = {
       withExpectations {
-        (rand.nextLong _) stubs() returning(12345L)
+        (rand.nextLong _) stubs () returning (12345L)
       }
     }
   }
@@ -96,20 +84,40 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
         randomId = 555L, useAesKey = false,
         aesMessage = None,
         messages = immutable.Seq(
-          EncryptedMessage(uid = secondUser.uid, keyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))
-        )
-      )
+          EncryptedMessage(uid = secondUser.uid, publicKeyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
       val messageId = rand.nextLong()
       val rpcRq = RpcRequestBox(Request(rq))
       val packageBlob = pack(MessageBox(messageId, rpcRq))
-      send(packageBlob)
 
-      val state = TimeUuid()
+      {
+        send(packageBlob)
+        val msg = receiveOneWithAck
 
-      val rsp = new ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
-      val rpcRes = RpcResponseBox(messageId, Ok(rsp))
-      val expectMsg = MessageBox(messageId, rpcRes)
-//      expectMsgWithAck(expectMsg)
+        val rsp = new ResponseSendMessage(
+          mid = 1,
+          seq = 1,
+          state =
+            msg
+              .body.asInstanceOf[RpcResponseBox]
+              .body.asInstanceOf[Ok]
+              .body.asInstanceOf[ResponseSendMessage]
+              .state)
+        val rpcRes = RpcResponseBox(messageId, Ok(rsp))
+        val expectMsg = MessageBox(messageId, rpcRes)
+
+        msg must equalTo(expectMsg)
+      }
+
+      {
+        send(packageBlob)
+
+        val msg = receiveOneWithAck
+
+        val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
+        val expectMsg = MessageBox(messageId, rpcRes)
+
+        msg must equalTo(expectMsg)
+      }
     }
   }
 }

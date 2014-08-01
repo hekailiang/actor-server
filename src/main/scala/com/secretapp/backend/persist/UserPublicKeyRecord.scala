@@ -24,6 +24,9 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
   object publicKey extends BigIntColumn(this) {
     override lazy val name = "public_key"
   }
+  object authId extends LongColumn(this) {
+    override lazy val name = "auth_id"
+  }
   object userAccessSalt extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "user_access_salt"
   }
@@ -33,6 +36,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
       uid = uid(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row).toByteArray),
+      authId = authId(row),
       userAccessSalt = userAccessSalt(row)
     )
   }
@@ -44,13 +48,15 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
       .value(_.userAccessSalt, entity.userAccessSalt)
+      .value(_.authId, entity.authId)
       .future()
   }
 
-  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector)(implicit session: Session): Future[ResultSet] = {
+  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, uid)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, BigInt(publicKey.toByteArray))
+      .value(_.authId, authId)
       .future()
   }
 
@@ -60,5 +66,9 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       select.where(_.uid eqs uid).and(_.publicKeyHash eqs pk).one()
     }
     Future.sequence(q).map(_.filter(_.isDefined).map(_.get))
+  }
+
+  def getAuthIdByUidAndPublicKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] = {
+    select(_.authId).where(_.uid eqs uid).and(_.publicKeyHash eqs publicKeyHash).one()
   }
 }

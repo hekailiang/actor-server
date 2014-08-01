@@ -20,18 +20,12 @@ trait RpcMessagingService {
   import context.dispatcher
   import context.system
 
-  lazy val messagingManager = context.actorOf(Props(new MessagingManager(handleActor, getUser.get)), "messaging")
+  lazy val messagingService = context.actorOf(Props(
+    new MessagingServiceActor(handleActor, updatesBrokerRegion, getUser.get, getSessionId)
+  ), "messaging-service")
 
   def handleMessagingRpc(user: User, p: Package, messageId: Long, rq: RpcRequestMessage) = {
     log.info("Handling messaging rpc {} {} {} {}", user, p, messageId, rq)
-    messagingManager ! RpcProtocol.Request(p, messageId, rq)
-  }
-
-  // TODO: cache result
-  protected def updatesManager(uid: Int, keyHash: Long, authId: Long): Future[ActorRef] = {
-    val path = s"updates-manager-${keyHash.toString}"
-    SharedActors.lookup(path) {
-      system.actorOf(Props(new UpdatesManager(handleActor, uid, keyHash, authId)), path)
-    }
+    messagingService ! RpcProtocol.Request(p, messageId, rq)
   }
 }

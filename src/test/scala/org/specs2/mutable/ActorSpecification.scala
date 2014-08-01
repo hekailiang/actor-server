@@ -1,10 +1,10 @@
 package org.specs2.mutable
 
-import akka.testkit._
 import akka.actor._
+import akka.cluster.Cluster
 import akka.io.Tcp._
-import akka.util.ByteString
-import scala.collection.immutable.Seq
+import akka.testkit._
+import com.secretapp.backend.api.counters._
 import org.specs2._
 import org.specs2.control._
 import org.specs2.execute._
@@ -12,7 +12,6 @@ import org.specs2.main.ArgumentsShortcuts
 import org.specs2.matcher._
 import org.specs2.specification._
 import org.specs2.time._
-import scodec.bits._
 
 trait ActorLikeSpecification extends SpecificationStructure
 with SpecificationStringContext
@@ -32,12 +31,18 @@ with SpecificationNavigation
 with ContextsInjection
 with Debug
 with TestKitBase
+with NoDurationConversions
 {
   sequential
 
   lazy val actorSystemName = "test-actor-system"
 
   implicit lazy val system = ActorSystem(actorSystemName)
+
+  val joinAddress = Cluster(system).selfAddress
+  Cluster(system).join(joinAddress)
+
+  FilesCounter.start(system)
 
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)

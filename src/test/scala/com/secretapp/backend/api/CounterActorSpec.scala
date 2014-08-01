@@ -1,6 +1,7 @@
 package com.secretapp.backend.api
 
 import akka.actor._
+import akka.contrib.pattern.ClusterSingletonProxy
 import akka.io.Tcp._
 import akka.testkit._
 import akka.util.{ ByteString, Timeout }
@@ -8,8 +9,11 @@ import akka.pattern.ask
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
+import com.secretapp.backend.api.counters._
+import org.specs2.time.NoDurationConversions
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -24,14 +28,20 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
   def getCounterActor(name: String) = system.actorOf(Props(new CounterActor(name)), name)
 
-  implicit val timeout = Timeout(5.seconds)
+  implicit val timeout = Timeout(1.second)
 
   "CounterActor" should {
+    "get state" in {
+      val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
+      counter ! Get
+      expectMsg(3.seconds, 0)
+    }
+
     "increment its state" in {
       val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
 
       counter ! GetNext
-      expectMsg(5.seconds, 1)
+      expectMsg(3.seconds, 1)
     }
 
     "get bulk" in {
@@ -39,9 +49,9 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       counter ! GetNext
       counter ! GetBulk(100)
-      expectMsg(5.seconds, 1)
+      expectMsg(1.second, 1)
 
-      expectMsg(5.seconds, Bulk(2, 101))
+      expectMsg(1.second, Bulk(2, 101))
     }
 
     "recover its state" in {
@@ -56,7 +66,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       selection ! GetBulk(100)
       selection ! GetNext
 
-      expectMsgAllOf(5.seconds, 1, 2, 3, Bulk(4, 103), 104)
+      expectMsgAllOf(1.second, 1, 2, 3, Bulk(4, 103), 104)
 
       system.stop(counter)
 
@@ -65,7 +75,23 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       selection ! GetNext
 
-      expectMsg(5.seconds, 105)
+      expectMsg(1.second, 105)
+    }
+
+    "work with Shared counter" in {
+      val filesCounter = system.actorOf(
+        ClusterSingletonProxy.props(
+          singletonPath = "/user/singleton/files-counter",
+          role = None),
+        name = "files-counter-proxy")
+
+      filesCounter ! Get
+      val count = receiveOne(5.seconds).asInstanceOf[Int]
+
+      filesCounter ! GetNext
+      val nextCount = receiveOne(5.seconds).asInstanceOf[Int]
+
+      nextCount must equalTo(count + 1)
     }
   }
 }

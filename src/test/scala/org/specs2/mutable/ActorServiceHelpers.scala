@@ -126,6 +126,39 @@ trait ActorServiceHelpers extends RandomService {
     PackResult(codecRes2BS(p), messageId)
   }
 
+  def receiveNWithAck(n: Int)(implicit probe: TestProbe): Seq[MessageBox] = {
+    val receivedPackages = probe.receiveN(n * 2)
+    val unboxed = for ( p <- receivedPackages ) yield {
+      p match {
+        case Write(bs, _) =>
+          protoPackageBox.decode(bs) match {
+            case -\/(e) =>
+              throw new Exception(s"Cannot decode PackageBox $e")
+            case \/-(p) =>
+              p._2
+          }
+      }
+    }
+    val mboxes = unboxed flatMap {
+      case PackageBox(Package(_, _, MessageBox(_, Container(mbox)))) => mbox
+      case PackageBox(Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
+    }
+    val (ackPackages, packages) = mboxes partition {
+      case MessageBox(_, ma@MessageAck(_)) => true
+      case _ => false
+    }
+    ackPackages.length should equalTo(packages.length)
+    packages
+  }
+
+  def receiveOneWithAck(implicit probe: TestProbe): MessageBox = {
+    receiveNWithAck(1) match {
+      case Seq(x) => x
+      case Seq() => null
+      case _ => throw new Exception("Received more than one message")
+    }
+  }
+
   def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe) = {
     val receivedPackages = probe.receiveN(messages.size * 2)
     val unboxed = for ( p <- receivedPackages ) yield {

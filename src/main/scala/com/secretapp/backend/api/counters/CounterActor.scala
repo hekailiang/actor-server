@@ -1,4 +1,4 @@
-package com.secretapp.backend.api
+package com.secretapp.backend.api.counters
 
 import akka.actor._
 import akka.persistence._
@@ -13,6 +13,7 @@ object CounterProtocol {
 
   case object GetNext extends Request
   case class GetBulk(size: StateType) extends Request
+  case object Get extends Request
 
   sealed trait Response
   case class Bulk(first: StateType, last: StateType) extends Response
@@ -27,7 +28,11 @@ class CounterActor(name: String, initial: CounterProtocol.StateType = 0) extends
   var lastSnapshottedAt: StateType = 0
   val minSnapshotStep: StateType  = 100
 
+  log.info(s"Starting counter $name with initial state = $initial")
+
   def receiveCommand: Actor.Receive = {
+    case Get =>
+      sender ! count
     case GetNext =>
       val replyTo = sender
       persist(GetNext) { _ =>

@@ -11,16 +11,16 @@ import scalaz._
 import Scalaz._
 
 case class EncryptedMessage(uid: Int,
-                            keyHash: Long,
+                            publicKeyHash: Long,
                             aesEncryptedKey: Option[BitVector],
                             message: Option[BitVector]) extends ProtobufMessage
 {
-  def toProto = protobuf.EncryptedMessage(uid, keyHash, aesEncryptedKey, message)
+  def toProto = protobuf.EncryptedMessage(uid, publicKeyHash, aesEncryptedKey, message)
 }
 
 object EncryptedMessage {
   def fromProto(u: protobuf.EncryptedMessage): EncryptedMessage = u match {
-    case protobuf.EncryptedMessage(uid, keyHash, aesEncryptedKey, message) =>
-      EncryptedMessage(uid, keyHash, aesEncryptedKey, message)
+    case protobuf.EncryptedMessage(uid, publicKeyHash, aesEncryptedKey, message) =>
+      EncryptedMessage(uid, publicKeyHash, aesEncryptedKey, message)
   }
 }

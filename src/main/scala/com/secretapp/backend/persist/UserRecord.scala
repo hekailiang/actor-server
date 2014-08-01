@@ -68,7 +68,7 @@ object UserRecord extends UserRecord with DBConnector {
       userKeyHashes = Set(entity.publicKeyHash), userFirstName = entity.firstName,
       userLastName = entity.lastName, userSex = sexToInt(entity.sex))
     val userPK = UserPublicKey(uid = entity.uid,
-      publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey)
+      publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey, authId = entity.authId)
 
     insert.value(_.uid, entity.uid)
       .value(_.authId, entity.authId)
@@ -96,7 +96,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKey, BigInt(publicKey.toByteArray))
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey)).
+      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
       flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
@@ -114,7 +114,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.sex, sexToInt(sex))
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey)).
+      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
       flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
