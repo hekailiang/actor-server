@@ -24,14 +24,17 @@ trait PackageAckService extends PackageCommon { this: Actor =>
       }
   }
 
-  def acknowledgeReceivedPackage(p: Package, m: MessageBox): Unit = {
-    m match {
-      case _ =>
-        // TODO: aggregation
-        log.info(s"Sending acknowledgement for $p")
+  def acknowledgeReceivedPackage(p: Package, mb: MessageBox): Unit = mb match {
+    case MessageBox(mid, m) =>
+      m match {
+        case _: MessageAck =>
+        case _: Pong =>
+        case _ =>
+          // TODO: aggregation
+          log.info(s"Sending acknowledgement for $p")
 
-        val reply = p.replyWith(m.messageId, MessageAck(Array(m.messageId))).right
-        handleActor ! PackageToSend(reply)
-    }
+          val reply = p.replyWith(mb.messageId, MessageAck(Array(mb.messageId))).right
+          handleActor ! PackageToSend(reply)
+      }
   }
 }
