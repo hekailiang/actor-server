@@ -104,12 +104,24 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val packageBlob = pack(MessageBox(messageId, rpcRq))
       send(packageBlob)
 
-      val state = TimeUuid()
+      {
+        val msg = receiveOneWithAck
 
-      val rsp = new ResponseSendMessage(mid = 1, seq = 1, state = uuid.encode(state).toOption.get)
-      val rpcRes = RpcResponseBox(messageId, Ok(rsp))
-      val expectMsg = MessageBox(messageId, rpcRes)
-      //expectMsgWithAck(expectMsg)
+        val rsp = new ResponseSendMessage(
+          mid = 1,
+          seq = 1,
+          state =
+            msg
+              .body.asInstanceOf[RpcResponseBox]
+              .body.asInstanceOf[Ok]
+              .body.asInstanceOf[ResponseSendMessage]
+              .state
+        )
+        val rpcRes = RpcResponseBox(messageId, Ok(rsp))
+        val expectMsg = MessageBox(messageId, rpcRes)
+
+        msg must equalTo(expectMsg)
+      }
     }
   }
 }
