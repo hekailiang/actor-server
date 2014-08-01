@@ -4,24 +4,17 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.SharedActors
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.api.counters.{ CounterActor, CounterProtocol }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.{ Ok, Error }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok }
 import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
-import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
-import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.persist.UserPublicKeyRecord
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
 import com.secretapp.backend.services.common.PackageCommon._
-import akka.persistence._
 import java.util.UUID
-import scala.collection.mutable
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Success
@@ -29,11 +22,9 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 
 class MessagingServiceActor(
-  val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long
-)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+  val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.{ system, become, dispatcher }
 
   implicit val timeout = Timeout(5.seconds)
@@ -53,9 +44,7 @@ class MessagingServiceActor(
           handleActor ! PackageToSend(p.replyWith(messageId,
             RpcResponseBox(
               messageId,
-              Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
-            )
-          ).right)
+              Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))).right)
         case None =>
           randomIds.put(randomId, true)
           handleRequestSendMessage(p, messageId)(uid, accessHash, randomId, useAesKey, aesMessage, messages) onFailure {
@@ -64,9 +53,7 @@ class MessagingServiceActor(
                 // TODO: hide error message
                 RpcResponseBox(
                   messageId,
-                  Error(400, "INTERNAL_SERVER_ERROR", err.getMessage, true)
-                )
-              ).right)
+                  Error(400, "INTERNAL_SERVER_ERROR", err.getMessage, true))).right)
               randomIds.remove(randomId)
               log.error(s"Failed to send message ${err}")
           }
