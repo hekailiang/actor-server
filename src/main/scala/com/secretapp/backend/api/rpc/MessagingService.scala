@@ -95,7 +95,7 @@ sealed trait MessagingService {
         authIdFor(message.uid, message.publicKeyHash) onComplete {
           case Success(Some(authId)) =>
             log.info(s"Pushing message ${message}")
-            updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, message, aesMessage))
+            updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, uid, message, aesMessage))
           case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
         }
       }

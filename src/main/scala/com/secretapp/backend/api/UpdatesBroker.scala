@@ -22,7 +22,7 @@ object UpdatesBroker {
   trait UpdateEvent
   case class NewUpdateEvent(authId: Long, event: UpdateEvent)
   case class NewMessageSent(randomId: Long) extends UpdateEvent
-  case class NewMessage(senderUID: Int, update: EncryptedMessage, aesMessage: Option[BitVector]) extends UpdateEvent
+  case class NewMessage(senderUID: Int, destUID: Int, update: EncryptedMessage, aesMessage: Option[BitVector]) extends UpdateEvent
   case class GetSeq(authId: Long)
   case object Stop
 
@@ -83,7 +83,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
           log.info(s"Replying to ${replyTo.path} with ${reply}")
         }
       }
-    case p @ NewUpdateEvent(authId, NewMessage(senderUID, message, aesMessage)) =>
+    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message, aesMessage)) =>
       val replyTo = sender()
       log.info(s"NewMessage ${p} from ${replyTo.path}")
       persist(p) { _ =>
@@ -91,7 +91,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         mid += 1
         val update = updateProto.Message(
           senderUID = senderUID,
-          destUID = message.uid,
+          destUID = destUID,
           mid = mid,
           keyHash = message.publicKeyHash,
           useAesKey = aesMessage.isDefined,
@@ -107,7 +107,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
 
   def receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
-    case msg @ NewUpdateEvent(_, NewMessage(_, _, _)) =>
+    case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _)) =>
       log.info(s"Recovering NewMessage ${msg}")
       this.seq += 1
       this.mid += 1
