@@ -99,7 +99,7 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
       val lastName = Some("Klim")
-      val user = User.build(uid = userId, authId = 123L, publicKey = publicKey, accessSalt = userSalt,
+      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
       authUser(user, phoneNumber)
