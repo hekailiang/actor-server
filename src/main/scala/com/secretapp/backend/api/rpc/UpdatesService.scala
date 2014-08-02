@@ -56,7 +56,7 @@ sealed trait UpdatesService {
   import context._
   implicit val timeout = Timeout(5.seconds)
 
-  private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor)))
+  private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor, authId)))
   private var subscribedToUpdates = false
   private val differenceSize = 500
 
@@ -140,10 +140,10 @@ sealed trait UpdatesService {
   }
 }
 
-sealed class PusherActor(handleActor: ActorRef) extends Actor with ActorLogging {
+sealed class PusherActor(handleActor: ActorRef, authId: Long) extends Actor with ActorLogging {
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
-      log.info(s"Pushing update to session ${u}")
+      log.info(s"Pushing update to session authId=${authId} ${u}")
       val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
       val ub = UpdateBox(upd)
       handleActor ! UpdateBoxToSend(ub)
