@@ -58,7 +58,7 @@ object Dependencies {
     "com.newzly"  %% "phantom-dsl" % V.phantom,
     // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
     // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
-    "com.newzly" %% "util-testing" % V.newzlyUtil % "provided",
+    "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"  excludeAll(ExclusionRule(organization = "org.slf4j")),
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
@@ -99,8 +99,9 @@ object Dependencies {
     "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
     "io.spray" %% "spray-caching" % V.spray,
     "net.sandrogrzicic" %% "scalabuff-runtime" % "1.3.8",
-    "net.sandrogrzicic" %% "scalabuff-compiler" % "1.3.8"
+    "net.sandrogrzicic" %% "scalabuff-compiler" % "1.3.8",
 //    "org.scala-miniboxing.plugins" %% "miniboxing-runtime" % "0.3-SNAPSHOT" TODO: http://scala-miniboxing.org/using_sbt.html
+    "com.logentries" % "logentries-appender" % "1.1.25"
   )
 
   val deployDependencies = Seq(
