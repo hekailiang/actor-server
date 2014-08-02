@@ -64,8 +64,8 @@ class CommonUpdateRecordSpec extends CassandraSpecification {
 
       val fDiffOne = for {
         first <- CommonUpdateRecord.select.where(_.authId eqs authId).orderBy(_.uuid asc).one.map(_.get); firstState = first.key
-        diff1 <- CommonUpdateRecord.getDifference(authId, firstState, 1); secondState = diff1(0).key
-        diff500 <- CommonUpdateRecord.getDifference(authId, secondState, 500)
+        diff1 <- CommonUpdateRecord.getDifference(authId, Some(firstState), 1); secondState = diff1(0).key
+        diff500 <- CommonUpdateRecord.getDifference(authId, Some(secondState), 500)
       } yield {
         val firstts = firstState.timestamp()
         diff1.length must equalTo(1)

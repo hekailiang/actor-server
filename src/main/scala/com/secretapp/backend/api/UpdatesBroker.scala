@@ -3,6 +3,7 @@ package com.secretapp.backend.api
 import akka.actor._
 import akka.contrib.pattern.ClusterSharding
 import akka.contrib.pattern.ShardRegion
+import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedMessage
@@ -25,7 +26,8 @@ object UpdatesBroker {
   case class GetSeq(authId: Long)
   case object Stop
 
-  type State = (Int, Int, UUID)
+  type State = (Int, Int, Option[UUID]) // seq mid mstate
+  type StrictState = (Int, Int, UUID) // seq mid state
 
   def topicFor(authId: Long): String = s"updates-${authId.toString}"
   def topicFor(authId: String): String = s"updates-${authId}"
@@ -64,23 +66,26 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   var seq: Int = 0
   var mid: Int = 0
 
-  val receiveCommand: Receive = {
+  val receiveCommand: Receive = LoggingReceive {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
     case UpdatesBroker.Stop => context.stop(self)
     case UpdatesBroker.GetSeq(_) =>
-      sender ! this.seq
+      sender() ! this.seq
     case p @ NewUpdateEvent(authId, NewMessageSent(randomId)) =>
-      log.info(s"NewMessageSent ${p}")
-      val replyTo = sender
+      val replyTo = sender()
+      log.info(s"NewMessageSent ${p} from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
         mid += 1
         val update = updateProto.MessageSent(mid, randomId)
-        pushUpdate(replyTo, authId, update)
+        pushUpdate(replyTo, authId, update) map { reply =>
+          replyTo ! reply
+          log.info(s"Replying to ${replyTo.path} with ${reply}")
+        }
       }
     case p @ NewUpdateEvent(authId, NewMessage(senderUID, message, aesMessage)) =>
-      log.info(s"NewMessage ${p}")
-      val replyTo = sender
+      val replyTo = sender()
+      log.info(s"NewMessage ${p} from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
         mid += 1
@@ -103,23 +108,29 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   def receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
     case msg @ NewUpdateEvent(_, NewMessage(_, _, _)) =>
-      println(s"Recovering NewMessage ${msg}")
+      log.info(s"Recovering NewMessage ${msg}")
       this.seq += 1
       this.mid += 1
     case msg @ NewUpdateEvent(_, NewMessageSent(_)) =>
-      println(s"Recovering NewMessageSent ${msg}")
+      log.info(s"Recovering NewMessageSent ${msg}")
       this.seq += 1
       this.mid += 1
   }
 
-  private def pushUpdate(replyTo: ActorRef, authId: Long, update: updateProto.CommonUpdateMessage) = {
+  private def pushUpdate(replyTo: ActorRef, authId: Long, update: updateProto.CommonUpdateMessage): Future[Tuple3[Int, Int, UUID]] = {
     // FIXME: Handle errors!
+    val updSeq = seq
     CommonUpdateRecord.push(authId, update)(session) map { uuid =>
-      mediator ! Publish(topic, update)
-      replyTo ! (seq, mid, uuid)
+      update match {
+        case _: updateProto.MessageSent =>
+          log.debug("Not pushing update MessageSent to session")
+        case _ =>
+          mediator ! Publish(topic, (updSeq, uuid, update))
+      }
       log.info(
-        s"Pushed update authId=$authId seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
+        s"Pushed update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
       )
+      (seq, mid, uuid)
     }
   }
 }

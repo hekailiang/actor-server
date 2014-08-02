@@ -32,16 +32,16 @@ class CounterActor(name: String, initial: CounterProtocol.StateType = 0) extends
 
   def receiveCommand: Actor.Receive = {
     case Get =>
-      sender ! count
+      sender() ! count
     case GetNext =>
-      val replyTo = sender
+      val replyTo = sender()
       persist(GetNext) { _ =>
         count += 1
         replyTo ! count
         maybeSnapshot()
       }
     case GetBulk(size) =>
-      val replyTo = sender
+      val replyTo = sender()
       persist(GetBulk(size)) { _ =>
         val first = count + 1
         val last = count + size

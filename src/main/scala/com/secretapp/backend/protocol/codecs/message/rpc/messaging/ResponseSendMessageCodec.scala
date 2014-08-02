@@ -14,14 +14,22 @@ import com.getsecretapp.{ proto => protobuf }
 
 object ResponseSendMessageCodec extends Codec[ResponseSendMessage] with utils.ProtobufCodec {
   def encode(r: ResponseSendMessage) = {
-    val boxed = protobuf.ResponseSendMessage(r.mid, r.seq, r.state)
-    encodeToBitVector(boxed)
+    uuid.encode(r.state) match {
+      case \/-(encodedUuid) =>
+        val boxed = protobuf.ResponseSendMessage(r.mid, r.seq, encodedUuid)
+        encodeToBitVector(boxed)
+      case l => l
+    }
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.ResponseSendMessage.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.ResponseSendMessage.parseFrom(buf.toByteArray)) {
       case Success(protobuf.ResponseSendMessage(mid, seq, state)) =>
-        ResponseSendMessage(mid, seq, state)
+        uuid.decodeValue(state) match {
+          case \/-(uuidState) =>
+            ResponseSendMessage(mid, seq, uuidState).right
+          case l @ -\/(_) => l
+        }
     }
   }
 }

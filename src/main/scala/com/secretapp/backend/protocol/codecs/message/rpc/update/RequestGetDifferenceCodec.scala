@@ -1,23 +1,41 @@
 package com.secretapp.backend.protocol.codecs.message.rpc.update
 
+import com.google.protobuf.ByteString
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.data.message.rpc.update._
 import scodec.bits._
 import scodec.Codec
+import scodec.codecs._
 import scala.util.Success
+import scalaz._
+import scalaz.Scalaz._
 import com.getsecretapp.{ proto => protobuf }
 
 object RequestGetDifferenceCodec extends Codec[RequestGetDifference] with utils.ProtobufCodec {
   def encode(r: RequestGetDifference) = {
-    val boxed = protobuf.RequestGetDifference(r.seq, r.state)
-    encodeToBitVector(boxed)
+    r.state map (uuid.encode(_)) getOrElse(BitVector.empty.right) match {
+      case \/-(encodedUuid) =>
+        val boxed = protobuf.RequestGetDifference(r.seq, encodedUuid)
+        encodeToBitVector(boxed)
+      case l @ -\/(_) => l
+    }
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestGetDifference.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.RequestGetDifference.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestGetDifference(seq, state)) =>
-        RequestGetDifference(seq, state)
+        val decodedState = if (state == ByteString.EMPTY) {
+          None.right
+        } else {
+          uuid.decodeValue(state) map (Some(_))
+        }
+
+        decodedState match {
+          case \/-(uuidState) =>
+            RequestGetDifference(seq, uuidState).right
+          case l @ -\/(_) => l
+        }
     }
   }
 }

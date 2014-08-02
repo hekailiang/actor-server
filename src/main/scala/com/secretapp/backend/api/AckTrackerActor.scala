@@ -31,13 +31,13 @@ class AckTrackerActor[K](val sizeLimit: Int) extends Actor with ActorLogging {
     case m: RegisterMessage[K] =>
       state.messages.get(m.key) match {
         case Some(value) =>
-          sender ! MessageAlreadyRegistered
+          sender() ! MessageAlreadyRegistered
         case None =>
           val newState = addNew(state, m.key, m.value)
 
           if (newState.messagesSize > sizeLimit) {
             log.warning("Messages size overflow")
-            sender ! MessagesSizeOverflow
+            sender() ! MessagesSizeOverflow
             context stop self
           } else {
             become(trackMessages(newState))
@@ -48,7 +48,7 @@ class AckTrackerActor[K](val sizeLimit: Int) extends Actor with ActorLogging {
     case ms: RegisterMessageAcks[K] =>
       ms.keys.foreach (key => registerMessageAck(state, key))
     case GetUnackdMessages =>
-      sender ! UnackdMessages(state.messages)
+      sender() ! UnackdMessages(state.messages)
   }
 
   def receive = trackMessages(State(immutable.Map[K, ByteString](), 0))

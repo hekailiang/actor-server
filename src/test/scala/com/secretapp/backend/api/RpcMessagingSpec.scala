@@ -7,8 +7,8 @@ import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
@@ -16,6 +16,7 @@ import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
+import java.util.UUID
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
@@ -59,10 +60,41 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
     (probe, actor)
   }
 
+  def getState(implicit sessionId: SessionIdentifier, probe: TestProbe, destActor: ActorRef): updateProto.State = {
+    val rq = updateProto.RequestGetState()
+    val messageId = rand.nextLong()
+    val rpcRq = RpcRequestBox(Request(rq))
+    val packageBlob = pack(MessageBox(messageId, rpcRq))
+    send(packageBlob)
+
+    val msg = receiveOneWithAck
+
+    msg
+      .body.asInstanceOf[RpcResponseBox]
+      .body.asInstanceOf[Ok]
+      .body.asInstanceOf[updateProto.State]
+  }
+
+  def getDifference(seq: Int, state: Option[UUID])(implicit sessionId: SessionIdentifier, probe: TestProbe, destActor: ActorRef): updateProto.Difference = {
+    val rq = updateProto.RequestGetDifference(seq, state)
+    val messageId = rand.nextLong()
+    val rpcRq = RpcRequestBox(Request(rq))
+    val packageBlob = pack(MessageBox(messageId, rpcRq))
+    send(packageBlob)
+
+    val msg = receiveOneWithAck
+
+    msg
+      .body.asInstanceOf[RpcResponseBox]
+      .body.asInstanceOf[Ok]
+      .body.asInstanceOf[updateProto.Difference]
+  }
+
   "RpcMessaging" should {
     "reply to SendMessage and push to sequence" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
+
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val firstName = "Timothy"
@@ -79,6 +111,9 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
         phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
+      // get initial state
+      val initialState = getState
+
       val rq = RequestSendMessage(
         uid = userId, accessHash = accessHash,
         randomId = 555L, useAesKey = false,
@@ -92,21 +127,29 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
       {
         send(packageBlob)
         val msg = receiveOneWithAck
+        val resp = msg
+          .body.asInstanceOf[RpcResponseBox]
+          .body.asInstanceOf[Ok]
+          .body.asInstanceOf[ResponseSendMessage]
 
         val rsp = new ResponseSendMessage(
-          mid = 1,
-          seq = 1,
+          mid = resp.mid,
+          seq = initialState.seq + 1,
           state =
-            msg
-              .body.asInstanceOf[RpcResponseBox]
-              .body.asInstanceOf[Ok]
-              .body.asInstanceOf[ResponseSendMessage]
-              .state)
+            resp.state)
         val rpcRes = RpcResponseBox(messageId, Ok(rsp))
         val expectMsg = MessageBox(messageId, rpcRes)
 
         msg must equalTo(expectMsg)
       }
+
+      {
+        val state = getState
+        state.seq must equalTo(initialState.seq + 1)
+        getDifference(initialState.seq, initialState.state).updates.length must equalTo(1)
+      }
+
+      Thread.sleep(1000)
 
       {
         send(packageBlob)
@@ -118,6 +161,8 @@ class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecificatio
 
         msg must equalTo(expectMsg)
       }
+
+      getState.seq must equalTo(initialState.seq + 1)
     }
   }
 }

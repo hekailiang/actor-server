@@ -3,6 +3,7 @@ package com.secretapp.backend.api
 import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
+import akka.event.Logging
 import akka.util.Timeout
 import akka.pattern.ask
 import com.datastax.driver.core.{Session => CSession}
@@ -19,7 +20,9 @@ import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
+import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
+import com.secretapp.backend.services.rpc.RpcCommon
 import java.util.UUID
 import scala.concurrent.Future
 import scala.util.Failure
@@ -33,7 +36,7 @@ import scalaz._
 import akka.pattern.ask
 import Scalaz._
 
-class UpdatesManager(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService with PackageCommon with RpcCommon {
   import context.dispatcher
 
   val mediator = DistributedPubSubExtension(context.system).mediator
@@ -48,7 +51,7 @@ class UpdatesManager(val handleActor: ActorRef, val updatesBrokerRegion: ActorRe
 }
 
 sealed trait UpdatesService {
-  self: UpdatesManager =>
+  self: UpdatesServiceActor =>
 
   import context._
   implicit val timeout = Timeout(5.seconds)
@@ -58,26 +61,26 @@ sealed trait UpdatesService {
   private val differenceSize = 500
 
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
-    seq: Int, state: BitVector
+    seq: Int, state: Option[UUID]
   ) = {
     subscribeToUpdates(authId)
 
-    uuidCodec.decodeValue(state) match {
-      case \/-(uuid) =>
-        subscribeToUpdates(authId)
-
-        for {
-          seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(authId)).mapTo[Int]
-          difference <- CommonUpdateRecord.getDifference(
-            authId, uuid, differenceSize + 1
-          ) flatMap (mkDifference(seq, _))
-        } yield {
-          handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)
-        }
-      case -\/(e) =>
-        // TODO: handle properly
-        throw new Exception("Wrong state format")
+    val res = for {
+      seq <- getSeq(authId)
+      difference <- CommonUpdateRecord.getDifference(
+        authId, state, differenceSize + 1
+      ) flatMap (mkDifference(seq, _))
+    } yield {
+      //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
+      difference.right
     }
+
+    val f = res recover {
+      case e: Throwable =>
+        log.error(s"Error getting difference ${e} ${Logging.stackTraceFor(e)}")
+        internalError.left
+    }
+    sendRpcResult(p, messageId)(f)
   }
 
   protected def handleRequestGetState(p: Package, messageId: Long) = {
@@ -87,7 +90,7 @@ sealed trait UpdatesService {
 
     f onComplete {
       case Success((seq, muuid)) =>
-        val rsp = updateRpcProto.State(seq, muuid map (uuidCodec.encodeValid) getOrElse BitVector.empty)
+        val rsp = updateRpcProto.State(seq, muuid)
         handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
       case Failure(err) =>
         // TODO: Handle failure
@@ -97,9 +100,9 @@ sealed trait UpdatesService {
 
   protected def mkDifference(seq: Int, allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
-    val updates = allUpdates.tail
+    val updates = if (needMore) allUpdates.tail else allUpdates
     val users = mkUsers(authId, updates)
-    val state = uuidCodec.encodeValid(updates.last.key)
+    val state = if (updates.length > 0) Some(updates.last.key) else None
     users map (Difference(seq, state, _,
       updates map {u => DifferenceUpdate(u.value)}, needMore))
   }
@@ -109,9 +112,10 @@ sealed trait UpdatesService {
     def getUserStruct(uid: Int): Future[Option[struct.User]] = {
       UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
     }
-
-    val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
-    Future.sequence(userIds.map(getUserStruct(_)).toVector) map (_.flatten)
+    if (updates.length > 0) {
+      val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
+      Future.sequence(userIds.map(getUserStruct(_)).toVector) map (_.flatten)
+    } else { Future.successful(Vector.empty) }
   }
 
   protected def subscribeToUpdates(authId: Long) = {
@@ -137,12 +141,13 @@ sealed trait UpdatesService {
 }
 
 sealed class PusherActor(handleActor: ActorRef) extends Actor with ActorLogging {
-  lazy val rand = new Random
-
   def receive = {
-    case (u: updateProto.Message, seq: Int, state: UUID) =>
+    case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
+      log.info(s"Pushing update to session ${u}")
       val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
       val ub = UpdateBox(upd)
       handleActor ! UpdateBoxToSend(ub)
+    case u =>
+      log.error(s"Unknown update in topic ${u}")
   }
 }

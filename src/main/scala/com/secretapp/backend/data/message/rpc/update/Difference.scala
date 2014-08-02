@@ -1,12 +1,12 @@
 package com.secretapp.backend.data.message.rpc.update
 
+import java.util.UUID
 import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
-import scodec.bits.BitVector
 
 case class Difference(seq: Int,
-                      state: BitVector,
+                      state: Option[UUID],
                       users: immutable.Seq[struct.User],
                       updates: immutable.Seq[DifferenceUpdate],
                       needMore: Boolean) extends RpcResponseMessage

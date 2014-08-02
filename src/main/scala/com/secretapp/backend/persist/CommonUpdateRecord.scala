@@ -82,14 +82,21 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
   //import com.newzly.phantom.query.QueryCondition
 
   // TODO: limit by size, not rows count
-  def getDifference(authId: Long, state: UUID, limit: Int = 500)
+  def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)
     (implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]] = {
     //select.where(c => QueryCondition(QueryBuilder.gte(c.uuid.name, QueryBuilder.fcall("maxTimeuuid")))).limit(limit)
     //  .fetch
-
-    CommonUpdateRecord.select.orderBy(_.uuid.asc)
-      .where(_.authId eqs authId).and(_.uuid gt state)
-      .limit(limit).fetch.map(_.toList)
+    val query = state match {
+      case Some(uuid) =>
+        CommonUpdateRecord.select.orderBy(_.uuid.asc)
+          .where(_.authId eqs authId).and(_.uuid gt uuid)
+      case None =>
+        CommonUpdateRecord.select.orderBy(_.uuid.asc)
+          .where(_.authId eqs authId)
+    }
+    val queryString = query.queryString
+    println(s"Getting difference ${authId} ${state} ${limit} \n${queryString}")
+    query.limit(limit).fetch map (_.toList)
   }
 
   def getState(authId: Long)(implicit session: Session): Future[Option[UUID]] =

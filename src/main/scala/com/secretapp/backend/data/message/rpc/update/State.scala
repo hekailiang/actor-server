@@ -1,9 +1,9 @@
 package com.secretapp.backend.data.message.rpc.update
 
 import com.secretapp.backend.data.message.rpc._
-import scodec.bits.BitVector
+import java.util.UUID
 
-case class State(seq: Int, state: BitVector) extends RpcResponseMessage
+case class State(seq: Int, state: Option[UUID]) extends RpcResponseMessage
 object State extends RpcResponseMessageObject {
   val responseType = 0xa
 }

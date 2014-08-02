@@ -7,6 +7,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ Error, Ok }
 import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
 import com.secretapp.backend.data.models.User
@@ -112,9 +113,9 @@ sealed trait MessagingService {
         // FIXME: handle failures (retry or error, should not break seq)
         for {
           s <- ask(
-            updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(randomId))).mapTo[UpdatesBroker.State]
+            updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(randomId))).mapTo[UpdatesBroker.StrictState]
         } yield {
-          val rsp = ResponseSendMessage(s._2, s._1, uuid.encodeValid(s._3))
+          val rsp = ResponseSendMessage(mid = s._2, seq = s._1, state = s._3)
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         }
       case None =>

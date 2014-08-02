@@ -43,7 +43,6 @@ with PublicKeysService {
 
       case rq: updateProto.RequestGetDifference =>
         handleUpdates(rq)
-      //  (handleRequestGetDifference(p, messageId, user) _).tupled(updateProto.RequestGetDifference.unapply(rq).get)
 
       case _ =>
         handleRpcAuth(p, messageId).

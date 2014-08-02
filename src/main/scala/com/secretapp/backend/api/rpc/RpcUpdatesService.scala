@@ -3,7 +3,7 @@ package com.secretapp.backend.api.rpc
 import akka.actor._
 import akka.pattern.ask
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.api.UpdatesManager
+import com.secretapp.backend.api.UpdatesServiceActor
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
@@ -30,13 +30,13 @@ trait RpcUpdatesService {
 
   val updatesBrokerRegion = UpdatesBroker.region
 
-  lazy val updatesManager = context.actorOf(Props(
-    new UpdatesManager(handleActor, updatesBrokerRegion, getUser.get.uid, getUser.get.authId)
-  ), "updates-manager")
+  lazy val updatesService = context.actorOf(Props(
+    new UpdatesServiceActor(handleActor, updatesBrokerRegion, getUser.get.uid, getUser.get.authId)
+  ), "updates-service")
 
   private var subscribedToUpdates = false
 
   def handleUpdatesRpc(user: User, p: Package, messageId: Long, rq: RpcRequestMessage) = {
-    updatesManager ! RpcProtocol.Request(p, messageId, rq)
+    updatesService ! RpcProtocol.Request(p, messageId, rq)
   }
 }

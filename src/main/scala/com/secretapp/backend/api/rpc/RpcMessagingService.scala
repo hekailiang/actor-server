@@ -3,7 +3,7 @@ package com.secretapp.backend.api.rpc
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.{ SharedActors, UpdatesManager }
+import com.secretapp.backend.api.{ SharedActors }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.models.User
