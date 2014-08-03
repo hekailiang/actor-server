@@ -80,11 +80,15 @@ sealed trait MessagingService {
     // TODO: check accessHash SA-21
 
     def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long]] = {
+      log.debug(s"Resolving authId for ${uid} ${publicKeyHash}")
       authIds.get((uid, publicKeyHash)) match {
-        case Some(f) => f
+        case Some(f) =>
+          log.debug(s"Resolved(cache) authId for ${uid} ${publicKeyHash}")
+          f
         case None =>
           val f = UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
           authIds.put((uid, publicKeyHash), f)
+          f onSuccess { case _ => log.debug(s"Resolved authId for ${uid} ${publicKeyHash}") }
           f
       }
     }
@@ -101,10 +105,12 @@ sealed trait MessagingService {
       }
     }
 
+    log.debug("Getting UserRecord")
     val fdestUserEntity = UserRecord.getEntity(uid)
 
     fdestUserEntity map {
       case Some(destUserEntity) =>
+        log.debug("Got UserRecord")
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
 
@@ -115,6 +121,7 @@ sealed trait MessagingService {
           s <- ask(
             updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(randomId))).mapTo[UpdatesBroker.StrictState]
         } yield {
+          log.debug("Replying")
           val rsp = ResponseSendMessage(mid = s._2, seq = s._1, state = s._3)
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         }

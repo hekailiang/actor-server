@@ -57,7 +57,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   import ShardRegion.Passivate
   import UpdatesBroker._
 
-  context.setReceiveTimeout(120.seconds)
+  context.setReceiveTimeout(1.day)
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
   val mediator = DistributedPubSubExtension(context.system).mediator
