@@ -66,6 +66,10 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   var seq: Int = 0
   var mid: Int = 0
 
+  type PersistentStateType = (Int, Int) // seq mid
+  var lastSnapshottedAtSeq: Int = 0
+  val minSnapshotStep: Int = 3
+
   val receiveCommand: Receive = LoggingReceive {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
     case UpdatesBroker.Stop => context.stop(self)
@@ -82,6 +86,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
           replyTo ! reply
           log.info(s"Replying to ${replyTo.path} with ${reply}")
         }
+        maybeSnapshot()
       }
     case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message, aesMessage)) =>
       val replyTo = sender()
@@ -102,17 +107,27 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
           }
         )
         pushUpdate(replyTo, authId, update)
+        maybeSnapshot()
       }
+    case s: SaveSnapshotSuccess =>
+      log.debug("SaveSnapshotSuccess {}", s)
+    case e: SaveSnapshotFailure =>
+      log.error("SaveSnapshotFailure {}", e)
   }
 
   def receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
+    case SnapshotOffer(metadata, offeredSnapshot) =>
+      log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
+      val (seq, mid) = offeredSnapshot.asInstanceOf[PersistentStateType]
+      this.seq = seq
+      this.mid = mid
     case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _)) =>
-      log.info(s"Recovering NewMessage ${msg}")
+      log.debug(s"Recovering NewMessage ${msg}")
       this.seq += 1
       this.mid += 1
     case msg @ NewUpdateEvent(_, NewMessageSent(_)) =>
-      log.info(s"Recovering NewMessageSent ${msg}")
+      log.debug(s"Recovering NewMessageSent ${msg}")
       this.seq += 1
       this.mid += 1
   }
@@ -131,6 +146,14 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         s"Pushed update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
       )
       (seq, mid, uuid)
+    }
+  }
+
+  private def maybeSnapshot(): Unit = {
+    if (seq - lastSnapshottedAtSeq >= minSnapshotStep) {
+      log.debug(s"Saving snapshot seq=${seq} mid=${mid} lastSnapshottedAtSeq=${lastSnapshottedAtSeq}")
+      lastSnapshottedAtSeq = seq
+      saveSnapshot((seq, mid))
     }
   }
 }
