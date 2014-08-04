@@ -6,6 +6,7 @@ import akka.contrib.pattern.ShardRegion
 import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout
+import com.gilt.timeuuid.TimeUuid
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedMessage
 import java.util.UUID
 import scala.concurrent.duration._
@@ -135,16 +136,20 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   private def pushUpdate(replyTo: ActorRef, authId: Long, update: updateProto.CommonUpdateMessage): Future[Tuple3[Int, Int, UUID]] = {
     // FIXME: Handle errors!
     val updSeq = seq
+    val uuid = TimeUuid()
+
+    update match {
+      case _: updateProto.MessageSent =>
+        log.debug("Not pushing update MessageSent to session")
+      case _ =>
+        mediator ! Publish(topic, (updSeq, uuid, update))
+        log.info(
+          s"Published update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
+        )
+    }
+
     CommonUpdateRecord.push(authId, update)(session) map { uuid =>
-      update match {
-        case _: updateProto.MessageSent =>
-          log.debug("Not pushing update MessageSent to session")
-        case _ =>
-          mediator ! Publish(topic, (updSeq, uuid, update))
-      }
-      log.info(
-        s"Pushed update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
-      )
+      log.debug("Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
       (seq, mid, uuid)
     }
   }

@@ -104,7 +104,10 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
 
   def push(authId: Long, update: updateProto.CommonUpdateMessage)(implicit session: Session): Future[UUID] = {
     val uuid = TimeUuid()
+    push(uuid, authId, update)
+  }
 
+  def push(uuid: UUID, authId: Long, update: updateProto.CommonUpdateMessage)(implicit session: Session): Future[UUID] = {
     val q = update match {
       case updateProto.Message(senderUID, destUID, mid, keyHash, useAesKey, aesKey, message) =>
         val userIds = Set(senderUID, destUID)
