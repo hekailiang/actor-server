@@ -30,7 +30,7 @@ class MessagingServiceActor(
 
   implicit val timeout = Timeout(5.seconds)
 
-  val counterId = s"{currentUser.authId}"
+  val counterId = currentUser.authId.toString
 
   val randomIds = new ConcurrentLinkedHashMap.Builder[Long, Boolean]
     .initialCapacity(10).maximumWeightedCapacity(100).build
