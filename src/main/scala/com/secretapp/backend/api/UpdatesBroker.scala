@@ -149,7 +149,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     }
 
     CommonUpdateRecord.push(authId, update)(session) map { uuid =>
-      log.debug("Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
+      log.debug(s"Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
       (seq, mid, uuid)
     }
   }
