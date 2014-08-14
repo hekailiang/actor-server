@@ -8,6 +8,9 @@ import scala.collection.immutable
 
 object SocialProtocol {
   sealed trait SocialMessage
+  type PersistentStateType = immutable.Set[Int]
+  type RelationsType = PersistentStateType
+
   case class RelationsNoted(uids: Set[Int]) extends SocialMessage
   case object GetRelations extends SocialMessage
 
@@ -39,8 +42,6 @@ class SocialBroker extends PersistentActor with ActorLogging {
   import SocialProtocol._
 
   override def persistenceId: String = self.path.parent.name + self.path.name
-
-  type PersistentStateType = immutable.Set[Int]
 
   val minSnapshotStep = 10
   var lastSnapshottedAtSize = 0

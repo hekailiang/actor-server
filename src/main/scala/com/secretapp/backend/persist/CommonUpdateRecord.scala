@@ -40,7 +40,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "dest_uid"
   }
   object mid extends IntColumn(this)
-  object keyHash extends LongColumn(this) {
+  object destKeyHash extends LongColumn(this) {
     override lazy val name = "dest_key_hash"
   }
   object useAesKey extends BooleanColumn(this) {
@@ -61,13 +61,50 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "random_id"
   }
 
+  /**
+    * NewDevice
+    */
+
+  object newDeviceUid extends IntColumn(this) {
+    override lazy val name = "NewDevice_uid"
+  }
+  object newDevicePublicKeyHash extends LongColumn(this) {
+    override lazy val name = "NewDevice_public_key_hash"
+  }
+
+  /**
+    * NewYourDevice
+    */
+
+  object newYourDeviceUid extends IntColumn(this) {
+    override lazy val name = "NewYourDevice_uid"
+  }
+  object newYourDevicePublicKeyHash extends LongColumn(this) {
+    override lazy val name = "NewYourDevice_public_key_hash"
+  }
+  object newYourDevicePublicKey extends BigIntColumn(this) {
+    override lazy val name = "NewYourDevice_public_key"
+  }
+
   override def fromRow(row: Row): Entity[UUID, updateProto.CommonUpdateMessage] = {
     updateId(row) match {
       case 1L =>
         Entity(uuid(row),
-            updateProto.Message(senderUID(row), destUID(row), mid(row), keyHash(row), useAesKey(row),
+            updateProto.Message(senderUID(row), destUID(row), mid(row), destKeyHash(row), useAesKey(row),
               aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
           )
+      case 2L =>
+        Entity(uuid(row),
+          updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row))
+        )
+      case 3L =>
+        Entity(uuid(row),
+          updateProto.NewYourDevice(
+            newYourDeviceUid(row),
+            newYourDevicePublicKeyHash(row),
+            BitVector(newYourDevicePublicKey(row).toByteArray)
+          )
+        )
       case 4L =>
         Entity(uuid(row),
             updateProto.MessageSent(mid(row), randomId(row))
@@ -95,7 +132,6 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .where(_.authId eqs authId)
     }
     val queryString = query.queryString
-    println(s"Getting difference ${authId} ${state} ${limit} \n${queryString}")
     query.limit(limit).fetch map (_.toList)
   }
 
@@ -114,12 +150,19 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         insert.value(_.authId, authId).value(_.uuid, uuid)
         .value(_.userIds, userIds).value(_.updateId, 1)
         .value(_.senderUID, senderUID).value(_.destUID, destUID)
-        .value(_.mid, mid).value(_.keyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
+        .value(_.mid, mid).value(_.destKeyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
         .value(_.message, message.toHex)
       case updateProto.MessageSent(mid, randomId) =>
         insert.value(_.authId, authId).value(_.uuid, uuid)
         .value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
         .value(_.randomId, randomId)
+      case updateProto.NewDevice(uid, publicKeyHash) =>
+        insert.value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.newDeviceUid, uid).value(_.newDevicePublicKeyHash, publicKeyHash)
+      case updateProto.NewYourDevice(uid, publicKeyHash, publicKey) =>
+        insert.value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.newYourDeviceUid, uid).value(_.newYourDevicePublicKeyHash, publicKeyHash)
+          .value(_.newYourDevicePublicKey, BigInt(publicKey.toByteArray))
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

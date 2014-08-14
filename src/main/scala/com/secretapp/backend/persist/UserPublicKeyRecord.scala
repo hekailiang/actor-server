@@ -71,4 +71,8 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
   def getAuthIdByUidAndPublicKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] = {
     select(_.authId).where(_.uid eqs uid).and(_.publicKeyHash eqs publicKeyHash).one()
   }
+
+  def fetchAuthIdsByUid(uid: Int)(implicit session: Session): Future[Seq[Long]] = {
+    select(_.authId).where(_.uid eqs uid).fetch()
+  }
 }

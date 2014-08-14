@@ -1,12 +1,21 @@
 package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
+import akka.pattern.ask
+import com.datastax.driver.core.ResultSet
+import com.secretapp.backend.api.SocialProtocol
+import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.Implicits._
+import com.secretapp.backend.data.message.update.NewDevice
+import com.secretapp.backend.data.message.update.NewYourDevice
+import com.secretapp.backend.services.RpcService
 import com.secretapp.backend.services.UserManagerService
 import scala.collection.immutable
 import scala.collection.immutable.Seq
+import scala.util.Success
 import scala.util.{ Random, Try, Success, Failure }
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.services.common.PackageCommon
@@ -28,10 +37,12 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-trait SignService extends PackageCommon with RpcCommon { self: Actor with GeneratorService with UserManagerService =>
+trait SignService extends PackageCommon with RpcCommon {
+  self: RpcService with Actor with GeneratorService with UserManagerService =>
   implicit val session: CSession
 
   import context._
+  import UpdatesBroker._
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode =>
@@ -78,7 +89,7 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
     @inline
     def signIn(userId: Int): RpcResult = {
       @inline
-      def updateUserRecord(): Unit = m match {
+      def updateUserRecord(): Future[ResultSet] = m match {
         case -\/(_: RequestSignIn) =>
           UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber)
         case \/-(req: RequestSignUp) =>
@@ -94,7 +105,10 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
         if (userR.isEmpty) internalError.left
         else userAuthR match {
           case None =>
-            updateUserRecord()
+            updateUserRecord() onSuccess {
+              case _ =>
+                pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+            }
             val user = userR.get
             val keyHashes = user.keyHashes + publicKeyHash
             val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
@@ -102,7 +116,10 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
           case Some(userAuth) =>
             if (userAuth.publicKey != publicKey) {
               UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
-              updateUserRecord()
+              updateUserRecord() onSuccess {
+                case _ =>
+                  pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+              }
               val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
               val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
               auth(newUser)
@@ -145,6 +162,26 @@ trait SignService extends PackageCommon with RpcCommon { self: Actor with Genera
             }
         }
       }
+    }
+  }
+
+  private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
+    updatesBrokerRegion ! NewUpdatePush(authId, NewYourDevice(uid, publicKeyHash, publicKey))
+
+    ask(socialBrokerRegion, SocialProtocol.GetRelations)(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+      case Success(uids) =>
+        for (uid <- uids) {
+          UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
+            case Success(authIds) =>
+              for (targetAuthId <- authIds) {
+                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
+              }
+            case Failure(e) =>
+              log.error(s"Failed to get authIds for uid=${uid} to push new device updates ${authId} ${publicKeyHash} ${e}")
+          }
+        }
+      case Failure(e) =>
+        log.error(s"Failed to get relations to push new device updates ${authId} ${publicKeyHash} ${e}")
     }
   }
 }

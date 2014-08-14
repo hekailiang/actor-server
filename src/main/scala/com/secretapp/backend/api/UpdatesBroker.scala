@@ -8,6 +8,7 @@ import akka.persistence._
 import akka.util.Timeout
 import com.gilt.timeuuid.TimeUuid
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedMessage
+import com.secretapp.backend.data.message.update.CommonUpdateMessage
 import java.util.UUID
 import scala.concurrent.duration._
 import com.datastax.driver.core.{Session => CSession}
@@ -21,9 +22,15 @@ import scodec.bits._
 
 object UpdatesBroker {
   trait UpdateEvent
+
+  // for events which should be processed by some internal logic inside UpdatesBroker
   case class NewUpdateEvent(authId: Long, event: UpdateEvent)
   case class NewMessageSent(randomId: Long) extends UpdateEvent
   case class NewMessage(senderUID: Int, destUID: Int, update: EncryptedMessage, aesMessage: Option[BitVector]) extends UpdateEvent
+
+  // for events which should be just pushed to the sequence
+  case class NewUpdatePush(authId: Long, update: CommonUpdateMessage)
+
   case class GetSeq(authId: Long)
   case object Stop
 
@@ -35,6 +42,7 @@ object UpdatesBroker {
 
   private val idExtractor: ShardRegion.IdExtractor = {
     case msg @ NewUpdateEvent(authId, _) => (authId.toString, msg)
+    case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
     case msg @ GetSeq(authId) => (authId.toString, msg)
   }
 
@@ -42,6 +50,7 @@ object UpdatesBroker {
 
   private val shardResolver: ShardRegion.ShardResolver = msg => msg match {
     case msg @ NewUpdateEvent(authId, _) => (authId % shardCount).toString
+    case msg @ NewUpdatePush(authId, _) => (authId % shardCount).toString
     case msg @ GetSeq(authId) => (authId % shardCount).toString
   }
 
@@ -76,6 +85,13 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case UpdatesBroker.Stop => context.stop(self)
     case UpdatesBroker.GetSeq(_) =>
       sender() ! this.seq
+    case p @ NewUpdatePush(authId, update) =>
+      val replyTo = sender()
+      log.info(s"NewUpdateEvent ${authId} ${update}")
+      persist(p) { _ =>
+        seq += 1
+        pushUpdate(authId, update)
+      }
     case p @ NewUpdateEvent(authId, NewMessageSent(randomId)) =>
       val replyTo = sender()
       log.info(s"NewMessageSent ${p} from ${replyTo.path}")
@@ -83,7 +99,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         seq += 1
         mid += 1
         val update = updateProto.MessageSent(mid, randomId)
-        pushUpdate(replyTo, authId, update) map { reply =>
+        pushUpdate(authId, update) map { reply =>
           replyTo ! reply
           log.info(s"Replying to ${replyTo.path} with ${reply}")
         }
@@ -107,7 +123,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
             case None => message.message.get
           }
         )
-        pushUpdate(replyTo, authId, update)
+        pushUpdate(authId, update)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
@@ -123,6 +139,12 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       val (seq, mid) = offeredSnapshot.asInstanceOf[PersistentStateType]
       this.seq = seq
       this.mid = mid
+    case msg @ NewUpdatePush(_, update) =>
+      log.debug(s"Recovering NewUpdatePush ${msg}")
+      this.seq += 1
+      if (update.isInstanceOf[NewMessage] || update.isInstanceOf[NewMessageSent]) {
+        this.mid += 1
+      }
     case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _)) =>
       log.debug(s"Recovering NewMessage ${msg}")
       this.seq += 1
@@ -133,7 +155,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       this.mid += 1
   }
 
-  private def pushUpdate(replyTo: ActorRef, authId: Long, update: updateProto.CommonUpdateMessage): Future[Tuple3[Int, Int, UUID]] = {
+  private def pushUpdate(authId: Long, update: updateProto.CommonUpdateMessage): Future[Tuple3[Int, Int, UUID]] = {
     // FIXME: Handle errors!
     val updSeq = seq
     val uuid = TimeUuid()
