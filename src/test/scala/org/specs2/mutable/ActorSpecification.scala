@@ -31,7 +31,6 @@ with SpecificationNavigation
 with ContextsInjection
 with Debug
 with TestKitBase
-with NoDurationConversions
 {
   sequential
 

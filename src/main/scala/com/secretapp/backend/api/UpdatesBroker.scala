@@ -45,7 +45,7 @@ object UpdatesBroker {
     case msg @ GetSeq(authId) => (authId % shardCount).toString
   }
 
-  def region(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
+  def startRegion()(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
     typeName = "UpdatesBroker",
     entryProps = Some(Props(new UpdatesBroker)),
     idExtractor = idExtractor,
@@ -116,7 +116,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       log.error("SaveSnapshotFailure {}", e)
   }
 
-  def receiveRecover: Actor.Receive = {
+  val receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
     case SnapshotOffer(metadata, offeredSnapshot) =>
       log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
@@ -148,8 +148,8 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         )
     }
 
-    CommonUpdateRecord.push(authId, update)(session) map { uuid =>
-      log.debug(s"Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
+    CommonUpdateRecord.push(uuid, authId, update)(session) map { _ =>
+      log.debug("Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
       (seq, mid, uuid)
     }
   }

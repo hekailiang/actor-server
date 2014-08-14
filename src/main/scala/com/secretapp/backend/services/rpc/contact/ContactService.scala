@@ -2,9 +2,11 @@ package com.secretapp.backend.services.rpc.contact
 
 import akka.actor._
 import com.newzly.phantom.iteratee.Iteratee
+import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.types
+import com.secretapp.backend.services.RpcService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
@@ -18,7 +20,9 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-trait ContactService extends PackageCommon with RpcCommon { self: Actor with GeneratorService with UserManagerService =>
+trait ContactService extends PackageCommon with RpcCommon {
+  self: RpcService with Actor with GeneratorService with UserManagerService =>
+
   implicit val session: CSession
 
   import context._
@@ -35,6 +39,7 @@ trait ContactService extends PackageCommon with RpcCommon { self: Actor with Gen
       items <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
     } yield {
       val authId = p.authId
+      // FIXME: Fuck this three cycles in a row!
       val users = items.map { item =>
         struct.User(uid = item.userId, accessHash = User.getAccessHash(authId, item.userId, item.userAccessSalt),
           phoneNumber = item.number, keyHashes = item.userKeyHashes, firstName = item.userFirstName,
@@ -43,6 +48,10 @@ trait ContactService extends PackageCommon with RpcCommon { self: Actor with Gen
       val contacts = items.map { user =>
         ImportedContact(clientPhoneId = clientPhoneMap(user.number), userId = user.userId)
       }
+
+      val uids: Set[Int] = items.map(_.userId).toSet
+      socialBrokerRegion ! SocialProtocol.SocialMessageBox(authId, SocialProtocol.RelationsNoted(uids))
+
       ResponseImportedContacts(users, contacts).right
     }
   }

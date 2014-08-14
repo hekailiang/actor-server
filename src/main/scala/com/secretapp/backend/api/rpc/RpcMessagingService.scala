@@ -15,13 +15,13 @@ import scalaz.Scalaz._
 import scodec.codecs.uuid
 
 trait RpcMessagingService {
-  this: RpcUpdatesService with PackageManagerService with Actor =>
+  this: RpcService with RpcUpdatesService with PackageManagerService with Actor =>
 
   import context.dispatcher
   import context.system
 
   lazy val messagingService = context.actorOf(Props(
-    new MessagingServiceActor(handleActor, updatesBrokerRegion, getUser.get, getSessionId)
+    new MessagingServiceActor(handleActor, updatesBrokerRegion, socialBrokerRegion, getUser.get, getSessionId)
   ), "messaging-service")
 
   def handleMessagingRpc(user: User, p: Package, messageId: Long, rq: RpcRequestMessage) = {

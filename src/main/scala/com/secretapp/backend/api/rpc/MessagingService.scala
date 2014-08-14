@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
+import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
@@ -25,7 +26,7 @@ import scodec.bits._
 import scodec.codecs.uuid
 
 class MessagingServiceActor(
-  val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+  val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef, val currentUser: User, sessionId: Long)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.{ system, become, dispatcher }
 
   implicit val timeout = Timeout(5.seconds)
@@ -95,13 +96,19 @@ sealed trait MessagingService {
 
     @inline
     def pushUpdates(): Unit = {
-      messages map { message =>
+      val uids = messages map { message =>
         authIdFor(message.uid, message.publicKeyHash) onComplete {
           case Success(Some(authId)) =>
             log.info(s"Pushing message ${message}")
             updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, uid, message, aesMessage))
+
+            // Record relation between receiver authId and sender uid
+            socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+              authId, SocialProtocol.RelationsNoted(Set(currentUser.uid))
+            )
           case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
         }
+        message.uid
       }
     }
 

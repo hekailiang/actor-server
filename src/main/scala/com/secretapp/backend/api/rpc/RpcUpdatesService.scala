@@ -2,6 +2,7 @@ package com.secretapp.backend.api.rpc
 
 import akka.actor._
 import akka.pattern.ask
+import com.secretapp.backend.api.SocialBroker
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.api.UpdatesServiceActor
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
@@ -27,8 +28,6 @@ trait RpcUpdatesService {
 
   import context.dispatcher
   import context.system
-
-  val updatesBrokerRegion = UpdatesBroker.region
 
   lazy val updatesService = context.actorOf(Props(
     new UpdatesServiceActor(handleActor, updatesBrokerRegion, getUser.get.uid, getUser.get.authId)
