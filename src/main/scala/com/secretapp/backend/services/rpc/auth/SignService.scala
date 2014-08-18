@@ -21,7 +21,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.data.message.struct.{ User => StructUser }
-import com.secretapp.backend.data.message.{TransportMessage, RpcResponseBox}
+import com.secretapp.backend.data.message.{ TransportMessage, RpcResponseBox }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
@@ -36,6 +36,7 @@ import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
+import Function.tupled
 
 trait SignService extends PackageCommon with RpcCommon {
   self: RpcService with Actor with GeneratorService with UserManagerService =>
@@ -43,6 +44,9 @@ trait SignService extends PackageCommon with RpcCommon {
 
   import context._
   import UpdatesBroker._
+
+  val serverConfig = ConfigFactory.load()
+  val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case r: RequestAuthCode =>
@@ -54,21 +58,18 @@ trait SignService extends PackageCommon with RpcCommon {
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
-//    TODO: validate phone number
-
-    val serverConfig = ConfigFactory.load()
+    //    TODO: validate phone number
     for {
       smsR <- AuthSmsCodeRecord.getEntity(phoneNumber)
       phoneR <- PhoneRecord.getEntity(phoneNumber)
     } yield {
-      val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
       val (smsHash, smsCode) = smsR match {
         case Some(AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
         case None =>
           val smsHash = genSmsHash
           val smsCode = phoneNumber.toString match {
             case strNumber if strNumber.startsWith("7000") =>
-              strNumber{4}.toString * 4
+              strNumber { 4 }.toString * 4
             case _ => genSmsCode
           }
           AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
@@ -79,8 +80,7 @@ trait SignService extends PackageCommon with RpcCommon {
     }
   }
 
-  private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)
-                (m: RequestSignIn \/ RequestSignUp): RpcResult = {
+  private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)(m: RequestSignIn \/ RequestSignUp): RpcResult = {
     val authId = p.authId // TODO
 
     @inline
@@ -139,32 +139,32 @@ trait SignService extends PackageCommon with RpcCommon {
         smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
         phoneR <- PhoneRecord.getEntity(phoneNumber)
       } yield (smsCodeR, phoneR)
-      f.flatMap { t =>
-        val (smsCodeR, phoneR) = t
-        if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
-        else smsCodeR.get match {
-          case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
-          case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false).left)
-          case _ =>
-            m match {
-              case -\/(_: RequestSignIn) => phoneR match {
-                case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false).left)
-                case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
-              }
-              case \/-(req: RequestSignUp) =>
-                AuthSmsCodeRecord.dropEntity(phoneNumber)
-                phoneR match {
-                  case None =>
-                    val userId = genUserId
-                    val accessSalt = genUserAccessSalt
-                    val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                      phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
-                    UserRecord.insertEntityWithPhoneAndPK(user)
-                    Future.successful(auth(user))
-                  case Some(rec) => signIn(rec.userId)
+      f flatMap tupled {
+        (smsCodeR, phoneR) =>
+          if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
+          else smsCodeR.get match {
+            case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
+            case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false).left)
+            case _ =>
+              m match {
+                case -\/(_: RequestSignIn) => phoneR match {
+                  case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false).left)
+                  case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
                 }
-            }
-        }
+                case \/-(req: RequestSignUp) =>
+                  AuthSmsCodeRecord.dropEntity(phoneNumber)
+                  phoneR match {
+                    case None =>
+                      val userId = genUserId
+                      val accessSalt = genUserAccessSalt
+                      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                        phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
+                      UserRecord.insertEntityWithPhoneAndPK(user)
+                      Future.successful(auth(user))
+                    case Some(rec) => signIn(rec.userId)
+                  }
+              }
+          }
       }
     }
   }
