@@ -27,6 +27,7 @@ trait RpcCommon { self: Actor with PackageCommon =>
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, message)).right)
       case Failure(e) =>
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, internalError)).right)
+        throw e
     }
   }
 }
