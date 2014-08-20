@@ -36,15 +36,12 @@ object DBConnector {
   }
 
   def truncateTables(session: Session) = blocking {
-    for {
-      _ <- UserRecord.truncateTable(session)
-      _ <- AuthIdRecord.truncateTable(session)
-      _ <- SessionIdRecord.truncateTable(session)
-      _ <- AuthSmsCodeRecord.truncateTable(session)
-      _ <- PhoneRecord.truncateTable(session)
-      _ <- CommonUpdateRecord.truncateTable(session)
-      _ <- UserPublicKeyRecord.truncateTable(session)
-    } yield ()
+    Future.sequence(List(
+      UserRecord.truncateTable(session), AuthIdRecord.truncateTable(session),
+      SessionIdRecord.truncateTable(session), AuthSmsCodeRecord.truncateTable(session),
+      PhoneRecord.truncateTable(session), CommonUpdateRecord.truncateTable(session),
+      UserPublicKeyRecord.truncateTable(session)
+    ))
   }
 
 //  def dumpKeySpace() = blocking {
