@@ -6,8 +6,8 @@ object Dependencies {
     val scalaz = "7.0.6" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
-    val phantom = "0.8.0"
-    val newzlyUtil = "0.0.28"
+    val phantom = "1.0.7"
+    val newzlyUtil = "0.1.19"
   }
 
   val compileDependencies = Seq(
@@ -55,7 +55,7 @@ object Dependencies {
 
     "org.scalautils" %% "scalautils" % "2.1.3",
 
-    "com.newzly"  %% "phantom-dsl" % V.phantom,
+    "com.websudos"  %% "phantom-dsl" % V.phantom,
     // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
     // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
     "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"  excludeAll(ExclusionRule(organization = "org.slf4j")),
