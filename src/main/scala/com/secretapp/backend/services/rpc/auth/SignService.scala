@@ -68,7 +68,7 @@ trait SignService extends PackageCommon with RpcCommon {
         case None =>
           val smsHash = genSmsHash
           val smsCode = phoneNumber.toString match {
-            case strNumber if strNumber.startsWith("7000") =>
+            case strNumber if strNumber.startsWith("7555") =>
               strNumber { 4 }.toString * 4
             case _ => genSmsCode
           }
