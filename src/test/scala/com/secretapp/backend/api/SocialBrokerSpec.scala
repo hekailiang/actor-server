@@ -36,19 +36,16 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
 
       val region = SocialBroker.startRegion()
 
-      region ! SocialMessageBox(authId1, RelationsNoted((1 to 100).toSet))
+      region ! SocialMessageBox(authId1, RelationsNoted((1 to 10).toSet))
 
-      region ! SocialMessageBox(authId2, RelationsNoted((42 to 100).toSet))
+      region ! SocialMessageBox(authId2, RelationsNoted((42 to 45).toSet))
 
-      region ! SocialMessageBox(authId1, RelationsNoted((99 to 150).toSet))
+      region ! SocialMessageBox(authId1, RelationsNoted((9 to 15).toSet))
 
-      region ! SocialMessageBox(authId2, RelationsNoted((99 to 3000).toSet))
+      region ! SocialMessageBox(authId2, RelationsNoted((40 to 43).toSet))
 
-      region ! SocialMessageBox(authId2, GetRelations)
-      region ! SocialMessageBox(authId1, GetRelations)
-
-      expectMsg((42 to 3000).toSet)
-      expectMsg(Duration(30, "seconds"), (1 to 150).toSet)
+      Await.result(region ? SocialMessageBox(authId2, GetRelations), timeout.duration) must equalTo((40 to 45).toSet)
+      Await.result(region ? SocialMessageBox(authId1, GetRelations), timeout.duration) must equalTo((1 to 15).toSet)
     }
   }
 }
