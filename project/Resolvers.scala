@@ -16,7 +16,7 @@ object Resolvers {
     "sonatype releases"   at "https://oss.sonatype.org/content/repositories/releases/",
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     "newzly repository"   at "http://maven.newzly.com/repository/internal",
-    "secret repository"   at "http://repos.81port.com/content/repositories/secret",
+    Resolver.url("secret repository", url("http://54.77.139.175:8081/content/repositories/snapshots"))(Resolver.ivyStylePatterns),
     "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven",
     mavenOrg
   )

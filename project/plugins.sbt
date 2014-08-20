@@ -1,6 +1,6 @@
 resolvers ++= Seq(
   "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/",
-  "secret repository" at "http://repos.81port.com/content/repositories/secret"
+  Resolver.url("secret repository", url("http://54.77.139.175:8081/content/repositories/snapshots"))(Resolver.ivyStylePatterns)
 )
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.10.0")
@@ -15,4 +15,4 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
 
-addSbtPlugin("com.github.sbt" % "sbt-scalabuff" % "1.3.8")
+addSbtPlugin("com.github.sbt" % "sbt-scalabuff" % "1.3.8-SNAPSHOT-SECRET")
