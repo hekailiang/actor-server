@@ -2,7 +2,7 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row }
 import com.datastax.driver.core.{ Session => CSession }
-import com.newzly.phantom.Implicits._
+import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models.AuthSmsCode
 import scala.concurrent.Future

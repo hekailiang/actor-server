@@ -1,11 +1,11 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.ConsistencyLevel
-import com.newzly.phantom.query.ExecutableStatement
+import com.websudos.phantom.query.ExecutableStatement
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.newzly.phantom.Implicits._
+import com.websudos.phantom.Implicits._
 import com.secretapp.backend.protocol.codecs.message.update.CommonUpdateMessageCodec
 import com.gilt.timeuuid._
 import java.util.UUID
@@ -15,7 +15,7 @@ import scala.concurrent.Future
 import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 
-sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entity[UUID, updateProto.CommonUpdateMessage]]{
+sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entity[UUID, updateProto.CommonUpdateMessage]] {
   override lazy val tableName = "common_updates"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
@@ -31,8 +31,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
 
   /**
-    * UpdateMessage
-    */
+   * UpdateMessage
+   */
   object senderUID extends IntColumn(this) {
     override lazy val name = "sender_uid"
   }
@@ -53,8 +53,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   object message extends StringColumn(this)
 
   /**
-    * UpdateMessageSent
-    */
+   * UpdateMessageSent
+   */
   // mid is already defined above
 
   object randomId extends LongColumn(this) {
@@ -62,8 +62,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
 
   /**
-    * NewDevice
-    */
+   * NewDevice
+   */
 
   object newDeviceUid extends IntColumn(this) {
     override lazy val name = "NewDevice_uid"
@@ -73,8 +73,8 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
 
   /**
-    * NewYourDevice
-    */
+   * NewYourDevice
+   */
 
   object newYourDeviceUid extends IntColumn(this) {
     override lazy val name = "NewYourDevice_uid"
@@ -90,25 +90,20 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     updateId(row) match {
       case 1L =>
         Entity(uuid(row),
-            updateProto.Message(senderUID(row), destUID(row), mid(row), destKeyHash(row), useAesKey(row),
-              aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get)
-          )
+          updateProto.Message(senderUID(row), destUID(row), mid(row), destKeyHash(row), useAesKey(row),
+            aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get))
       case 2L =>
         Entity(uuid(row),
-          updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row))
-        )
+          updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row)))
       case 3L =>
         Entity(uuid(row),
           updateProto.NewYourDevice(
             newYourDeviceUid(row),
             newYourDevicePublicKeyHash(row),
-            BitVector(newYourDevicePublicKey(row).toByteArray)
-          )
-        )
+            BitVector(newYourDevicePublicKey(row).toByteArray)))
       case 4L =>
         Entity(uuid(row),
-            updateProto.MessageSent(mid(row), randomId(row))
-          )
+          updateProto.MessageSent(mid(row), randomId(row)))
     }
 
   }
@@ -119,8 +114,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
   //import com.newzly.phantom.query.QueryCondition
 
   // TODO: limit by size, not rows count
-  def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)
-    (implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]] = {
+  def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]] = {
     //select.where(c => QueryCondition(QueryBuilder.gte(c.uuid.name, QueryBuilder.fcall("maxTimeuuid")))).limit(limit)
     //  .fetch
     val query = state match {
@@ -148,14 +142,14 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
       case updateProto.Message(senderUID, destUID, mid, keyHash, useAesKey, aesKey, message) =>
         val userIds = Set(senderUID, destUID)
         insert.value(_.authId, authId).value(_.uuid, uuid)
-        .value(_.userIds, userIds).value(_.updateId, 1)
-        .value(_.senderUID, senderUID).value(_.destUID, destUID)
-        .value(_.mid, mid).value(_.destKeyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
-        .value(_.message, message.toHex)
+          .value(_.userIds, userIds).value(_.updateId, 1)
+          .value(_.senderUID, senderUID).value(_.destUID, destUID)
+          .value(_.mid, mid).value(_.destKeyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
+          .value(_.message, message.toHex)
       case updateProto.MessageSent(mid, randomId) =>
         insert.value(_.authId, authId).value(_.uuid, uuid)
-        .value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
-        .value(_.randomId, randomId)
+          .value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
+          .value(_.randomId, randomId)
       case updateProto.NewDevice(uid, publicKeyHash) =>
         insert.value(_.authId, authId).value(_.uuid, uuid)
           .value(_.newDeviceUid, uid).value(_.newDevicePublicKeyHash, publicKeyHash)
@@ -171,6 +165,5 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
 
     f map (_ => uuid)
   }
-
 
 }

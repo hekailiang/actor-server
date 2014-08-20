@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.dispatch.Dispatcher
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.newzly.phantom.Implicits._
+import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
 import java.util.concurrent.Executor

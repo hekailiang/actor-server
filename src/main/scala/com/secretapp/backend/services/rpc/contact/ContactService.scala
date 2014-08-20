@@ -1,7 +1,6 @@
 package com.secretapp.backend.services.rpc.contact
 
 import akka.actor._
-import com.newzly.phantom.iteratee.Iteratee
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct
