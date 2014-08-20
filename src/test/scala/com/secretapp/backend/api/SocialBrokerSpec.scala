@@ -27,7 +27,7 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
 
   override lazy val actorSystemName = "api"
 
-  implicit val timeout = Timeout(Duration(30, "seconds"))
+  implicit val timeout = Timeout(Duration(1, "seconds"))
 
   "SocialBroker" should {
     "count relations" in {
@@ -35,6 +35,8 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
       val authId2 = 2L
 
       val region = SocialBroker.startRegion()
+
+      Await.result(region ? SocialMessageBox(authId1, GetRelations), timeout.duration) must equalTo(Set.empty)
 
       region ! SocialMessageBox(authId1, RelationsNoted((1 to 10).toSet))
 

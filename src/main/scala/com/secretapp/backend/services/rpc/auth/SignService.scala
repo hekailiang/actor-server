@@ -170,9 +170,11 @@ trait SignService extends PackageCommon with RpcCommon {
   }
 
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
+    import SocialProtocol._
+
     updatesBrokerRegion ! NewUpdatePush(authId, NewYourDevice(uid, publicKeyHash, publicKey))
 
-    ask(socialBrokerRegion, SocialProtocol.GetRelations)(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+    ask(socialBrokerRegion, SocialMessageBox(authId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(uids) =>
         for (uid <- uids) {
           UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
@@ -186,6 +188,7 @@ trait SignService extends PackageCommon with RpcCommon {
         }
       case Failure(e) =>
         log.error(s"Failed to get relations to push new device updates ${authId} ${publicKeyHash} ${e}")
+        throw e
     }
   }
 }
