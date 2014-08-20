@@ -27,7 +27,7 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
 
   override lazy val actorSystemName = "api"
 
-  implicit val timeout = Timeout(Duration(1, "seconds"))
+  implicit val timeout = Timeout(Duration(20, "seconds"))
 
   "SocialBroker" should {
     "count relations" in {
