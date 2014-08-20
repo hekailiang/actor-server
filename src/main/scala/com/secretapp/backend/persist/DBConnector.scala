@@ -24,7 +24,7 @@ object DBConnector {
     cluster.connect(keySpace)
   }
 
-  def createTables(session: Session)(implicit context: ExecutionContext with Executor) = blocking {
+  def createTables(session: Session)(implicit context: ExecutionContext with Executor): Unit = blocking {
     val fileBlockRecord = new FileBlockRecord()(session, context)
 
     for {

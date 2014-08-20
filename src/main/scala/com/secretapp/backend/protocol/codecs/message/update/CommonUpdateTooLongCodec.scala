@@ -9,7 +9,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.getsecretapp.{ proto => protobuf }
+import com.secretapp.{ proto => protobuf }
 
 object CommonUpdateTooLongCodec extends Codec[CommonUpdateTooLong] with utils.ProtobufCodec {
   def encode(u: CommonUpdateTooLong) = {

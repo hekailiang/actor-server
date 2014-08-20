@@ -5,6 +5,7 @@ import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBoo
 import spray.revolver.RevolverPlugin._
 import org.scalastyle.sbt.ScalastylePlugin
 import scalabuff.ScalaBuffPlugin._
+//import wartremover._
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 
@@ -36,7 +37,9 @@ object BackendBuild extends Build {
         Revolver.reStartArgs := Seq(appClassMock),
         mainClass in Revolver.reStart := Some(appClassMock),
         autoCompilerPlugins := true,
-        addCompilerPlugin("org.brianmckenna" %% "wartremover" % "0.10") // scalacOptions += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe"
+        scalacOptions in (Compile,doc) := Seq("-groups", "-implicits")
+        //wartremoverExcluded ++= Seq("com.secretapp.backend.ApiKernel"),
+        //wartremoverErrors in (Compile, compile) ++= Warts.all
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff)
   // .settings(atmosSettings: _*).configs(Atmos)

@@ -5,7 +5,7 @@ import scala.collection.immutable.Seq
 import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import com.getsecretapp.{ proto => protobuf }
+import com.secretapp.{ proto => protobuf }
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._

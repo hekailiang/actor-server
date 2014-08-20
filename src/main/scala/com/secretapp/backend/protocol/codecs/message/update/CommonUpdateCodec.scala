@@ -12,7 +12,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.{ Try, Failure, Success }
-import com.getsecretapp.{ proto => protobuf }
+import com.secretapp.{ proto => protobuf }
 
 object CommonUpdateCodec extends Codec[CommonUpdate] with utils.ProtobufCodec {
   def encode(u: CommonUpdate) = {
