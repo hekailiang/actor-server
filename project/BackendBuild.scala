@@ -37,7 +37,7 @@ object BackendBuild extends Build {
         Revolver.reStartArgs := Seq(appClassMock),
         mainClass in Revolver.reStart := Some(appClassMock),
         autoCompilerPlugins := true,
-        scalacOptions in (Compile,doc) := Seq("-groups", "-implicits")
+        scalacOptions in (Compile,doc) := Seq("-groups", "-implicits", "-diagrams")
         //wartremoverExcluded ++= Seq("com.secretapp.backend.ApiKernel"),
         //wartremoverErrors in (Compile, compile) ++= Warts.all
       )
