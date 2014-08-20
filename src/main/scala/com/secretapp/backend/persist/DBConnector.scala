@@ -27,16 +27,12 @@ object DBConnector {
   def createTables(session: Session)(implicit context: ExecutionContext with Executor) = blocking {
     val fileBlockRecord = new FileBlockRecord()(session, context)
 
-    for {
-      _ <- UserRecord.createTable(session)
-      _ <- AuthIdRecord.createTable(session)
-      _ <- SessionIdRecord.createTable(session)
-      _ <- AuthSmsCodeRecord.createTable(session)
-      _ <- PhoneRecord.createTable(session)
-      _ <- CommonUpdateRecord.createTable(session)
-      _ <- UserPublicKeyRecord.createTable(session)
-      _ <- fileBlockRecord.createTable(session)
-    } yield ()
+    Future.sequence(List(
+      UserRecord.createTable(session), AuthIdRecord.createTable(session),
+      SessionIdRecord.createTable(session), AuthSmsCodeRecord.createTable(session),
+      PhoneRecord.createTable(session), CommonUpdateRecord.createTable(session),
+      UserPublicKeyRecord.createTable(session), fileBlockRecord.createTable(session)
+    ))
   }
 
   def truncateTables(session: Session) = blocking {
