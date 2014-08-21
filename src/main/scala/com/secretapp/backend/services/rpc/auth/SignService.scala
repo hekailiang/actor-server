@@ -179,6 +179,7 @@ trait SignService extends PackageCommon with RpcCommon {
         for (uid <- uids) {
           UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
             case Success(authIds) =>
+              log.debug(s"Fetched authIds for uid ${uid} ${authIds}")
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
               }
