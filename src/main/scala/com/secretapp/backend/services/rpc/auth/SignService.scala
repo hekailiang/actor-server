@@ -176,6 +176,7 @@ trait SignService extends PackageCommon with RpcCommon {
 
     ask(socialBrokerRegion, SocialMessageBox(authId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(uids) =>
+        log.debug(s"Got relations for ${authId} ${uids}")
         for (uid <- uids) {
           UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
             case Success(authIds) =>
