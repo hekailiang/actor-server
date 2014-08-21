@@ -21,7 +21,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
   object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "public_key_hash"
   }
-  object publicKey extends BigIntColumn(this) {
+  object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
   object authId extends LongColumn(this) {
@@ -35,7 +35,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
     UserPublicKey(
       uid = uid(row),
       publicKeyHash = publicKeyHash(row),
-      publicKey = BitVector(publicKey(row).toByteArray),
+      publicKey = BitVector(publicKey(row)),
       authId = authId(row),
       userAccessSalt = userAccessSalt(row)
     )
@@ -46,7 +46,7 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
   def insertEntity(entity: UserPublicKey)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
+      .value(_.publicKey, entity.publicKey.toByteBuffer)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.authId, entity.authId)
       .future()
@@ -55,7 +55,7 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
   def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, uid)
       .value(_.publicKeyHash, publicKeyHash)
-      .value(_.publicKey, BigInt(publicKey.toByteArray))
+      .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.authId, authId)
       .future()
   }

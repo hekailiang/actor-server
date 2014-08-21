@@ -26,7 +26,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object publicKeyHash extends LongColumn(this) {
     override lazy val name = "public_key_hash"
   }
-  object publicKey extends BigIntColumn(this) {
+  object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
   object keyHashes extends SetColumn[UserRecord, User, Long](this) with StaticColumn[Set[Long]] {
@@ -51,7 +51,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       uid = uid(row),
       authId = authId(row),
       publicKeyHash = publicKeyHash(row),
-      publicKey = BitVector(publicKey(row).toByteArray),
+      publicKey = BitVector(publicKey(row)),
       keyHashes = keyHashes(row),
       accessSalt = accessSalt(row),
       phoneNumber = phoneNumber(row),
@@ -73,7 +73,7 @@ object UserRecord extends UserRecord with DBConnector {
     insert.value(_.uid, entity.uid)
       .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, BigInt(entity.publicKey.toByteArray))
+      .value(_.publicKey, entity.publicKey.toByteBuffer)
       .value(_.keyHashes, Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)
@@ -93,7 +93,7 @@ object UserRecord extends UserRecord with DBConnector {
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
-      .value(_.publicKey, BigInt(publicKey.toByteArray))
+      .value(_.publicKey, publicKey.toByteBuffer)
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
       flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
@@ -108,7 +108,7 @@ object UserRecord extends UserRecord with DBConnector {
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
-      .value(_.publicKey, BigInt(publicKey.toByteArray))
+      .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.firstName, firstName)
       .value(_.lastName, lastName)
       .value(_.sex, sexToInt(sex))
