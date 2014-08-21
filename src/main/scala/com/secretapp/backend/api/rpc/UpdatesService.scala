@@ -2,21 +2,17 @@ package com.secretapp.backend.api
 
 import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
+import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
 import akka.event.Logging
-import akka.util.Timeout
 import akka.pattern.ask
-import com.datastax.driver.core.{Session => CSession}
+import akka.util.Timeout
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.message.UpdateBox
-import com.secretapp.backend.data.message.rpc.Ok
-import com.secretapp.backend.data.message.rpc.update.Difference
-import com.secretapp.backend.data.message.rpc.update.DifferenceUpdate
-import com.secretapp.backend.data.message.rpc.{ update => updateRpcProto }
+import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
+import com.secretapp.backend.data.message.{ struct, update => updateProto }
+import com.secretapp.backend.data.message.rpc.{ Ok, update => updateRpcProto }
+import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.CommonUpdate
-import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
@@ -24,17 +20,15 @@ import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.rpc.RpcCommon
 import java.util.UUID
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Random
-import scala.util.Success
 import scala.collection.immutable
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scodec.codecs.{ uuid => uuidCodec }
-import scodec.bits._
+import scala.util.Failure
+import scala.util.Success
 import scalaz._
-import akka.pattern.ask
-import Scalaz._
+import scalaz.Scalaz._
+import scodec.bits._
+import scodec.codecs.{ uuid => uuidCodec }
 
 class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService with PackageCommon with RpcCommon {
   import context.dispatcher
@@ -61,15 +55,13 @@ sealed trait UpdatesService {
   private val differenceSize = 500
 
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
-    seq: Int, state: Option[UUID]
-  ) = {
+    seq: Int, state: Option[UUID]) = {
     subscribeToUpdates(authId)
 
     val res = for {
       seq <- getSeq(authId)
       difference <- CommonUpdateRecord.getDifference(
-        authId, state, differenceSize + 1
-      ) flatMap (mkDifference(seq, _))
+        authId, state, differenceSize + 1) flatMap (mkDifference(seq, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
       difference.right
@@ -104,7 +96,7 @@ sealed trait UpdatesService {
     val users = mkUsers(authId, updates)
     val state = if (updates.length > 0) Some(updates.last.key) else None
     users map (Difference(seq, state, _,
-      updates map {u => DifferenceUpdate(u.value)}, needMore))
+      updates map { u => DifferenceUpdate(u.value) }, needMore))
   }
 
   protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[immutable.Vector[struct.User]] = {

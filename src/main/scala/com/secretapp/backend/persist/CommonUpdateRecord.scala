@@ -151,10 +151,10 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
           .value(_.randomId, randomId)
       case updateProto.NewDevice(uid, publicKeyHash) =>
-        insert.value(_.authId, authId).value(_.uuid, uuid)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.updateId, 2)
           .value(_.newDeviceUid, uid).value(_.newDevicePublicKeyHash, publicKeyHash)
       case updateProto.NewYourDevice(uid, publicKeyHash, publicKey) =>
-        insert.value(_.authId, authId).value(_.uuid, uuid)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.updateId, 3)
           .value(_.newYourDeviceUid, uid).value(_.newYourDevicePublicKeyHash, publicKeyHash)
           .value(_.newYourDevicePublicKey, BigInt(publicKey.toByteArray))
       case _ =>
