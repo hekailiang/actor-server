@@ -172,11 +172,25 @@ trait SignService extends PackageCommon with RpcCommon {
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
     import SocialProtocol._
 
-    updatesBrokerRegion ! NewUpdatePush(authId, NewYourDevice(uid, publicKeyHash, publicKey))
+    // Push NewYourDevice updates
+    UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
+      case Success(authIds) =>
+        log.debug(s"Fetched authIds for uid=${uid} ${authIds}")
+        for (targetAuthId <- authIds) {
+          if (targetAuthId != authId) {
+            log.debug(s"Pushing NewYourDevice for authId=${targetAuthId}")
+            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewYourDevice(uid, publicKeyHash, publicKey))
+          }
+        }
+      case Failure(e) =>
+        log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push NewYourDevice updates")
+        throw e
+    }
 
-    ask(socialBrokerRegion, SocialMessageBox(authId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+    // Push NewDevice updates
+    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(uids) =>
-        log.debug(s"Got relations for ${authId} ${uids}")
+        log.debug(s"Got relations for ${uid} -> ${uids}")
         for (uid <- uids) {
           UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
             case Success(authIds) =>
@@ -185,11 +199,12 @@ trait SignService extends PackageCommon with RpcCommon {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
               }
             case Failure(e) =>
-              log.error(s"Failed to get authIds for uid=${uid} to push new device updates ${authId} ${publicKeyHash} ${e}")
+              log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push new device updates ${publicKeyHash}")
+              throw e
           }
         }
       case Failure(e) =>
-        log.error(s"Failed to get relations to push new device updates ${authId} ${publicKeyHash} ${e}")
+        log.error(s"Failed to get relations to push new device updates authId=${authId} uid=${uid} ${publicKeyHash}")
         throw e
     }
   }

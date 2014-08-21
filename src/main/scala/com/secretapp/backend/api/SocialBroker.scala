@@ -14,7 +14,7 @@ object SocialProtocol {
   case class RelationsNoted(uids: Set[Int]) extends SocialMessage
   case object GetRelations extends SocialMessage
 
-  case class SocialMessageBox(authId: Long, event: SocialMessage)
+  case class SocialMessageBox(userId: Int, event: SocialMessage)
 }
 
 object SocialBroker {
@@ -23,11 +23,11 @@ object SocialBroker {
   private val shardCount = 2 // TODO: configurable
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case msg @ SocialMessageBox(authId, _) => (authId.toString, msg)
+    case msg @ SocialMessageBox(userId, _) => (userId.toString, msg)
   }
 
   private val shardResolver: ShardRegion.ShardResolver = msg => msg match {
-    case msg @ SocialMessageBox(authId, _) => (authId % shardCount).toString
+    case msg @ SocialMessageBox(userId, _) => (userId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem): ActorRef = ClusterSharding(system).start(
@@ -48,14 +48,14 @@ class SocialBroker extends PersistentActor with ActorLogging {
   var uids: PersistentStateType = immutable.Set.empty
 
   val receiveCommand: Actor.Receive = {
-    case msg @ SocialMessageBox(authId, RelationsNoted(newUids)) if newUids.size > 0 =>
-      log.info(s"SocialMessageBox ${authId} ${newUids}")
+    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
+      log.info(s"SocialMessageBox ${userId} ${newUids}")
       persist(msg) { _ =>
         uids = uids ++ newUids
         maybeSnapshot()
       }
-    case SocialMessageBox(authId, GetRelations) =>
-      log.info(s"GetRelations ${authId}")
+    case SocialMessageBox(userId, GetRelations) =>
+      log.info(s"GetRelations ${userId}")
       sender ! uids
   }
 

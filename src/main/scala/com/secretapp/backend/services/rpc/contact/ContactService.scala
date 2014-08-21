@@ -25,6 +25,7 @@ trait ContactService extends PackageCommon with RpcCommon {
   implicit val session: CSession
 
   import context._
+  import SocialProtocol._
 
   def handleRpcContact(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case RequestImportContacts(contacts) =>
@@ -49,7 +50,7 @@ trait ContactService extends PackageCommon with RpcCommon {
       }
 
       val uids: Set[Int] = items.map(_.userId).toSet
-      socialBrokerRegion ! SocialProtocol.SocialMessageBox(authId, SocialProtocol.RelationsNoted(uids))
+      socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
 
       ResponseImportedContacts(users, contacts).right
     }

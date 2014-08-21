@@ -31,23 +31,23 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
 
   "SocialBroker" should {
     "count relations" in {
-      val authId1 = 1L
-      val authId2 = 2L
+      val uid1 = 1
+      val uid2 = 2
 
       val region = SocialBroker.startRegion()
 
-      Await.result(region ? SocialMessageBox(authId1, GetRelations), timeout.duration) must equalTo(Set.empty)
+      Await.result(region ? SocialMessageBox(uid1, GetRelations), timeout.duration) must equalTo(Set.empty)
 
-      region ! SocialMessageBox(authId1, RelationsNoted((1 to 10).toSet))
+      region ! SocialMessageBox(uid1, RelationsNoted((1 to 10).toSet))
 
-      region ! SocialMessageBox(authId2, RelationsNoted((42 to 45).toSet))
+      region ! SocialMessageBox(uid2, RelationsNoted((42 to 45).toSet))
 
-      region ! SocialMessageBox(authId1, RelationsNoted((9 to 15).toSet))
+      region ! SocialMessageBox(uid1, RelationsNoted((9 to 15).toSet))
 
-      region ! SocialMessageBox(authId2, RelationsNoted((40 to 43).toSet))
+      region ! SocialMessageBox(uid2, RelationsNoted((40 to 43).toSet))
 
-      Await.result(region ? SocialMessageBox(authId2, GetRelations), timeout.duration) must equalTo((40 to 45).toSet)
-      Await.result(region ? SocialMessageBox(authId1, GetRelations), timeout.duration) must equalTo((1 to 15).toSet)
+      Await.result(region ? SocialMessageBox(uid2, GetRelations), timeout.duration) must equalTo((40 to 45).toSet)
+      Await.result(region ? SocialMessageBox(uid1, GetRelations), timeout.duration) must equalTo((1 to 15).toSet)
     }
   }
 }

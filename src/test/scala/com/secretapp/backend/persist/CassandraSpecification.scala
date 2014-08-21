@@ -40,8 +40,8 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     blocking {
       cassndraSpecLog.info(s"DROP KEYSPACE IF EXISTS $spaceName")
       session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
-      session.execute("DROP KEYSPACE IF EXISTS akka;")
-      session.execute("DROP KEYSPACE IF EXISTS akka_snapshot;")
+      session.execute("DROP KEYSPACE IF EXISTS test_akka;")
+      session.execute("DROP KEYSPACE IF EXISTS test_akka_snapshot;")
     }
   }
 

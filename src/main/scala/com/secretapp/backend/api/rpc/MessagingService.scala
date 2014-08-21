@@ -80,6 +80,7 @@ sealed trait MessagingService {
     messages: Seq[EncryptedMessage]): Future[Unit] = {
     // TODO: check accessHash SA-21
 
+    @inline
     def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long]] = {
       log.debug(s"Resolving authId for ${uid} ${publicKeyHash}")
       authIds.get((uid, publicKeyHash)) match {
@@ -101,25 +102,22 @@ sealed trait MessagingService {
           case Success(Some(authId)) =>
             log.info(s"Pushing message ${message}")
             updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, uid, message, aesMessage))
-
-            // Record relation between receiver authId and sender uid
-            socialBrokerRegion ! SocialProtocol.SocialMessageBox(
-              authId, SocialProtocol.RelationsNoted(Set(currentUser.uid))
-            )
           case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
         }
         message.uid
       }
     }
 
-    log.debug("Getting UserRecord")
-    val fdestUserEntity = UserRecord.getEntity(uid)
-
-    fdestUserEntity map {
+    UserRecord.getEntity(uid) map {
       case Some(destUserEntity) =>
-        log.debug("Got UserRecord")
         val updatesDestUserId = destUserEntity.uid
         val updatesDestPublicKeyHash = destUserEntity.publicKeyHash
+
+        // Record relation between receiver authId and sender uid
+        log.debug(s"Recording relation uid=${uid} -> uid=${currentUser.uid}")
+        socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+          uid, SocialProtocol.RelationsNoted(Set(currentUser.uid))
+        )
 
         pushUpdates()
 
