@@ -47,10 +47,10 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "use_aes_key"
   }
   // TODO: Blob type when phanton implements its support in upcoming release
-  object aesKeyHex extends OptionalStringColumn(this) {
-    override lazy val name = "aes_key_hex"
+  object aesKey extends OptionalBlobColumn(this) {
+    override lazy val name = "aes_key"
   }
-  object message extends StringColumn(this)
+  object message extends BlobColumn(this)
 
   /**
    * UpdateMessageSent
@@ -82,7 +82,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   object newYourDevicePublicKeyHash extends LongColumn(this) {
     override lazy val name = "NewYourDevice_public_key_hash"
   }
-  object newYourDevicePublicKey extends BigIntColumn(this) {
+  object newYourDevicePublicKey extends BlobColumn(this) {
     override lazy val name = "NewYourDevice_public_key"
   }
 
@@ -91,7 +91,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
       case 1L =>
         Entity(uuid(row),
           updateProto.Message(senderUID(row), destUID(row), mid(row), destKeyHash(row), useAesKey(row),
-            aesKeyHex(row) map (x => BitVector.fromHex(x).get), BitVector.fromHex(message(row)).get))
+            aesKey(row) map (BitVector(_)), BitVector(message(row))))
       case 2L =>
         Entity(uuid(row),
           updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row)))
@@ -100,7 +100,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
           updateProto.NewYourDevice(
             newYourDeviceUid(row),
             newYourDevicePublicKeyHash(row),
-            BitVector(newYourDevicePublicKey(row).toByteArray)))
+            BitVector(newYourDevicePublicKey(row))))
       case 4L =>
         Entity(uuid(row),
           updateProto.MessageSent(mid(row), randomId(row)))
@@ -144,8 +144,8 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         insert.value(_.authId, authId).value(_.uuid, uuid)
           .value(_.userIds, userIds).value(_.updateId, 1)
           .value(_.senderUID, senderUID).value(_.destUID, destUID)
-          .value(_.mid, mid).value(_.destKeyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKeyHex, aesKey map (_.toHex))
-          .value(_.message, message.toHex)
+          .value(_.mid, mid).value(_.destKeyHash, keyHash).value(_.useAesKey, useAesKey).value(_.aesKey, aesKey map (_.toByteBuffer))
+          .value(_.message, message.toByteBuffer)
       case updateProto.MessageSent(mid, randomId) =>
         insert.value(_.authId, authId).value(_.uuid, uuid)
           .value(_.userIds, Set[Int]()).value(_.updateId, 4).value(_.mid, mid)
@@ -156,7 +156,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
       case updateProto.NewYourDevice(uid, publicKeyHash, publicKey) =>
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.updateId, 3)
           .value(_.newYourDeviceUid, uid).value(_.newYourDevicePublicKeyHash, publicKeyHash)
-          .value(_.newYourDevicePublicKey, BigInt(publicKey.toByteArray))
+          .value(_.newYourDevicePublicKey, publicKey.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }
