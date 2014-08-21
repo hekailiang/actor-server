@@ -9,7 +9,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 object InitConnectionCodec extends Codec[InitConnection] with utils.ProtobufCodec {
   def encode(c: InitConnection) = {

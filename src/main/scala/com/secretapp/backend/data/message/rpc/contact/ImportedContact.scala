@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.contact
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 case class ImportedContact(clientPhoneId: Long, userId: Int) extends ProtobufMessage
 {

@@ -10,7 +10,7 @@ import scodec.codecs._
 import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 object RequestGetDifferenceCodec extends Codec[RequestGetDifference] with utils.ProtobufCodec {
   def encode(r: RequestGetDifference) = {

@@ -8,7 +8,7 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 object RequestPublicKeysCodec extends Codec[RequestPublicKeys] with utils.ProtobufCodec {
   def encode(r: RequestPublicKeys) = {

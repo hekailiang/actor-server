@@ -8,7 +8,7 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 object FileUploadedCodec extends Codec[FileUploaded] with utils.ProtobufCodec {
   def encode(r: FileUploaded) = {

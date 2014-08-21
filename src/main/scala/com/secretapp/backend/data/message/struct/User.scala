@@ -4,7 +4,7 @@ import scala.collection.immutable
 import scala.language.implicitConversions
 import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 import scalaz._
 import Scalaz._
 

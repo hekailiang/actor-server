@@ -5,7 +5,6 @@ import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBoo
 import spray.revolver.RevolverPlugin._
 import org.scalastyle.sbt.ScalastylePlugin
 import scalabuff.ScalaBuffPlugin._
-//import wartremover._
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 

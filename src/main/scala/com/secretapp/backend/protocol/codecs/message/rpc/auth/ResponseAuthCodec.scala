@@ -10,7 +10,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.secretapp.{ proto => protobuf }
+import com.getsecretapp.{ proto => protobuf }
 
 object ResponseAuthCodec extends Codec[ResponseAuth] with utils.ProtobufCodec {
   def encode(r: ResponseAuth) = {
