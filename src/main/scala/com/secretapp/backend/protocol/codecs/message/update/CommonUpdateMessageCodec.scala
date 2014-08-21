@@ -18,13 +18,13 @@ object CommonUpdateMessageCodec {
   }
 
   def decode(commonUpdateType: Int, buf: BitVector): String \/ CommonUpdateMessage = {
-    val tryed = Try(commonUpdateType match {
+    val tried = Try(commonUpdateType match {
       case Message.commonUpdateType => MessageCodec.decode(buf)
       case MessageSent.commonUpdateType => MessageSentCodec.decode(buf)
       case NewDevice.commonUpdateType => NewDeviceCodec.decode(buf)
       case NewYourDevice.commonUpdateType => NewYourDeviceCodec.decode(buf)
     })
-    tryed match {
+    tried match {
       case Success(res) => res match {
         case \/-(r) => r._2.right
         case l@(-\/(_)) => l
