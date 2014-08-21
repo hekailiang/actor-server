@@ -191,15 +191,15 @@ trait SignService extends PackageCommon with RpcCommon {
     ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(uids) =>
         log.debug(s"Got relations for ${uid} -> ${uids}")
-        for (uid <- uids) {
-          UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
+        for (targetUid <- uids) {
+          UserPublicKeyRecord.fetchAuthIdsByUid(targetUid) onComplete {
             case Success(authIds) =>
-              log.debug(s"Fetched authIds for uid ${uid} ${authIds}")
+              log.debug(s"Fetched authIds for uid=${targetUid} ${authIds}")
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
               }
             case Failure(e) =>
-              log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push new device updates ${publicKeyHash}")
+              log.error(s"Failed to get authIds for authId=${authId} uid=${targetUid} to push new device updates ${publicKeyHash}")
               throw e
           }
         }
