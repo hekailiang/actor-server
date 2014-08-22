@@ -86,6 +86,7 @@ trait SignService extends PackageCommon with RpcCommon {
     @inline
     def auth(u: User) = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
+      log.info(s"Authenticate currentUser=${u}")
       this.currentUser = Some(u)
       ResponseAuth(u.publicKeyHash, u.toStruct(authId)).right
     }

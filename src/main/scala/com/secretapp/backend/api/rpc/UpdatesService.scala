@@ -36,6 +36,8 @@ class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: Ac
   val mediator = DistributedPubSubExtension(context.system).mediator
   val topic = UpdatesBroker.topicFor(authId)
 
+  log.info(s"Starting UpdatesService for uid=${uid} authId=${authId}")
+
   def receive = {
     case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetDifference(seq, state)) =>
       handleRequestGetDifference(p, messageId)(seq, state)

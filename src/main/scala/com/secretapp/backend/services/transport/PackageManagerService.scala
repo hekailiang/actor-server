@@ -32,6 +32,7 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
   }
 
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
+    log.debug(s"Checking package auth ${p}")
     if (p.authId == 0L) { // check for auth request - simple key registration
       if (p.sessionId == 0L) {
         val newAuthId = genNewAuthId
@@ -52,6 +53,7 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
             authIdRecord.user onComplete {
               case Success(user) =>
                 currentUser = user
+                log.debug(s"Handling authenticated package currentUser=${currentUser} ${p}")
                 handlePackageAuthentication(p)(f)
               case Failure(e) =>
                 sendDrop(p, s"ERROR ${e}") // TODO: humanize error
@@ -64,6 +66,8 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
   }
 
   private def checkPackageSession(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Unit = {
+    log.debug(s"Checking package session currentUser=${currentUser} currentAuthId=${currentAuthId} package=${p}")
+
     @inline
     def updateCurrentSession(sessionId: Long): Unit = {
       if (currentSessionId == 0L) {
