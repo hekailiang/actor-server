@@ -11,6 +11,7 @@ import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
+import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.contact.{ResponseImportedContacts, ImportedContact, RequestImportContacts, ContactToImport}
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
@@ -24,39 +25,8 @@ import scalaz._
 import Scalaz._
 import scala.util.Random
 
-class ContactServiceSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
+class ContactServiceSpec extends RpcSpec {
   import system.dispatcher
-
-  override lazy val actorSystemName = "api"
-
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs() returning(12345L)
-      }
-    }
-  }
-
-  val smsCode = "test_sms_code"
-  val smsHash = "test_sms_hash"
-  val userId = 101
-  val userSalt = "user_salt"
-
-  trait GeneratorServiceMock extends GeneratorService {
-    override def genNewAuthId = mockAuthId
-    override def genSmsCode = smsCode
-    override def genSmsHash = smsHash
-    override def genUserId = userId
-    override def genUserAccessSalt = userSalt
-  }
-
-  def probeAndActor() = {
-    val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
-    (probe, actor)
-  }
 
   "ContactService" should {
     "handle RPC request import contacts" in {
