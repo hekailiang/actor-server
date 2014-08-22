@@ -126,6 +126,7 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .where(_.authId eqs authId)
     }
     val queryString = query.queryString
+    println(s"Difference ${queryString}")
     query.limit(limit).fetch map (_.toList)
   }
 
