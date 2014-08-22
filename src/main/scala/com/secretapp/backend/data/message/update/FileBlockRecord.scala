@@ -2,12 +2,15 @@ package com.secretapp.backend.persist
 
 import akka.actor.ActorSystem
 import akka.dispatch.Dispatcher
+import akka.util.ByteString
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
+import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scodec.bits._
@@ -39,14 +42,14 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
   object blockId extends IntColumn(this) with PrimaryKey[Int] {
     override lazy val name = "block_id"
   }
-  object bytes extends BigIntColumn(this)
+  object bytes extends BlobColumn(this)
 
   override def fromRow(row: Row): EntityType = {
     Entity(
       fileId(row),
       FileBlock(
         blockId = blockId(row),
-        bytes = bytes(row).toByteArray
+        bytes = BitVector(bytes(row)).toByteArray
       )
     )
   }
@@ -59,7 +62,7 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
     insertQuery.execute(
       entity.key.asInstanceOf[java.lang.Integer],
       entity.value.blockId.asInstanceOf[java.lang.Integer],
-      new java.math.BigInteger(entity.value.bytes)
+      ByteBuffer.wrap(entity.value.bytes).asReadOnlyBuffer
     )
   }
 
@@ -101,8 +104,9 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
       .where(_.fileId eqs fileId).and(_.blockId gte firstBlockId)
       .limit(climit).fetch()
     } yield {
-      val bytes = blocks.foldLeft(Array[Byte]())(_ ++ _.toByteArray)
-      bytes.drop(offset % blockSize).take(limit)
+      println(blocks)
+      val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
+      bytes.drop(offset % blockSize).take(limit).toArray
     }
   }
 

@@ -23,28 +23,41 @@ class FileBlockRecordSpec extends CassandraSpecification {
       val Record = new FileBlockRecord
 
       val fileId = 1
-      val content = ((1 to (1024 * 1024)) map (i => (i % 255).toByte)).toArray
+      val content = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
       val fileSize = content.length
 
-      val f = for {
-        _ <- Record.write(fileId, 0, content)
-        v1 <- Record.getFile(fileId, 0, 1024)
-        v2 <- Record.getFile(fileId, 0, 9216) // more than a blocksize
-        v3 <- Record.getFile(fileId, 1024, 1024)
-        v4 <- Record.getFile(fileId, 1024, 9216)
-        v5 <- Record.getFile(fileId, fileSize - 1024, 1024)
-        everything <- Record.getFile(fileId, 0, fileSize)
-      } yield {
-        v1 must equalTo(content.take(1024))
-        v2 must equalTo(content.take(9216))
-        v3.length must equalTo(content.drop(1024).take(1024).length)
-        v3 must equalTo(content.drop(1024).take(1024))
-        v4 must equalTo(content.drop(1024).take(9216))
-        v5 must equalTo(content.drop(fileSize - 1024))
-        everything must equalTo(content)
+      val fResult = Record.write(fileId, 0, content) map { _ =>
+
+        val (fv1, fv2, fv3, fv4, fv5, feverything) = (
+          Record.getFile(fileId, 0, 1024),
+          Record.getFile(fileId, 0, 9216), // more than a blocksize
+          Record.getFile(fileId, 1024, 1024),
+          Record.getFile(fileId, 1024, 9216),
+          Record.getFile(fileId, fileSize - 1024, 1024),
+          Record.getFile(fileId, 0, fileSize)
+        )
+
+        val f = for {
+          v1 <- fv1
+          v2 <- fv2
+          v3 <- fv3
+          v4 <- fv4
+          v5 <- fv5
+          everything <- feverything
+        } yield {
+          v1 must equalTo(content.take(1024))
+          v2 must equalTo(content.take(9216))
+          v3.length must equalTo(content.drop(1024).take(1024).length)
+          v3 must equalTo(content.drop(1024).take(1024))
+          v4 must equalTo(content.drop(1024).take(9216))
+          v5 must equalTo(content.drop(fileSize - 1024))
+          everything must equalTo(content)
+        }
+
+        f.await(30)
       }
 
-      f.await(10)
+      fResult.await(30)
     }
   }
 }
