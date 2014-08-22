@@ -53,7 +53,7 @@ trait PackageManagerService extends PackageCommon with SessionManager with UserM
             authIdRecord.user onComplete {
               case Success(user) =>
                 currentUser = user
-                log.debug(s"Handling authenticated package currentUser=${currentUser} ${p}")
+                log.debug(s"Handling authenticated package currentAuthId=${currentAuthId} currentUser=${currentUser} ${p}")
                 handlePackageAuthentication(p)(f)
               case Failure(e) =>
                 sendDrop(p, s"ERROR ${e}") // TODO: humanize error

@@ -116,7 +116,7 @@ trait SignService extends PackageCommon with RpcCommon {
             }
             val user = userR.get
             val keyHashes = user.keyHashes + publicKeyHash
-            val newUser = user.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
+            val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
             auth(newUser)
           case Some(userAuth) =>
             if (userAuth.publicKey != publicKey) {
