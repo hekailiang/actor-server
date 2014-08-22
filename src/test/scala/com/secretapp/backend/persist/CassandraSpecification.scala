@@ -30,7 +30,6 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
 
   private def createKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
-      cassndraSpecLog.info(s"CREATE KEYSPACE IF NOT EXISTS $spaceName")
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
       session.execute(s"use $spaceName;")
     }
@@ -38,8 +37,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
 
   private def dropKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
-      cassndraSpecLog.info(s"DROP KEYSPACE IF EXISTS $spaceName")
-      session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
+      session.executeAsync(s"DROP KEYSPACE IF EXISTS $spaceName;")
       session.execute("DROP KEYSPACE IF EXISTS test_akka;")
       session.execute("DROP KEYSPACE IF EXISTS test_akka_snapshot;")
     }
