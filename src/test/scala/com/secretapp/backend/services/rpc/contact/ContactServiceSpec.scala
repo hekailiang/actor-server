@@ -1,29 +1,25 @@
 package com.secretapp.backend.services.rpc.contact
 
-import scala.language.{ postfixOps, higherKinds }
-import scala.collection.immutable
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
-import com.secretapp.backend.api.ApiHandlerActor
-import com.secretapp.backend.persist._
-import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
-import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
-import com.secretapp.backend.services.rpc.RpcSpec
-import com.secretapp.backend.data.message.rpc.contact.{ResponseImportedContacts, ImportedContact, RequestImportContacts, ContactToImport}
+import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.secretapp.backend.crypto.ec
+import com.secretapp.backend.data.message.rpc.{ Ok, Request }
+import com.secretapp.backend.data.message.rpc.contact._
+import com.secretapp.backend.data.message.{ RpcRequestBox, RpcResponseBox }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.crypto.ec
+import com.secretapp.backend.persist._
+import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.services.rpc.RpcSpec
 import org.scalamock.specs2.MockFactory
-import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
-import com.newzly.util.testing.AsyncAssertionsHelper._
-import scodec.bits._
-import scalaz._
-import Scalaz._
+import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
+import scala.collection.immutable
+import scala.language.postfixOps
 import scala.util.Random
+import scalaz.Scalaz._
+import scodec.bits._
 
 class ContactServiceSpec extends RpcSpec {
   import system.dispatcher

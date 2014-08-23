@@ -1,14 +1,17 @@
 package com.secretapp.backend.services.rpc
 
+import akka.actor._
+import akka.testkit._
 import com.secretapp.backend.api.ApiHandlerActor
+import com.secretapp.backend.data.message.rpc.Ok
+import com.secretapp.backend.data.message.{ TransportMessage, RpcResponseBox }
+import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
-import akka.actor._
-import akka.testkit._
 import org.scalamock.specs2.MockFactory
-import org.specs2.mutable.ActorLikeSpecification
-import org.specs2.mutable.ActorServiceHelpers
+import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
+import scala.reflect.ClassTag
 import scala.util.Random
 
 trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with ActorServiceHelpers with MockFactory {
@@ -19,7 +22,7 @@ trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with Ac
 
     override def preStart(): Unit = {
       withExpectations {
-        (rand.nextLong _) stubs() returning(12345L)
+        (rand.nextLong _) stubs () returning (12345L)
       }
     }
   }
@@ -43,4 +46,17 @@ trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with Ac
     (probe, actor)
   }
 
+  implicit class AnyRefWithSpecHelpers(x: AnyRef) {
+    def assertInstanceOf[A: ClassTag]: A = {
+      x should beAnInstanceOf[A]
+      x.asInstanceOf[A]
+    }
+  }
+
+  def assertResponseOk[A: ClassTag](mb: MessageBox): A = {
+    mb
+      .body.assertInstanceOf[RpcResponseBox]
+      .body.assertInstanceOf[Ok]
+      .body.assertInstanceOf[A]
+  }
 }

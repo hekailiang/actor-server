@@ -15,7 +15,7 @@ import org.specs2.specification.{ Fragments, Step }
 trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
   protected val keySpace: String = s"secret_test_${System.nanoTime()}"
   private val dbConfig = ConfigFactory.load().getConfig("cassandra")
-  private val cassndraSpecLog = Logger(LoggerFactory.getLogger(this.getClass))
+  private val cassandraSpecLog = Logger(LoggerFactory.getLogger(this.getClass))
 
   private val cluster = Cluster.builder()
     .addContactPoints(dbConfig.getStringList("contact-points") :_*)
@@ -28,28 +28,38 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     cluster.connect()
   }
 
-  private def createKeySpace(spaceName: String)(implicit session: Session) = {
+  private def createAndUseKeySpace(spaceName: String)(implicit session: Session) = {
     blocking {
+      cassandraSpecLog.info(s"Creating keyspace $spaceName")
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
       session.execute(s"use $spaceName;")
     }
   }
 
-  private def dropKeySpace(spaceName: String)(implicit session: Session) = {
-    blocking {
+  private def dropKeySpaces(spaceName: String)(implicit session: Session) = {
+    def dropKeyspace(spaceName: String) = {
+      cassandraSpecLog.info(s"Dropping keyspace $spaceName")
+      session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
+    }
+    def dropKeyspaceAsync(spaceName: String) = {
+      cassandraSpecLog.info(s"Dropping keyspace $spaceName")
       session.executeAsync(s"DROP KEYSPACE IF EXISTS $spaceName;")
-      session.execute("DROP KEYSPACE IF EXISTS test_akka;")
-      session.execute("DROP KEYSPACE IF EXISTS test_akka_snapshot;")
+    }
+
+    blocking {
+      dropKeyspaceAsync(spaceName)
+      dropKeyspace("test_akka")
+      dropKeyspace("test_akka_snapshot")
     }
   }
 
   private def createDB() {
-    createKeySpace(keySpace)
+    createAndUseKeySpace(keySpace)
     DBConnector.createTables(session).sync()
   }
 
   private def cleanDB() {
-    dropKeySpace(keySpace)
+    dropKeySpaces(keySpace)
   }
 
   override def map(fs: => Fragments) = Step(createDB) ^ super.map(fs) ^ Step(cleanDB)

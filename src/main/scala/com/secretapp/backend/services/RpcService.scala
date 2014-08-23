@@ -8,13 +8,14 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.services.rpc.auth._
-import com.secretapp.backend.services.rpc.contact._
+import com.secretapp.backend.services.rpc.auth.SignService
+import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
+import com.secretapp.backend.services.rpc.files.FilesService
 import com.secretapp.backend.services.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
-trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with RpcFilesService
+trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with FilesService
 with PublicKeysService {
   self: Actor with PackageManagerService =>
 

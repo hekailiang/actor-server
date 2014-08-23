@@ -1,4 +1,4 @@
-package com.secretapp.backend.api.rpc
+package com.secretapp.backend.services.rpc.files
 
 import akka.actor._
 import akka.cluster.ClusterEvent._
@@ -7,6 +7,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.CounterProtocol
+import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Error, Ok }
 import com.secretapp.backend.data.message.rpc.file._
@@ -22,7 +23,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.{ int32 => int32codec }
 
-class FilesManager(val handleActor: ActorRef, val currentUser: User, val fileBlockRecord: FileBlockRecord)(implicit val session: CSession) extends Actor with ActorLogging with FilesService {
+class Handler(val handleActor: ActorRef, val currentUser: User, val fileBlockRecord: FileBlockRecord)(implicit val session: CSession) extends Actor with ActorLogging {
   import context.system
   import context.dispatcher
 
@@ -51,12 +52,6 @@ class FilesManager(val handleActor: ActorRef, val currentUser: User, val fileBlo
     case RpcProtocol.Request(p, messageId, RequestUploadFile(config, offset, data)) =>
       handleRequestUploadFile(p, messageId)(config, offset, data)
   }
-}
-
-trait FilesService {
-  self: FilesManager =>
-
-  import context.dispatcher
 
   protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: BitVector) = {
     // TODO: handle failures

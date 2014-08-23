@@ -82,6 +82,16 @@ trait ActorServiceHelpers extends RandomService {
     destActor ! Authenticate(u)
   }
 
+  def authDefaultUser()(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
+    val publicKey = hex"ac1d".bits
+    val firstName = "Timothy"
+    val lastName = Some("Klim")
+    val user = User.build(uid = 1, authId = mockAuthId, publicKey = publicKey, accessSalt = "salt",
+      phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
+    val accessHash = User.getAccessHash(mockAuthId, 1, "salt")
+    authUser(user, phoneNumber)
+  }
+
   case class SessionIdentifier(id: Long)
   object SessionIdentifier {
     def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong)
@@ -151,7 +161,7 @@ trait ActorServiceHelpers extends RandomService {
     packages
   }
 
-  def receiveOneWithAck(implicit probe: TestProbe): MessageBox = {
+  def receiveOneWithAck()(implicit probe: TestProbe): MessageBox = {
     receiveNWithAck(1) match {
       case Seq(x) => x
       case Seq() => null

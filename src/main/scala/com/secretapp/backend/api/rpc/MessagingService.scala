@@ -102,7 +102,8 @@ sealed trait MessagingService {
           case Success(Some(authId)) =>
             log.info(s"Pushing message ${message}")
             updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, uid, message, aesMessage))
-          case x => log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
+          case x =>
+            log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
         }
         message.uid
       }
@@ -116,8 +117,7 @@ sealed trait MessagingService {
         // Record relation between receiver authId and sender uid
         log.debug(s"Recording relation uid=${uid} -> uid=${currentUser.uid}")
         socialBrokerRegion ! SocialProtocol.SocialMessageBox(
-          uid, SocialProtocol.RelationsNoted(Set(currentUser.uid))
-        )
+          uid, SocialProtocol.RelationsNoted(Set(currentUser.uid)))
 
         pushUpdates()
 
