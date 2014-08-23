@@ -20,6 +20,9 @@ import scodec.codecs.{ int32 => int32codec }
 class FilesServiceSpec extends RpcSpec {
   import system.dispatcher
 
+  val fileContent = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
+  val fileSize = fileContent.length
+
   def requestUploadStart()(implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
     val rpcReq = RpcRequestBox(Request(RequestUploadStart()))
     val messageId = rand.nextLong
@@ -35,9 +38,21 @@ class FilesServiceSpec extends RpcSpec {
 
       {
         requestUploadStart()
-        val rpcResp = receiveOneWithAck()
-        assertResponseOk[ResponseUploadStart](rpcResp)
+        receiveOneWithAck()
+          .assertResponseOk[ResponseUploadStart]
       }
     }
+/*
+    "respond to RequestUpload" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      authDefaultUser()
+
+      {
+        requestUploadStart()
+        val config = receiveOneWithAck()
+          .assertResponseOk[ResponseUploadStart].config
+      }
+    } */
   }
 }

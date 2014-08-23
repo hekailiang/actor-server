@@ -41,8 +41,6 @@ with TestKitBase
   val joinAddress = Cluster(system).selfAddress
   Cluster(system).join(joinAddress)
 
-  FilesCounter.start(system)
-
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)
   }

@@ -1,6 +1,7 @@
 package com.secretapp.backend.services.rpc.files
 
 import akka.actor._
+import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.message.rpc.file.RequestUploadFile
@@ -11,12 +12,13 @@ import com.secretapp.backend.persist.FileBlockRecord
 import com.secretapp.backend.services.transport.PackageManagerService
 
 trait FilesService {
-  this: PackageManagerService with Actor =>
+  this: ApiHandlerActor =>
 
   import context.dispatcher
   import context.system
 
-  lazy val handler = context.actorOf(Props(new Handler(handleActor, getUser.get, new FileBlockRecord)), "files")
+  lazy val handler = context.actorOf(Props(new Handler(handleActor, getUser.get, new FileBlockRecord, countersProxies.files)), "files")
+  //countersProxies
 
   def handleRpcFiles(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case rq: RequestUploadStart =>

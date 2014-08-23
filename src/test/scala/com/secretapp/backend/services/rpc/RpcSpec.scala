@@ -2,7 +2,7 @@ package com.secretapp.backend.services.rpc
 
 import akka.actor._
 import akka.testkit._
-import com.secretapp.backend.api.ApiHandlerActor
+import com.secretapp.backend.api.{ ApiHandlerActor, Counters, CountersProxies }
 import com.secretapp.backend.data.message.rpc.Ok
 import com.secretapp.backend.data.message.{ TransportMessage, RpcResponseBox }
 import com.secretapp.backend.data.transport.MessageBox
@@ -40,9 +40,12 @@ trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with Ac
     override def genUserAccessSalt = userSalt
   }
 
+  val counters = new Counters
+  val countersProxies = new CountersProxies
+
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, countersProxies)(session) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 
@@ -53,10 +56,12 @@ trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with Ac
     }
   }
 
-  def assertResponseOk[A: ClassTag](mb: MessageBox): A = {
-    mb
-      .body.assertInstanceOf[RpcResponseBox]
-      .body.assertInstanceOf[Ok]
-      .body.assertInstanceOf[A]
+  implicit class MessageBoxWithSpecHelpers(x: MessageBox) {
+    def assertResponseOk[A: ClassTag]: A = {
+      x
+        .body.assertInstanceOf[RpcResponseBox]
+        .body.assertInstanceOf[Ok]
+        .body.assertInstanceOf[A]
+    }
   }
 }

@@ -16,6 +16,7 @@ import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
@@ -26,39 +27,8 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
-class RpcMessagingSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
+class RpcMessagingSpec extends RpcSpec {
   import system.dispatcher
-
-  override lazy val actorSystemName = "api"
-
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs () returning (12345L)
-      }
-    }
-  }
-
-  val smsCode = "test_sms_code"
-  val smsHash = "test_sms_hash"
-  val userId = 101
-  val userSalt = "user_salt"
-
-  trait GeneratorServiceMock extends GeneratorService {
-    override def genNewAuthId = mockAuthId
-    override def genSmsCode = smsCode
-    override def genSmsHash = smsHash
-    override def genUserId = userId
-    override def genUserAccessSalt = userSalt
-  }
-
-  def probeAndActor() = {
-    val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
-    (probe, actor)
-  }
 
   def getState(implicit sessionId: SessionIdentifier, probe: TestProbe, destActor: ActorRef): updateProto.State = {
     val rq = updateProto.RequestGetState()

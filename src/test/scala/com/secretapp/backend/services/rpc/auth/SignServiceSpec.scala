@@ -1,5 +1,6 @@
 package com.secretapp.backend.services.rpc.auth
 
+import com.secretapp.backend.services.rpc.RpcSpec
 import scala.language.{ postfixOps, higherKinds }
 import scala.collection.immutable
 import akka.actor._
@@ -24,39 +25,8 @@ import scalaz._
 import Scalaz._
 import scala.util.Random
 
-class SignServiceSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers {
+class SignServiceSpec extends RpcSpec {
   import system.dispatcher
-
-  override lazy val actorSystemName = "api"
-
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs() returning(12345L)
-      }
-    }
-  }
-
-  val smsCode = "test_sms_code"
-  val smsHash = "test_sms_hash"
-  val userId = 101
-  val userSalt = "user_salt"
-
-  trait GeneratorServiceMock extends GeneratorService {
-    override def genNewAuthId = mockAuthId
-    override def genSmsCode = smsCode
-    override def genSmsHash = smsHash
-    override def genUserId = userId
-    override def genUserAccessSalt = userSalt
-  }
-
-  def probeAndActor() = {
-    val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
-    (probe, actor)
-  }
 
   "auth code" should {
     "send sms code" in {

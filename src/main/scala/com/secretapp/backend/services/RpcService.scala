@@ -17,11 +17,11 @@ import com.secretapp.backend.api.rpc._
 
 trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with FilesService
 with PublicKeysService {
-  self: Actor with PackageManagerService =>
+  self: ApiHandlerActor =>
 
   import context.system
 
-  val updatesBrokerRegion = UpdatesBroker.startRegion()
+  val updatesBrokerRegion = UpdatesBroker.startRegion()(context.system, session)
   val socialBrokerRegion = SocialBroker.startRegion()
 
   def handleRpc(p: Package, messageId: Long): PartialFunction[RpcRequest, Unit] = {

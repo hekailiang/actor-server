@@ -9,7 +9,6 @@ import Tcp._
 import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
 import api.{ Server, HeatingUpActor }
-import com.secretapp.backend.api.counters._
 
 class ApiKernel extends Bootable {
   implicit val system = ActorSystem("secret-api-server")
@@ -30,9 +29,6 @@ class ApiKernel extends Bootable {
     val address = new InetSocketAddress(hostname, port)
     IO(Tcp) ! Bind(service, address)
     system.actorOf(Props(new HeatingUpActor(address)), "heat-service")
-
-    FilesCounter.start(system)
-
   }
 
   def shutdown = {

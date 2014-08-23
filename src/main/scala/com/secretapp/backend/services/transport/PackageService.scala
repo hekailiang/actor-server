@@ -1,6 +1,7 @@
 package com.secretapp.backend.services.transport
 
 import akka.actor.Actor
+import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.api.RegisterMessageAcks
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.{MessageBox, Package}
@@ -10,7 +11,7 @@ import scalaz._
 import Scalaz._
 
 trait PackageService extends PackageManagerService with PackageAckService with RpcService {
-  self: Actor =>
+  self: ApiHandlerActor =>
 
   def handleMessage(p: Package, m: MessageBox): Unit = {
     acknowledgeReceivedPackage(p, m)

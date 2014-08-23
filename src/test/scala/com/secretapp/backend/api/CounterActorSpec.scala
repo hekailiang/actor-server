@@ -77,21 +77,5 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       expectMsg(1.second, 105)
     }
-
-    "work with Shared counter" in {
-      val filesCounter = system.actorOf(
-        ClusterSingletonProxy.props(
-          singletonPath = "/user/singleton/files-counter",
-          role = None),
-        name = "files-counter-proxy")
-
-      filesCounter ! Get
-      val count = receiveOne(5.seconds).asInstanceOf[Int]
-
-      filesCounter ! GetNext
-      val nextCount = receiveOne(5.seconds).asInstanceOf[Int]
-
-      nextCount must equalTo(count + 1)
-    }
   }
 }

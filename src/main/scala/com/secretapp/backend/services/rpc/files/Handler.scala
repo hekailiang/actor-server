@@ -23,7 +23,10 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.{ int32 => int32codec }
 
-class Handler(val handleActor: ActorRef, val currentUser: User, val fileBlockRecord: FileBlockRecord)(implicit val session: CSession) extends Actor with ActorLogging {
+class Handler(
+  val handleActor: ActorRef, val currentUser: User,
+  val fileBlockRecord: FileBlockRecord, val filesCounterProxy: ActorRef
+)(implicit val session: CSession) extends Actor with ActorLogging {
   import context.system
   import context.dispatcher
 
@@ -31,15 +34,9 @@ class Handler(val handleActor: ActorRef, val currentUser: User, val fileBlockRec
 
   var leaderAddress: Option[Address] = None
 
-  val filesCounter = system.actorOf(
-    ClusterSingletonProxy.props(
-      singletonPath = "/user/singleton/files-counter",
-      role = None),
-    name = "files-counter-proxy")
-
   def receive = {
     case rq @ RpcProtocol.Request(p, messageId, RequestUploadStart()) =>
-      ask(filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] onComplete {
+      ask(filesCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] onComplete {
         case Success(fileId) =>
           val rsp = ResponseUploadStart(UploadConfig(int32codec.encodeValid(fileId)))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)

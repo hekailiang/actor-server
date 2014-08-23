@@ -1,5 +1,6 @@
 package com.secretapp.backend.api
 
+import com.secretapp.backend.services.rpc.RpcSpec
 import scala.language.{ postfixOps, higherKinds }
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -30,40 +31,8 @@ import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
 
-class ApiHandlerActorSpec extends ActorLikeSpecification with CassandraSpecification with MockFactory with ActorServiceHelpers
-{
+class ApiHandlerActorSpec extends RpcSpec {
   import system.dispatcher
-
-  override lazy val actorSystemName = "api"
-
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs() returning(12345L)
-      }
-    }
-  }
-
-  val smsCode = "test_sms_code"
-  val smsHash = "test_sms_hash"
-  val userId = 101
-  val userSalt = "user_salt"
-
-  trait GeneratorServiceMock extends GeneratorService {
-    override def genNewAuthId = mockAuthId
-    override def genSmsCode = smsCode
-    override def genSmsHash = smsHash
-    override def genUserId = userId
-    override def genUserAccessSalt = userSalt
-  }
-
-  def probeAndActor() = {
-    val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, session) with RandomServiceMock with GeneratorServiceMock))
-    (probe, actor)
-  }
 
   "actor" should {
     "reply with auth token to auth request" in {

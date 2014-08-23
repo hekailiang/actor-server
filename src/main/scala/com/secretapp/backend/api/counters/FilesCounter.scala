@@ -14,4 +14,12 @@ object FilesCounter {
     )
     system.actorOf(props, name = "singleton")
   }
+
+  def startProxy(implicit system: ActorSystem) = {
+    system.actorOf(
+      ClusterSingletonProxy.props(
+        singletonPath = "/user/singleton/files-counter",
+        role = None),
+      name = "files-counter-proxy")
+  }
 }
