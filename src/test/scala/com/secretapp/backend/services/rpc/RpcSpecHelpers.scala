@@ -22,15 +22,13 @@ trait RpcSpecHelpers extends ShouldMatchers {
   }
 
   implicit class MessageBoxWithSpecHelpers(m: MessageBox) {
-    def assertResponseOk[A: ClassTag]: A = {
+    def assertResponseOk[A <: RpcResponseMessage : ClassTag ]: A = {
       m
         .body.assertInstanceOf[RpcResponseBox]
         .body.assertInstanceOf[Ok]
         .body.assertInstanceOf[A]
     }
   }
-
-  case class WrappedReceiveMessage[A](f: (Long) => A)
 
   implicit class RpcRequestMessageWithSpecHelpers(m: RpcRequestMessage) {
     def boxed(msg: RpcRequestMessage)(implicit s: SessionIdentifier) = {
@@ -40,7 +38,7 @@ trait RpcSpecHelpers extends ShouldMatchers {
     /**
       * Sends message, waits for reply, checks its type and returns the reply
       */
-    def :~>?[A: ClassTag](implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): A = {
+    def :~>?[A <: RpcResponseMessage : ClassTag](klass: Class[A])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): A = {
       :~>!
       receiveOneWithAck().assertResponseOk[A]
     }

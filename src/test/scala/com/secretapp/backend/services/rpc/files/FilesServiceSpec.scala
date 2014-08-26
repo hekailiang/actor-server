@@ -23,11 +23,11 @@ class FilesServiceSpec extends RpcSpec {
   val fileContent = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
   val fileSize = fileContent.length
   def requestUploadStart()(implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
-    RequestUploadStart().:~>?[ResponseUploadStart]
+    RequestUploadStart() :~>? classOf[ResponseUploadStart]
   }
 
   def requestUploadFile(config: UploadConfig)(implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
-    RequestUploadFile(config, 0, BitVector(fileContent)).:~>?[ResponseFileUploadStarted]
+    RequestUploadFile(config, 0, BitVector(fileContent)) :~>? classOf[ResponseFileUploadStarted]
   }
 
   "files service" should {
