@@ -71,7 +71,7 @@ trait RpcSpecHelpers extends ShouldMatchers {
     }
 
     /**
-      * Sends message, asserts reply is error and checks its params
+      * Sends message, asserts reply is Ok and returns it
       */
     def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): A = {
       :~>!
@@ -79,10 +79,10 @@ trait RpcSpecHelpers extends ShouldMatchers {
     }
   }
 
-  def @<~:[A <: RpcResponseMessage : ClassTag](implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseOk[A] =
+  def <~:[A <: RpcResponseMessage : ClassTag](implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseOk[A] =
     new WrappedReceiveResponseOk[A]()
 
-  def @<~:(errorCode: Int, errorTag: String)(implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseError =
+  def <~:(errorCode: Int, errorTag: String)(implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseError =
     WrappedReceiveResponseError { error =>
       error.code should equalTo(errorCode)
       error.tag should equalTo(errorTag)
