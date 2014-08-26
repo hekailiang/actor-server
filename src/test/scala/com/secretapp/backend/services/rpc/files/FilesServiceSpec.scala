@@ -22,12 +22,21 @@ class FilesServiceSpec extends RpcSpec {
 
   val fileContent = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
   val fileSize = fileContent.length
-  def requestUploadStart()(implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
-    RequestUploadStart() :~>? classOf[ResponseUploadStart]
+  val blockSize = 0x2000
+
+  def requestUploadStart()(
+    implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier): ResponseUploadStart = {
+    RequestUploadStart() :~> @<~:[ResponseUploadStart]
   }
 
-  def requestUploadFile(config: UploadConfig)(implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
-    RequestUploadFile(config, 0, BitVector(fileContent)) :~>? classOf[ResponseFileUploadStarted]
+  def uploadFileBlocks(config: UploadConfig)(
+    implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
+    RequestUploadFile(config, 0, BitVector(fileContent).take(blockSize)) :~> @<~:[ResponseFileUploadStarted]
+    RequestUploadFile(config,
+      blockSize, BitVector(fileContent).drop(blockSize).take(blockSize + blockSize)) :~> @<~:[ResponseFileUploadStarted]
+    RequestUploadFile(config,
+      blockSize + blockSize + blockSize,
+      BitVector(fileContent).drop(blockSize + blockSize + blockSize)) :~> @<~:[ResponseFileUploadStarted]
   }
 
   "files service" should {
@@ -38,7 +47,7 @@ class FilesServiceSpec extends RpcSpec {
 
       {
         val config = requestUploadStart().config
-        config.serverData.length should be >(0l)
+        config.serverData.length should be > (0l)
       }
     }
 
@@ -49,7 +58,18 @@ class FilesServiceSpec extends RpcSpec {
 
       {
         val config = requestUploadStart().config
-        requestUploadFile(config)
+        uploadFileBlocks(config)
+      }
+    }
+
+    "respond with error to wrong offset in RequestUploadFile" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      authDefaultUser()
+
+      {
+        val config = requestUploadStart().config
+        RequestUploadFile(config, 1, BitVector(fileContent).take(blockSize)) :~> @<~:(400, "OFFSET_INVALID")
       }
     }
   }

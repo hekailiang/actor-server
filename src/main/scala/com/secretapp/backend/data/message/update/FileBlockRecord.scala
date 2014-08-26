@@ -23,12 +23,13 @@ object FileBlockRecord {
   val blockSize = 8 * 1024 // 8kB
 }
 
-sealed class Error extends Exception
-class LocationInvalid extends Error
-class OffsetInvalid extends Error
-class OffsetTooLarge extends Error
-class LimitInvalid extends Error
-class FileLost extends Error
+abstract class FileBlockRecordError(val tag: String, val canTryAgain: Boolean) extends Exception {
+}
+class LocationInvalid extends FileBlockRecordError("LOCATION_INVALID", false)
+class OffsetInvalid extends FileBlockRecordError("OFFSET_INVALID", false)
+class OffsetTooLarge extends FileBlockRecordError("OFFSET_TOO_LARGE", false)
+class LimitInvalid extends FileBlockRecordError("LIMIT_INVALID", false)
+class FileLost extends FileBlockRecordError("FILE_LOST", false)
 
 class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
     extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with DBConnector {

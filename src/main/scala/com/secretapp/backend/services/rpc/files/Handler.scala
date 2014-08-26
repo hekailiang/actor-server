@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.FileBlockRecord
+import com.secretapp.backend.persist.FileBlockRecordError
 import com.secretapp.backend.services.common.PackageCommon._
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -41,7 +42,7 @@ class Handler(
           val rsp = ResponseUploadStart(UploadConfig(int32codec.encodeValid(fileId)))
           handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         case Failure(e) =>
-          val msg = s"Failed to get next valie if file id sequence: ${e.getMessage}"
+          val msg = s"Failed to get next value if file id sequence: ${e.getMessage}"
           handleActor ! PackageToSend(
             p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", msg, true))).right)
           log.error(msg)
@@ -53,14 +54,20 @@ class Handler(
   protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: BitVector) = {
     // TODO: handle failures
     val fileId = int32codec.decodeValidValue(config.serverData)
-    fileBlockRecord.write(fileId, offset, data.toByteArray) onComplete {
-      case Success(_) =>
 
-      case Failure(e) =>
-        log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
+    try {
+      fileBlockRecord.write(fileId, offset, data.toByteArray) onComplete {
+        case Success(_) =>
+
+        case Failure(e) =>
+          log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
+      }
+      val rsp = ResponseFileUploadStarted()
+      handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
+    } catch {
+      case e: FileBlockRecordError =>
+        handleActor ! PackageToSend(
+          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, e.tag, "", e.canTryAgain))).right)
     }
-
-    val rsp = ResponseFileUploadStarted()
-    handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
   }
 }
