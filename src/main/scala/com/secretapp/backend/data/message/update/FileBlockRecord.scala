@@ -8,6 +8,7 @@ import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
+import com.websudos.phantom.keys.ClusteringOrder
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import scala.annotation.tailrec
@@ -40,7 +41,7 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
   object fileId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "file_id"
   }
-  object blockId extends IntColumn(this) with PrimaryKey[Int] {
+  object blockId extends IntColumn(this) with ClusteringOrder[Int] with Ascending {
     override lazy val name = "block_id"
   }
   object bytes extends BlobColumn(this)
@@ -110,6 +111,4 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
       bytes.drop(offset % blockSize).take(limit).toArray
     }
   }
-
-
 }
