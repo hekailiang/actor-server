@@ -6,7 +6,7 @@ import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
 import scala.collection.immutable.Seq
-import scala.concurrent.{ Await }
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -17,10 +17,10 @@ import scalaz.Scalaz._
 import scodec.bits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 
-class FileBlockRecordSpec extends CassandraSpecification {
-  "FileBlockRecord" should {
+class FileRecordSpec extends CassandraSpecification {
+  "FileRecord" should {
     "insert and get file" in {
-      val Record = new FileBlockRecord
+      val Record = new FileRecord
 
       val fileId = 1
       val content = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray

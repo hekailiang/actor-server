@@ -25,13 +25,13 @@ object DBConnector {
   }
 
   def createTables(session: Session)(implicit context: ExecutionContext with Executor) = blocking {
-    val fileBlockRecord = new FileBlockRecord()(session, context)
+    val fileRecord = new FileRecord()(session, context)
 
     Future.sequence(List(
       UserRecord.createTable(session), AuthIdRecord.createTable(session),
       SessionIdRecord.createTable(session), AuthSmsCodeRecord.createTable(session),
       PhoneRecord.createTable(session), CommonUpdateRecord.createTable(session),
-      UserPublicKeyRecord.createTable(session), fileBlockRecord.createTable(session)
+      UserPublicKeyRecord.createTable(session), fileRecord.createTable(session)
     ))
   }
 

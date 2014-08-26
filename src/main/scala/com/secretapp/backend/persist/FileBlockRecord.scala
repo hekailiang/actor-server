@@ -1,22 +1,25 @@
 package com.secretapp.backend.persist
 
-import akka.actor.ActorSystem
 import akka.dispatch.Dispatcher
-import akka.util.ByteString
-import com.datastax.driver.core.BoundStatement
-import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.websudos.phantom.Implicits._
+import com.datastax.driver.core.{ResultSet, Row, Session}
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.models._
+import com.websudos.phantom.Implicits._
 import com.websudos.phantom.keys.ClusteringOrder
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import play.api.libs.iteratee._
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
 
 case class FileBlock(blockId: Int, bytes: Array[Byte])
+
+abstract class FileBlockRecordError(val tag: String, val canTryAgain: Boolean) extends Exception
+class LocationInvalid extends FileBlockRecordError("LOCATION_INVALID", false)
+class OffsetInvalid extends FileBlockRecordError("OFFSET_INVALID", false)
+class OffsetTooLarge extends FileBlockRecordError("OFFSET_TOO_LARGE", false)
+class LimitInvalid extends FileBlockRecordError("LIMIT_INVALID", false)
+class FileLost extends FileBlockRecordError("FILE_LOST", false)
 
 object FileBlockRecord {
   type EntityType = Entity[Int, FileBlock]
@@ -24,15 +27,7 @@ object FileBlockRecord {
   val blockSize = 8 * 1024 // 8kB
 }
 
-abstract class FileBlockRecordError(val tag: String, val canTryAgain: Boolean) extends Exception {
-}
-class LocationInvalid extends FileBlockRecordError("LOCATION_INVALID", false)
-class OffsetInvalid extends FileBlockRecordError("OFFSET_INVALID", false)
-class OffsetTooLarge extends FileBlockRecordError("OFFSET_TOO_LARGE", false)
-class LimitInvalid extends FileBlockRecordError("LIMIT_INVALID", false)
-class FileLost extends FileBlockRecordError("FILE_LOST", false)
-
-class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
+private[persist] class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
     extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with DBConnector {
   import FileBlockRecord._
 
@@ -56,7 +51,7 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
     )
   }
 
-  val insertQuery = new ExecutablePreparedStatement {
+  private val insertQuery = new ExecutablePreparedStatement {
     val query = s"INSERT INTO ${tableName} (${fileId.name}, ${blockId.name}, ${bytes.name}) VALUES (?, ?, ?);"
   }
 
@@ -83,7 +78,7 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
     Future.sequence(finserts)
   }
 
-  def getFile(fileId: Int, offset: Int, limit: Int): Future[Array[Byte]] = {
+  def getFileBlocks(fileId: Int, offset: Int, limit: Int): Future[Seq[ByteBuffer]] = {
     @inline def offsetValid(offset: Int) = offset >= 0 && offset % 1024 == 0
     @inline def limitValid(limit: Int) = limit > 0 || limit % 1024 == 0 && limit <= 512 * 1024
 
@@ -101,14 +96,12 @@ class FileBlockRecord(implicit session: Session, context: ExecutionContext with 
     val climit = Math.ceil(limit.toDouble / blockSize).toInt
 
     // TODO: use Iteratee
-    for {
-      blocks <- select(_.bytes)
+    select(_.bytes)
       .where(_.fileId eqs fileId).and(_.blockId gte firstBlockId)
       .limit(climit).fetch()
-    } yield {
-      println(blocks)
-      val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
-      bytes.drop(offset % blockSize).take(limit).toArray
-    }
+  }
+
+  def blocksByFileId(fileId: Int): Enumerator[ByteBuffer] = {
+    select(_.bytes).where(_.fileId eqs fileId).fetchEnumerator
   }
 }
