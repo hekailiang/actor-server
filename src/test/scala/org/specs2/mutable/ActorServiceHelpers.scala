@@ -104,7 +104,7 @@ trait ActorServiceHelpers extends RandomService {
   case class WrappedReceivePackage(f: (Long) => Unit)
 
   implicit class WrappedTM(m: TransportMessage) {
-    def :~>(wp: WrappedReceivePackage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier) = {
+    def :~>(wp: WrappedReceivePackage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): Unit = {
       val r = pack(m)
       probe.send(destActor, Received(r.blob))
       wp.f(r.messageId)
