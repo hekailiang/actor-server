@@ -6,7 +6,7 @@ object Dependencies {
     val scalaz = "7.0.6" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
-    val phantom = "1.0.7"
+    val phantom = "1.2.2"
     val newzlyUtil = "0.1.19"
   }
 
