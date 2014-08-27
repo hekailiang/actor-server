@@ -40,6 +40,9 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
     override lazy val name = "block_id"
   }
   object bytes extends BlobColumn(this)
+  object accessSalt extends StringColumn(this) with StaticColumn[String] {
+    override lazy val name = "access_salt"
+  }
 
   override def fromRow(row: Row): EntityType = {
     Entity(

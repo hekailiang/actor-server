@@ -89,7 +89,8 @@ class FilesServiceSpec extends RpcSpec {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
         Thread.sleep(1000)
-        RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
+        Math.abs(fileUploaded.location.accessHash) should be >(0l)
       }
     }
 
