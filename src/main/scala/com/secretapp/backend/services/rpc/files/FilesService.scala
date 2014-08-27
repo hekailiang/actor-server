@@ -26,5 +26,7 @@ trait FilesService {
       handler ! RpcProtocol.Request(p, messageId, rq)
     case rq: RequestCompleteUpload =>
       handler ! RpcProtocol.Request(p, messageId, rq)
+    case rq: RequestGetFile =>
+      handler ! RpcProtocol.Request(p, messageId, rq)
   }
 }

@@ -14,13 +14,6 @@ import scodec.bits._
 
 case class FileBlock(blockId: Int, bytes: Array[Byte])
 
-abstract class FileBlockRecordError(val tag: String, val canTryAgain: Boolean) extends Exception
-class LocationInvalid extends FileBlockRecordError("LOCATION_INVALID", false)
-class OffsetInvalid extends FileBlockRecordError("OFFSET_INVALID", false)
-class OffsetTooLarge extends FileBlockRecordError("OFFSET_TOO_LARGE", false)
-class LimitInvalid extends FileBlockRecordError("LIMIT_INVALID", false)
-class FileLost extends FileBlockRecordError("FILE_LOST", false)
-
 object FileBlockRecord {
   type EntityType = Entity[Int, FileBlock]
 
@@ -69,6 +62,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   def write(fileId: Int, offset: Int, bytes: Array[Byte]): Future[Iterator[ResultSet]] = {
     @inline def offsetValid(offset: Int) = offset >= 0 && offset % blockSize == 0
 
+    println(s"WRITING ${offset} ${bytes.length}")
     if (!offsetValid(offset)) {
       throw new OffsetInvalid
     }
@@ -76,14 +70,16 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
     val firstBlockId = offset / blockSize
     val finserts = bytes.grouped(blockSize).zipWithIndex map {
       case (blockBytes, i) =>
-        Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
+        val e = Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
+        println(e)
+        e
     } map (insertEntity _)
     Future.sequence(finserts)
   }
 
   def getFileBlocks(fileId: Int, offset: Int, limit: Int): Future[Seq[ByteBuffer]] = {
     @inline def offsetValid(offset: Int) = offset >= 0 && offset % 1024 == 0
-    @inline def limitValid(limit: Int) = limit > 0 || limit % 1024 == 0 && limit <= 512 * 1024
+    @inline def limitValid(limit: Int) = limit > 0 && limit % 1024 == 0 && limit <= 512 * 1024
 
     /* TODO: LOCATION_INVALID
      *       OFFSET_TOO_LARGE
@@ -91,7 +87,9 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
      */
     if (!offsetValid(offset)) {
       throw new OffsetInvalid
-    } else if (!limitValid(limit)) {
+    }
+
+    if (!limitValid(limit)) {
       throw new LimitInvalid
     }
 

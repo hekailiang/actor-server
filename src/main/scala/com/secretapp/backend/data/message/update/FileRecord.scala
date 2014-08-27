@@ -15,6 +15,13 @@ import scodec.bits._
 
 case class File(fileId: Int, sourceBlocksCount: Int)
 
+abstract class FileRecordError(val tag: String, val canTryAgain: Boolean) extends Exception
+class LocationInvalid extends FileRecordError("LOCATION_INVALID", false)
+class OffsetInvalid extends FileRecordError("OFFSET_INVALID", false)
+class OffsetTooLarge extends FileRecordError("OFFSET_TOO_LARGE", false)
+class LimitInvalid extends FileRecordError("LIMIT_INVALID", false)
+class FileLost extends FileRecordError("FILE_LOST", false)
+
 class FileRecord(implicit session: Session, context: ExecutionContext with Executor) {
   private lazy val blockRecord = new FileBlockRecord
   private lazy val sourceBlockRecord = new FileSourceBlockRecord
@@ -55,14 +62,16 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
   def getFileAccessSalt(fileId: Int): Future[String] = {
     blockRecord.select(_.accessSalt).where(_.fileId eqs fileId).one() map {
       case Some(salt) => salt
-      case None => throw new Exception("File does not exists")
+      case None => throw new LocationInvalid
     }
   }
 
   def getFile(fileId: Int, offset: Int, limit: Int): Future[Array[Byte]] = {
+    println(s"getFile ${offset} ${limit}")
     for {
       blocks <- blockRecord.getFileBlocks(fileId, offset, limit)
     } yield {
+      // FIXME: don't use BitVector here
       val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
       bytes.drop(offset % FileBlockRecord.blockSize).take(limit).toArray
     }

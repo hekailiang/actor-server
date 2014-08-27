@@ -19,5 +19,7 @@ class Handler(
       handleRequestUploadFile(p, messageId)(config, offset, data)
     case RpcProtocol.Request(p, messageId, RequestCompleteUpload(config, blocksCount, crc32)) =>
       handleRequestCompleteUpload(p, messageId)(config, blocksCount, crc32)
+    case RpcProtocol.Request(p, messageId, RequestGetFile(location, offset, limit)) =>
+      handleRequestGetFile(p, messageId)(location, offset, limit)
   }
 }

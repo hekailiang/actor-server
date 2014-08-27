@@ -21,7 +21,7 @@ import scodec.bits._
 class FilesServiceSpec extends RpcSpec {
   import system.dispatcher
 
-  val fileContent: Array[Byte] = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
+  val fileContent: Array[Byte] = ((1 to (1024 * 40)) map (i => (i % 255).toByte)).toArray
   val fileSize: Int = fileContent.length
   val filecrc32: Long = {
     val crc32 = new CRC32
@@ -38,12 +38,12 @@ class FilesServiceSpec extends RpcSpec {
 
   def uploadFileBlocks(config: UploadConfig)(
     implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
-    RequestUploadFile(config, 0, BitVector(fileContent).take(blockSize)) :~> <~:[ResponseFileUploadStarted]
+    RequestUploadFile(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseFileUploadStarted]
     RequestUploadFile(config,
-      blockSize, BitVector(fileContent).drop(blockSize).take(blockSize + blockSize)) :~> <~:[ResponseFileUploadStarted]
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseFileUploadStarted]
     RequestUploadFile(config,
       blockSize + blockSize + blockSize,
-      BitVector(fileContent).drop(blockSize + blockSize + blockSize)) :~> <~:[ResponseFileUploadStarted]
+      BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponseFileUploadStarted]
   }
 
   "files service" should {
@@ -65,18 +65,8 @@ class FilesServiceSpec extends RpcSpec {
 
       {
         val config = requestUploadStart().config
-        uploadFileBlocks(config)
-      }
-    }
-
-    "respond with error to wrong offset in RequestUploadFile" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
-
-      {
-        val config = requestUploadStart().config
         RequestUploadFile(config, 1, BitVector(fileContent).take(blockSize)) :~> <~:(400, "OFFSET_INVALID")
+        uploadFileBlocks(config)
       }
     }
 
@@ -91,21 +81,38 @@ class FilesServiceSpec extends RpcSpec {
         Thread.sleep(1000)
         val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
         Math.abs(fileUploaded.location.accessHash) should be >(0l)
+
+        RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
+        RequestCompleteUpload(config, 1, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
       }
     }
 
-    "respond with error to wrong blocksCount in RequestCompleteUpload" in {
+    "respond to RequestGetFile" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       authDefaultUser()
 
+      val config = requestUploadStart().config
+      uploadFileBlocks(config)
+      Thread.sleep(1000)
+      val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
+
       {
-        val config = requestUploadStart().config
-        uploadFileBlocks(config)
-        RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
-        Thread.sleep(1000)
-        RequestCompleteUpload(config, 1, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
+        val filePart = RequestGetFile(fileUploaded.location, 0, blockSize) :~> <~:[ResponseFilePart]
+        filePart.data.toByteArray.length should equalTo(blockSize)
+        filePart.data.toByteArray should equalTo(fileContent.take(blockSize))
       }
+
+      {
+        val filePart = RequestGetFile(fileUploaded.location, blockSize, blockSize * 3) :~> <~:[ResponseFilePart]
+        filePart.data.toByteArray.length should equalTo(blockSize * 3)
+        filePart.data.toByteArray should equalTo(fileContent.drop(blockSize).take(blockSize * 3))
+      }
+
+      RequestGetFile(fileUploaded.location, blockSize + 1, blockSize * 3) :~> <~:(400, "OFFSET_INVALID")
+      RequestGetFile(fileUploaded.location, blockSize, blockSize * 3 + 1) :~> <~:(400, "LIMIT_INVALID")
+      RequestGetFile(fileUploaded.location, blockSize, -blockSize) :~> <~:(400, "LIMIT_INVALID")
+      RequestGetFile(fileUploaded.location, blockSize, 1024 * 1024) :~> <~:(400, "LIMIT_INVALID")
     }
   }
 }
