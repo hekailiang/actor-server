@@ -34,7 +34,7 @@ trait ActorServiceHelpers extends RandomService {
   Security.addProvider(new BouncyCastleProvider())
 
   val mockAuthId = rand.nextLong()
-  val phoneNumber = 79853867016L
+  val defaultPhoneNumber = 79853867016L
 
   implicit val session: CSession
 
@@ -76,19 +76,20 @@ trait ActorServiceHelpers extends RandomService {
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
   }
 
-  def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
+  def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
     insertAuthAndSessionId(u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
     destActor ! Authenticate(u)
+    u
   }
 
-  def authDefaultUser()(implicit destActor: ActorRef, s: SessionIdentifier): Unit = blocking {
+  def authDefaultUser(uid: Int = 1, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
     val publicKey = hex"ac1d".bits
-    val firstName = "Timothy"
-    val lastName = Some("Klim")
-    val user = User.build(uid = 1, authId = mockAuthId, publicKey = publicKey, accessSalt = "salt",
+    val firstName = s"Timothy${uid}"
+    val lastName = Some(s"Klim${uid}")
+    val user = User.build(uid = uid, authId = mockAuthId, publicKey = publicKey, accessSalt = "salt",
       phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-    val accessHash = User.getAccessHash(mockAuthId, 1, "salt")
+    val accessHash = User.getAccessHash(mockAuthId, uid, "salt")
     authUser(user, phoneNumber)
   }
 

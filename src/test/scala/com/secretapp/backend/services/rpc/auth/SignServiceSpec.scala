@@ -34,7 +34,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val session = SessionIdentifier()
       insertAuthAndSessionId()
 
-      val rpcReq = RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt, rand.nextString(10))))
+      val rpcReq = RpcRequestBox(Request(RequestAuthCode(defaultPhoneNumber, rand.nextInt, rand.nextString(10))))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -52,15 +52,15 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(publicKeyHash), phoneNumber)
+      val user = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(publicKeyHash), defaultPhoneNumber)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -75,17 +75,17 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
       val messageId = rand.nextLong()
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(newPublicKeyHash), phoneNumber)
+      val newUser = struct.User(userId, accessHash, "Timothy", Some("Klim"), None, Set(newPublicKeyHash), defaultPhoneNumber)
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser)))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
@@ -99,9 +99,9 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = "Klim".some
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val newPublicKey = genPublicKey
       val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -109,7 +109,7 @@ class SignServiceSpec extends RpcSpec {
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, firstName, lastName, newPublicKey)))
       val messageId = rand.nextLong()
       val packageBlob = codecRes2BS(protoPackageBox.build(newAuthId, newSessionId, messageId, rpcReq))
       probe.send(apiActor, Received(packageBlob))
@@ -135,9 +135,9 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, "invalid", smsCode, "Timothy", Some("Klim"), publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, "invalid", smsCode, "Timothy", Some("Klim"), publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -153,9 +153,9 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, "invalid", "Timothy", Some("Klim"), publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, "invalid", "Timothy", Some("Klim"), publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -195,11 +195,11 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
@@ -215,8 +215,8 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
 
       val newPublicKey = genPublicKey
       val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -224,16 +224,16 @@ class SignServiceSpec extends RpcSpec {
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
       SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
-      UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
+      UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, defaultPhoneNumber).sync()
 
       val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
       val s = Seq((mockAuthId, sessionId.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
       s foreach { (t) =>
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
         implicit val (probe, apiActor) = probeAndActor()
         val (authId, sessionId, publicKey, publicKeyHash) = t
-        val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
+        val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
         val messageId = rand.nextLong()
         val packageBlob = codecRes2BS(protoPackageBox.build(authId, sessionId, messageId, rpcReq))
         probe.send(apiActor, Received(packageBlob))
@@ -252,13 +252,13 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val newPublicKey = genPublicKey
       val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, newPublicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, newPublicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
@@ -276,11 +276,11 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, "invlid", smsCode, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, "invlid", smsCode, publicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
@@ -297,11 +297,11 @@ class SignServiceSpec extends RpcSpec {
       val firstName = "Timothy"
       val lastName = Some("Klim")
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(mockAuthId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      addUser(mockAuthId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, "invlid", publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, "invlid", publicKey)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 

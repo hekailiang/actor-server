@@ -2,7 +2,7 @@ package com.secretapp.backend.api
 
 import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
+import akka.contrib.pattern.DistributedPubSubMediator.{ Subscribe, SubscribeAck }
 import akka.event.Logging
 import akka.pattern.ask
 import akka.util.Timeout
@@ -43,6 +43,8 @@ class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: Ac
       handleRequestGetDifference(p, messageId)(seq, state)
     case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetState()) =>
       handleRequestGetState(p, messageId)
+    case SubscribeAck(ack) =>
+      handleSubscribeAck(ack)
   }
 }
 
@@ -54,6 +56,7 @@ sealed trait UpdatesService {
 
   private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor, authId)))
   private var subscribedToUpdates = false
+  private var subscribingToUpdates = false
   private val differenceSize = 500
 
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
@@ -113,9 +116,18 @@ sealed trait UpdatesService {
   }
 
   protected def subscribeToUpdates(authId: Long) = {
-    if (!subscribedToUpdates) {
+    if (!subscribedToUpdates && !subscribingToUpdates) {
+      subscribingToUpdates = true
       log.info("Subscribing to updates authId={}", authId)
       mediator ! Subscribe(UpdatesBroker.topicFor(authId), updatesPusher)
+    }
+  }
+
+  protected def handleSubscribeAck(subscribe: Subscribe) = {
+    log.info(s"Handling subscribe ack ${subscribe}")
+    if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == updatesPusher) {
+      subscribingToUpdates = false
+      subscribedToUpdates = true
     }
   }
 

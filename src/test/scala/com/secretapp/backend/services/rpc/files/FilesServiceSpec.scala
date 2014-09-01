@@ -32,12 +32,12 @@ class FilesServiceSpec extends RpcSpec {
   val blockSize = 0x2000
 
   def requestUploadStart()(
-    implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier): ResponseUploadStart = {
+    implicit scope: RpcTestScope): ResponseUploadStart = {
     RequestUploadStart() :~> <~:[ResponseUploadStart]
   }
 
   def uploadFileBlocks(config: UploadConfig)(
-    implicit probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier) = {
+    implicit scope: RpcTestScope) = {
     RequestUploadFile(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseFileUploadStarted]
     RequestUploadFile(config,
       blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseFileUploadStarted]
@@ -48,9 +48,7 @@ class FilesServiceSpec extends RpcSpec {
 
   "files service" should {
     "respond to RequestUploadStart" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
+      implicit val scope = RpcTestScope()
 
       {
         val config = requestUploadStart().config
@@ -59,9 +57,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestUploadFile" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
+      implicit val scope = RpcTestScope()
 
       {
         val config = requestUploadStart().config
@@ -71,9 +67,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestCompleteUpload" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
+      implicit val scope = RpcTestScope()
 
       {
         val config = requestUploadStart().config
@@ -88,9 +82,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestGetFile" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
+      implicit val scope = RpcTestScope()
 
       val config = requestUploadStart().config
       uploadFileBlocks(config)

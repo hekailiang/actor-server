@@ -39,10 +39,10 @@ class PublicKeysServiceSpec extends RpcSpec {
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user, phoneNumber)
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      authUser(user, defaultPhoneNumber)
       val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
+        phoneNumber = defaultPhoneNumber + 1, firstName = firstName, lastName = lastName)
       val accessHash = User.getAccessHash(mockAuthId, secondUser.uid, secondUser.accessSalt)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 

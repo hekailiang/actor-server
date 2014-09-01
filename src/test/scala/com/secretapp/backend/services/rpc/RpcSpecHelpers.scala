@@ -1,18 +1,32 @@
 package com.secretapp.backend.services.rpc
 
-import akka.actor.ActorRef
+import akka.actor._
 import akka.io.Tcp.Received
 import akka.testkit.TestProbe
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.services.GeneratorService
+import com.secretapp.backend.services.common.RandomService
+import org.scalamock.specs2.MockFactory
 import org.specs2.matcher.ShouldMatchers
-import org.specs2.mutable.ActorServiceHelpers
+import org.specs2.mutable._
 import scala.reflect.ClassTag
 
-trait RpcSpecHelpers extends ShouldMatchers {
-  self: ActorServiceHelpers =>
+trait RpcSpecHelpers {
+  self: RpcSpec =>
+
+  case class RpcTestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User)
+  object RpcTestScope {
+    def apply(): RpcTestScope = {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      val user = authDefaultUser()
+      RpcTestScope(probe, apiActor, session, user)
+    }
+  }
 
   implicit class AnyRefWithSpecHelpers(x: AnyRef) {
     def assertInstanceOf[A: ClassTag]: A = {
@@ -48,7 +62,8 @@ trait RpcSpecHelpers extends ShouldMatchers {
     /**
       * Sends message
       */
-    def :~>!(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): Unit = {
+    def :~>!(implicit scope: RpcTestScope): Unit = {
+      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       val r = pack(boxed(m))
       probe.send(destActor, Received(r.blob))
     }
@@ -56,7 +71,8 @@ trait RpcSpecHelpers extends ShouldMatchers {
     /**
       * Sends message, waits for reply, checks its type and returns the reply
       */
-    def :~>?[A <: RpcResponseMessage : ClassTag](klass: Class[A])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): A = {
+    def :~>?[A <: RpcResponseMessage : ClassTag](klass: Class[A])(implicit scope: RpcTestScope): A = {
+      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       receiveOneWithAck().assertResponseOk[A]
     }
@@ -64,7 +80,8 @@ trait RpcSpecHelpers extends ShouldMatchers {
     /**
       * Sends message, asserts reply is error and checks its params
       */
-    def :~>(wp: WrappedReceiveResponseError)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier) = {
+    def :~>(wp: WrappedReceiveResponseError)(implicit scope: RpcTestScope) = {
+      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       val error = receiveOneWithAck().assertResponseError
       wp.f(error)
@@ -73,18 +90,23 @@ trait RpcSpecHelpers extends ShouldMatchers {
     /**
       * Sends message, asserts reply is Ok and returns it
       */
-    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): A = {
+    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit scope: RpcTestScope): A = {
+      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       receiveOneWithAck().assertResponseOk[A]
     }
   }
 
-  def <~:[A <: RpcResponseMessage : ClassTag](implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseOk[A] =
+  def <~:[A <: RpcResponseMessage : ClassTag]: WrappedReceiveResponseOk[A] = {
+    //implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
     new WrappedReceiveResponseOk[A]()
+  }
 
-  def <~:(errorCode: Int, errorTag: String)(implicit probe: TestProbe, s: SessionIdentifier): WrappedReceiveResponseError =
+  def <~:(errorCode: Int, errorTag: String): WrappedReceiveResponseError = {
+    //implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
     WrappedReceiveResponseError { error =>
-      error.code should equalTo(errorCode)
-      error.tag should equalTo(errorTag)
+      error.code must equalTo(errorCode)
+      error.tag must equalTo(errorTag)
     }
+  }
 }

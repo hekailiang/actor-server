@@ -35,13 +35,13 @@ class ContactServiceSpec extends RpcSpec {
       val lastName = Some("Klim")
       val clientPhoneId = rand.nextLong()
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      authUser(user, phoneNumber)
+        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+      authUser(user, defaultPhoneNumber)
       val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber + 1, firstName = firstName, lastName = lastName)
+        phoneNumber = defaultPhoneNumber + 1, firstName = firstName, lastName = lastName)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
-      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, phoneNumber + 1))
+      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, defaultPhoneNumber + 1))
       val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
