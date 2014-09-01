@@ -3,7 +3,6 @@ import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
 import spray.revolver.RevolverPlugin._
-import org.scalastyle.sbt.ScalastylePlugin
 import scalabuff.ScalaBuffPlugin._
 
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
@@ -25,8 +24,6 @@ object BackendBuild extends Build {
     settings = defaultSettings ++
       AkkaKernelPlugin.distSettings ++
       Revolver.settings ++
-      //      AtmosDist.settings ++
-      ScalastylePlugin.Settings ++
       Seq(
         libraryDependencies ++= rootDependencies,
         resolvers ++= Resolvers.seq,
@@ -61,6 +58,6 @@ object BackendBuild extends Build {
       "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"
     ),
     parallelExecution in Test := true,
-    fork in Test := true
+    fork in Test := false
   )
 }

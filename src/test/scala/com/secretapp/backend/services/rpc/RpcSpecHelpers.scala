@@ -20,7 +20,13 @@ trait RpcSpecHelpers {
 
   case class RpcTestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User)
   object RpcTestScope {
-    def apply(): RpcTestScope = {
+    def pair(): (RpcTestScope, RpcTestScope) = {
+      (apply(1, 79632740769L), apply(2, 79853867016L))
+    }
+
+    def apply(): RpcTestScope = apply(1, 79632740769L)
+
+    def apply(uid: Int, phone: Long): RpcTestScope = {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       val user = authDefaultUser()

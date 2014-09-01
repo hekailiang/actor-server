@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
   object V {
     val akka = "2.3.4"
-    val scalaz = "7.0.6" // "7.1.0-RC1"
+    val scalaz = "7.1.0" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
     val phantom = "1.2.2"
@@ -43,9 +43,9 @@ object Dependencies {
 
     "ch.qos.logback" % "logback-classic" % "1.1.2",
 
-    "org.typelevel" %% "scodec-core" % "1.1.0",
+    "org.typelevel" %% "scodec-core" % "1.2.0",
 
-    "org.typelevel" %% "scodec-bits" % "1.0.1",
+    "org.typelevel" %% "scodec-bits" % "1.0.2",
 
 //    val scodecStream = "org.typelevel" %% "scodec-stream" % "1.0.0-SNAPSHOT"
 

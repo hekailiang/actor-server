@@ -91,7 +91,8 @@ sealed trait UpdatesService {
         handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
       case Failure(err) =>
         // TODO: Handle failure
-        throw new Exception("Failed to get state")
+        log.error("Failed to get state")
+        throw err
     }
   }
 
