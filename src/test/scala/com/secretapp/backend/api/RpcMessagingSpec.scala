@@ -140,7 +140,7 @@ class RpcMessagingSpec extends RpcSpec {
       implicit val session = SessionIdentifier()
       authDefaultUser()
 
-      RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGHT")
+      RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
     }
   }
 }

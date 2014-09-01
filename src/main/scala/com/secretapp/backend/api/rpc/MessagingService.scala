@@ -38,7 +38,7 @@ class MessagingServiceActor(
 
   def receive: Actor.Receive = {
     case RpcProtocol.Request(p, messageId, RequestSendMessage(_, _, _, _, _, messages)) if messages.length == 0 =>
-      handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "ZERO_MESSAGES_LENGHT", "Messages lenght is zero.", false))).right)
+      handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "ZERO_MESSAGES_LENGTH", "Messages lenght is zero.", false))).right)
 
     case RpcProtocol.Request(p, messageId, RequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages)) =>
       Option(randomIds.get(randomId)) match {
