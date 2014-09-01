@@ -5,3 +5,4 @@ project/target
 application.conf
 .ensime_cache
 src/main/resources/application.conf
+*.swp
