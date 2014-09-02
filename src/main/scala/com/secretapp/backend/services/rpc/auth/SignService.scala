@@ -1,5 +1,7 @@
 package com.secretapp.backend.services.rpc.auth
 
+import java.util.regex.Pattern
+
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
@@ -133,8 +135,15 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
-    def nonEmpty(s: String): Validation[NonEmptyList[String], String] =
-      if (s.isEmpty) "Should be nonempty".failureNel else s.success
+    def nonEmpty(s: String): Validation[NonEmptyList[String], String] = {
+      val trimmed = s.trim
+      if (trimmed.isEmpty) "Should be nonempty".failureNel else trimmed.success
+    }
+
+    def printable(s: String): Validation[NonEmptyList[String], String] = {
+      val p = Pattern.compile("\\p{Print}+")
+      if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
+    }
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
@@ -159,7 +168,7 @@ trait SignService extends PackageCommon with RpcCommon {
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
                     case None =>
-                      nonEmpty(req.firstName).fold(
+                      nonEmpty(req.firstName).flatMap(printable).fold(
                       { errors =>
                         Future.successful(Error(400, "FIRST_NAME_INVALID", errors.toList.mkString(", "), false).left)
                       },
