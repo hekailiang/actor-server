@@ -1,29 +1,29 @@
 package com.secretapp.backend.services.rpc.auth
 
-import com.secretapp.backend.services.rpc.RpcSpec
-import scala.language.{ postfixOps, higherKinds }
-import scala.collection.immutable
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
+import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.api.ApiHandlerActor
-import com.secretapp.backend.persist._
-import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
-import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
+import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
+import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.crypto.ec
+import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.services.GeneratorService
+import com.secretapp.backend.services.rpc.RpcSpec
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
-import com.newzly.util.testing.AsyncAssertionsHelper._
-import scodec.bits._
+import scala.collection.immutable
+import scala.language.{ postfixOps, higherKinds }
+import scala.util.Random
 import scalaz._
 import Scalaz._
-import scala.util.Random
+import scodec.bits._
 
 class SignServiceSpec extends RpcSpec {
   import system.dispatcher
@@ -46,7 +46,7 @@ class SignServiceSpec extends RpcSpec {
   }
 
   "sign up" should {
-    "success" in {
+    "succeed" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = genPublicKey
@@ -66,7 +66,7 @@ class SignServiceSpec extends RpcSpec {
       expectMsgWithAck(expectMsg)
     }
 
-    "success with new public key and same authId" in {
+    "succeed with new public key and same authId" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = genPublicKey
@@ -91,7 +91,7 @@ class SignServiceSpec extends RpcSpec {
       expectMsgWithAck(expectMsg)
     }
 
-    "success with new public key and new authId" in {
+    "succeed with new public key and new authId" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = genPublicKey
@@ -129,7 +129,7 @@ class SignServiceSpec extends RpcSpec {
       users must be_== (expectUsers).await
     }
 
-    "failed with invalid sms code" in {
+    "fail with invalid sms code" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = genPublicKey
@@ -147,7 +147,7 @@ class SignServiceSpec extends RpcSpec {
       expectMsgWithAck(expectMsg)
     }
 
-    "failed with invalid sms hash" in {
+    "fail with invalid sms hash" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       val publicKey = genPublicKey
@@ -164,6 +164,25 @@ class SignServiceSpec extends RpcSpec {
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
+
+    "fail with invalid first name if it is empty" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val publicKey = genPublicKey
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+      insertAuthAndSessionId()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(phoneNumber)
+
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "", Some("Klim"), publicKey)))
+      val messageId = rand.nextLong
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val rpcRes = RpcResponseBox(messageId, Error(400, "FIRST_NAME_INVALID", "Should be nonempty", false))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    } tag("wip")
 
     /*
     "failed with invalid public key" in {

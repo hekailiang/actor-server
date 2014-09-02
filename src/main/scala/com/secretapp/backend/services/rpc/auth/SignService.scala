@@ -133,6 +133,9 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
+    def nonEmpty(s: String): Validation[NonEmptyList[String], String] =
+      if (s.isEmpty) "Should be nonempty".failureNel else s.success
+
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
     else {
@@ -156,12 +159,18 @@ trait SignService extends PackageCommon with RpcCommon {
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
                     case None =>
-                      val userId = genUserId
-                      val accessSalt = genUserAccessSalt
-                      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                        phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
-                      UserRecord.insertEntityWithPhoneAndPK(user)
-                      Future.successful(auth(user))
+                      nonEmpty(req.firstName).fold(
+                      { errors =>
+                        Future.successful(Error(400, "FIRST_NAME_INVALID", errors.toList.mkString(", "), false).left)
+                      },
+                      { firstName =>
+                        val userId = genUserId
+                        val accessSalt = genUserAccessSalt
+                        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                          phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
+                        UserRecord.insertEntityWithPhoneAndPK(user)
+                        Future.successful(auth(user))
+                      })
                     case Some(rec) => signIn(rec.userId)
                   }
               }
