@@ -135,15 +135,38 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
-    def nonEmpty(s: String): Validation[NonEmptyList[String], String] = {
+    def nonEmpty(s: String): ValidationNel[String, String] = {
       val trimmed = s.trim
       if (trimmed.isEmpty) "Should be nonempty".failureNel else trimmed.success
     }
 
-    def printable(s: String): Validation[NonEmptyList[String], String] = {
+    def printable(s: String): ValidationNel[String, String] = {
       val p = Pattern.compile("\\p{Print}+")
       if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
     }
+
+    def validName(s: String): ValidationNel[String, String] =
+      nonEmpty(s).flatMap(printable)
+
+    def withValidFirstName(n: String)
+                          (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      validName(n).fold({ errors =>
+          Future.successful(Error(400, "FIRST_NAME_INVALID", errors.toList.mkString(", "), false).left)
+        }, f)
+
+    def withValidLastName(n: String)
+                         (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      validName(n).fold({ errors =>
+          Future.successful(Error(400, "LAST_NAME_INVALID", errors.toList.mkString(", "), false).left)
+        }, f)
+
+    def withValidFirstAndLastNames(fn: String, optLn: Option[String])
+                                  (f: (String, Option[String]) => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      withValidFirstName(fn) { vfn =>
+        optLn
+          .some(ln => withValidLastName(ln)(vln => f(vfn, vln.some)))
+          .none(f(vfn, none[String]))
+      }
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
@@ -167,19 +190,14 @@ trait SignService extends PackageCommon with RpcCommon {
                 case \/-(req: RequestSignUp) =>
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
-                    case None =>
-                      nonEmpty(req.firstName).flatMap(printable).fold(
-                      { errors =>
-                        Future.successful(Error(400, "FIRST_NAME_INVALID", errors.toList.mkString(", "), false).left)
-                      },
-                      { firstName =>
-                        val userId = genUserId
-                        val accessSalt = genUserAccessSalt
-                        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                          phoneNumber = phoneNumber, firstName = req.firstName, lastName = req.lastName)
-                        UserRecord.insertEntityWithPhoneAndPK(user)
-                        Future.successful(auth(user))
-                      })
+                    case None => withValidFirstAndLastNames(req.firstName, req.lastName) { (firstName, optLastName) =>
+                      val userId = genUserId
+                      val accessSalt = genUserAccessSalt
+                      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                        phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
+                      UserRecord.insertEntityWithPhoneAndPK(user)
+                      Future.successful(auth(user))
+                    }
                     case Some(rec) => signIn(rec.userId)
                   }
               }
