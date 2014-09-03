@@ -240,6 +240,26 @@ class SignServiceSpec extends RpcSpec {
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
+
+    "fail with invalid public key if public key is empty" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val publicKey = BitVector.empty
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+      insertAuthAndSessionId()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(phoneNumber)
+
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
+      val messageId = rand.nextLong
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PUBLIC_KEY_INVALID", "Should be nonempty", false))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    }
+
     /*
     "failed with invalid public key" in {
       implicit val (probe, apiActor) = probeAndActor()

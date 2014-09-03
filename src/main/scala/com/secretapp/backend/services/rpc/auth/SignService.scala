@@ -135,18 +135,18 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
-    def nonEmpty(s: String): ValidationNel[String, String] = {
+    def nonEmptyString(s: String): ValidationNel[String, String] = {
       val trimmed = s.trim
       if (trimmed.isEmpty) "Should be nonempty".failureNel else trimmed.success
     }
 
-    def printable(s: String): ValidationNel[String, String] = {
+    def printableString(s: String): ValidationNel[String, String] = {
       val p = Pattern.compile("\\p{Print}+")
       if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
     }
 
     def validName(n: String): ValidationNel[String, String] =
-      nonEmpty(n).flatMap(printable)
+      nonEmptyString(n).flatMap(printableString)
 
     def withValidName(n: String, e: String)
                      (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
@@ -163,6 +163,14 @@ trait SignService extends PackageCommon with RpcCommon {
     def withValidFirstName(n: String) = withValidName(n, "FIRST_NAME_INVALID") _
 
     def withValidOptLastName(optn: Option[String]) = withValidOptName(optn, "LAST_NAME_INVALID") _
+
+    def validPublicKey(k: BitVector): ValidationNel[String, BitVector] =
+      if (k == BitVector.empty) "Should be nonempty".failureNel else k.success
+
+    def withValidPublicKey(k: BitVector)(f: BitVector => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      validPublicKey(k).fold({ errors =>
+        Future.successful(Error(400, "PUBLIC_KEY_INVALID", errors.toList.mkString(", "), false).left)
+      }, f)
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
@@ -188,12 +196,14 @@ trait SignService extends PackageCommon with RpcCommon {
                   phoneR match {
                     case None => withValidFirstName(req.firstName) { firstName =>
                       withValidOptLastName(req.lastName) { optLastName =>
-                        val userId = genUserId
-                        val accessSalt = genUserAccessSalt
-                        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                          phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
-                        UserRecord.insertEntityWithPhoneAndPK(user)
-                        Future.successful(auth(user))
+                        withValidPublicKey(publicKey) { publicKey =>
+                          val userId = genUserId
+                          val accessSalt = genUserAccessSalt
+                          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                            phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
+                          UserRecord.insertEntityWithPhoneAndPK(user)
+                          Future.successful(auth(user))
+                        }
                       }
                     }
                     case Some(rec) => signIn(rec.userId)
