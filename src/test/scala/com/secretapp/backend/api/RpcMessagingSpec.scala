@@ -8,14 +8,14 @@ import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
-import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
 import org.scalamock.specs2.MockFactory
@@ -133,6 +133,14 @@ class RpcMessagingSpec extends RpcSpec {
       }
 
       getState.seq must equalTo(initialState.seq + 1)
+    }
+
+    "respond to RequestSendMessage with error if messages.length is zero" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      authDefaultUser()
+
+      RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
     }
   }
 }

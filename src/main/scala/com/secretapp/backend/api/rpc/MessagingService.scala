@@ -7,18 +7,18 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.rpc.{ Error, Ok }
 import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok }
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
@@ -37,10 +37,10 @@ class MessagingServiceActor(
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
   def receive: Actor.Receive = {
-    case RpcProtocol.Request(p, messageId,
-      RequestSendMessage(
-        uid, accessHash, randomId, useAesKey, aesMessage, messages
-        )) =>
+    case RpcProtocol.Request(p, messageId, RequestSendMessage(_, _, _, _, _, messages)) if messages.length == 0 =>
+      handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "ZERO_MESSAGES_LENGTH", "Messages lenght is zero.", false))).right)
+
+    case RpcProtocol.Request(p, messageId, RequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages)) =>
       Option(randomIds.get(randomId)) match {
         case Some(_) =>
           handleActor ! PackageToSend(p.replyWith(messageId,
