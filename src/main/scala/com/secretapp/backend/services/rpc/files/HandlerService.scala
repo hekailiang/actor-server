@@ -71,10 +71,16 @@ trait HandlerService extends GeneratorService {
     }
   }
 
+  protected def readBuffer(buffer: ByteBuffer): Array[Byte] = {
+    val bytes: Array[Byte] = new Array(buffer.remaining)
+    buffer.get(bytes, 0, bytes.length)
+    bytes
+  }
+
   protected lazy val inputCRC32: Iteratee[ByteBuffer, CRC32] = {
     Iteratee.fold[ByteBuffer, CRC32](new CRC32) {
       (crc32, buffer) =>
-        crc32.update(buffer)
+        crc32.update(readBuffer(buffer))
         crc32
     }
   }
