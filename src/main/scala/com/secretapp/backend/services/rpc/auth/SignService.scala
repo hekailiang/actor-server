@@ -145,28 +145,24 @@ trait SignService extends PackageCommon with RpcCommon {
       if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
     }
 
-    def validName(s: String): ValidationNel[String, String] =
-      nonEmpty(s).flatMap(printable)
+    def validName(n: String): ValidationNel[String, String] =
+      nonEmpty(n).flatMap(printable)
 
-    def withValidFirstName(n: String)
-                          (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+    def withValidName(n: String, e: String)
+                     (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
       validName(n).fold({ errors =>
-          Future.successful(Error(400, "FIRST_NAME_INVALID", errors.toList.mkString(", "), false).left)
-        }, f)
+        Future.successful(Error(400, e, errors.toList.mkString(", "), false).left)
+      }, f)
 
-    def withValidLastName(n: String)
-                         (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
-      validName(n).fold({ errors =>
-          Future.successful(Error(400, "LAST_NAME_INVALID", errors.toList.mkString(", "), false).left)
-        }, f)
+    def withValidOptName(optn: Option[String], e: String)
+                        (f: Option[String] => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      optn
+        .some(n => withValidName(n, e)(vn => f(vn.some)))
+        .none(f(none))
 
-    def withValidFirstAndLastNames(fn: String, optLn: Option[String])
-                                  (f: (String, Option[String]) => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
-      withValidFirstName(fn) { vfn =>
-        optLn
-          .some(ln => withValidLastName(ln)(vln => f(vfn, vln.some)))
-          .none(f(vfn, none[String]))
-      }
+    def withValidFirstName(n: String) = withValidName(n, "FIRST_NAME_INVALID") _
+
+    def withValidOptLastName(optn: Option[String]) = withValidOptName(optn, "LAST_NAME_INVALID") _
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
@@ -190,13 +186,15 @@ trait SignService extends PackageCommon with RpcCommon {
                 case \/-(req: RequestSignUp) =>
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
-                    case None => withValidFirstAndLastNames(req.firstName, req.lastName) { (firstName, optLastName) =>
-                      val userId = genUserId
-                      val accessSalt = genUserAccessSalt
-                      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                        phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
-                      UserRecord.insertEntityWithPhoneAndPK(user)
-                      Future.successful(auth(user))
+                    case None => withValidFirstName(req.firstName) { firstName =>
+                      withValidOptLastName(req.lastName) { optLastName =>
+                        val userId = genUserId
+                        val accessSalt = genUserAccessSalt
+                        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
+                          phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
+                        UserRecord.insertEntityWithPhoneAndPK(user)
+                        Future.successful(auth(user))
+                      }
                     }
                     case Some(rec) => signIn(rec.userId)
                   }
