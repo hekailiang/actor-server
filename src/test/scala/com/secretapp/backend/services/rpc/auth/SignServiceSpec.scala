@@ -171,10 +171,10 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      PhoneRecord.dropEntity(phoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "   ", "Klim".some, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "   ", "Klim".some, publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -190,10 +190,10 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      PhoneRecord.dropEntity(phoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "\u200Finvalid", "Klim".some, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "\u200Finvalid", "Klim".some, publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -209,10 +209,10 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      PhoneRecord.dropEntity(phoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", "   ".some, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy", "   ".some, publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -228,10 +228,10 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      PhoneRecord.dropEntity(phoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", "\u200Finvalid".some, publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy", "\u200Finvalid".some, publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
@@ -247,10 +247,10 @@ class SignServiceSpec extends RpcSpec {
       val publicKey = BitVector.empty
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthAndSessionId()
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-      PhoneRecord.dropEntity(phoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy", Some("Klim"), publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)

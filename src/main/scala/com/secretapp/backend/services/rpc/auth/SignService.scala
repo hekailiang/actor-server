@@ -145,8 +145,10 @@ trait SignService extends PackageCommon with RpcCommon {
       if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
     }
 
-    def validName(n: String): ValidationNel[String, String] =
+    def validName(n: String): ValidationNel[String, String] = {
+      import scalaz.Validation.FlatMap._
       nonEmptyString(n).flatMap(printableString)
+    }
 
     def withValidName(n: String, e: String)
                      (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =

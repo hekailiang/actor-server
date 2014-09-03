@@ -136,10 +136,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "respond to RequestSendMessage with error if messages.length is zero" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      authDefaultUser()
-
+      implicit val scope = RpcTestScope()
       RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
     }
   }
