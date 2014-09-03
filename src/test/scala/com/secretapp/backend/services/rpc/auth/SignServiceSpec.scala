@@ -179,7 +179,7 @@ class SignServiceSpec extends RpcSpec {
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "FIRST_NAME_INVALID", "Should be nonempty", false))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "FIRSTNAME_INVALID", "Should be nonempty", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -198,7 +198,7 @@ class SignServiceSpec extends RpcSpec {
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "FIRST_NAME_INVALID", "Should contain printable characters only", false))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "FIRSTNAME_INVALID", "Should contain printable characters only", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -217,7 +217,7 @@ class SignServiceSpec extends RpcSpec {
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "LAST_NAME_INVALID", "Should be nonempty", false))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "LASTNAME_INVALID", "Should be nonempty", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
@@ -236,7 +236,7 @@ class SignServiceSpec extends RpcSpec {
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "LAST_NAME_INVALID", "Should contain printable characters only", false))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "LASTNAME_INVALID", "Should contain printable characters only", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }
