@@ -135,20 +135,18 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
-    def nonEmptyString(s: String): ValidationNel[String, String] = {
+    def nonEmptyString(s: String): \/[NonEmptyList[String], String] = {
       val trimmed = s.trim
-      if (trimmed.isEmpty) "Should be nonempty".failureNel else trimmed.success
+      if (trimmed.isEmpty) "Should be nonempty".wrapNel.left else trimmed.right
     }
 
-    def printableString(s: String): ValidationNel[String, String] = {
+    def printableString(s: String): \/[NonEmptyList[String], String] = {
       val p = Pattern.compile("\\p{Print}+")
-      if (p.matcher(s).matches()) s.success else "Should contain printable characters only".failureNel
+      if (p.matcher(s).matches()) s.right else "Should contain printable characters only".wrapNel.left
     }
 
-    def validName(n: String): ValidationNel[String, String] = {
-      import scalaz.Validation.FlatMap._
+    def validName(n: String): \/[NonEmptyList[String], String] =
       nonEmptyString(n).flatMap(printableString)
-    }
 
     def withValidName(n: String, e: String)
                      (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
