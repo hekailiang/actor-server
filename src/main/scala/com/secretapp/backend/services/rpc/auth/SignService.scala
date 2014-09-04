@@ -147,19 +147,11 @@ trait SignService extends PackageCommon with RpcCommon {
     def validName(n: String): \/[NonEmptyList[String], String] =
       nonEmptyString(n).flatMap(printableString)
 
-    def withValidName(n: String, e: String)
+    def withValidName(n: String)
                      (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
       validName(n).fold({ errors =>
-        Future.successful(Error(400, e, errors.toList.mkString(", "), false).left)
+        Future.successful(Error(400, "NAME_INVALID", errors.toList.mkString(", "), false).left)
       }, f)
-
-    def withValidOptName(optn: Option[String], e: String)
-                        (f: Option[String] => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
-      optn
-        .some(n => withValidName(n, e)(vn => f(vn.some)))
-        .none(f(none))
-
-    def withValidFirstName(n: String) = withValidName(n, "NAME_INVALID") _
 
     def validPublicKey(k: BitVector): ValidationNel[String, BitVector] =
       if (k == BitVector.empty) "Should be nonempty".failureNel else k.success
@@ -191,7 +183,7 @@ trait SignService extends PackageCommon with RpcCommon {
                 case \/-(req: RequestSignUp) =>
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
-                    case None => withValidFirstName(req.name) { name =>
+                    case None => withValidName(req.name) { name =>
                         withValidPublicKey(publicKey) { publicKey =>
                           val userId = genUserId
                           val accessSalt = genUserAccessSalt
