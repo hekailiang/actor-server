@@ -66,7 +66,7 @@ sealed trait UpdatesService {
     val res = for {
       seq <- getSeq(authId)
       difference <- CommonUpdateRecord.getDifference(
-        authId, state, differenceSize + 1) flatMap (mkDifference(seq, _))
+        authId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
       difference.right
@@ -96,11 +96,11 @@ sealed trait UpdatesService {
     }
   }
 
-  protected def mkDifference(seq: Int, allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
+  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val users = mkUsers(authId, updates)
-    val state = if (updates.length > 0) Some(updates.last.key) else None
+    val state = if (updates.length > 0) Some(updates.last.key) else requestState
     users map (Difference(seq, state, _,
       updates map { u => DifferenceUpdate(u.value) }, needMore))
   }

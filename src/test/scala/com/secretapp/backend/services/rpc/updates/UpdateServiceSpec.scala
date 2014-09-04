@@ -104,16 +104,9 @@ class UpdatesServiceSpec extends RpcSpec {
 
         updates.map(_.body.asInstanceOf[update.Message].message).toSet must equalTo(expectedMessages)
 
-/*
         val diff3 = RequestGetDifference(diff2.seq, diff2.state) :~> <~:[Difference]
-        println("DIFF3")
-        println(diff3)
-        diff3.updates.length must equalTo(50)
-
-        val diff4 = RequestGetDifference(diff3.seq, diff3.state) :~> <~:[Difference]
-        println("DIFF4")
-        println(diff4)
-        diff4.updates.length must equalTo(0)*/
+        diff3.updates.length must equalTo(0)
+        diff3.state must not equalTo(None)
       }
     }
   }
