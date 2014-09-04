@@ -21,6 +21,8 @@ class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies
     with WrappedPackageService with PackageService {
   val handleActor = self
 
+  context watch connection
+
   def receive = {
     case PackageToSend(pe) => log.info(s"PackageToSend($pe)"); pe match {
       case \/-(p) =>
@@ -54,8 +56,8 @@ class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies
       log.info("Connection closed by peer")
       context stop self
 
-    case ErrorClosed =>
-      log.error("ErrorClosed")
+    case ErrorClosed(msg) =>
+      log.error(s"ErrorClosed ${msg}")
       context stop self
 
     case Closed =>
