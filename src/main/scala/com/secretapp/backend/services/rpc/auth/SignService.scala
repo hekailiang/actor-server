@@ -122,9 +122,7 @@ trait SignService extends PackageCommon with RpcCommon {
           override val smsCode = authSmsCode.smsCode
           override val publicKey = r.publicKey
         }
-      ) yield {
-        (vr, authSmsCode)
-      }
+      ) yield (vr, authSmsCode)
 
     def nonEmptyName(n: String): Result[String] = Future.successful(
       if (n.trim.isEmpty)
@@ -158,17 +156,15 @@ trait SignService extends PackageCommon with RpcCommon {
 
     def validSignInRequest(r: RequestSignIn): Result[(RequestSignIn, AuthSmsCode, Phone)] =
       for (
-        va               <- validRequest(r);
-        (vr, authSmsCode) = va;
-        phone            <- phoneExists(vr.phoneNumber);
+        (vr, authSmsCode) <- validRequest(r);
+        phone             <- phoneExists(vr.phoneNumber);
         cr = RequestSignIn(vr.phoneNumber, vr.smsHash, vr.smsCode, vr.publicKey)
       ) yield (cr, authSmsCode, phone)
 
     def validSignUpRequest(r: RequestSignUp): Result[(RequestSignUp, AuthSmsCode)] =
       for (
-        va <- validRequest(r);
-        (vr, authSmsCode) = va;
-        vn <- validName(r.name);
+        (vr, authSmsCode) <- validRequest(r);
+        vn                <- validName(r.name);
         cr = RequestSignUp(vr.phoneNumber, vr.smsHash, vr.smsCode, vn, vr.publicKey)
       ) yield (cr, authSmsCode)
   }
