@@ -160,9 +160,9 @@ trait SignService extends PackageCommon with RpcCommon {
         .some(n => withValidName(n, e)(vn => f(vn.some)))
         .none(f(none))
 
-    def withValidFirstName(n: String) = withValidName(n, "FIRST_NAME_INVALID") _
+    def withValidFirstName(n: String) = withValidName(n, "FIRSTNAME_INVALID") _
 
-    def withValidOptLastName(optn: Option[String]) = withValidOptName(optn, "LAST_NAME_INVALID") _
+    def withValidOptLastName(optn: Option[String]) = withValidOptName(optn, "LASTNAME_INVALID") _
 
     def validPublicKey(k: BitVector): ValidationNel[String, BitVector] =
       if (k == BitVector.empty) "Should be nonempty".failureNel else k.success
