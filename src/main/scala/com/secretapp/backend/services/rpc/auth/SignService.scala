@@ -220,26 +220,24 @@ trait SignService extends PackageCommon with RpcCommon {
 
   private def signIn(authId: Long, userId: Int, publicKey: BitVector, phone: Long): RpcResult =
     V.userExists(userId) { user =>
-      def updateUserRecord(u: User) =
-        UserRecord.insertPartEntityWithPhoneAndPK(u.uid, authId, publicKey, phone)
-
       val publicKeyHash = PublicKey.keyHash(publicKey)
+
+      def updateUserRecord() =
+        UserRecord.insertPartEntityWithPhoneAndPK(user.uid, authId, publicKey, phone) onSuccess { case _ =>
+          pushNewDeviceUpdates(authId, user.uid, publicKeyHash, publicKey)
+        }
 
       val userToAuth = user match {
         case u if u.authId == authId && u.publicKey == publicKey => u
 
         case u if u.authId == authId =>
           UserRecord.removeKeyHash(u.uid, u.publicKeyHash, phone)
-          updateUserRecord(u) onSuccess { case _ =>
-            pushNewDeviceUpdates(authId, u.uid, publicKeyHash, publicKey)
-          }
+          updateUserRecord()
           val keyHashes = u.keyHashes.filter(_ != u.publicKeyHash) + publicKeyHash
           u.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
 
         case u =>
-          updateUserRecord(u) onSuccess { case _ =>
-            pushNewDeviceUpdates(authId, u.uid, publicKeyHash, publicKey)
-          }
+          updateUserRecord()
           val keyHashes = u.keyHashes + publicKeyHash
           u.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
       }
@@ -254,12 +252,12 @@ trait SignService extends PackageCommon with RpcCommon {
 
   private def handleSignUp(p: Package, r: RequestSignUp): RpcResult =
     V.validSignUpRequest(r) { case (r, authSmsCode) =>
+      AuthSmsCodeRecord.dropEntity(r.phoneNumber)
+
       PhoneRecord.getEntity(r.phoneNumber) flatMap {
         _ some { phone =>
-          AuthSmsCodeRecord.dropEntity(r.phoneNumber)
           signIn(p.authId, phone.userId, r.publicKey, r.phoneNumber)
         } none {
-          AuthSmsCodeRecord.dropEntity(r.phoneNumber)
           val userId = genUserId
           val user = User.build(userId, p.authId, r.publicKey, r.phoneNumber, genUserAccessSalt, r.name)
           UserRecord.insertEntityWithPhoneAndPK(user)
