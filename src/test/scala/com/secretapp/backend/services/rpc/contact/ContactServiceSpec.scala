@@ -28,25 +28,27 @@ class ContactServiceSpec extends RpcSpec {
     "handle RPC request import contacts" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
+      implicit val authId = rand.nextLong
+
       val messageId = rand.nextLong()
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
       val clientPhoneId = rand.nextLong()
-      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
+      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       authUser(user, defaultPhoneNumber)
-      val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
+      val secondUser = User.build(uid = userId + 1, authId = authId + 1, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber + 1, name = name)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
       val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, defaultPhoneNumber + 1))
       val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
-      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      val packageBlob = pack(authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val resContacts = immutable.Seq(ImportedContact(clientPhoneId, secondUser.uid))
-      val resBody = ResponseImportedContacts(immutable.Seq(secondUser.toStruct(mockAuthId)), resContacts)
+      val resBody = ResponseImportedContacts(immutable.Seq(secondUser.toStruct(authId)), resContacts)
       val rpcRes = RpcResponseBox(messageId, Ok(resBody))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)

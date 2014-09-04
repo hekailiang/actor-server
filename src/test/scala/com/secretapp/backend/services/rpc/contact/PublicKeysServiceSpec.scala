@@ -32,22 +32,24 @@ class PublicKeysServiceSpec extends RpcSpec {
     "return public keys" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
+      implicit val authId = rand.nextLong
+
       val messageId = rand.nextLong()
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
       val clientPhoneId = rand.nextLong()
-      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
+      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       authUser(user, defaultPhoneNumber)
-      val secondUser = User.build(uid = userId + 1, authId = mockAuthId + 1, publicKey = publicKey, accessSalt = userSalt,
+      val secondUser = User.build(uid = userId + 1, authId = authId + 1, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber + 1, name = name)
-      val accessHash = User.getAccessHash(mockAuthId, secondUser.uid, secondUser.accessSalt)
+      val accessHash = User.getAccessHash(authId, secondUser.uid, secondUser.accessSalt)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
       val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
       val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
-      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      val packageBlob = pack(authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))

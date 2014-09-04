@@ -16,36 +16,4 @@ import scala.util.Random
 trait RpcSpec extends ActorLikeSpecification with CassandraSpecification with ActorServiceHelpers with MockFactory
   with RpcSpecHelpers {
   override lazy val actorSystemName = "api"
-
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs () returning (12345L)
-      }
-    }
-  }
-
-  val smsCode = "test_sms_code"
-  val smsHash = "test_sms_hash"
-  val userId = 101
-  val userSalt = "user_salt"
-
-  trait GeneratorServiceMock extends GeneratorService {
-    override def genNewAuthId = mockAuthId
-    override def genSmsCode = smsCode
-    override def genSmsHash = smsHash
-    override def genUserId = userId
-    override def genUserAccessSalt = userSalt
-  }
-
-  val counters = new Counters
-  val countersProxies = new CountersProxies
-
-  def probeAndActor() = {
-    val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, countersProxies)(session) with RandomServiceMock with GeneratorServiceMock))
-    (probe, actor)
-  }
 }

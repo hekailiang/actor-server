@@ -1,15 +1,20 @@
 package org.specs2.mutable
 
-import akka.actor.ActorRef
+import akka.actor._
 import akka.io.Tcp.{Write, Received}
 import akka.testkit.{TestProbe, TestKitBase}
 import akka.util.ByteString
+import com.secretapp.backend.api.ApiHandlerActor
+import com.secretapp.backend.api.Counters
+import com.secretapp.backend.api.CountersProxies
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
+import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon.Authenticate
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
+import org.scalamock.specs2.MockFactory
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
 import scala.concurrent.blocking
@@ -19,6 +24,7 @@ import com.secretapp.backend.data.models.{Phone, SessionId, AuthId, User}
 import com.secretapp.backend.persist.{PhoneRecord, UserRecord, SessionIdRecord, AuthIdRecord}
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.common.RandomService
+import scala.util.Random
 import scodec.bits._
 import scalaz._
 import Scalaz._
@@ -29,7 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.security.{Security, KeyPairGenerator, SecureRandom}
 
 trait ActorServiceHelpers extends RandomService {
-  self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers =>
+  self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers with MockFactory =>
 
   Security.addProvider(new BouncyCastleProvider())
 
@@ -44,10 +50,6 @@ trait ActorServiceHelpers extends RandomService {
     ByteString(res.toOption.get.toByteBuffer)
   }
 
-  def newSession(sessionId: Long, messageId: Long) = {
-    protoPackageBox.build(mockAuthId, sessionId, messageId, NewSession(sessionId, messageId))
-  }
-
   def genPublicKey = {
     val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
     val g = KeyPairGenerator.getInstance("ECDSA", "BC")
@@ -57,17 +59,17 @@ trait ActorServiceHelpers extends RandomService {
     BitVector(pubKey.getQ.getEncoded)
   }
 
-  def insertAuthId(userId: Option[Int] = None): Unit = blocking {
-    AuthIdRecord.insertEntity(AuthId(mockAuthId, userId)).sync()
+  def insertAuthId(authId: Long, userId: Option[Int] = None): Unit = blocking {
+    AuthIdRecord.insertEntity(AuthId(authId, userId)).sync()
   }
 
-  def insertSessionId(implicit s: SessionIdentifier): Unit = blocking {
-    SessionIdRecord.insertEntity(SessionId(mockAuthId, s.id)).sync()
+  def insertSessionId(authId: Long)(implicit s: SessionIdentifier): Unit = blocking {
+    SessionIdRecord.insertEntity(SessionId(authId, s.id)).sync()
   }
 
-  def insertAuthAndSessionId(userId: Option[Int] = None)(implicit s: SessionIdentifier): Unit = {
-    insertAuthId(userId)
-    insertSessionId
+  def insertAuthAndSessionId(authId: Long, userId: Option[Int] = None)(implicit s: SessionIdentifier): Unit = {
+    insertAuthId(authId, userId)
+    insertSessionId(authId)
   }
 
   def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
@@ -77,24 +79,77 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
-    insertAuthAndSessionId(u.uid.some)
+    insertAuthAndSessionId(u.authId, u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
     destActor ! Authenticate(u)
     u
   }
 
-  def authDefaultUser(uid: Int = 1, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
+  def authDefaultUser(uid: Int = 1, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): User = blocking {
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
-    val user = User.build(uid = uid, authId = mockAuthId, publicKey = publicKey, accessSalt = "salt",
+    val user = User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",
       phoneNumber = phoneNumber, name = name)
-    val accessHash = User.getAccessHash(mockAuthId, uid, "salt")
+    val accessHash = User.getAccessHash(authId, uid, "salt")
     authUser(user, phoneNumber)
   }
 
   case class SessionIdentifier(id: Long)
   object SessionIdentifier {
     def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong)
+  }
+
+  trait RandomServiceMock extends RandomService { self: Actor =>
+    override lazy val rand = mock[Random]
+
+    override def preStart(): Unit = {
+      withExpectations {
+        (rand.nextLong _) stubs () returning (12345L)
+      }
+    }
+  }
+
+  val smsCode = "test_sms_code"
+  val smsHash = "test_sms_hash"
+  val userId = 101
+  val userSalt = "user_salt"
+
+  trait GeneratorServiceMock extends GeneratorService {
+    override def genNewAuthId = mockAuthId
+    override def genSmsCode = smsCode
+    override def genSmsHash = smsHash
+    override def genUserId = userId
+    override def genUserAccessSalt = userSalt
+  }
+
+  val counters = new Counters
+  val countersProxies = new CountersProxies
+
+  def probeAndActor() = {
+    val probe = TestProbe()
+    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, countersProxies)(session) with RandomServiceMock with GeneratorServiceMock))
+    (probe, actor)
+  }
+
+  case class TestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User)
+  object TestScope {
+    def pair(): (TestScope, TestScope) = {
+      pair(1, 2)
+    }
+
+    def pair(uid1: Int, uid2: Int): (TestScope, TestScope) = {
+      (apply(uid1, 79632740769L), apply(uid2, 79853867016L))
+    }
+
+    def apply(): TestScope = apply(1, 79632740769L)
+
+    def apply(uid: Int, phone: Long): TestScope = {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val session = SessionIdentifier()
+      implicit val authId = rand.nextLong
+      val user = authDefaultUser(uid)
+      TestScope(probe, apiActor, session, user)
+    }
   }
 
   implicit def byteVector2ByteString(v: ByteVector): ByteString = ByteString(v.toByteBuffer)
@@ -104,35 +159,35 @@ trait ActorServiceHelpers extends RandomService {
   case class WrappedReceivePackage(f: (Long) => Unit)
 
   implicit class WrappedTM(m: TransportMessage) {
-    def :~>(wp: WrappedReceivePackage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier): Unit = {
-      val r = pack(m)
+    def :~>(wp: WrappedReceivePackage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, authId: Long): Unit = {
+      val r = pack(authId, m)
       probe.send(destActor, Received(r.blob))
       wp.f(r.messageId)
     }
   }
 
-  def @<~:(m: TransportMessage)(implicit probe: TestProbe, s: SessionIdentifier): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
-    val res = pack(m, messageId)
-    val ack = pack(MessageAck(Array(messageId)), messageId) // TODO: move into DSL method
-    val ses = pack(NewSession(s.id, messageId), messageId) // TODO: move into DSL method
+  def @<~:(m: TransportMessage)(implicit probe: TestProbe, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
+    val res = pack(authId, m, messageId)
+    val ack = pack(authId, MessageAck(Array(messageId)), messageId) // TODO: move into DSL method
+    val ses = pack(authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
     val expectedMsg = Seq(ses, ack, res)
     probe.expectMsgAllOf(expectedMsg.map(m => Write(m.blob)) :_*)
   }
 
   case class PackResult(blob: ByteString, messageId: Long)
 
-  def pack(m: MessageBox)(implicit s: SessionIdentifier): PackResult = {
-    pack(m.body, m.messageId)
+  def pack(authId: Long, m: MessageBox)(implicit s: SessionIdentifier): PackResult = {
+    pack(authId, m.body, m.messageId)
   }
 
-  def pack(m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())
+  def pack(authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())
           (implicit s: SessionIdentifier): PackResult = {
-    val p = protoPackageBox.build(mockAuthId, s.id, messageId, m)
+    val p = protoPackageBox.build(authId, s.id, messageId, m)
     PackResult(codecRes2BS(p), messageId)
   }
 
-  def ack(messageId: Long)(implicit s: SessionIdentifier): PackResult = {
-    val p = protoPackageBox.build(mockAuthId, s.id, messageId, MessageAck(Array(messageId)))
+  def ack(messageId: Long, authId: Long)(implicit s: SessionIdentifier): PackResult = {
+    val p = protoPackageBox.build(authId, s.id, messageId, MessageAck(Array(messageId)))
     PackResult(codecRes2BS(p), messageId)
   }
 

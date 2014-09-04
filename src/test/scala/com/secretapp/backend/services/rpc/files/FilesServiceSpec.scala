@@ -32,12 +32,12 @@ class FilesServiceSpec extends RpcSpec {
   val blockSize = 0x2000
 
   def requestUploadStart()(
-    implicit scope: RpcTestScope): ResponseUploadStarted = {
+    implicit scope: TestScope): ResponseUploadStarted = {
     RequestStartUpload() :~> <~:[ResponseUploadStarted]
   }
 
   def uploadFileBlocks(config: UploadConfig)(
-    implicit scope: RpcTestScope) = {
+    implicit scope: TestScope) = {
     RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponsePartUploaded]
     RequestUploadPart(config,
       blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
@@ -48,7 +48,7 @@ class FilesServiceSpec extends RpcSpec {
 
   "files service" should {
     "respond to RequestUploadStart" in {
-      implicit val scope = RpcTestScope()
+      implicit val scope = TestScope()
 
       {
         val config = requestUploadStart().config
@@ -57,7 +57,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestUploadFile" in {
-      implicit val scope = RpcTestScope()
+      implicit val scope = TestScope()
 
       {
         val config = requestUploadStart().config
@@ -67,7 +67,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestCompleteUpload" in {
-      implicit val scope = RpcTestScope()
+      implicit val scope = TestScope()
 
       {
         val config = requestUploadStart().config
@@ -82,7 +82,7 @@ class FilesServiceSpec extends RpcSpec {
     }
 
     "respond to RequestGetFile" in {
-      implicit val scope = RpcTestScope()
+      implicit val scope = TestScope()
 
       val config = requestUploadStart().config
       uploadFileBlocks(config)

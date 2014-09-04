@@ -18,22 +18,6 @@ import scala.reflect.ClassTag
 trait RpcSpecHelpers {
   self: RpcSpec =>
 
-  case class RpcTestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User)
-  object RpcTestScope {
-    def pair(): (RpcTestScope, RpcTestScope) = {
-      (apply(1, 79632740769L), apply(2, 79853867016L))
-    }
-
-    def apply(): RpcTestScope = apply(1, 79632740769L)
-
-    def apply(uid: Int, phone: Long): RpcTestScope = {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      val user = authDefaultUser()
-      RpcTestScope(probe, apiActor, session, user)
-    }
-  }
-
   implicit class AnyRefWithSpecHelpers(x: AnyRef) {
     def assertInstanceOf[A: ClassTag]: A = {
       x should beAnInstanceOf[A]
@@ -68,17 +52,17 @@ trait RpcSpecHelpers {
     /**
       * Sends message
       */
-    def :~>!(implicit scope: RpcTestScope): Unit = {
-      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
-      val r = pack(boxed(m))
+    def :~>!(implicit scope: TestScope): Unit = {
+      implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+      val r = pack(u.authId, boxed(m))
       probe.send(destActor, Received(r.blob))
     }
 
     /**
       * Sends message, waits for reply, checks its type and returns the reply
       */
-    def :~>?[A <: RpcResponseMessage : ClassTag](klass: Class[A])(implicit scope: RpcTestScope): A = {
-      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    def :~>?[A <: RpcResponseMessage : ClassTag](klass: Class[A])(implicit scope: TestScope): A = {
+      implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       receiveOneWithAck().assertResponseOk[A]
     }
@@ -86,8 +70,8 @@ trait RpcSpecHelpers {
     /**
       * Sends message, asserts reply is error and checks its params
       */
-    def :~>(wp: WrappedReceiveResponseError)(implicit scope: RpcTestScope) = {
-      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    def :~>(wp: WrappedReceiveResponseError)(implicit scope: TestScope) = {
+      implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       val error = receiveOneWithAck().assertResponseError
       wp.f(error)
@@ -96,20 +80,20 @@ trait RpcSpecHelpers {
     /**
       * Sends message, asserts reply is Ok and returns it
       */
-    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit scope: RpcTestScope): A = {
-      implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit scope: TestScope): A = {
+      implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
       receiveOneWithAck().assertResponseOk[A]
     }
   }
 
   def <~:[A <: RpcResponseMessage : ClassTag]: WrappedReceiveResponseOk[A] = {
-    //implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    //implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
     new WrappedReceiveResponseOk[A]()
   }
 
   def <~:(errorCode: Int, errorTag: String): WrappedReceiveResponseError = {
-    //implicit val RpcTestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    //implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
     WrappedReceiveResponseError { error =>
       error.code must equalTo(errorCode)
       error.tag must equalTo(errorTag)

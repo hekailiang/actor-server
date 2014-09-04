@@ -30,11 +30,13 @@ import scodec.codecs.uuid
 class RpcMessagingSpec extends RpcSpec {
   import system.dispatcher
 
-  def getState(implicit sessionId: SessionIdentifier, probe: TestProbe, destActor: ActorRef): updateProto.State = {
+  def getState(implicit scope: TestScope): updateProto.State = {
+    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+
     val rq = updateProto.RequestGetState()
     val messageId = rand.nextLong()
     val rpcRq = RpcRequestBox(Request(rq))
-    val packageBlob = pack(MessageBox(messageId, rpcRq))
+    val packageBlob = pack(u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
 
     val msg = receiveOneWithAck
@@ -45,11 +47,13 @@ class RpcMessagingSpec extends RpcSpec {
       .body.asInstanceOf[updateProto.State]
   }
 
-  def getDifference(seq: Int, state: Option[UUID])(implicit sessionId: SessionIdentifier, probe: TestProbe, destActor: ActorRef): updateProto.Difference = {
+  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
+    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+
     val rq = updateProto.RequestGetDifference(seq, state)
     val messageId = rand.nextLong()
     val rpcRq = RpcRequestBox(Request(rq))
-    val packageBlob = pack(MessageBox(messageId, rpcRq))
+    val packageBlob = pack(u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
 
     val msg = receiveOneWithAck
@@ -62,8 +66,9 @@ class RpcMessagingSpec extends RpcSpec {
 
   "RpcMessaging" should {
     "reply to SendMessage and push to sequence" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val sessionId = SessionIdentifier()
+      //implicit val (probe, apiActor) = probeAndActor()
+      //implicit val sessionId = SessionIdentifier()
+      implicit val scope = TestScope()
 
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
@@ -71,7 +76,7 @@ class RpcMessagingSpec extends RpcSpec {
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      authUser(user, defaultPhoneNumber)
+      authUser(user, defaultPhoneNumber)(scope.apiActor, scope.session)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
@@ -91,11 +96,11 @@ class RpcMessagingSpec extends RpcSpec {
           EncryptedMessage(uid = secondUser.uid, publicKeyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
       val messageId = rand.nextLong()
       val rpcRq = RpcRequestBox(Request(rq))
-      val packageBlob = pack(MessageBox(messageId, rpcRq))
+      val packageBlob = pack(scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
 
       {
-        send(packageBlob)
-        val msg = receiveOneWithAck
+        send(packageBlob)(scope.probe, scope.apiActor)
+        val msg = receiveOneWithAck()(scope.probe)
         val resp = msg
           .body.asInstanceOf[RpcResponseBox]
           .body.asInstanceOf[Ok]
@@ -121,9 +126,9 @@ class RpcMessagingSpec extends RpcSpec {
       Thread.sleep(1000)
 
       {
-        send(packageBlob)
+        send(packageBlob)(scope.probe, scope.apiActor)
 
-        val msg = receiveOneWithAck
+        val msg = receiveOneWithAck()(scope.probe)
 
         val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
         val expectMsg = MessageBox(messageId, rpcRes)
@@ -135,7 +140,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "respond to RequestSendMessage with error if messages.length is zero" in {
-      implicit val scope = RpcTestScope()
+      implicit val scope = TestScope()
       RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
     }
   }

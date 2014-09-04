@@ -47,8 +47,11 @@ class ApiHandlerActorSpec extends RpcSpec {
     "reply pong to ping" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
+      implicit val authId = rand.nextLong
+
       val pingVal = rand.nextLong()
-      insertAuthId()
+      insertAuthId(authId)
+
       Ping(pingVal) :~> @<~:(Pong(pingVal))
     }
 
@@ -63,9 +66,11 @@ class ApiHandlerActorSpec extends RpcSpec {
     "parse packages in single stream" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
-      insertAuthAndSessionId()
+      implicit val authId = rand.nextLong
+
+      insertAuthAndSessionId(authId)
       val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
-      val packages = messages.map(pack(_))
+      val packages = messages.map(pack(authId, _))
       val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
       req.grouped(7) foreach { buf =>
         probe.send(apiActor, Received(buf))
@@ -81,11 +86,13 @@ class ApiHandlerActorSpec extends RpcSpec {
     "handle container with Ping's" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
-      insertAuthAndSessionId()
+      implicit val authId = rand.nextLong
+
+      insertAuthAndSessionId(authId)
 
       val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
       val container = MessageBox(rand.nextLong, Container(messages))
-      val packageBlob = pack(container)
+      val packageBlob = pack(authId, container)
       send(packageBlob)
 
       val expectedPongs = messages map { m =>

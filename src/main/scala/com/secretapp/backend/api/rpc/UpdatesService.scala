@@ -57,7 +57,7 @@ sealed trait UpdatesService {
   private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor, authId)))
   private var subscribedToUpdates = false
   private var subscribingToUpdates = false
-  private val differenceSize = 500
+  private val differenceSize = 300
 
   protected def handleRequestGetDifference(p: Package, messageId: Long)(
     seq: Int, state: Option[UUID]) = {
@@ -98,7 +98,7 @@ sealed trait UpdatesService {
 
   protected def mkDifference(seq: Int, allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
-    val updates = if (needMore) allUpdates.tail else allUpdates
+    val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val users = mkUsers(authId, updates)
     val state = if (updates.length > 0) Some(updates.last.key) else None
     users map (Difference(seq, state, _,
