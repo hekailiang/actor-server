@@ -127,6 +127,27 @@ class SignServiceSpec extends RpcSpec {
       users must be_== (expectUsers).await
     }
 
+    "succeed if name contains cyrillic characters" in {
+      implicit val (probe, apiActor) = probeAndActor()
+      implicit val sessionId = SessionIdentifier()
+      val publicKey = genPublicKey
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+      insertAuthAndSessionId()
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      PhoneRecord.dropEntity(defaultPhoneNumber)
+
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Тимоти Клим", publicKey)))
+      val messageId = rand.nextLong
+      val packageBlob = pack(MessageBox(messageId, rpcReq))
+      send(packageBlob)
+
+      val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
+      val user = struct.User(userId, accessHash, "Тимоти Клим", None, Set(publicKeyHash), defaultPhoneNumber)
+      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
+      val expectMsg = MessageBox(messageId, rpcRes)
+      expectMsgWithAck(expectMsg)
+    }
+
     "fail with invalid sms code" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
@@ -191,7 +212,7 @@ class SignServiceSpec extends RpcSpec {
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
 
-      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "\u200Finvalid", publicKey)))
+      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey)))
       val messageId = rand.nextLong
       val packageBlob = pack(MessageBox(messageId, rpcReq))
       send(packageBlob)

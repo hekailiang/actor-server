@@ -140,8 +140,8 @@ trait SignService extends PackageCommon with RpcCommon {
     }
 
     def printableString(s: String): \/[NonEmptyList[String], String] = {
-      val p = Pattern.compile("\\p{Print}+")
-      if (p.matcher(s).matches()) s.right else "Should contain printable characters only".wrapNel.left
+      val p = Pattern.compile("\\p{Print}+", Pattern.UNICODE_CHARACTER_CLASS)
+      if (p.matcher(s).matches) s.right else "Should contain printable characters only".wrapNel.left
     }
 
     def validName(n: String): \/[NonEmptyList[String], String] =
