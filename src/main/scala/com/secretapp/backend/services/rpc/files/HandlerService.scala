@@ -40,7 +40,7 @@ trait HandlerService extends GeneratorService {
       fileRecord.createFile(id, genFileAccessSalt) map (_ => id)
     } onComplete {
       case Success(fileId) =>
-        val rsp = ResponseUploadStart(UploadConfig(int32codec.encodeValid(fileId)))
+        val rsp = ResponseUploadStarted(UploadConfig(int32codec.encodeValid(fileId)))
         handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
       case Failure(e) =>
         val msg = s"Failed to get next value if file id sequence: ${e.getMessage}"
@@ -62,7 +62,7 @@ trait HandlerService extends GeneratorService {
         case Failure(e) =>
           log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
       }
-      val rsp = ResponseFileUploadStarted()
+      val rsp = ResponsePartUploaded()
       handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
     } catch {
       case e: FileRecordError =>
@@ -97,7 +97,7 @@ trait HandlerService extends GeneratorService {
               if (crc32 == realcrc32) {
                 faccessHash onComplete {
                   case Success(accessHash) =>
-                    val rsp = FileUploaded(FileLocation(fileId, accessHash))
+                    val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
                     handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
                   case Failure(e) =>
                     log.error("Failed to get file accessHash")

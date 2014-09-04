@@ -20,9 +20,9 @@ trait FilesService {
   //countersProxies
 
   def handleRpcFiles(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
-    case rq: RequestUploadStart =>
+    case rq: RequestStartUpload =>
       handler ! RpcProtocol.Request(p, messageId, rq)
-    case rq: RequestUploadFile =>
+    case rq: RequestUploadPart =>
       handler ! RpcProtocol.Request(p, messageId, rq)
     case rq: RequestCompleteUpload =>
       handler ! RpcProtocol.Request(p, messageId, rq)

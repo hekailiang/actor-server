@@ -6,7 +6,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.protocol.codecs.message.update._
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._

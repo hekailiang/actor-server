@@ -4,25 +4,25 @@ import scala.collection.immutable
 import scala.language.implicitConversions
 import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 import scalaz._
 import Scalaz._
 
 case class User(uid: Int,
                 accessHash: Long,
-                firstName: String,
-                lastName: Option[String],
+                name: String,
                 sex: Option[types.Sex],
                 keyHashes: immutable.Set[Long],
-                phoneNumber: Long) extends ProtobufMessage
+                phoneNumber: Long
+) extends ProtobufMessage
 {
-  def toProto = protobuf.User(uid, accessHash, firstName, lastName, sex.flatMap(_.toProto.some),
-    keyHashes.toIndexedSeq, phoneNumber)
+  def toProto = protobuf.User(uid, accessHash, name, sex.flatMap(_.toProto.some),
+    keyHashes.toIndexedSeq, phoneNumber, None)
 }
 
 object User {
   def fromProto(u: protobuf.User): User = u match {
-    case protobuf.User(uid, accessHash, firstName, lastName, sex, keyHashes, phoneNumber) =>
-      User(uid, accessHash, firstName, lastName, sex.flatMap(types.Sex.fromProto(_).some), keyHashes.toSet, phoneNumber)
+    case protobuf.User(uid, accessHash, name, sex, keyHashes, phoneNumber, _) =>
+      User(uid, accessHash, name, sex.flatMap(types.Sex.fromProto(_).some), keyHashes.toSet, phoneNumber)
   }
 }

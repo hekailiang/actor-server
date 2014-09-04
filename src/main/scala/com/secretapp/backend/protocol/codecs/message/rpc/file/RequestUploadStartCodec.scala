@@ -8,17 +8,17 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 
-object RequestUploadStartCodec extends Codec[RequestUploadStart] with utils.ProtobufCodec {
-  def encode(r: RequestUploadStart) = {
-    val boxed = protobuf.RequestUploadStart()
+object RequestUploadStartCodec extends Codec[RequestStartUpload] with utils.ProtobufCodec {
+  def encode(r: RequestStartUpload) = {
+    val boxed = protobuf.RequestStartUpload()
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestUploadStart.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestUploadStart()) => RequestUploadStart()
+    decodeProtobuf(protobuf.RequestStartUpload.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.RequestStartUpload()) => RequestStartUpload()
     }
   }
 }

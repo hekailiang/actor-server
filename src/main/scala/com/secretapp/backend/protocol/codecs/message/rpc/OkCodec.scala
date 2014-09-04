@@ -27,9 +27,9 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r } (protoPayload(ResponseImportedContactsCodec))
     .\(ResponsePublicKeys.responseType) { case r: ResponsePublicKeys => r } (protoPayload(ResponsePublicKeysCodec))
     .\(ResponseFilePart.responseType) { case r: ResponseFilePart => r } (protoPayload(ResponseFilePartCodec))
-    .\(ResponseUploadStart.responseType) { case r: ResponseUploadStart => r } (protoPayload(ResponseUploadStartCodec))
-    .\(ResponseFileUploadStarted.responseType) { case r: ResponseFileUploadStarted => r } (protoPayload(ResponseFileUploadStartedCodec))
-    .\(FileUploaded.responseType) { case r: FileUploaded => r } (protoPayload(FileUploadedCodec))
+    .\(ResponseUploadStarted.responseType) { case r: ResponseUploadStarted => r } (protoPayload(ResponseUploadStartCodec))
+    .\(ResponsePartUploaded.responseType) { case r: ResponsePartUploaded => r } (protoPayload(ResponseFileUploadStartedCodec))
+    .\(ResponseUploadCompleted.responseType) { case r: ResponseUploadCompleted => r } (protoPayload(FileUploadedCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)

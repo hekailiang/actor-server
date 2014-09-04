@@ -19,8 +19,7 @@ case class User(uid: Int,
                 publicKey: BitVector,
                 phoneNumber: Long,
                 accessSalt: String,
-                firstName: String,
-                lastName: Option[String],
+                name: String,
                 sex: Sex,
                 keyHashes: immutable.Set[Long] = Set()) {
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
@@ -29,7 +28,7 @@ case class User(uid: Int,
 
   def toStruct(senderAuthId: Long) = {
     struct.User(uid = this.uid, accessHash = User.getAccessHash(senderAuthId, this.uid, this.accessSalt),
-      keyHashes = this.keyHashes, firstName = this.firstName, lastName = this.lastName, sex = this.sex.toOption,
+      keyHashes = this.keyHashes, name = this.name, sex = this.sex.toOption,
       phoneNumber = this.phoneNumber)
   }
 }
@@ -38,8 +37,8 @@ object User {
   import ByteConstants._
   import Configuration._
 
-  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, firstName: String,
-            lastName: Option[String], sex: Sex = NoSex) = {
+  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String,
+            sex: Sex = NoSex) = {
     val publicKeyHash = ec.PublicKey.keyHash(publicKey)
     User(uid = uid,
       authId = authId,
@@ -47,8 +46,7 @@ object User {
       publicKeyHash = publicKeyHash,
       phoneNumber = phoneNumber,
       accessSalt = accessSalt,
-      firstName = firstName,
-      lastName = lastName,
+      name = name,
       sex = sex,
       keyHashes = Set(publicKeyHash))
   }

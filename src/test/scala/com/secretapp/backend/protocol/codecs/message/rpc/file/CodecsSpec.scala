@@ -23,7 +23,7 @@ class CodecsSpec extends Specification {
 
     "encode and decode RequestUploadStart" in {
       val encoded = hex"0306010000001200".bits
-      val decoded = RpcRequestBox(Request(RequestUploadStart()))
+      val decoded = RpcRequestBox(Request(RequestStartUpload()))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
@@ -33,7 +33,7 @@ class CodecsSpec extends Specification {
       val encoded = hex"031201000000140c0a040a02ac1d10011a02ac1d".bits
       val bs = hex"ac1d".bits
       val conf = UploadConfig(bs)
-      val decoded = RpcRequestBox(Request(RequestUploadFile(conf, 1, bs)))
+      val decoded = RpcRequestBox(Request(RequestUploadPart(conf, 1, bs)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
@@ -63,7 +63,7 @@ class CodecsSpec extends Specification {
       val encoded = hex"0400000000000000010c0100000013060a040a02ac1d".bits
       val bs = hex"ac1d".bits
       val conf = UploadConfig(bs)
-      val decoded = RpcResponseBox(1L, Ok(ResponseUploadStart(conf)))
+      val decoded = RpcResponseBox(1L, Ok(ResponseUploadStarted(conf)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
@@ -71,7 +71,7 @@ class CodecsSpec extends Specification {
 
     "encode and decode ResponseFileUploadStarted" in {
       val encoded = hex"04000000000000000106010000001500".bits
-      val decoded = RpcResponseBox(1L, Ok(ResponseFileUploadStarted()))
+      val decoded = RpcResponseBox(1L, Ok(ResponsePartUploaded()))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
@@ -80,7 +80,7 @@ class CodecsSpec extends Specification {
     "encode and decode FileUploaded" in {
       val encoded = hex"0400000000000000010c0100000017060a0408011002".bits
       val location = FileLocation(1L, 2L)
-      val decoded = RpcResponseBox(1L, Ok(FileUploaded(location)))
+      val decoded = RpcResponseBox(1L, Ok(ResponseUploadCompleted(location)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
       protoTransportMessage.decodeValidValue(encoded) should_== decoded

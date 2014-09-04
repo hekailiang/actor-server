@@ -20,11 +20,8 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   object userKeyHashes extends SetColumn[PhoneRecord, Phone, Long](this) {
     override lazy val name = "user_key_hashes"
   }
-  object userFirstName extends StringColumn(this) {
+  object userName extends StringColumn(this) {
     override lazy val name = "user_first_name"
-  }
-  object userLastName extends OptionalStringColumn(this) {
-    override lazy val name = "user_last_name"
   }
   object userSex extends IntColumn(this){
     override lazy val name = "user_sex"
@@ -32,8 +29,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
 
   override def fromRow(row: Row): Phone = {
     Phone(number = number(row), userId = userId(row), userAccessSalt = userAccessSalt(row),
-      userFirstName = userFirstName(row), userLastName = userLastName(row),
-      userKeyHashes = userKeyHashes(row), userSex = intToSex(userSex(row)))
+      userName = userName(row), userKeyHashes = userKeyHashes(row), userSex = intToSex(userSex(row)))
   }
 }
 
@@ -43,8 +39,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
       .value(_.userId, entity.userId)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.userKeyHashes, entity.userKeyHashes.toSet)
-      .value(_.userFirstName, entity.userFirstName)
-      .value(_.userLastName, entity.userLastName)
+      .value(_.userName, entity.userName)
       .value(_.userSex, sexToInt(entity.userSex))
       .future()
   }
@@ -64,8 +59,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
   def updateUser(phoneNumber: Long, user: User)(implicit session: Session) = {
     update.
       where(_.number eqs phoneNumber).
-      modify(_.userFirstName setTo user.firstName).
-      and(_.userLastName setTo user.lastName).
+      modify(_.userName setTo user.name).
       and(_.userSex setTo sexToInt(user.sex)).
       future()
   }

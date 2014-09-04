@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.contact
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 
 case class PublicKeyRequest(uid: Int, accessHash: Long, keyHash: Long) extends ProtobufMessage
 {

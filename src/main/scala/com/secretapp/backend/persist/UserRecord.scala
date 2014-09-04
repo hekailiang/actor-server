@@ -38,11 +38,8 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object phoneNumber extends LongColumn(this) with StaticColumn[Long] {
     override lazy val name = "phone_number"
   }
-  object firstName extends StringColumn(this) with StaticColumn[String] {
+  object name extends StringColumn(this) with StaticColumn[String] {
     override lazy val name = "first_name"
-  }
-  object lastName extends OptionalStringColumn(this) with StaticColumn[Option[String]] {
-    override lazy val name = "last_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
 
@@ -55,8 +52,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       keyHashes = keyHashes(row),
       accessSalt = accessSalt(row),
       phoneNumber = phoneNumber(row),
-      firstName = firstName(row),
-      lastName = lastName(row),
+      name = name(row),
       sex = intToSex(sex(row))
     )
   }
@@ -65,8 +61,8 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 object UserRecord extends UserRecord with DBConnector {
   def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
     val phone = Phone(number = entity.phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
-      userKeyHashes = Set(entity.publicKeyHash), userFirstName = entity.firstName,
-      userLastName = entity.lastName, userSex = sexToInt(entity.sex))
+      userKeyHashes = Set(entity.publicKeyHash), userName = entity.name,
+      userSex = sexToInt(entity.sex))
     val userPK = UserPublicKey(uid = entity.uid,
       publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey, authId = entity.authId)
 
@@ -77,8 +73,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.keyHashes, Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)
-      .value(_.firstName, entity.firstName)
-      .value(_.lastName, entity.lastName)
+      .value(_.name, entity.name)
       .value(_.sex, sexToInt(entity.sex))
       .future().
       flatMap(_ => PhoneRecord.insertEntity(phone)).
@@ -100,8 +95,8 @@ object UserRecord extends UserRecord with DBConnector {
       flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, firstName: String,
-                                     lastName: Option[String], sex: Sex = NoSex)
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String,
+                                     sex: Sex = NoSex)
                                     (implicit session: Session): Future[ResultSet] = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
 
@@ -109,8 +104,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
-      .value(_.firstName, firstName)
-      .value(_.lastName, lastName)
+      .value(_.name, name)
       .value(_.sex, sexToInt(sex))
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).

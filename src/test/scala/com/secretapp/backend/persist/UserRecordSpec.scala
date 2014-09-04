@@ -19,8 +19,7 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
         publicKey = hex"ac1d".bits,
         accessSalt = "salt",
         phoneNumber = 79853867016L,
-        firstName = "Wayne",
-        lastName = Some("Brain"),
+        name = "Wayne Brain",
         sex = Male)
       val insertFuture = UserRecord.insertEntityWithPhoneAndPK(entity)
 

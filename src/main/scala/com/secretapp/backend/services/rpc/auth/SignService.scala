@@ -100,8 +100,7 @@ trait SignService extends PackageCommon with RpcCommon {
         case -\/(_: RequestSignIn) =>
           UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber)
         case \/-(req: RequestSignUp) =>
-          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, req.firstName,
-            req.lastName)
+          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, req.name)
       }
 
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
@@ -160,9 +159,7 @@ trait SignService extends PackageCommon with RpcCommon {
         .some(n => withValidName(n, e)(vn => f(vn.some)))
         .none(f(none))
 
-    def withValidFirstName(n: String) = withValidName(n, "FIRSTNAME_INVALID") _
-
-    def withValidOptLastName(optn: Option[String]) = withValidOptName(optn, "LASTNAME_INVALID") _
+    def withValidFirstName(n: String) = withValidName(n, "NAME_INVALID") _
 
     def validPublicKey(k: BitVector): ValidationNel[String, BitVector] =
       if (k == BitVector.empty) "Should be nonempty".failureNel else k.success
@@ -194,16 +191,14 @@ trait SignService extends PackageCommon with RpcCommon {
                 case \/-(req: RequestSignUp) =>
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
-                    case None => withValidFirstName(req.firstName) { firstName =>
-                      withValidOptLastName(req.lastName) { optLastName =>
+                    case None => withValidFirstName(req.name) { name =>
                         withValidPublicKey(publicKey) { publicKey =>
                           val userId = genUserId
                           val accessSalt = genUserAccessSalt
                           val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                            phoneNumber = phoneNumber, firstName = firstName, lastName = optLastName)
+                            phoneNumber = phoneNumber, name = name)
                           UserRecord.insertEntityWithPhoneAndPK(user)
                           Future.successful(auth(user))
-                        }
                       }
                     }
                     case Some(rec) => signIn(rec.userId)

@@ -42,8 +42,8 @@ trait ContactService extends PackageCommon with RpcCommon {
       // FIXME: Fuck this three cycles in a row!
       val users = items.map { item =>
         struct.User(uid = item.userId, accessHash = User.getAccessHash(authId, item.userId, item.userAccessSalt),
-          phoneNumber = item.number, keyHashes = item.userKeyHashes, firstName = item.userFirstName,
-          lastName = item.userLastName, sex = item.userSex.toOption)
+          phoneNumber = item.number, keyHashes = item.userKeyHashes, name = item.userName,
+          sex = item.userSex.toOption)
       }
       val contacts = items.map { user =>
         ImportedContact(clientPhoneId = clientPhoneMap(user.number), userId = user.userId)

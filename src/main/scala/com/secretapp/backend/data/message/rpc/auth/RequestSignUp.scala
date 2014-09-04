@@ -6,8 +6,7 @@ import scodec.bits.BitVector
 case class RequestSignUp(phoneNumber: Long,
                          smsHash: String,
                          smsCode: String,
-                         firstName: String,
-                         lastName: Option[String],
+                         name: String,
                          publicKey: BitVector) extends RpcRequestMessage
 
 object RequestSignUp extends RpcRequestMessageObject {

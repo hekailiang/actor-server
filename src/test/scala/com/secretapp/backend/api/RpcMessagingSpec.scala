@@ -67,10 +67,9 @@ class RpcMessagingSpec extends RpcSpec {
 
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      val firstName = "Timothy"
-      val lastName = Some("Klim")
+      val name = "Timothy Klim"
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+        phoneNumber = defaultPhoneNumber, name = name)
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
       authUser(user, defaultPhoneNumber)
 
@@ -78,7 +77,7 @@ class RpcMessagingSpec extends RpcSpec {
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
       val secondUser = User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, firstName = firstName, lastName = lastName)
+        phoneNumber = defaultPhoneNumber, name = name)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
       // get initial state

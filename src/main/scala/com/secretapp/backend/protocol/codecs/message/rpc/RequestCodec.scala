@@ -27,8 +27,8 @@ object RequestCodec extends Codec[Request] {
     .\(RequestImportContacts.requestType) { case r: RequestImportContacts => r } (protoPayload(RequestImportContactsCodec))
     .\(RequestPublicKeys.requestType) { case r: RequestPublicKeys => r } (protoPayload(RequestPublicKeysCodec))
     .\(RequestGetFile.requestType) { case r: RequestGetFile => r } (protoPayload(RequestGetFileCodec))
-    .\(RequestUploadStart.requestType) { case r: RequestUploadStart => r } (protoPayload(RequestUploadStartCodec))
-    .\(RequestUploadFile.requestType) { case r: RequestUploadFile => r } (protoPayload(RequestUploadFileCodec))
+    .\(RequestStartUpload.requestType) { case r: RequestStartUpload => r } (protoPayload(RequestUploadStartCodec))
+    .\(RequestUploadPart.requestType) { case r: RequestUploadPart => r } (protoPayload(RequestUploadFileCodec))
     .\(RequestCompleteUpload.requestType) { case r: RequestCompleteUpload => r } (protoPayload(RequestCompleteUploadCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 

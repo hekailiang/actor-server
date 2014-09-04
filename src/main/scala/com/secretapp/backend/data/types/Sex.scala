@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.types
 
 import scala.language.implicitConversions
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 import scalaz._
 import Scalaz._
 

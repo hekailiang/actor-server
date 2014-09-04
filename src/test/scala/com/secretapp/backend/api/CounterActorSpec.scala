@@ -34,14 +34,14 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
     "get state" in {
       val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
       counter ! Get
-      expectMsg(3.seconds, 0)
+      expectMsg(5.seconds, 0)
     }
 
     "increment its state" in {
       val counter = getCounterActor(s"incrementer-${System.nanoTime()}")
 
       counter ! GetNext
-      expectMsg(3.seconds, 1)
+      expectMsg(5.seconds, 1)
     }
 
     "get bulk" in {
@@ -49,9 +49,9 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       counter ! GetNext
       counter ! GetBulk(100)
-      expectMsg(1.second, 1)
+      expectMsg(5.second, 1)
 
-      expectMsg(1.second, Bulk(2, 101))
+      expectMsg(5.second, Bulk(2, 101))
     }
 
     "recover its state" in {
@@ -66,7 +66,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       selection ! GetBulk(100)
       selection ! GetNext
 
-      expectMsgAllOf(1.second, 1, 2, 3, Bulk(4, 103), 104)
+      expectMsgAllOf(5.second, 1, 2, 3, Bulk(4, 103), 104)
 
       system.stop(counter)
 
@@ -75,7 +75,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
 
       selection ! GetNext
 
-      expectMsg(1.second, 105)
+      expectMsg(5.second, 105)
     }
   }
 }

@@ -11,7 +11,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.{ Try, Success, Failure }
-import com.getsecretapp.{ proto => protobuf }
+import com.reactive.messenger.{ api => protobuf }
 
 object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
   def encode(d: Difference) = {

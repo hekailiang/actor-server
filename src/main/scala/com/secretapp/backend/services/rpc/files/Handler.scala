@@ -13,9 +13,9 @@ class Handler(
   extends Actor with ActorLogging with HandlerService {
 
   def receive = {
-    case rq @ RpcProtocol.Request(p, messageId, RequestUploadStart()) =>
+    case rq @ RpcProtocol.Request(p, messageId, RequestStartUpload()) =>
       handleRequestUploadStart(p, messageId)()
-    case RpcProtocol.Request(p, messageId, RequestUploadFile(config, offset, data)) =>
+    case RpcProtocol.Request(p, messageId, RequestUploadPart(config, offset, data)) =>
       handleRequestUploadFile(p, messageId)(config, offset, data)
     case RpcProtocol.Request(p, messageId, RequestCompleteUpload(config, blocksCount, crc32)) =>
       handleRequestCompleteUpload(p, messageId)(config, blocksCount, crc32)

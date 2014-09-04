@@ -32,18 +32,18 @@ class FilesServiceSpec extends RpcSpec {
   val blockSize = 0x2000
 
   def requestUploadStart()(
-    implicit scope: RpcTestScope): ResponseUploadStart = {
-    RequestUploadStart() :~> <~:[ResponseUploadStart]
+    implicit scope: RpcTestScope): ResponseUploadStarted = {
+    RequestStartUpload() :~> <~:[ResponseUploadStarted]
   }
 
   def uploadFileBlocks(config: UploadConfig)(
     implicit scope: RpcTestScope) = {
-    RequestUploadFile(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseFileUploadStarted]
-    RequestUploadFile(config,
-      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseFileUploadStarted]
-    RequestUploadFile(config,
+    RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponsePartUploaded]
+    RequestUploadPart(config,
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
+    RequestUploadPart(config,
       blockSize + blockSize + blockSize,
-      BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponseFileUploadStarted]
+      BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
   }
 
   "files service" should {
@@ -61,7 +61,7 @@ class FilesServiceSpec extends RpcSpec {
 
       {
         val config = requestUploadStart().config
-        RequestUploadFile(config, 1, BitVector(fileContent).take(blockSize)) :~> <~:(400, "OFFSET_INVALID")
+        RequestUploadPart(config, 1, BitVector(fileContent).take(blockSize)) :~> <~:(400, "OFFSET_INVALID")
         uploadFileBlocks(config)
       }
     }
@@ -73,7 +73,7 @@ class FilesServiceSpec extends RpcSpec {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
         Thread.sleep(1000)
-        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
         Math.abs(fileUploaded.location.accessHash) should be >(0l)
 
         RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
@@ -87,7 +87,7 @@ class FilesServiceSpec extends RpcSpec {
       val config = requestUploadStart().config
       uploadFileBlocks(config)
       Thread.sleep(1000)
-      val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[FileUploaded]
+      val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
 
       {
         val filePart = RequestGetFile(fileUploaded.location, 0, blockSize) :~> <~:[ResponseFilePart]
