@@ -38,145 +38,139 @@ trait SignService extends PackageCommon with RpcCommon {
 
     implicit val session: CSession = self.session
 
-    def nonEmptyPublicKey[A](a: BitVector)
-                            (f: => HandleResult[Error, A]): HandleResult[Error, A] =
+    def nonEmptyPublicKey(a: BitVector): Result[BitVector] = Future.successful(
       if (a.isEmpty)
-        Future successful Error(400, "PUBLIC_KEY_INVALID", "Should be nonempty").left
+        Error(400, "PUBLIC_KEY_INVALID", "Should be nonempty").left
       else
-        f
+       a.right
+    )
 
-    def primePublicKey[A](a: BitVector)
-                         (f: => HandleResult[Error, A]): HandleResult[Error, A] =
+    def primePublicKey(a: BitVector): Result[BitVector] = Future.successful(
       if (!PublicKey.isPrime192v1(a))
-        Future successful Error(400, "PUBLIC_KEY_INVALID", "Invalid key").left
+        Error(400, "PUBLIC_KEY_INVALID", "Invalid key").left
       else
-        f
+        a.right
+    )
 
-    def validPublicKey[A](a: BitVector)
-                         (f: => HandleResult[Error, A]): HandleResult[Error, A] =
-      nonEmptyPublicKey(a) {
-      primePublicKey(a)    {
-        f
-      }}
+    def validPublicKey(a: BitVector): Result[BitVector] =
+      for (
+        pk <- nonEmptyPublicKey(a);
+        pk <- primePublicKey(a)
+      ) yield pk
 
-    def validPhoneNumber[A](p: Long)
-                           (f: Long => HandleResult[Error, A]): HandleResult[Error, A] =
+    def validPhoneNumber(p: Long): Result[Long] = Future.successful(
       if (false)
-        Future successful Error(400, "PHONE_INVALID", "").left
+        Error(400, "PHONE_INVALID", "").left
       else
-        f(p)
+        p.right
+    )
 
-    def nonEmptySmsCode[A](c: String)
-                          (f: String => HandleResult[Error, A]): HandleResult[Error, A] =
+    def nonEmptySmsCode(c: String): Result[String] = Future.successful(
       if (c.trim.isEmpty)
-        Future successful Error(400, "PHONE_CODE_INVALID", "Should be nonempty").left
+        Error(400, "PHONE_CODE_INVALID", "Should be nonempty").left
       else
-        f(c.trim)
+        c.trim.right
+    )
 
-    def smsCodeExists[A](c: String, phone: Long)
-                        (f: AuthSmsCode => HandleResult[Error, A]): HandleResult[Error, A] =
-      AuthSmsCodeRecord.getEntity(phone) flatMap {
+    def smsCodeExists(c: String, phone: Long): Result[AuthSmsCode] =
+      AuthSmsCodeRecord.getEntity(phone) map {
         _ some {
-          f
+          _.right[Error]
         } none {
-          Future successful Error(400, "PHONE_CODE_EXPIRED", "").left
+          Error(400, "PHONE_CODE_EXPIRED", "").left
         }
       }
 
-    def rightSmsHash[A](received: String, stored: AuthSmsCode)
-                       (f: => HandleResult[Error, A]): HandleResult[Error, A] =
+    def rightSmsHash(received: String, stored: AuthSmsCode): Result[AuthSmsCode] = Future.successful(
       if (received != stored.smsHash)
-        Future successful Error(400, "PHONE_CODE_EXPIRED", "").left
+        Error(400, "PHONE_CODE_EXPIRED", "").left
       else
-        f
+        stored.right
+    )
 
-    def rightSmsCode[A](received: String, stored: AuthSmsCode)
-                       (f: => HandleResult[Error, A]): HandleResult[Error, A] =
+    def rightSmsCode(received: String, stored: AuthSmsCode): Result[AuthSmsCode] = Future.successful(
       if (received != stored.smsCode)
-        Future successful Error(400, "PHONE_CODE_INVALID", "").left
+        Error(400, "PHONE_CODE_INVALID", "").left
       else
-        f
+        stored.right
+    )
 
-    def validSmsCode[A](receivedCode: String, receivedHash: String, phoneNumber: Long)
-                       (f: AuthSmsCode => HandleResult[Error, A]): HandleResult[Error, A] =
-      nonEmptySmsCode(receivedCode)           { smsCode =>
-      smsCodeExists(smsCode, phoneNumber)     { authSmsCode =>
-      rightSmsHash(receivedHash, authSmsCode) {
-      rightSmsCode(smsCode, authSmsCode)      {
-        f(authSmsCode)
-      }}}}
+    def validSmsCode(receivedCode: String, receivedHash: String, phoneNumber: Long): Result[AuthSmsCode] =
+      for (
+        smsCode     <- nonEmptySmsCode(receivedCode);
+        authSmsCode <- smsCodeExists(smsCode, phoneNumber);
+        _           <- rightSmsHash(receivedHash, authSmsCode);
+        _           <- rightSmsCode(smsCode, authSmsCode)
+      ) yield authSmsCode
 
-    def phoneExists[A](p: Long)
-                      (f: Phone => HandleResult[Error, A]): HandleResult[Error, A] =
-      PhoneRecord.getEntity(p) flatMap {
-        _ some {
-          f
-        } none {
-          Future successful Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left
-        }
+    def phoneExists(p: Long): Result[Phone] = PhoneRecord.getEntity(p) map {
+      _ some {
+        _.right[Error]
+      } none {
+        Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left
       }
+    }
 
-    def validRequest[A](r: RequestSign)
-                       (f: (RequestSign, AuthSmsCode) => HandleResult[Error, A]): HandleResult[Error, A] =
-      validPublicKey(r.publicKey)            {
-      validPhoneNumber(r.phoneNumber)        { pn =>
-      validSmsCode(r.smsCode, r.smsHash, pn) { authSmsCode =>
-        val vr = new RequestSign {
+    def validRequest(r: RequestSign): Result[(RequestSign, AuthSmsCode)] =
+      for (
+        pk          <- validPublicKey(r.publicKey);
+        pn          <- validPhoneNumber(r.phoneNumber);
+        authSmsCode <- validSmsCode(r.smsCode, r.smsHash, pn);
+        vr = new RequestSign {
           override val phoneNumber = pn
           override val smsHash = authSmsCode.smsHash
           override val smsCode = authSmsCode.smsCode
           override val publicKey = r.publicKey
         }
-        f(vr, authSmsCode)
-      }}}
+      ) yield {
+        (vr, authSmsCode)
+      }
 
-    def nonEmptyName[A](n: String)
-                       (f: String => HandleResult[Error, A]): HandleResult[Error, A] =
+    def nonEmptyName(n: String): Result[String] = Future.successful(
       if (n.trim.isEmpty)
-        Future successful Error(400, "NAME_INVALID", "Should be nonempty").left
+        Error(400, "NAME_INVALID", "Should be nonempty").left
       else
-        f(n.trim)
+        n.trim.right
+    )
 
-    def printableName[A](n: String)
-                        (f: => HandleResult[Error, A]): HandleResult[Error, A] = {
+    def printableName(n: String): Result[String] = Future.successful {
        val p = Pattern.compile("\\p{Print}+", Pattern.UNICODE_CHARACTER_CLASS)
        if (!p.matcher(n).matches)
-         Future successful Error(400, "NAME_INVALID", "Should contain printable characters only").left
+         Error(400, "NAME_INVALID", "Should contain printable characters only").left
        else
-         f
+         n.right
      }
 
-    def userExists[A](userId: Int)
-                     (f: User => HandleResult[Error, A]): HandleResult[Error, A] =
-      UserRecord.getEntity(userId) flatMap {
+    def userExists(userId: Int): Result[User] =
+      UserRecord.getEntity(userId) map {
         _ some {
-          f
+          _.right[Error]
         } none {
-          Future successful internalError.left
+          internalError.left
         }
       }
 
-    def validName[A](n: String)
-                    (f: String => HandleResult[Error, A]): HandleResult[Error, A] =
-      nonEmptyName(n)   { vn =>
-      printableName(vn) {
-        f(vn)
-      }
-      }
+    def validName(n: String): Result[String] =
+      for (
+        n <- nonEmptyName(n);
+        n <- printableName(n)
+      ) yield n
 
-    def validSignInRequest[A](r: RequestSignIn)
-                             (f: (RequestSignIn, AuthSmsCode, Phone) => HandleResult[Error, A]): HandleResult[Error, A] =
-      validRequest(r)               { case (vr, authSmsCode) =>
-      phoneExists(vr.phoneNumber) { phone =>
-        f(RequestSignIn(vr.phoneNumber, vr.smsHash, vr.smsCode, vr.publicKey), authSmsCode, phone)
-      }}
+    def validSignInRequest(r: RequestSignIn): Result[(RequestSignIn, AuthSmsCode, Phone)] =
+      for (
+        va               <- validRequest(r);
+        (vr, authSmsCode) = va;
+        phone            <- phoneExists(vr.phoneNumber);
+        cr = RequestSignIn(vr.phoneNumber, vr.smsHash, vr.smsCode, vr.publicKey)
+      ) yield (cr, authSmsCode, phone)
 
-    def validSignUpRequest[A](r: RequestSignUp)
-                             (f: (RequestSignUp, AuthSmsCode) => HandleResult[Error, A]): HandleResult[Error, A] =
-      validRequest(r)   { case (vr, authSmsCode) =>
-      validName(r.name) { vn =>
-        f(RequestSignUp(vr.phoneNumber, vr.smsHash, vr.smsCode, vn, vr.publicKey), authSmsCode)
-      }}
+    def validSignUpRequest(r: RequestSignUp): Result[(RequestSignUp, AuthSmsCode)] =
+      for (
+        va <- validRequest(r);
+        (vr, authSmsCode) = va;
+        vn <- validName(r.name);
+        cr = RequestSignUp(vr.phoneNumber, vr.smsHash, vr.smsCode, vn, vr.publicKey)
+      ) yield (cr, authSmsCode)
   }
 
   // TODO: use singleton for share config env
@@ -219,7 +213,7 @@ trait SignService extends PackageCommon with RpcCommon {
   }
 
   private def signIn(authId: Long, userId: Int, publicKey: BitVector, phone: Long): RpcResult =
-    V.userExists(userId) { user =>
+    V.userExists(userId) flatMap { user =>
       val publicKeyHash = PublicKey.keyHash(publicKey)
 
       def updateUserRecord() =
@@ -246,12 +240,12 @@ trait SignService extends PackageCommon with RpcCommon {
     }
 
   private def handleSignIn(p: Package, r: RequestSignIn): RpcResult =
-    V.validSignInRequest(r) { case (r, authSmsCode, phone) =>
+    V.validSignInRequest(r) flatMap { case (r, authSmsCode, phone) =>
       signIn(p.authId, phone.userId, r.publicKey, r.phoneNumber)
     }
 
   private def handleSignUp(p: Package, r: RequestSignUp): RpcResult =
-    V.validSignUpRequest(r) { case (r, authSmsCode) =>
+    V.validSignUpRequest(r) flatMap { case (r, authSmsCode) =>
       AuthSmsCodeRecord.dropEntity(r.phoneNumber)
 
       PhoneRecord.getEntity(r.phoneNumber) flatMap {
