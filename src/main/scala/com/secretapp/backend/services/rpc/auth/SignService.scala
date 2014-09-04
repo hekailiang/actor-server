@@ -7,31 +7,22 @@ import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.update.NewDevice
 import com.secretapp.backend.data.message.update.NewYourDevice
 import com.secretapp.backend.services.RpcService
 import com.secretapp.backend.services.UserManagerService
-import scala.collection.immutable
-import scala.collection.immutable.Seq
-import scala.util.Success
-import scala.util.{ Random, Try, Success, Failure }
+import scala.util.{ Success, Failure }
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.data.message.struct.{ User => StructUser }
-import com.secretapp.backend.data.message.{ TransportMessage, RpcResponseBox }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.util.HandleFutureOpt._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcCommon
 import com.secretapp.backend.crypto.ec
