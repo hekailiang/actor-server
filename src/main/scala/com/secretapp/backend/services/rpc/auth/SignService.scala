@@ -4,39 +4,35 @@ import java.util.regex.Pattern
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.ResultSet
+import com.datastax.driver.core.{ResultSet, Session => CSession}
 import com.secretapp.backend.api.SocialProtocol
-import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.message.update.NewDevice
-import com.secretapp.backend.data.message.update.NewYourDevice
-import com.secretapp.backend.services.RpcService
-import com.secretapp.backend.services.UserManagerService
-import scala.util.{ Success, Failure }
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import com.typesafe.config.ConfigFactory
-import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.services.common.PackageCommon
+import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.update.{NewDevice, NewYourDevice}
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.persist._
-import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.services.GeneratorService
+import com.secretapp.backend.persist._
+import com.secretapp.backend.services.{GeneratorService, RpcService, UserManagerService}
+import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.rpc.RpcCommon
-import com.secretapp.backend.crypto.ec
+import com.secretapp.backend.sms.ClickatellSMSEngine
+import com.typesafe.config.ConfigFactory
 import scodec.bits.BitVector
+
+import scala.Function.tupled
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
-import Function.tupled
 
 trait SignService extends PackageCommon with RpcCommon {
   self: RpcService with Actor with GeneratorService with UserManagerService =>
   implicit val session: CSession
 
+  import com.secretapp.backend.api.UpdatesBroker._
   import context._
-  import UpdatesBroker._
 
   val serverConfig = ConfigFactory.load()
   val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
@@ -193,7 +189,7 @@ trait SignService extends PackageCommon with RpcCommon {
   }
 
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
-    import SocialProtocol._
+    import com.secretapp.backend.api.SocialProtocol._
 
     // Push NewYourDevice updates
     UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
