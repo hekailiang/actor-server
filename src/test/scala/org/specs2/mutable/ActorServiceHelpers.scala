@@ -168,7 +168,7 @@ trait ActorServiceHelpers extends RandomService {
 
   def @<~:(m: TransportMessage)(implicit probe: TestProbe, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
     val res = pack(authId, m, messageId)
-    val ack = pack(authId, MessageAck(Array(messageId)), messageId) // TODO: move into DSL method
+    val ack = pack(authId, MessageAck(Array(messageId)), messageId * 10) // TODO: move into DSL method
     val ses = pack(authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
     val expectedMsg = Seq(ses, ack, res)
     probe.expectMsgAllOf(expectedMsg.map(m => Write(m.blob)) :_*)
