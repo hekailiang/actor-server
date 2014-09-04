@@ -38,6 +38,8 @@ class FilesServiceSpec extends RpcSpec {
 
   def uploadFileBlocks(config: UploadConfig)(
     implicit scope: TestScope) = {
+    RequestUploadPart(config,
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
     RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponsePartUploaded]
     RequestUploadPart(config,
       blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
