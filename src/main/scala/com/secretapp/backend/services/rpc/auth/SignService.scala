@@ -147,19 +147,19 @@ trait SignService extends PackageCommon with RpcCommon {
     def validName(n: String): \/[NonEmptyList[String], String] =
       nonEmptyString(n).flatMap(printableString)
 
+    def validPublicKey(k: BitVector): \/[NonEmptyList[String], BitVector] =
+      if (k == BitVector.empty) "Should be nonempty".wrapNel.left else k.right
+
+    def validationFailed(errorName: String, errors: NonEmptyList[String]): Future[\/[Error, RpcResponseMessage]] =
+      Future.successful(Error(400, errorName, errors.toList.mkString(", "), false).left)
+
     def withValidName(n: String)
                      (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
-      validName(n).fold({ errors =>
-        Future.successful(Error(400, "NAME_INVALID", errors.toList.mkString(", "), false).left)
-      }, f)
+      validName(n).fold(validationFailed("NAME_INVALID", _), f)
 
-    def validPublicKey(k: BitVector): ValidationNel[String, BitVector] =
-      if (k == BitVector.empty) "Should be nonempty".failureNel else k.success
-
-    def withValidPublicKey(k: BitVector)(f: BitVector => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
-      validPublicKey(k).fold({ errors =>
-        Future.successful(Error(400, "PUBLIC_KEY_INVALID", errors.toList.mkString(", "), false).left)
-      }, f)
+    def withValidPublicKey(k: BitVector)
+                          (f: BitVector => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+      validPublicKey(k).fold(validationFailed("PUBLIC_KEY_INVALID", _), f)
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
     else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
