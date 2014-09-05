@@ -14,18 +14,18 @@ import scala.language.implicitConversions
 trait RpcCommon { self: Actor with PackageCommon =>
 
   // TODO: Abstract over left, it is sufficient for left to be `PlusEmpty`.
-  case class Result[A](hr: Future[Error \/ A])
+  case class Result[A](run: Future[Error \/ A])
 
   object Result {
     implicit def toResult[A](hr: Future[Error \/ A]): Result[A] = Result(hr)
 
-    implicit def fromResult[A](r: Result[A]): Future[Error \/ A] = r.hr
+    implicit def fromResult[A](r: Result[A]): Future[Error \/ A] = r.run
 
     implicit def monad(implicit ec: ExecutionContext): MonadPlus[Result] = new MonadPlus[Result] {
       override def bind[A, B](fa: Result[A])(f: (A) => Result[B]): Result[B] =
-        fa.hr flatMap { va =>
+        fa.run flatMap { va =>
           va map { ra =>
-            f(ra).hr
+            f(ra).run
           } valueOr { la =>
             Future successful la.left
           }
@@ -35,8 +35,8 @@ trait RpcCommon { self: Actor with PackageCommon =>
 
       override def empty[A]: Result[A] = Future successful internalError.left
 
-      override def plus[A](a: Result[A], b: => Result[A]): Result[A] = a.hr flatMap {
-        _.fold(_ => b.hr, a => Future successful a.right)
+      override def plus[A](a: Result[A], b: => Result[A]): Result[A] = a.run flatMap {
+        _.fold(_ => b.run, a => Future successful a.right)
       }
     }
   }
