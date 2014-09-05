@@ -28,14 +28,15 @@ class FileRecordSpec extends CassandraSpecification {
 
       val fResult = Record.write(fileId, 0, content) map { _ =>
 
-        val (fv1, fv2, fv3, fv4, fv5, fv6, feverything) = (
+        val (fv1, fv2, fv3, fv4, fv5, fv6, feverything1, feverything2) = (
           Record.getFile(fileId, 0, 1024),
           Record.getFile(fileId, 0, 8192),
           Record.getFile(fileId, 0, 9216), // more than a blocksize
           Record.getFile(fileId, 1024, 1024),
           Record.getFile(fileId, 1024, 9216),
           Record.getFile(fileId, fileSize - 1024, 1024),
-          Record.getFile(fileId, 0, fileSize)
+          Record.getFile(fileId, 0, fileSize),
+          Record.getFile(fileId)
         )
 
         val f = for {
@@ -45,7 +46,8 @@ class FileRecordSpec extends CassandraSpecification {
           v4 <- fv4
           v5 <- fv5
           v6 <- fv6
-          everything <- feverything
+          everything1 <- feverything1
+          everything2 <- feverything2
         } yield {
           v1 must equalTo(content.take(1024))
           v2 must equalTo(content.take(8192))
@@ -54,7 +56,8 @@ class FileRecordSpec extends CassandraSpecification {
           v4 must equalTo(content.drop(1024).take(1024))
           v5 must equalTo(content.drop(1024).take(9216))
           v6 must equalTo(content.drop(fileSize - 1024))
-          everything must equalTo(content)
+          everything1 must equalTo(content)
+          everything2 must equalTo(content)
         }
 
         f.await(30)

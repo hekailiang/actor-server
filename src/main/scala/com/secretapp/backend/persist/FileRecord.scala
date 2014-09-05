@@ -53,7 +53,7 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     if (isSourceBlock) {
       f onSuccess {
         case _ =>
-          sourceBlockRecord.insertEntity(FileSourceBlock(id, offset))
+          sourceBlockRecord.insertEntity(FileSourceBlock(id, offset, bytes.length))
       }
     }
     f
@@ -75,6 +75,10 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
       val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
       bytes.drop(offset % FileBlockRecord.blockSize).take(limit).toArray
     }
+  }
+
+  def getFile(fileId: Int): Future[Array[Byte]] = {
+    sourceBlockRecord.getBlocksLength(fileId) flatMap (getFile(fileId, 0, _))
   }
 
   def blocksByFileId(fileId: Int) = blockRecord.blocksByFileId(fileId)
