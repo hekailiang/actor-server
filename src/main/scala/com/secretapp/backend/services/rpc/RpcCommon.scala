@@ -5,19 +5,46 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.util.HandleFutureOpt._
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz._
 import Scalaz._
 import scala.util.{ Success, Failure }
+import scala.language.implicitConversions
 
 trait RpcCommon { self: Actor with PackageCommon =>
-  import context._
 
-  type RpcResult = HandleResult[Error, RpcResponseMessage]
+  case class Result[A](hr: Future[Error \/ A])
+
+  object Result {
+    implicit def toResult[A](hr: Future[Error \/ A]): Result[A] = Result(hr)
+
+    implicit def fromResult[A](r: Result[A]): Future[Error \/ A] = r.hr
+
+    implicit def monad(implicit ec: ExecutionContext): MonadPlus[Result] = new MonadPlus[Result] {
+      override def bind[A, B](fa: Result[A])(f: (A) => Result[B]): Result[B] =
+        fa.hr flatMap { va =>
+          va map { ra =>
+            f(ra).hr
+          } valueOr { la =>
+            Future successful la.left
+          }
+        }
+
+      override def point[A](a: => A): Result[A] = Future successful a.right
+
+      override def empty[A]: Result[A] = Future successful Error(400, "INTERNAL_ERROR", "", true).left
+
+      override def plus[A](a: Result[A], b: => Result[A]): Result[A] = a.hr flatMap {
+        _.fold(_ => b.hr, a => Future successful a.right)
+      }
+    }
+  }
+
+  type RpcResult = Future[Error \/ RpcResponseMessage]
 
   val internalError = Error(400, "INTERNAL_ERROR", "", true)
 
-  def sendRpcResult(p: Package, messageId: Long)(res: RpcResult): Unit = {
+  def sendRpcResult(p: Package, messageId: Long)(res: RpcResult)(implicit ec: ExecutionContext): Unit = {
     res onComplete {
       case Success(res) =>
         val message: RpcResponse = res match {

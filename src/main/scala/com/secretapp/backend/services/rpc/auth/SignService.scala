@@ -18,7 +18,6 @@ import com.secretapp.backend.services.{GeneratorService, RpcService, UserManager
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.rpc.RpcCommon
 import com.secretapp.backend.sms.ClickatellSMSEngine
-import com.secretapp.backend.util.HandleFutureOpt.HandleResult
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.Future
 import scala.concurrent.duration._
