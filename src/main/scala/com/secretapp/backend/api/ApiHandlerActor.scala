@@ -24,31 +24,32 @@ class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies
   context watch connection
 
   def receive = {
-    case PackageToSend(pe) => log.info(s"PackageToSend($pe)"); pe match {
-      case \/-(p) =>
-        connection ! Write(replyPackage(p))
-      case -\/(p) =>
-        connection ! Write(replyPackage(p))
-        connection ! Close
-      case x =>
-        log.error(s"unhandled packageToSend ${x}")
-    }
+    case PackageToSend(pe) =>
+      log.info(s"PackageToSend($pe)")
+      pe match {
+        case \/-(p) =>
+          write(connection, replyPackage(p))
+        case -\/(p) =>
+          write(connection, replyPackage(p))
+          connection ! Close
+        case x =>
+          log.error(s"unhandled packageToSend ${x}")
+      }
 
     case MessageBoxToSend(mb) =>
       log.info(s"MessageBoxToSend($mb)")
       val p = Package(getAuthId, getSessionId, mb)
-      connection ! Write(replyPackage(p))
+      write(connection, replyPackage(p))
 
     case UpdateBoxToSend(ub) =>
       log.info(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
       val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      connection ! Write(replyPackage(p))
+      write(connection, replyPackage(p))
 
     case m: ServiceMessage =>
       log.info(s"ServiceMessage: $m")
       serviceMessagesPF(m)
-
 
     case Received(data) =>
       log.info(s"Received: $data ${data.length}")
@@ -65,5 +66,10 @@ class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies
     case Closed =>
       log.info(s"Connection closed by listener")
       context stop self
+  }
+
+  def write(connection: ActorRef, byteString: ByteString): Unit = {
+    log.debug(s"Sending ${connection} ${byteString}")
+    connection ! Write(byteString)
   }
 }
