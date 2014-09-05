@@ -13,6 +13,7 @@ import scala.language.implicitConversions
 
 trait RpcCommon { self: Actor with PackageCommon =>
 
+  // TODO: Abstract over left, it is sufficient for left to be `PlusEmpty`.
   case class Result[A](hr: Future[Error \/ A])
 
   object Result {
@@ -32,7 +33,7 @@ trait RpcCommon { self: Actor with PackageCommon =>
 
       override def point[A](a: => A): Result[A] = Future successful a.right
 
-      override def empty[A]: Result[A] = Future successful Error(400, "INTERNAL_ERROR", "", true).left
+      override def empty[A]: Result[A] = Future successful internalError.left
 
       override def plus[A](a: Result[A], b: => Result[A]): Result[A] = a.hr flatMap {
         _.fold(_ => b.hr, a => Future successful a.right)
@@ -40,17 +41,15 @@ trait RpcCommon { self: Actor with PackageCommon =>
     }
   }
 
-  type RpcResult = Future[Error \/ RpcResponseMessage]
+  type RpcResult = Result[RpcResponseMessage]
 
-  val internalError = Error(400, "INTERNAL_ERROR", "", true)
+  // TODO: Should we accumuate all errors in one place?
+  val internalError = Error(400, "INTERNAL_ERROR", "", canTryAgain = true)
 
   def sendRpcResult(p: Package, messageId: Long)(res: RpcResult)(implicit ec: ExecutionContext): Unit = {
     res onComplete {
       case Success(res) =>
-        val message: RpcResponse = res match {
-          case \/-(okRes) => Ok(okRes)
-          case -\/(errorRes) => errorRes
-        }
+        val message = res.fold(identity, Ok(_))
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, message)).right)
       case Failure(e) =>
         sendReply(p.replyWith(messageId, RpcResponseBox(messageId, internalError)).right)

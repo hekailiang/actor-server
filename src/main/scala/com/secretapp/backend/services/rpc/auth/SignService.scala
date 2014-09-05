@@ -35,21 +35,16 @@ trait SignService extends PackageCommon with RpcCommon {
 
   private object V {
 
-    implicit val session: CSession = self.session
+    private implicit val session: CSession = self.session
 
-    def nonEmptyPublicKey(a: BitVector): Result[BitVector] = Future.successful(
-      if (a.isEmpty)
-        Error(400, "PUBLIC_KEY_INVALID", "Should be nonempty").left
-      else
-       a.right
-    )
+    private def check[A](p: Boolean, a: A, e: Error): Result[A] =
+      Future.successful(if (p) a.right else e.left)
 
-    def primePublicKey(a: BitVector): Result[BitVector] = Future.successful(
-      if (!PublicKey.isPrime192v1(a))
-        Error(400, "PUBLIC_KEY_INVALID", "Invalid key").left
-      else
-        a.right
-    )
+    def nonEmptyPublicKey(a: BitVector): Result[BitVector] =
+      check(!a.isEmpty, a, Error(400, "PUBLIC_KEY_INVALID", "Should be nonempty"))
+
+    def primePublicKey(a: BitVector): Result[BitVector] =
+      check(PublicKey.isPrime192v1(a), a, Error(400, "PUBLIC_KEY_INVALID", "Invalid key"))
 
     def validPublicKey(a: BitVector): Result[BitVector] =
       for (
@@ -57,42 +52,22 @@ trait SignService extends PackageCommon with RpcCommon {
         pk <- primePublicKey(a)
       ) yield pk
 
-    def validPhoneNumber(p: Long): Result[Long] = Future.successful(
-      if (false)
-        Error(400, "PHONE_INVALID", "").left
-      else
-        p.right
-    )
+    def validPhoneNumber(p: Long): Result[Long] =
+      check(true, p, Error(400, "PHONE_INVALID", "")) // TODO: Implement check
 
-    def nonEmptySmsCode(c: String): Result[String] = Future.successful(
-      if (c.trim.isEmpty)
-        Error(400, "PHONE_CODE_INVALID", "Should be nonempty").left
-      else
-        c.trim.right
-    )
+    def nonEmptySmsCode(c: String): Result[String] =
+      check(!c.trim.isEmpty, c.trim, Error(400, "PHONE_CODE_INVALID", "Should be nonempty"))
 
     def smsCodeExists(c: String, phone: Long): Result[AuthSmsCode] =
       AuthSmsCodeRecord.getEntity(phone) map {
-        _ some {
-          _.right[Error]
-        } none {
-          Error(400, "PHONE_CODE_EXPIRED", "").left
-        }
+        _.fold(Error(400, "PHONE_CODE_EXPIRED", "").left[AuthSmsCode])(_.right)
       }
 
-    def rightSmsHash(received: String, stored: AuthSmsCode): Result[AuthSmsCode] = Future.successful(
-      if (received != stored.smsHash)
-        Error(400, "PHONE_CODE_EXPIRED", "").left
-      else
-        stored.right
-    )
+    def rightSmsHash(received: String, stored: AuthSmsCode): Result[AuthSmsCode] =
+      check(received == stored.smsHash, stored, Error(400, "PHONE_CODE_EXPIRED", ""))
 
-    def rightSmsCode(received: String, stored: AuthSmsCode): Result[AuthSmsCode] = Future.successful(
-      if (received != stored.smsCode)
-        Error(400, "PHONE_CODE_INVALID", "").left
-      else
-        stored.right
-    )
+    def rightSmsCode(received: String, stored: AuthSmsCode): Result[AuthSmsCode] =
+      check(received == stored.smsCode, stored, Error(400, "PHONE_CODE_INVALID", ""))
 
     def validSmsCode(receivedCode: String, receivedHash: String, phoneNumber: Long): Result[AuthSmsCode] =
       for (
@@ -102,13 +77,10 @@ trait SignService extends PackageCommon with RpcCommon {
         _           <- rightSmsCode(smsCode, authSmsCode)
       ) yield authSmsCode
 
-    def phoneExists(p: Long): Result[Phone] = PhoneRecord.getEntity(p) map {
-      _ some {
-        _.right[Error]
-      } none {
-        Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left
+    def phoneExists(p: Long): Result[Phone] =
+      PhoneRecord.getEntity(p) map {
+        _.fold(Error(400, "PHONE_NUMBER_UNOCCUPIED", "").left[Phone])(_.right)
       }
-    }
 
     def validRequest(r: RequestSign): Result[(RequestSign, AuthSmsCode)] =
       for (
@@ -121,30 +93,19 @@ trait SignService extends PackageCommon with RpcCommon {
           override val smsCode = authSmsCode.smsCode
           override val publicKey = r.publicKey
         }
-      ) yield (vr, authSmsCode)
+      ) yield (vr: RequestSign, authSmsCode) // TODO: Remove type cast. It is for Idea to highlight properly.
 
-    def nonEmptyName(n: String): Result[String] = Future.successful(
-      if (n.trim.isEmpty)
-        Error(400, "NAME_INVALID", "Should be nonempty").left
-      else
-        n.trim.right
-    )
+    def nonEmptyName(n: String): Result[String] =
+      check(!n.trim.isEmpty, n.trim, Error(400, "NAME_INVALID", "Should be nonempty"))
 
-    def printableName(n: String): Result[String] = Future.successful {
+    def printableName(n: String): Result[String] = {
        val p = Pattern.compile("\\p{Print}+", Pattern.UNICODE_CHARACTER_CLASS)
-       if (!p.matcher(n).matches)
-         Error(400, "NAME_INVALID", "Should contain printable characters only").left
-       else
-         n.right
+       check(p.matcher(n).matches, n, Error(400, "NAME_INVALID", "Should contain printable characters only"))
      }
 
     def userExists(userId: Int): Result[User] =
       UserRecord.getEntity(userId) map {
-        _ some {
-          _.right[Error]
-        } none {
-          internalError.left
-        }
+        _.fold(internalError.left[User])(_.right)
       }
 
     def validName(n: String): Result[String] =
