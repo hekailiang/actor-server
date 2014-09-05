@@ -30,6 +30,8 @@ class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies
       case -\/(p) =>
         connection ! Write(replyPackage(p))
         connection ! Close
+      case x =>
+        log.error(s"unhandled packageToSend ${x}")
     }
 
     case MessageBoxToSend(mb) =>
