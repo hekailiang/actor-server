@@ -31,7 +31,7 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
     val fr = new FileRecord
 
     for (
-      fullImageBytes  <- fr.getFile(r.fileLocation.fileId);
+      fullImageBytes  <- fr.getFile(r.fileLocation.fileId.toInt);
 
       fullImage       <- AsyncImage(fullImageBytes);
       smallImage      <- fullImage.resizeTo(100, 100, Position.Center);
@@ -52,8 +52,8 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
       smallImageBytes <- smallImage.writer(Format.JPEG).write();
       largeImageBytes <- largeImage.writer(Format.JPEG).write();
 
-      _               <- fr.write(smallImageLoc.fileId, 0, smallImageBytes);
-      _               <- fr.write(largeImageLoc.fileId, 0, largeImageBytes);
+      _               <- fr.write(smallImageLoc.fileId.toInt, 0, smallImageBytes);
+      _               <- fr.write(largeImageLoc.fileId.toInt, 0, largeImageBytes);
 
       smallAvatarImage = AvatarImage(smallImageLoc, 100, 100);
       largeAvatarImage = AvatarImage(largeImageLoc, 200, 200);
