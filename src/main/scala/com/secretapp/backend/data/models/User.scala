@@ -2,9 +2,7 @@ package com.secretapp.backend.data.models
 
 import com.secretapp.backend.data.message.struct
 import scala.collection.immutable
-import scala.util.Random
 import com.secretapp.backend.data.types._
-import com.secretapp.backend.protocol.codecs.ByteConstants
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
@@ -21,26 +19,32 @@ case class User(uid: Int,
                 accessSalt: String,
                 name: String,
                 sex: Sex,
+                avatar: Option[Avatar] = None,
                 keyHashes: immutable.Set[Long] = Set()) {
+
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
   def selfAccessHash = accessHash(authId)
 
   def toStruct(senderAuthId: Long) = {
-    struct.User(uid = this.uid, accessHash = User.getAccessHash(senderAuthId, this.uid, this.accessSalt),
-      keyHashes = this.keyHashes, name = this.name, sex = this.sex.toOption,
-      phoneNumber = this.phoneNumber)
+    struct.User(
+      uid = uid,
+      accessHash = User.getAccessHash(senderAuthId, uid, accessSalt),
+      keyHashes = keyHashes,
+      name = name,
+      sex = sex.toOption,
+      phoneNumber = phoneNumber,
+      avatar = avatar.map(_.toStruct))
   }
 }
 
 object User {
-  import ByteConstants._
   import Configuration._
 
-  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String,
-            sex: Sex = NoSex) = {
+  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String, sex: Sex = NoSex) = {
     val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-    User(uid = uid,
+    User(
+      uid = uid,
       authId = authId,
       publicKey = publicKey,
       publicKeyHash = publicKeyHash,

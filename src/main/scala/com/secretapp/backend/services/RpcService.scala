@@ -1,20 +1,15 @@
 package com.secretapp.backend.services
 
-import akka.actor.Actor
-import com.secretapp.backend.api.SocialBroker
-import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.api._
-import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.api.{SocialBroker, UpdatesBroker, _}
+import com.secretapp.backend.api.rpc._
+import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.{update => updateProto, _}
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.services.rpc.presence.PresenceService
 import com.secretapp.backend.services.rpc.auth.SignService
-import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
+import com.secretapp.backend.services.rpc.contact.{ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
-import com.secretapp.backend.services.transport._
-import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.api.rpc._
+import com.secretapp.backend.services.rpc.presence.PresenceService
 
 trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with FilesService
 with PublicKeysService with PresenceService {
@@ -54,15 +49,16 @@ with PublicKeysService with PresenceService {
         handleUpdates(rq)
 
       case _ =>
-        handleRpcAuth(p, messageId).
-          orElse(handleRpcFiles(p, messageId)).
-          orElse(handleRpcContact(p, messageId)).
-          orElse(handleRpcPresence(p, messageId)).
-          orElse(handleRpcPublicKeys(p, messageId))(body)
+        handleRpcAuth(p, messageId)
+          .orElse(handleRpcFiles(p, messageId))
+          .orElse(handleRpcContact(p, messageId))
+          .orElse(handleRpcPresence(p, messageId))
+          .orElse(handleRpcPublicKeys(p, messageId))(body)
+          .orElse(handleRpcProfile(p, messageId))(body)
     }
   }
 
   private def authorizedRequest[A](p: Package)(f: (User) => A) = {
-    getUser map (f(_)) getOrElse (sendDrop(p, new RuntimeException("user is not authenticated")))
+    getUser map (f(_)) getOrElse sendDrop(p, new RuntimeException("user is not authenticated"))
   }
 }

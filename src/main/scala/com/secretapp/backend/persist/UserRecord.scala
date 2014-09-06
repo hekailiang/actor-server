@@ -3,18 +3,13 @@ package com.secretapp.backend.persist
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.crypto.ec.PublicKey
-import java.util.{ Date, UUID }
 import com.secretapp.backend.data.types._
 import scodec.bits.BitVector
 import scala.concurrent.Future
-import scala.math.BigInt
-import scala.collection.immutable
 import scalaz._
 import Scalaz._
-import scala.util.{ Success, Failure }
 
 sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override lazy val tableName = "users"
@@ -42,6 +37,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
     override lazy val name = "first_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
+  object avatar extends OptionalBlobColumn(this)
 
   override def fromRow(row: Row): User = {
     User(
@@ -59,12 +55,23 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 }
 
 object UserRecord extends UserRecord with DBConnector {
+
   def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
-    val phone = Phone(number = entity.phoneNumber, userId = entity.uid, userAccessSalt = entity.accessSalt,
-      userKeyHashes = Set(entity.publicKeyHash), userName = entity.name,
+
+    val phone = Phone(
+      number = entity.phoneNumber,
+      userId = entity.uid,
+      userAccessSalt = entity.accessSalt,
+      userKeyHashes = Set(entity.publicKeyHash),
+      userName = entity.name,
       userSex = sexToInt(entity.sex))
-    val userPK = UserPublicKey(uid = entity.uid,
-      publicKeyHash = entity.publicKeyHash, userAccessSalt = entity.accessSalt, publicKey = entity.publicKey, authId = entity.authId)
+
+    val userPK = UserPublicKey(
+      uid = entity.uid,
+      publicKeyHash = entity.publicKeyHash,
+      userAccessSalt = entity.accessSalt,
+      publicKey = entity.publicKey,
+      authId = entity.authId)
 
     insert.value(_.uid, entity.uid)
       .value(_.authId, entity.authId)
@@ -95,8 +102,7 @@ object UserRecord extends UserRecord with DBConnector {
       flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
   }
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String,
-                                     sex: Sex = NoSex)
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: Sex = NoSex)
                                     (implicit session: Session): Future[ResultSet] = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
 

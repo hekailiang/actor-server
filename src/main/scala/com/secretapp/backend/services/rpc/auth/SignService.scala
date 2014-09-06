@@ -133,12 +133,12 @@ trait SignService extends PackageCommon with RpcCommon {
   private val clickatell = new ClickatellSMSEngine(ConfigFactory.load())
 
   def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Unit] = {
-    case r: RequestAuthCode => sendRpcResult(p, messageId)(handleRequestAuthCode(r))
+    case r: RequestAuthCode => sendRpcResult(p, messageId)(handleRequestAuthCode(p, r))
     case r: RequestSignIn   => sendRpcResult(p, messageId)(handleSignIn(p, r))
     case r: RequestSignUp   => sendRpcResult(p, messageId)(handleSignUp(p, r))
   }
 
-  private def handleRequestAuthCode(r: RequestAuthCode): RpcResult =
+  private def handleRequestAuthCode(p: Package, r: RequestAuthCode): RpcResult =
     for {
       optSms   <- AuthSmsCodeRecord.getEntity(r.phoneNumber)
       optPhone <- PhoneRecord.getEntity(r.phoneNumber)
