@@ -1,6 +1,7 @@
 package com.secretapp.backend.data.models
 
 import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.data.message.struct.Avatar
 import scala.collection.immutable
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.Configuration
@@ -34,7 +35,7 @@ case class User(uid: Int,
       name = name,
       sex = sex.toOption,
       phoneNumber = phoneNumber,
-      avatar = avatar.map(_.toStruct))
+      avatar = avatar)
   }
 }
 

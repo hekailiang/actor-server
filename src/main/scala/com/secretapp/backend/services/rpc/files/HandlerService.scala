@@ -86,7 +86,7 @@ trait HandlerService extends GeneratorService {
 
   protected def handleRequestCompleteUpload(p: Package, messageId: Long)(config: UploadConfig, blocksCount: Int, crc32: Long) = {
     val fileId = int32codec.decodeValidValue(config.serverData)
-    val faccessHash = getAccessHash(fileId)
+    val faccessHash = fileRecord.getAccessHash(fileId)
 
     fileRecord.countSourceBlocks(fileId) onComplete {
       case Success(sourceBlocksCount) =>
@@ -128,7 +128,7 @@ trait HandlerService extends GeneratorService {
 
   protected def handleRequestGetFile(p: Package, messageId: Long)(location: FileLocation, offset: Int, limit: Int) = {
     // TODO: Int vs Long
-    getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
+    fileRecord.getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
       if (realAccessHash != location.accessHash) {
         throw new LocationInvalid
       }
@@ -145,15 +145,6 @@ trait HandlerService extends GeneratorService {
         handleActor ! PackageToSend(
           p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))).right)
         throw e
-    }
-  }
-
-  protected def getAccessHash(fileId: Int): Future[Long] = {
-    fileRecord.getFileAccessSalt(fileId) map { accessSalt =>
-      val str = s"$fileId:$accessSalt:$secretKey"
-      val digest = MessageDigest.getInstance("MD5")
-      val res = digest.digest(str.getBytes)
-      ByteBuffer.wrap(res).getLong
     }
   }
 }

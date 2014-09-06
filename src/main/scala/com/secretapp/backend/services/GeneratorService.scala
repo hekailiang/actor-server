@@ -11,8 +11,6 @@ trait GeneratorService extends RandomService {
 
   def genUserId = rand.nextInt // TODO: akka service for ID's
 
-  def genFileId = rand.nextInt
-
   def genUserAccessSalt = rand.nextString(30)
 
   def genFileAccessSalt = rand.nextString(30)

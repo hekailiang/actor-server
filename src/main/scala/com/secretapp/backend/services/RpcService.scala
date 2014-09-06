@@ -10,9 +10,10 @@ import com.secretapp.backend.services.rpc.auth.SignService
 import com.secretapp.backend.services.rpc.contact.{ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
 import com.secretapp.backend.services.rpc.presence.PresenceService
+import com.secretapp.backend.services.rpc.user.UserService
 
 trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with FilesService
-with PublicKeysService with PresenceService {
+with PublicKeysService with PresenceService with UserService {
   self: ApiHandlerActor =>
 
   import context.system

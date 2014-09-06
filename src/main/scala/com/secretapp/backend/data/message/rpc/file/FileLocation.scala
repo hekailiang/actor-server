@@ -10,6 +10,6 @@ case class FileLocation(fileId: Int, accessHash: Long) extends ProtobufMessage
 
 object FileLocation {
   def fromProto(r: protobuf.FileLocation): FileLocation = r match {
-    case protobuf.FileLocation(fileId, accessHash) => FileLocation(fileId, accessHash)
+    case protobuf.FileLocation(fileId, accessHash) => FileLocation(fileId.toInt, accessHash)
   }
 }
