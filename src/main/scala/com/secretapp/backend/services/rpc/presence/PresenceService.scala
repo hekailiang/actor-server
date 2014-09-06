@@ -6,7 +6,6 @@ import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.persist.PresenceRecord
 import com.secretapp.backend.services.transport.PackageManagerService
 
 trait PresenceService {
