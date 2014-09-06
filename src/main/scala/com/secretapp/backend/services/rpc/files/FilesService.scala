@@ -16,17 +16,17 @@ trait FilesService {
   import context.dispatcher
   import context.system
 
-  lazy val handler = context.actorOf(Props(new Handler(handleActor, getUser.get, new FileRecord, countersProxies.files)), "files")
+  lazy val filesHandler = context.actorOf(Props(new Handler(handleActor, getUser.get, new FileRecord, clusterProxies.filesCounter)), "files")
   //countersProxies
 
   def handleRpcFiles(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
     case rq: RequestStartUpload =>
-      handler ! RpcProtocol.Request(p, messageId, rq)
+      filesHandler ! RpcProtocol.Request(p, messageId, rq)
     case rq: RequestUploadPart =>
-      handler ! RpcProtocol.Request(p, messageId, rq)
+      filesHandler ! RpcProtocol.Request(p, messageId, rq)
     case rq: RequestCompleteUpload =>
-      handler ! RpcProtocol.Request(p, messageId, rq)
+      filesHandler ! RpcProtocol.Request(p, messageId, rq)
     case rq: RequestGetFile =>
-      handler ! RpcProtocol.Request(p, messageId, rq)
+      filesHandler ! RpcProtocol.Request(p, messageId, rq)
   }
 }

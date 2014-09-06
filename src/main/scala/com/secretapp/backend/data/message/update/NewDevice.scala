@@ -1,4 +1,4 @@
- package com.secretapp.backend.data.message.update
+package com.secretapp.backend.data.message.update
 
 case class NewDevice(uid: Int, keyHash: Long) extends CommonUpdateMessage {
   val commonUpdateType = NewDevice.commonUpdateType

@@ -12,13 +12,13 @@ object FilesCounter {
       terminationMessage = PoisonPill,
       role = None // TODO: specify roles the singleton should run on
     )
-    system.actorOf(props, name = "singleton")
+    system.actorOf(props, name = "files-singleton")
   }
 
   def startProxy(implicit system: ActorSystem) = {
     system.actorOf(
       ClusterSingletonProxy.props(
-        singletonPath = "/user/singleton/files-counter",
+        singletonPath = "/user/files-singleton/files-counter",
         role = None),
       name = "files-counter-proxy")
   }

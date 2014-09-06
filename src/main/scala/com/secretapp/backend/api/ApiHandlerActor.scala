@@ -17,7 +17,7 @@ import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
 
 // TODO: replace connection: ActorRef hack with real sender (or forget it?)
-class ApiHandlerActor(connection: ActorRef, val countersProxies: CountersProxies)(implicit val session: CSession) extends Actor with ActorLogging
+class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(implicit val session: CSession) extends Actor with ActorLogging
     with WrappedPackageService with PackageService {
   val handleActor = self
 

@@ -11,11 +11,19 @@ package object update {
     def userIds: Set[Int]
   }
 
+  trait WeakUpdateMessage extends ProtobufMessage {
+    val weakUpdateType: Int
+  }
+
   trait UpdateMessageObject {
     val updateType: Int
   }
 
   trait CommonUpdateMessageObject {
     val commonUpdateType: Int
+  }
+
+  trait WeakUpdateMessageObject {
+    val weakUpdateType: Int
   }
 }

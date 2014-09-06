@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.services.rpc.presence.PresenceService
 import com.secretapp.backend.services.rpc.auth.SignService
 import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
@@ -16,7 +17,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 
 trait RpcService extends SignService with RpcMessagingService with RpcUpdatesService with ContactService with FilesService
-with PublicKeysService {
+with PublicKeysService with PresenceService {
   self: ApiHandlerActor =>
 
   import context.system
@@ -56,6 +57,7 @@ with PublicKeysService {
         handleRpcAuth(p, messageId).
           orElse(handleRpcFiles(p, messageId)).
           orElse(handleRpcContact(p, messageId)).
+          orElse(handleRpcPresence(p, messageId)).
           orElse(handleRpcPublicKeys(p, messageId))(body)
     }
   }

@@ -5,8 +5,8 @@ import akka.io.Tcp.{Write, Received}
 import akka.testkit.{TestProbe, TestKitBase}
 import akka.util.ByteString
 import com.secretapp.backend.api.ApiHandlerActor
-import com.secretapp.backend.api.Counters
-import com.secretapp.backend.api.CountersProxies
+import com.secretapp.backend.api.Singletons
+import com.secretapp.backend.api.ClusterProxies
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon.Authenticate
@@ -122,8 +122,8 @@ trait ActorServiceHelpers extends RandomService {
     override def genUserAccessSalt = userSalt
   }
 
-  val counters = new Counters
-  val countersProxies = new CountersProxies
+  val counters = new Singletons
+  val countersProxies = new ClusterProxies
 
   def probeAndActor() = {
     val probe = TestProbe()
