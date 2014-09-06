@@ -39,7 +39,7 @@ private[persist] class FileSourceBlockRecord(implicit session: Session, context:
     countQuery.execute(fileId.asInstanceOf[java.lang.Integer]).map(_.one.getLong(0))
   }
 
-  def getBlocksLength(fileId: Int): Future[Int] = {
+  def getFileLength(fileId: Int): Future[Int] = {
     select(_.length).where(_.fileId eqs fileId).fetch() map { lengths =>
       lengths.foldLeft(0)(_ + _)
     }

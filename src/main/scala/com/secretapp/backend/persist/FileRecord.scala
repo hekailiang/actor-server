@@ -78,7 +78,7 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
   }
 
   def getFile(fileId: Int): Future[Array[Byte]] = {
-    sourceBlockRecord.getBlocksLength(fileId) flatMap (getFile(fileId, 0, _))
+    blockRecord.getBlocksLength(fileId) flatMap (getFile(fileId, 0, _))
   }
 
   def blocksByFileId(fileId: Int) = blockRecord.blocksByFileId(fileId)

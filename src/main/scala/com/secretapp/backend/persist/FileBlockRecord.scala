@@ -105,4 +105,8 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   def blocksByFileId(fileId: Int): Enumerator[ByteBuffer] = {
     select(_.bytes).where(_.fileId eqs fileId).fetchEnumerator
   }
+
+  def getBlocksLength(fileId: Int): Future[Int] = {
+    count.where(_.fileId eqs fileId).one() map (_.get * blockSize) map (_.toInt)
+  }
 }
