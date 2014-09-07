@@ -13,7 +13,7 @@ import Scalaz._
 
 case class CommonUpdate(seq: Int, state: BitVector, body: CommonUpdateMessage) extends UpdateMessage
 {
-  val updateType = 0xd
+  val updateType = CommonUpdate.updateType
 
   def toProto: String \/ protobuf.CommonUpdate = {
     for {

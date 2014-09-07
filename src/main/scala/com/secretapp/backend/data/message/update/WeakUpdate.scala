@@ -7,11 +7,22 @@ import scalaz._
 import Scalaz._
 
 case class WeakUpdate(date: Long, body: WeakUpdateMessage) extends UpdateMessage {
-  val updateType = 0x1A
+  val updateType = WeakUpdate.updateType
 
   def toProto: String \/ protobuf.WeakUpdate = {
     for {
       update <- WeakUpdateMessageCodec.encode(body)
     } yield protobuf.WeakUpdate(date, body.weakUpdateType, update)
+  }
+}
+
+object WeakUpdate extends UpdateMessageObject {
+  val updateType = 0x1A
+
+  def fromProto(u: protobuf.WeakUpdate): String \/ WeakUpdate = u match {
+    case protobuf.WeakUpdate(date, updateId, body) =>
+      for {
+        update <- WeakUpdateMessageCodec.decode(updateId, body)
+      } yield WeakUpdate(date, update)
   }
 }
