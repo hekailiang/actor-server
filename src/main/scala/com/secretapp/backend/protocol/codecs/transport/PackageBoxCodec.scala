@@ -30,12 +30,13 @@ object PackageBoxCodec extends Codec[PackageBox] {
         val body = xs.take(bodyLen)
         val crc = xs.drop(bodyLen).take(crcByteSize * byteSize)
         val crcBody = buf.take(intSize + intSize + bodyLen) // crc body: package len + index + package body
-        if (crc == encodeCRCR32(crcBody)) {
+        val expectedCrc = encodeCRCR32(crcBody)
+        if (crc == expectedCrc) {
           for {
             pt <- protoPackage.decode(body) ; (_, p) = pt
             remain = buf.drop(intSize + len * byteSize)
           } yield (remain, PackageBox(index, p))
-        } else "invalid crc32".left
+        } else s"invalid crc32 ${crc.toHex}, expected ${expectedCrc.toHex}".left
       case l@(-\/(e)) => l
     }
   }
