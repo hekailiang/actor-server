@@ -75,8 +75,8 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
   }
 
   def write(connection: ActorRef, byteString: ByteString): Unit = {
-    log.debug(s"Sending ${connection} ${byteString}")
     writeStamp += 1
+    log.debug(s"Sending ${connection} ${byteString} ${writeStamp}")
     connection ! Write(byteString, Ack(writeStamp))
   }
 }
