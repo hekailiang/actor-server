@@ -9,5 +9,5 @@ case class AvatarChanged(uid: Int, avatar: Option[Avatar]) extends CommonUpdateM
 }
 
 object AvatarChanged extends CommonUpdateMessageObject {
-  val commonUpdateType = 0x09
+  val commonUpdateType = 0x10
 }
