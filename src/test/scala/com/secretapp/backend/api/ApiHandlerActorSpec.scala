@@ -41,7 +41,10 @@ class ApiHandlerActorSpec extends RpcSpec {
       val req = protoPackageBox.build(0L, 0L, messageId, RequestAuthId())
       val res = protoPackageBox.build(0L, 0L, messageId, ResponseAuthId(mockAuthId))
       probe.send(apiActor, Received(codecRes2BS(req)))
-      probe.expectMsg(Write(codecRes2BS(res)))
+      val expectedData = (codecRes2BS(res))
+      probe.expectMsgPF() {
+        case Write(expectedData, _) => true
+      }
     }
 
     "reply pong to ping" in {
@@ -60,7 +63,9 @@ class ApiHandlerActorSpec extends RpcSpec {
       val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411"
       probe.send(apiActor, Received(req))
       val res = protoPackageBox.build(0L, 0L, 0L, Drop(0L, "invalid crc32"))
-      probe.expectMsg(Write(res))
+      probe.expectMsgPF() {
+        case Write(res, _) => true
+      }
     }
 
     "parse packages in single stream" in {

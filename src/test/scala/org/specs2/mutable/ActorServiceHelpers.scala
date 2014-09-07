@@ -170,8 +170,11 @@ trait ActorServiceHelpers extends RandomService {
     val res = pack(authId, m, messageId)
     val ack = pack(authId, MessageAck(Array(messageId)), messageId * 10) // TODO: move into DSL method
     val ses = pack(authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
-    val expectedMsg = Seq(ses, ack, res)
-    probe.expectMsgAllOf(expectedMsg.map(m => Write(m.blob)) :_*)
+    val expectedMsg = Set(ses, ack, res)
+    val received = probe.receiveN(3) map {
+      case Write(data, _) => Write(data)
+    }
+    received.toSet should equalTo(expectedMsg map (m => Write(m.blob)))
   }
 
   case class PackResult(blob: ByteString, messageId: Long)
