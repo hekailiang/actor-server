@@ -8,13 +8,13 @@ import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestSetAvatar, ResponseAvatarUploaded}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.persist.FileRecord
+import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.rpc.RpcCommon
-import com.secretapp.backend.services.rpc.files.{Handler, FilesService}
+import com.secretapp.backend.services.rpc.files.FilesService
 import com.sksamuel.scrimage.{Format, Position, AsyncImage}
-import scala.concurrent.Future
+import scala.util.Random
 import scalaz._
 import Scalaz._
 
@@ -40,8 +40,8 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
       smallImageId    <- ask(countersProxies.files, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
       largeImageId    <- ask(countersProxies.files, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
 
-      _               <- fr.createFile(smallImageId, genFileAccessSalt);
-      _               <- fr.createFile(largeImageId, genFileAccessSalt);
+      _               <- fr.createFile(smallImageId, (new Random).nextString(30)); // TODO: genAccessSalt makes specs
+      _               <- fr.createFile(largeImageId, (new Random).nextString(30)); // fail
 
       smallImageHash  <- fr.getAccessHash(smallImageId);
       largeImageHash  <- fr.getAccessHash(largeImageId);
@@ -59,7 +59,9 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
       largeAvatarImage = AvatarImage(largeImageLoc, 200, 200);
       fullAvatarImage  = AvatarImage(r.fileLocation, fullImage.width, fullImage.height);
 
-      avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
+      avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some);
+
+      _               <- UserRecord.updateAvatar(getUser.get.uid, avatar)
 
     ) yield ResponseAvatarUploaded(avatar).right
   }

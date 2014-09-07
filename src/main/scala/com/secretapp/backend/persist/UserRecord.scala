@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
+import com.secretapp.backend.data.message.struct.Avatar
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
@@ -37,7 +38,30 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
     override lazy val name = "first_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
-  object avatar extends OptionalBlobColumn(this)
+  object smallAvatarFileId extends OptionalIntColumn(this) {
+    override lazy val name = "small_avatar_file_id"
+  }
+  object smallAvatarFileHash extends OptionalLongColumn(this) {
+    override lazy val name = "small_avatar_file_hash"
+  }
+  object largeAvatarFileId extends OptionalIntColumn(this) {
+    override lazy val name = "large_avatar_file_id"
+  }
+  object largeAvatarFileHash extends OptionalLongColumn(this) {
+    override lazy val name = "large_avatar_file_hash"
+  }
+  object fullAvatarFileId extends OptionalIntColumn(this) {
+    override lazy val name = "full_avatar_file_id"
+  }
+  object fullAvatarFileHash extends OptionalLongColumn(this) {
+    override lazy val name = "full_avatar_file_hash"
+  }
+  object fullAvatarWidth extends OptionalIntColumn(this) {
+    override lazy val name = "full_avatar_width"
+  }
+  object fullAvatarHeight extends OptionalIntColumn(this) {
+    override lazy val name = "full_avatar_height"
+  }
 
   override def fromRow(row: Row): User = {
     User(
@@ -49,7 +73,15 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       accessSalt = accessSalt(row),
       phoneNumber = phoneNumber(row),
       name = name(row),
-      sex = intToSex(sex(row))
+      sex = intToSex(sex(row)),
+      smallAvatarFileId = smallAvatarFileId(row),
+      smallAvatarFileHash = smallAvatarFileHash(row),
+      largeAvatarFileId = largeAvatarFileId(row),
+      largeAvatarFileHash = largeAvatarFileHash(row),
+      fullAvatarFileId = fullAvatarFileId(row),
+      fullAvatarFileHash = fullAvatarFileHash(row),
+      fullAvatarWidth = fullAvatarWidth(row),
+      fullAvatarHeight = fullAvatarHeight(row)
     )
   }
 }
@@ -82,6 +114,14 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.name, entity.name)
       .value(_.sex, sexToInt(entity.sex))
+      .value(_.smallAvatarFileId, entity.smallAvatarFileId)
+      .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
+      .value(_.largeAvatarFileId, entity.largeAvatarFileId)
+      .value(_.largeAvatarFileHash, entity.largeAvatarFileHash)
+      .value(_.fullAvatarFileId, entity.fullAvatarFileId)
+      .value(_.fullAvatarFileHash, entity.fullAvatarFileHash)
+      .value(_.fullAvatarWidth, entity.fullAvatarWidth)
+      .value(_.fullAvatarHeight, entity.fullAvatarHeight)
       .future().
       flatMap(_ => PhoneRecord.insertEntity(phone)).
       flatMap(_ => UserPublicKeyRecord.insertEntity(userPK)).
@@ -127,6 +167,18 @@ object UserRecord extends UserRecord with DBConnector {
     update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).
       future().flatMap(_ => PhoneRecord.removeKeyHash(phoneNumber, publicKeyHash))
   }
+
+  def updateAvatar(uid: Int, avatar: Avatar)(implicit session: Session) =
+    update.where(_.uid eqs uid)
+      .modify(_.smallAvatarFileId setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
+      .and(_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
+      .and(_.largeAvatarFileId setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
+      .and(_.largeAvatarFileHash setTo avatar.largeImage.map(_.fileLocation.accessHash))
+      .and(_.fullAvatarFileId setTo avatar.fullImage.map(_.fileLocation.fileId.toInt))
+      .and(_.fullAvatarFileHash setTo avatar.fullImage.map(_.fileLocation.accessHash))
+      .and(_.fullAvatarWidth setTo avatar.fullImage.map(_.width))
+      .and(_.fullAvatarHeight setTo avatar.fullImage.map(_.height))
+      .future
 
   def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
     select.where(_.uid eqs uid).limit(100).fetch()

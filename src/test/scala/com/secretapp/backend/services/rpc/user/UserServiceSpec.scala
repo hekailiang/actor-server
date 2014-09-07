@@ -24,6 +24,7 @@ class UserServiceSpec extends RpcSpec {
       implicit val scope = TestScope()
 
       val bytes = Files.readAllBytes(Paths.get(getClass.getResource("/avatar.jpg").toURI))
+      bytes must have size 112527
 
       val fileId = 42
       val fileSalt = (new Random).nextString(30)
