@@ -21,7 +21,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   type ParseResult = (ParseState, BitVector)
   type PackageFunc = (Package, Option[TransportMessage]) => Unit
 
-  val minParseLength = intSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
+  val minParseLength = intSize // we need first bytes for package size
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
   @tailrec @inline
@@ -31,8 +31,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
         if (buf.length >= minParseLength) {
           int32.decode(buf) match {
             case \/-((_, len)) =>
-              //val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
-              val pLen = (len + intSize / byteSize) * byteSize // length of Package payload (with index and crc) + length of int before Package
+              val pLen = (intSize / byteSize + len) * byteSize // length of Package length and length of Package payload (with index and crc)
               if (len <= maxPackageLen) {
                 parseByteStream(WrappedPackageParsing(pLen), buf)(f)
               } else {
