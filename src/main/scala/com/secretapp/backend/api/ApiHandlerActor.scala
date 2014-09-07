@@ -71,7 +71,7 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       context stop self
 
     case Ack(stamp) =>
-      log.info("Ack ${stamp}")
+      log.info(s"Ack ${stamp}")
   }
 
   def write(connection: ActorRef, byteString: ByteString): Unit = {
