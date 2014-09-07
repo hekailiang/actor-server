@@ -20,7 +20,7 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
     with WrappedPackageService with PackageService {
   import akka.io.Tcp._
   case class Ack(stamp: Int) extends Event
-  var writeStamp = 0
+  var packageIndex = 0
 
   val handleActor = self
 
@@ -31,9 +31,9 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       log.info(s"PackageToSend($pe)")
       pe match {
         case \/-(p) =>
-          write(connection, replyPackage(p))
+          write(connection, replyPackage(packageIndex, p))
         case -\/(p) =>
-          write(connection, replyPackage(p))
+          write(connection, replyPackage(packageIndex, p))
           connection ! Close
         case x =>
           log.error(s"unhandled packageToSend ${x}")
@@ -42,13 +42,13 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
     case MessageBoxToSend(mb) =>
       log.info(s"MessageBoxToSend($mb)")
       val p = Package(getAuthId, getSessionId, mb)
-      write(connection, replyPackage(p))
+      write(connection, replyPackage(packageIndex, p))
 
     case UpdateBoxToSend(ub) =>
       log.info(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
       val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      write(connection, replyPackage(p))
+      write(connection, replyPackage(packageIndex, p))
 
     case m: ServiceMessage =>
       log.info(s"ServiceMessage: $m")
@@ -70,13 +70,13 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       log.info(s"Connection closed by listener")
       context stop self
 
-    case Ack(stamp) =>
-      log.info(s"Ack ${stamp}")
+    case Ack(index) =>
+      log.info(s"Ack ${index}")
   }
 
   def write(connection: ActorRef, byteString: ByteString): Unit = {
-    writeStamp += 1
-    log.debug(s"Sending ${connection} ${byteString} ${writeStamp}")
-    connection ! Write(byteString, Ack(writeStamp))
+    log.debug(s"Sending ${connection} ${byteString} ${packageIndex}")
+    connection ! Write(byteString, Ack(packageIndex))
+    packageIndex += 1
   }
 }

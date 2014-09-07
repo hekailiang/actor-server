@@ -8,6 +8,7 @@ import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.api.Singletons
 import com.secretapp.backend.api.ClusterProxies
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
+import com.secretapp.backend.protocol.codecs.transport.PackageBoxCodec
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon.Authenticate
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -160,37 +161,45 @@ trait ActorServiceHelpers extends RandomService {
 
   implicit class WrappedTM(m: TransportMessage) {
     def :~>(wp: WrappedReceivePackage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, authId: Long): Unit = {
-      val r = pack(authId, m)
+      val r = pack(0, authId, m) // TODO: real index
       probe.send(destActor, Received(r.blob))
       wp.f(r.messageId)
     }
   }
 
   def @<~:(m: TransportMessage)(implicit probe: TestProbe, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
-    val res = pack(authId, m, messageId)
-    val ack = pack(authId, MessageAck(Array(messageId)), messageId * 10) // TODO: move into DSL method
-    val ses = pack(authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
-    val expectedMsg = Set(ses, ack, res)
     val received = probe.receiveN(3) map {
-      case Write(data, _) => Write(data)
+      case Write(data, _) => PackageBoxCodec.decodeValidValue(data).p //Write(data)
     }
-    received.toSet should equalTo(expectedMsg map (m => Write(m.blob)))
+
+    /*val res = pack(0, authId, m, messageId)
+    val ack = pack(0, authId, MessageAck(Array(messageId)), messageId * 10) // TODO: move into DSL method
+    val ses = pack(0, authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
+    val expectedMsg = Set(ses, ack, res)
+     */
+
+    val res = Package(authId, s.id, MessageBox(messageId, m))
+    val ack = Package(authId, s.id, MessageBox(messageId * 10, MessageAck(Vector(messageId)))) // TODO: move into DSL method
+    val ses = Package(authId, s.id, MessageBox(messageId, NewSession(s.id, messageId)))
+    val expectedMsg = Set(ses, ack, res)
+
+    received.toSet should equalTo(expectedMsg)
   }
 
   case class PackResult(blob: ByteString, messageId: Long)
 
-  def pack(authId: Long, m: MessageBox)(implicit s: SessionIdentifier): PackResult = {
-    pack(authId, m.body, m.messageId)
+  def pack(index: Int, authId: Long, m: MessageBox)(implicit s: SessionIdentifier): PackResult = {
+    pack(index, authId, m.body, m.messageId)
   }
 
-  def pack(authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())
+  def pack(index: Int, authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())
           (implicit s: SessionIdentifier): PackResult = {
-    val p = protoPackageBox.build(authId, s.id, messageId, m)
+    val p = protoPackageBox.build(index, authId, s.id, messageId, m)
     PackResult(codecRes2BS(p), messageId)
   }
 
-  def ack(messageId: Long, authId: Long)(implicit s: SessionIdentifier): PackResult = {
-    val p = protoPackageBox.build(authId, s.id, messageId, MessageAck(Array(messageId)))
+  def ack(index: Int, messageId: Long, authId: Long)(implicit s: SessionIdentifier): PackResult = {
+    val p = protoPackageBox.build(index, authId, s.id, messageId, MessageAck(Vector(messageId)))
     PackResult(codecRes2BS(p), messageId)
   }
 
@@ -208,8 +217,8 @@ trait ActorServiceHelpers extends RandomService {
       }
     }
     val mboxes = unboxed flatMap {
-      case PackageBox(Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
+      case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
+      case PackageBox(_, Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
     }
     val (ackPackages, packages) = mboxes partition {
       case MessageBox(_, ma@MessageAck(_)) => true
@@ -241,8 +250,8 @@ trait ActorServiceHelpers extends RandomService {
       }
     }
     val mboxes = unboxed flatMap {
-      case PackageBox(Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
+      case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
+      case PackageBox(_, Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
     }
     val (ackPackages, expectedPackages) = mboxes partition {
       case MessageBox(_, ma@MessageAck(_)) => true

@@ -6,6 +6,7 @@ import com.secretapp.backend.data.message.TransportMessage
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.protocol.codecs._
 import scodec.bits.BitVector
+import scodec.codecs.int32
 import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
@@ -20,7 +21,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   type ParseResult = (ParseState, BitVector)
   type PackageFunc = (Package, Option[TransportMessage]) => Unit
 
-  val minParseLength = varint.maxSize * byteSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
+  val minParseLength = intSize // we need first 10 bytes for package size: package size varint (package + crc) + package + crc 32 int 32
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
   @tailrec @inline
@@ -28,9 +29,10 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
     state match {
       case sp@WrappedPackageSizeParsing() =>
         if (buf.length >= minParseLength) {
-          varint.decode(buf) match {
+          int32.decode(buf) match {
             case \/-((_, len)) =>
-              val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
+              //val pLen = (len + varint.sizeOf(len)) * byteSize // length of Package payload (with crc) + length of varint before Package
+              val pLen = (len + intSize / byteSize) * byteSize // length of Package payload (with index and crc) + length of int before Package
               if (len <= maxPackageLen) {
                 parseByteStream(WrappedPackageParsing(pLen), buf)(f)
               } else {
@@ -79,8 +81,8 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
     }
   }
 
-  def replyPackage(p: Package): ByteString = {
-    protoPackageBox.encode(p) match {
+  def replyPackage(index: Int, p: Package): ByteString = {
+    protoPackageBox.encode(index, p) match {
       case \/-(bv) =>
         val bs = ByteString(bv.toByteArray)
         registerSentMessage(p.messageBox, bs)

@@ -17,32 +17,32 @@ object PackageBoxCodec extends Codec[PackageBox] {
   def encode(pb: PackageBox) = {
     for {
       p <- protoPackage.encode(pb.p)
-      len <- varint.encode(p.length / byteSize + crcByteSize)
-      body = len ++ p
+      len <- int32.encode((intSize / byteSize + p.length / byteSize + crcByteSize).toInt)
+      index <- int32.encode(pb.index)
+      body = len ++ index ++ p
     } yield body ++ encodeCRCR32(body)
   }
 
   def decode(buf: BitVector) = {
-    varint.decode(buf) match { // read varint length of Package: body + crc32
-      case \/-((xs, len)) =>
-        val bodyLen = (len - crcByteSize) * byteSize // get body size without crc32
+    (int32~int32).decode(buf) match { // read int length (index + body + crc32) and int index
+      case \/-((xs, (len, index))) =>
+        val bodyLen = (len - intSize / byteSize - crcByteSize) * byteSize // get body size without index and crc32
         val body = xs.take(bodyLen)
         val crc = xs.drop(bodyLen).take(crcByteSize * byteSize)
-        val varIntSize = varint.sizeOf(len) * byteSize // varint bit size
-        val crcBody = buf.take(varIntSize + bodyLen) // crc body: package len + package body
+        val crcBody = buf.take(intSize + intSize + bodyLen) // crc body: package len + index + package body
         if (crc == encodeCRCR32(crcBody)) {
           for {
             pt <- protoPackage.decode(body) ; (_, p) = pt
-            remain = buf.drop(varIntSize + len * byteSize)
-          } yield (remain, PackageBox(p))
+            remain = buf.drop(intSize + len * byteSize)
+          } yield (remain, PackageBox(index, p))
         } else "invalid crc32".left
       case l@(-\/(e)) => l
     }
   }
 
-  def encode(p: Package): String \/ BitVector = encode(PackageBox(p))
+  def encode(index: Int, p: Package): String \/ BitVector = encode(PackageBox(index, p))
 
-  def build(authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
-    encode(Package(authId, sessionId, MessageBox(messageId, message)))
+  def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
+    encode(index, Package(authId, sessionId, MessageBox(messageId, message)))
   }
 }

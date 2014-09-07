@@ -44,7 +44,7 @@ class ContactServiceSpec extends RpcSpec {
 
       val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, defaultPhoneNumber + 1))
       val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
-      val packageBlob = pack(authId, MessageBox(messageId, rpcReq))
+      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val resContacts = immutable.Seq(ImportedContact(clientPhoneId, secondUser.uid))

@@ -12,14 +12,14 @@ import Scalaz._
 class PackageBoxCodecSpec extends Specification {
   "PackageBoxCodec" should {
     "encode Package" in {
-      protoPackageBox.build(1L, 2L, 3L, RequestAuthId()) should_== {
-        hex"1e00000000000000010000000000000002000000000000000301f013bb3636".bits.right
+      protoPackageBox.build(0, 1L, 2L, 3L, RequestAuthId()) should_== {
+        hex"000000220000000000000000000000010000000000000002000000000000000301f0725ce574".bits.right
       }
     }
 
     "decode bytes to Package" in {
-      val v = hex"1e00000000000000010000000000000002000000000000000301f013bb3636".bits
-      val p = PackageBox(Package(1L, 2L, MessageBox(3L, RequestAuthId())))
+      val v = hex"000000220000000000000000000000010000000000000002000000000000000301f0725ce574".bits
+      val p = PackageBox(0, Package(1L, 2L, MessageBox(3L, RequestAuthId())))
       protoPackageBox.decode(v) should_== (BitVector.empty, p).right
     }
   }

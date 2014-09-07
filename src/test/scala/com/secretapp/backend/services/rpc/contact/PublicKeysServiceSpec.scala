@@ -49,7 +49,7 @@ class PublicKeysServiceSpec extends RpcSpec {
 
       val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
       val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
-      val packageBlob = pack(authId, MessageBox(messageId, rpcReq))
+      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))

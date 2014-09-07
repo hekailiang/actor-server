@@ -36,7 +36,7 @@ class RpcMessagingSpec extends RpcSpec {
     val rq = updateProto.RequestGetState()
     val messageId = rand.nextLong()
     val rpcRq = RpcRequestBox(Request(rq))
-    val packageBlob = pack(u.authId, MessageBox(messageId, rpcRq))
+    val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
 
     val msg = receiveOneWithAck
@@ -53,7 +53,7 @@ class RpcMessagingSpec extends RpcSpec {
     val rq = updateProto.RequestGetDifference(seq, state)
     val messageId = rand.nextLong()
     val rpcRq = RpcRequestBox(Request(rq))
-    val packageBlob = pack(u.authId, MessageBox(messageId, rpcRq))
+    val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
 
     val msg = receiveOneWithAck
@@ -96,7 +96,7 @@ class RpcMessagingSpec extends RpcSpec {
           EncryptedMessage(uid = secondUser.uid, publicKeyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
       val messageId = rand.nextLong()
       val rpcRq = RpcRequestBox(Request(rq))
-      val packageBlob = pack(scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
+      val packageBlob = pack(0, scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
 
       {
         send(packageBlob)(scope.probe, scope.apiActor)

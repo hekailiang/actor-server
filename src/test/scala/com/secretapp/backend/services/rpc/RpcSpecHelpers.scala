@@ -54,7 +54,8 @@ trait RpcSpecHelpers {
       */
     def :~>!(implicit scope: TestScope): Unit = {
       implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
-      val r = pack(u.authId, boxed(m))
+      // TODO: real index
+      val r = pack(0, u.authId, boxed(m))
       probe.send(destActor, Received(r.blob))
     }
 
