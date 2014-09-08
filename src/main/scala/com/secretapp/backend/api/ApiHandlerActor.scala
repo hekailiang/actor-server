@@ -66,6 +66,9 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       log.error(s"ErrorClosed ${msg}")
       context stop self
 
+    case CommandFailed(x) =>
+      log.error(s"CommandFailed ${x}")
+
     case Closed =>
       log.info(s"Connection closed by listener")
       context stop self
