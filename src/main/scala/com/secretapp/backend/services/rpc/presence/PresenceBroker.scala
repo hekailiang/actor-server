@@ -50,21 +50,20 @@ class PresenceBroker extends PersistentActor with ActorLogging {
 
   def receiveCommand: Receive = {
     case m @ UserOnline(uid, timeout) =>
-      persist(m) { _ =>
-        onlineUids.get(uid) match {
-          case Some(optScheduled) =>
-            optScheduled map (_.cancel())
-          case None =>
-            log.info(s"Publishing UserOnline ${uid}")
-            mediator ! Publish(PresenceBroker.topicFor(uid), UserOnlineUpdate(uid))
-        }
-
-        onlineUids = onlineUids + Tuple2(uid, Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(uid))))
+      onlineUids.get(uid) match {
+        case Some(optScheduled) =>
+          optScheduled map (_.cancel())
+        case None =>
+          log.info(s"Publishing UserOnline ${uid}")
+          mediator ! Publish(PresenceBroker.topicFor(uid), UserOnlineUpdate(uid))
       }
+
+      onlineUids = onlineUids + Tuple2(uid, Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(uid))))
     case m @ UserOffline(uid) =>
       val currentTime = System.currentTimeMillis / 1000
 
       persist(Tuple2(m, currentTime)) { _ =>
+        onlineUids.get(uid).flatten map (_.cancel())
         onlineUids = onlineUids - uid
         lastSeens = lastSeens + Tuple2(uid, currentTime)
         mediator ! Publish(PresenceBroker.topicFor(uid), UserOfflineUpdate(uid))
@@ -86,10 +85,7 @@ class PresenceBroker extends PersistentActor with ActorLogging {
   }
 
   def receiveRecover: Receive = {
-    case UserOnline(uid, _) =>
-      onlineUids = onlineUids + Tuple2(uid, None)
     case (UserOffline(uid), time: Long) =>
-      onlineUids = onlineUids - uid
       lastSeens = lastSeens + Tuple2(uid, time)
   }
 }
