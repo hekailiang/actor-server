@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
   object V {
-    val akka = "2.3.5"
+    val akka = "2.3.6"
     val scalaz = "7.1.0" // "7.1.0-RC1"
     val scalazContrib = "0.1.5"
     val spray = "1.3.1"
