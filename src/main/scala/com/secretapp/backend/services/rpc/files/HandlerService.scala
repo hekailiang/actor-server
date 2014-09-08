@@ -58,12 +58,11 @@ trait HandlerService extends GeneratorService {
       println(s"BEFORE WRITING ${fileId} ${offset} ${data.toByteArray.length}")
       fileRecord.write(fileId, offset, data.toByteArray) onComplete {
         case Success(_) =>
-
+          val rsp = ResponsePartUploaded()
+          handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
         case Failure(e) =>
           log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
       }
-      val rsp = ResponsePartUploaded()
-      handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
     } catch {
       case e: FileRecordError =>
         handleActor ! PackageToSend(
@@ -77,7 +76,7 @@ trait HandlerService extends GeneratorService {
     bytes
   }
 
-  protected lazy val inputCRC32: Iteratee[ByteBuffer, CRC32] = {
+  protected def inputCRC32: Iteratee[ByteBuffer, CRC32] = {
     Iteratee.fold[ByteBuffer, CRC32](new CRC32) {
       (crc32, buffer) =>
         crc32.update(readBuffer(buffer))

@@ -74,12 +74,30 @@ class FilesServiceSpec extends RpcSpec {
       {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
-        Thread.sleep(1000)
+        Thread.sleep(3000)
         val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
         Math.abs(fileUploaded.location.accessHash) should be >(0l)
 
         RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
         RequestCompleteUpload(config, 1, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
+      }
+    }
+
+    "upload two files in a row" in {
+      implicit val scope = TestScope()
+
+      {
+        val config = requestUploadStart().config
+        uploadFileBlocks(config)
+        Thread.sleep(3000)
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
+      }
+
+      {
+        val config = requestUploadStart().config
+        uploadFileBlocks(config)
+        Thread.sleep(3000)
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
       }
     }
 
