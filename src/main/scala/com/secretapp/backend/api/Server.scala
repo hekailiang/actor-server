@@ -34,6 +34,6 @@ class Server(session: CSession) extends Actor with ActorLogging {
       log.info(s"Connected: $c")
       val connection = sender()
       val handler = context.actorOf(Props(new ApiHandlerActor(connection, clusterProxies)(session)))
-      connection ! Register(handler)
+      connection ! Register(handler, keepOpenOnPeerClosed = true)
   }
 }

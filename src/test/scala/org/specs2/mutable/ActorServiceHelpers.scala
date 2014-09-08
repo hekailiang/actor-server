@@ -7,6 +7,7 @@ import akka.util.ByteString
 import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.api.Singletons
 import com.secretapp.backend.api.ClusterProxies
+import com.secretapp.backend.api.PackageAck
 import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
 import com.secretapp.backend.protocol.codecs.transport.PackageBoxCodec
 import com.secretapp.backend.services.GeneratorService
@@ -18,6 +19,7 @@ import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.scalamock.specs2.MockFactory
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
+import scala.collection.immutable
 import scala.concurrent.blocking
 import scala.language.implicitConversions
 import com.secretapp.backend.data.message.{Container, MessageAck, TransportMessage, NewSession}
@@ -27,6 +29,7 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.common.RandomService
 import scala.util.Random
 import scodec.bits._
+import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
@@ -167,16 +170,38 @@ trait ActorServiceHelpers extends RandomService {
     }
   }
 
-  def @<~:(m: TransportMessage)(implicit probe: TestProbe, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
-    val received = probe.receiveN(3) map {
-      case Write(data, _) => PackageBoxCodec.decodeValidValue(data).p //Write(data)
+  def tcpReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef) = {
+    @annotation.tailrec
+    def receive(acc: immutable.Seq[Object] = immutable.Seq.empty): immutable.Seq[Object] = {
+      // TODO: move to argument
+      probe.receiveN(1, duration).head match {
+        case message @ Write(data, ack) =>
+          println("acking")
+          probe.send(destActor, ack)
+
+          if (acc.length + 1 < n) {
+            receive(acc :+ message)
+          } else {
+            acc :+ message
+          }
+        case x =>
+          println(s"unknown receive ${x}")
+          receive(acc)
+      }
+
     }
 
-    /*val res = pack(0, authId, m, messageId)
-    val ack = pack(0, authId, MessageAck(Array(messageId)), messageId * 10) // TODO: move into DSL method
-    val ses = pack(0, authId, NewSession(s.id, messageId), messageId) // TODO: move into DSL method
-    val expectedMsg = Set(ses, ack, res)
-     */
+    receive()
+  }
+
+  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef) = {
+    tcpReceiveN(n, duration) map {
+      case Write(data, _) => PackageBoxCodec.decodeValidValue(data).p
+    }
+  }
+
+  def @<~:(m: TransportMessage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
+    val received = protoReceiveN(3)
 
     val res = Package(authId, s.id, MessageBox(messageId, m))
     val ack = Package(authId, s.id, MessageBox(messageId * 10, MessageAck(Vector(messageId)))) // TODO: move into DSL method
@@ -203,11 +228,11 @@ trait ActorServiceHelpers extends RandomService {
     PackResult(codecRes2BS(p), messageId)
   }
 
-  def receiveNWithAck(n: Int)(implicit probe: TestProbe): Seq[MessageBox] = {
-    val receivedPackages = probe.receiveN(n * 2)
+  def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
+    val receivedPackages = tcpReceiveN(n * 2)
     val unboxed = for ( p <- receivedPackages ) yield {
       p match {
-        case Write(bs, _) =>
+        case Write(bs, ack) =>
           protoPackageBox.decode(bs) match {
             case -\/(e) =>
               throw new Exception(s"Cannot decode PackageBox $e")
@@ -228,7 +253,7 @@ trait ActorServiceHelpers extends RandomService {
     packages
   }
 
-  def receiveOneWithAck()(implicit probe: TestProbe): MessageBox = {
+  def receiveOneWithAck()(implicit probe: TestProbe, destActor: ActorRef): MessageBox = {
     receiveNWithAck(1) match {
       case Seq(x) => x
       case Seq() => null
@@ -236,11 +261,11 @@ trait ActorServiceHelpers extends RandomService {
     }
   }
 
-  def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe) = {
-    val receivedPackages = probe.receiveN(messages.size * 2)
+  def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe, destActor: ActorRef) = {
+    val receivedPackages = tcpReceiveN(messages.size * 2)
     val unboxed = for ( p <- receivedPackages ) yield {
       p match {
-        case Write(bs, _) =>
+        case Write(bs, ack) =>
           protoPackageBox.decode(bs) match {
             case -\/(e) =>
               throw new Exception(s"Cannot decode PackageBox $e")

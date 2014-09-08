@@ -26,8 +26,7 @@ class PresenceServiceSpec extends RpcSpec {
 
         SubscribeForOnline(immutable.Seq(UserId(2, 0))) :~>!(scope)
 
-        val received = scope.probe.receiveN(2)
-        println(s"RRECEIVED ${received}")
+        val received = protoReceiveN(2)(scope.probe, scope.apiActor)
       }
 
       {
@@ -36,14 +35,14 @@ class PresenceServiceSpec extends RpcSpec {
         RequestSetOnline(true, 3000) :~> <~:[ResponseOnline]
         SubscribeForOnline(immutable.Seq(UserId(2, 0))) :~>!(scope)
 
-        val received = scope.probe.receiveN(1)
+        val received = protoReceiveN(1)(scope.probe, scope.apiActor)
         println(s"RRECEIVED ${received}")
       }
 
       {
         implicit val scope = scope1
 
-        scope.probe.receiveN(1)
+        protoReceiveN(1)(scope.probe, scope.apiActor)
       }
     }
   }

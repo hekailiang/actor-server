@@ -100,7 +100,7 @@ class RpcMessagingSpec extends RpcSpec {
 
       {
         send(packageBlob)(scope.probe, scope.apiActor)
-        val msg = receiveOneWithAck()(scope.probe)
+        val msg = receiveOneWithAck()(scope.probe, scope.apiActor)
         val resp = msg
           .body.asInstanceOf[RpcResponseBox]
           .body.asInstanceOf[Ok]
@@ -128,7 +128,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         send(packageBlob)(scope.probe, scope.apiActor)
 
-        val msg = receiveOneWithAck()(scope.probe)
+        val msg = receiveOneWithAck()(scope.probe, scope.apiActor)
 
         val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
         val expectMsg = MessageBox(messageId, rpcRes)

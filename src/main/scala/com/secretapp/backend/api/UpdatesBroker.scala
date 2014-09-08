@@ -78,7 +78,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
 
   type PersistentStateType = (Int, Int) // seq mid
   var lastSnapshottedAtSeq: Int = 0
-  val minSnapshotStep: Int = 3
+  val minSnapshotStep: Int = 200
 
   val receiveCommand: Receive = LoggingReceive {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)

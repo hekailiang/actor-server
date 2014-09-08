@@ -48,7 +48,7 @@ class UpdatesServiceSpec extends RpcSpec {
         implicit val scope = scope1
 
         // Update
-        scope.probe.receiveN(1)
+        protoReceiveN(1)(scope.probe, scope.apiActor)
 
         val state = RequestGetState() :~> <~:[State]
         state.state must not equalTo (None)
@@ -87,7 +87,7 @@ class UpdatesServiceSpec extends RpcSpec {
         implicit val scope = scope1
 
         // Update
-        scope.probe.receiveN(330, DurationInt(180).seconds)
+        protoReceiveN(330, DurationInt(180).seconds)(scope.probe, scope.apiActor)
 
         val state = RequestGetState() :~> <~:[State]
         state.state must not equalTo (None)
