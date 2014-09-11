@@ -62,7 +62,7 @@ with PublicKeysService with PresenceService with UserService {
           .orElse(handleRpcFiles(p, messageId))
           .orElse(handleRpcContact(p, messageId))
           .orElse(handleRpcPresence(p, messageId))
-          .orElse(handleRpcPublicKeys(p, messageId))(body)
+          .orElse(handleRpcPublicKeys(p, messageId))
           .orElse(handleRpcUser(p, messageId))(body)
     }
   }

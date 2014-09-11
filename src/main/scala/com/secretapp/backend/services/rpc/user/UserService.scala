@@ -40,8 +40,8 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
       smallImage      <- fullImage.resizeTo(100, 100, Position.Center);
       largeImage      <- fullImage.resizeTo(200, 200, Position.Center);
 
-      smallImageId    <- ask(countersProxies.files, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
-      largeImageId    <- ask(countersProxies.files, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
+      smallImageId    <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
+      largeImageId    <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
 
       _               <- fr.createFile(smallImageId, (new Random).nextString(30)); // TODO: genAccessSalt makes specs
       _               <- fr.createFile(largeImageId, (new Random).nextString(30)); // fail
