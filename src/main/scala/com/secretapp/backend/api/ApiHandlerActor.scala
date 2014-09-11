@@ -23,7 +23,7 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
   var packageIndex = 0
   var closing = false
 
-  var storage = Vector.empty[ByteString]
+  var storage = Vector.empty[(Int, ByteString)]
   var stored = 0L
   var transferred = 0L
 
@@ -37,6 +37,12 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
 
   context watch connection
 
+  def nextPackage(p: Package)(f: (Int, ByteString) => Unit): Unit = {
+    val data = replyPackage(packageIndex, p)
+    f(packageIndex, data)
+    packageIndex = packageIndex + 1
+  }
+
   def receive = writing
 
   def writing: Receive = {
@@ -44,30 +50,34 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       wlog(s"PackageToSend($pe)")
       pe match {
         case \/-(p) =>
-          val data = replyPackage(packageIndex, p)
-          buffer(data)
-          write(data)
+          nextPackage(p) { (index, data) =>
+            buffer(index, data)
+            write(index, data)
+          }
         case -\/(p) =>
-          val data = replyPackage(packageIndex, p)
-          buffer(data)
-          write(data)
+          nextPackage(p) { (index, data) =>
+            buffer(index, data)
+            write(index, data)
+          }
           connection ! Close
       }
 
     case MessageBoxToSend(mb) =>
       wlog(s"MessageBoxToSend($mb)")
       val p = Package(getAuthId, getSessionId, mb)
-      val data = replyPackage(packageIndex, p)
-      buffer(data)
-      write(data)
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+        write(index, data)
+      }
 
     case UpdateBoxToSend(ub) =>
       wlog(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
       val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      val data = replyPackage(packageIndex, p)
-      buffer(data)
-      write(data)
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+        write(index, data)
+      }
 
     case m: ServiceMessage =>
       wlog(s"ServiceMessage: $m")
@@ -93,22 +103,30 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       blog(s"PackageToSend($pe)")
       pe match {
         case \/-(p) =>
-          buffer(replyPackage(packageIndex, p))
+          nextPackage(p) { (index, data) =>
+            buffer(index, data)
+          }
         case -\/(p) =>
-          buffer(replyPackage(packageIndex, p))
+          nextPackage(p) { (index, data) =>
+            buffer(index, data)
+          }
           closing = true
       }
 
     case MessageBoxToSend(mb) =>
       blog(s"MessageBoxToSend($mb)")
       val p = Package(getAuthId, getSessionId, mb)
-      buffer(replyPackage(packageIndex, p))
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+      }
 
     case UpdateBoxToSend(ub) =>
       blog(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
       val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      buffer(replyPackage(packageIndex, p))
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+      }
 
     case m: ServiceMessage =>
       blog(s"ServiceMessage: $m")
@@ -129,17 +147,16 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
       acknowledge()
   }
 
-  private def write(data: ByteString, becomeBuffering: Boolean = true): Unit = {
-    log.debug(s"Sending ${connection} ${data} ${packageIndex}")
-    connection ! Write(data, PackageAck(packageIndex))
-    packageIndex += 1
+  private def write(index: Int, data: ByteString, becomeBuffering: Boolean = true): Unit = {
+    log.debug(s"Sending ${connection} ${data} ${index}")
+    connection ! Write(data, PackageAck(index))
     if (becomeBuffering) {
       context.become(buffering, discardOld = false)
     }
   }
 
-  private def buffer(data: ByteString): Unit = {
-    storage :+= data
+  private def buffer(packageIndex: Int, data: ByteString): Unit = {
+    storage :+= (packageIndex, data)
     stored += data.size
 
     if (stored > maxStored) {
@@ -156,7 +173,7 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
   private def acknowledge(): Unit = {
     require(storage.nonEmpty, "storage was empty")
 
-    val size = storage(0).size
+    val size = storage(0)._2.size
     stored -= size
     transferred += size
 
@@ -176,7 +193,10 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
         log.debug("resuming writing")
         context.unbecome()
       }
-    } else write(storage(0), false)
+    } else {
+      val (index, data) = storage(0)
+      write(index, data, false)
+    }
   }
 
   def wlog(str: String) = log.info(s"[writing] ${str}")
