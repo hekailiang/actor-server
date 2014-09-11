@@ -3,10 +3,7 @@ package com.secretapp.backend.services.rpc.auth
 import java.util.regex.Pattern
 
 import akka.actor._
-import akka.pattern.ask
 import com.datastax.driver.core.{Session => CSession}
-import com.secretapp.backend.api.SocialProtocol
-import com.secretapp.backend.api.UpdatesBroker._
 import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
@@ -14,17 +11,16 @@ import com.secretapp.backend.data.message.update.{NewDevice, NewYourDevice}
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist._
-import com.secretapp.backend.services.{GeneratorService, RpcService, UserManagerService}
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.rpc.RpcCommon
+import com.secretapp.backend.services.{GeneratorService, RpcService, UserManagerService}
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.typesafe.config.ConfigFactory
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
-import scalaz._
-import Scalaz._
 import scodec.bits.BitVector
+
+import scala.concurrent.Future
+import scalaz.Scalaz._
+import scalaz._
 
 trait SignService extends PackageCommon with RpcCommon {
   self: RpcService with Actor with GeneratorService with UserManagerService =>
@@ -174,7 +170,7 @@ trait SignService extends PackageCommon with RpcCommon {
 
       def updateUserRecord() =
         UserRecord.insertPartEntityWithPhoneAndPK(user.uid, authId, publicKey, phone) onSuccess { case _ =>
-          pushNewDeviceUpdates(authId, user.uid, publicKeyHash, publicKey)
+          pushNewDeviceUpdates(authId, user, publicKeyHash, publicKey)
         }
 
       val userToAuth = user match {
@@ -216,43 +212,18 @@ trait SignService extends PackageCommon with RpcCommon {
       }
     }
 
-  private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
-    import com.secretapp.backend.api.SocialProtocol._
-
-    // Push NewYourDevice updates
-    UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
-      case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=${uid} ${authIds}")
-        for (targetAuthId <- authIds) {
-          if (targetAuthId != authId) {
-            log.debug(s"Pushing NewYourDevice for authId=${targetAuthId}")
-            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewYourDevice(uid, publicKeyHash, publicKey))
-          }
+  private def pushNewDeviceUpdates(authId: Long, u: User, publicKeyHash: Long, publicKey: BitVector): Unit = {
+    withAuthIds(u.uid) {
+      _.foreach { targetAuthId =>
+        if (targetAuthId != authId) {
+          log.debug(s"Pushing NewYourDevice for authId=$targetAuthId")
+          pushUpdate(targetAuthId, NewYourDevice(u.uid, publicKeyHash, publicKey))
         }
-      case Failure(e) =>
-        log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push NewYourDevice updates")
-        throw e
+      }
     }
 
-    // Push NewDevice updates
-    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
-      case Success(uids) =>
-        log.debug(s"Got relations for ${uid} -> ${uids}")
-        for (targetUid <- uids) {
-          UserPublicKeyRecord.fetchAuthIdsByUid(targetUid) onComplete {
-            case Success(authIds) =>
-              log.debug(s"Fetched authIds for uid=${targetUid} ${authIds}")
-              for (targetAuthId <- authIds) {
-                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
-              }
-            case Failure(e) =>
-              log.error(s"Failed to get authIds for authId=${authId} uid=${targetUid} to push new device updates ${publicKeyHash}")
-              throw e
-          }
-        }
-      case Failure(e) =>
-        log.error(s"Failed to get relations to push new device updates authId=${authId} uid=${uid} ${publicKeyHash}")
-        throw e
+    withRelations(u.uid) {
+      _.foreach(pushUpdate(_, NewDevice(u.uid, publicKeyHash)))
     }
   }
 }

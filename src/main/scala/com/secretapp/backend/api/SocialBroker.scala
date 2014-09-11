@@ -2,7 +2,6 @@ package com.secretapp.backend.api
 
 import akka.actor._
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
-import akka.pattern.pipe
 import akka.persistence._
 import scala.collection.immutable
 
@@ -26,8 +25,8 @@ object SocialBroker {
     case msg @ SocialMessageBox(userId, _) => (userId.toString, msg)
   }
 
-  private val shardResolver: ShardRegion.ShardResolver = msg => msg match {
-    case msg @ SocialMessageBox(userId, _) => (userId % shardCount).toString
+  private val shardResolver: ShardRegion.ShardResolver = {
+    case msg@SocialMessageBox(userId, _) => (userId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem): ActorRef = ClusterSharding(system).start(
@@ -38,7 +37,6 @@ object SocialBroker {
 }
 
 class SocialBroker extends PersistentActor with ActorLogging {
-  import SocialBroker._
   import SocialProtocol._
 
   override def persistenceId: String = self.path.parent.name + self.path.name
@@ -49,22 +47,22 @@ class SocialBroker extends PersistentActor with ActorLogging {
 
   val receiveCommand: Actor.Receive = {
     case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
-      log.info(s"SocialMessageBox ${userId} ${newUids}")
+      log.info(s"SocialMessageBox $userId $newUids")
       persist(msg) { _ =>
         uids = uids ++ newUids
         maybeSnapshot()
       }
     case SocialMessageBox(userId, GetRelations) =>
-      log.info(s"GetRelations ${userId}")
+      log.info(s"GetRelations $userId")
       sender ! uids
   }
 
   val receiveRecover: Actor.Receive = {
     case SnapshotOffer(metadata, offeredSnapshot) =>
-      log.debug(s"SnapshotOffer ${metadata} ${offeredSnapshot}")
+      log.debug(s"SnapshotOffer $metadata $offeredSnapshot")
       uids = offeredSnapshot.asInstanceOf[PersistentStateType]
     case msg @ SocialMessageBox(_, RelationsNoted(newUids)) if newUids.size > 0 =>
-      log.debug(s"Recovering ${msg}")
+      log.debug(s"Recovering $msg")
       uids = uids ++ newUids
     case RecoveryCompleted =>
       log.debug("Recovery completed")

@@ -7,27 +7,30 @@ import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestSetAvatar, ResponseAvatarUploaded}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
+import com.secretapp.backend.data.message.update.AvatarChanged
+import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.persist.{UserRecord, FileRecord}
+import com.secretapp.backend.persist.{FileRecord, UserRecord}
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.rpc.RpcCommon
 import com.secretapp.backend.services.rpc.files.FilesService
-import com.sksamuel.scrimage.{Format, Position, AsyncImage}
+import com.sksamuel.scrimage.{AsyncImage, Format, Position}
+
 import scala.util.Random
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 trait UserService extends PackageCommon with RpcCommon with FilesService {
   self: ApiHandlerActor with GeneratorService =>
 
   import context._
 
-  def handleRpcProfile(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Unit] = {
-    case r: RequestSetAvatar => sendRpcResult(p, messageId)(handleSetAvatar(p, r))
+  def handleRpcUser(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Unit] = {
+    case r: RequestSetAvatar => authorizedRequest(p)(u => sendRpcResult(p, messageId)(handleSetAvatar(u, p, r)))
   }
 
-  private def handleSetAvatar(p: Package, r: RequestSetAvatar): RpcResult = {
+  private def handleSetAvatar(u: User, p: Package, r: RequestSetAvatar): RpcResult = {
     val fr = new FileRecord
 
     for (
@@ -61,8 +64,15 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
 
       avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some);
 
-      _               <- UserRecord.updateAvatar(getUser.get.uid, avatar)
+      _               <- UserRecord.updateAvatar(u.uid, avatar)
 
-    ) yield ResponseAvatarUploaded(avatar).right
+    ) yield {
+      sendUpdates(u, avatar)
+      ResponseAvatarUploaded(avatar).right
+    }
+  }
+
+  private def sendUpdates(u: User, avatar: Avatar): Unit = withRelations(u.uid) {
+    _.foreach(pushUpdate(_, AvatarChanged(u.uid, avatar.some)))
   }
 }
