@@ -2,15 +2,11 @@ package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{Files, Paths}
 import scala.util.Random
-
+import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarUploaded, RequestSetAvatar}
 import com.secretapp.backend.persist.FileRecord
-import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
-
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 class UserServiceSpec extends RpcSpec {
 
@@ -36,9 +32,7 @@ class UserServiceSpec extends RpcSpec {
         fl    = FileLocation(42, hash)
       ) yield fl
 
-      val fl = Await.result(ffl, Duration.Inf)
-
-      RequestSetAvatar(fl) :~> <~:[ResponseAvatarUploaded]
+      RequestSetAvatar(ffl.sync()) :~> <~:[ResponseAvatarUploaded]
     }
   }
 }

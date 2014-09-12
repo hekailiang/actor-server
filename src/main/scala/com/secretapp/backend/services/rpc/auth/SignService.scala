@@ -87,9 +87,9 @@ trait SignService extends PackageCommon with RpcCommon {
           override val phoneNumber = pn
           override val smsHash = authSmsCode.smsHash
           override val smsCode = authSmsCode.smsCode
-          override val publicKey = r.publicKey
+          override val publicKey = pk
         }
-      ) yield (vr: RequestSign, authSmsCode) // TODO: Remove type cast. It is for Idea to highlight properly.
+      ) yield (vr, authSmsCode)
 
     def nonEmptyName(n: String): Result[String] =
       check(!n.trim.isEmpty, n.trim, Error(400, "NAME_INVALID", "Should be nonempty"))
@@ -179,7 +179,7 @@ trait SignService extends PackageCommon with RpcCommon {
         case u if u.authId == authId =>
           UserRecord.removeKeyHash(u.uid, u.publicKeyHash, phone)
           updateUserRecord()
-          val keyHashes = u.keyHashes.filter(_ != u.publicKeyHash) + publicKeyHash
+          val keyHashes = u.keyHashes - u.publicKeyHash + publicKeyHash
           u.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
 
         case u =>

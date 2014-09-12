@@ -64,7 +64,7 @@ trait UserService extends PackageCommon with RpcCommon with FilesService {
 
       avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some);
 
-      _               <- UserRecord.updateAvatar(u.uid, avatar)
+      _               <- UserRecord.updateAvatar(u.authId, u.uid, avatar)
 
     ) yield {
       sendUpdates(u, avatar)

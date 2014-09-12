@@ -269,7 +269,7 @@ class SignServiceSpec extends RpcSpec {
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
       val messageId = rand.nextLong
-      val packageBlob = pack(authId, MessageBox(messageId, rpcReq))
+      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
       val rpcRes = RpcResponseBox(messageId, Error(400, "PUBLIC_KEY_INVALID", "Invalid key", false))
@@ -282,7 +282,7 @@ class SignServiceSpec extends RpcSpec {
     "success" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
+      implicit val authId = rand.nextLong()
 
       val messageId = rand.nextLong()
       val publicKey = genPublicKey
@@ -304,7 +304,7 @@ class SignServiceSpec extends RpcSpec {
 
     "success with second public key and authId" in {
       implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
+      implicit val authId = rand.nextLong()
 
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
@@ -342,22 +342,21 @@ class SignServiceSpec extends RpcSpec {
     "success with new public key and valid authId" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
+      implicit val authId = rand.nextLong()
 
       val messageId = rand.nextLong()
       val publicKey = genPublicKey
       val name = "Timothy Klim"
-      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, name = name)
+      val user = User.build(userId, authId, publicKey, defaultPhoneNumber, userSalt, name)
       addUser(authId, sessionId.id, user, defaultPhoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val newPublicKey = genPublicKey
-      val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
       val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, newPublicKey)))
       val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
+      val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
       val newUser = user.copy(keyHashes = Set(newPublicKeyHash))
       val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(authId))))
       val expectMsg = MessageBox(messageId, rpcRes)
@@ -389,7 +388,7 @@ class SignServiceSpec extends RpcSpec {
     "failed with invalid sms hash" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
+      implicit val authId = rand.nextLong()
 
       val messageId = rand.nextLong()
       val publicKey = genPublicKey
@@ -408,26 +407,25 @@ class SignServiceSpec extends RpcSpec {
       expectMsgWithAck(expectMsg)
     }
 
-    /*
     "failed with invalid public key" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
-      val messageId = rand.nextLong()
-      val publicKey = hex"ac1d".bits
-      val firstName = "Timothy"
-      val lastName = Some("Klim")
-      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = phoneNumber, firstName = firstName, lastName = lastName)
-      addUser(authId, sessionId.id, user, phoneNumber)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+      implicit val authId = rand.nextLong()
 
-      val rpcReq = RpcRequestBox(Request(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)))
-      val packageBlob = pack(0, MessageBox(messageId, rpcReq))
+      val messageId = rand.nextLong()
+      val publicKey = genPublicKey
+      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
+        phoneNumber = defaultPhoneNumber, name = "Timothy Klim")
+      addUser(authId, sessionId.id, user, defaultPhoneNumber)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+
+      val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, hex"ac1d".bits)))
+      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
       send(packageBlob)
 
-      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
+      val rpcRes = RpcResponseBox(messageId, Error(400, "PUBLIC_KEY_INVALID", "Invalid key", false))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
-    } */
+    }
   }
 }

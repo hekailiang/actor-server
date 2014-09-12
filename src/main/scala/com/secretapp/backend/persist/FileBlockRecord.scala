@@ -48,7 +48,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   }
 
   private val insertQuery = new ExecutablePreparedStatement {
-    val query = s"INSERT INTO ${tableName} (${fileId.name}, ${blockId.name}, ${bytes.name}) VALUES (?, ?, ?);"
+    val query = s"INSERT INTO $tableName (${fileId.name}, ${blockId.name}, ${bytes.name}) VALUES (?, ?, ?);"
   }
 
   def insertEntity(entity: EntityType): Future[ResultSet] = {
@@ -62,7 +62,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   def write(fileId: Int, offset: Int, bytes: Array[Byte]): Future[Iterator[ResultSet]] = {
     @inline def offsetValid(offset: Int) = offset >= 0 && offset % blockSize == 0
 
-    println(s"WRITING ${offset} ${bytes.length}")
+    println(s"WRITING $offset ${bytes.length}")
     if (!offsetValid(offset)) {
       throw new OffsetInvalid
     }
@@ -73,7 +73,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
         val e = Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
         println(e)
         e
-    } map (insertEntity _)
+    } map insertEntity
     Future.sequence(finserts)
   }
 

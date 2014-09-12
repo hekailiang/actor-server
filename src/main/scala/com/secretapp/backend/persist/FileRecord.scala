@@ -65,15 +65,13 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     f
   }
 
-  def getFileAccessSalt(fileId: Int): Future[String] = {
+  def getFileAccessSalt(fileId: Int): Future[String] =
     blockRecord.select(_.accessSalt).where(_.fileId eqs fileId).one() map {
-      case Some(salt) => salt
-      case None => throw new LocationInvalid
+      _.getOrElse(throw new LocationInvalid)
     }
-  }
 
   def getFile(fileId: Int, offset: Int, limit: Int): Future[Array[Byte]] = {
-    println(s"getFile ${offset} ${limit}")
+    println(s"getFile $offset $limit")
     for {
       blocks <- blockRecord.getFileBlocks(fileId, offset, limit)
     } yield {

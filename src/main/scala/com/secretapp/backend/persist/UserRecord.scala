@@ -168,16 +168,16 @@ object UserRecord extends UserRecord with DBConnector {
       future().flatMap(_ => PhoneRecord.removeKeyHash(phoneNumber, publicKeyHash))
   }
 
-  def updateAvatar(uid: Int, avatar: Avatar)(implicit session: Session) =
-    update.where(_.uid eqs uid)
-      .modify(_.smallAvatarFileId setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
-      .and(_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
-      .and(_.largeAvatarFileId setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
-      .and(_.largeAvatarFileHash setTo avatar.largeImage.map(_.fileLocation.accessHash))
-      .and(_.fullAvatarFileId setTo avatar.fullImage.map(_.fileLocation.fileId.toInt))
-      .and(_.fullAvatarFileHash setTo avatar.fullImage.map(_.fileLocation.accessHash))
-      .and(_.fullAvatarWidth setTo avatar.fullImage.map(_.width))
-      .and(_.fullAvatarHeight setTo avatar.fullImage.map(_.height))
+  def updateAvatar(authId: Long, uid: Int, avatar: Avatar)(implicit session: Session) =
+    update.where(_.uid eqs uid).and(_.authId eqs authId)
+      .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
+      .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
+      .and   (_.largeAvatarFileId   setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
+      .and   (_.largeAvatarFileHash setTo avatar.largeImage.map(_.fileLocation.accessHash))
+      .and   (_.fullAvatarFileId    setTo avatar.fullImage.map(_.fileLocation.fileId.toInt))
+      .and   (_.fullAvatarFileHash  setTo avatar.fullImage.map(_.fileLocation.accessHash))
+      .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
+      .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
 
   def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
