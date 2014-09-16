@@ -1,8 +1,8 @@
-package com.secretapp.backend.protocol.codecs.message
+package com.secretapp.backend.protocol.codecs.message.rpc.push
 
-import com.secretapp.backend.data.message.RequestRegisterGooglePush
-import scodec.bits._
+import com.secretapp.backend.data.message.rpc.push.RequestRegisterGooglePush
 import scodec.Codec
+import scodec.bits._
 import scodec.codecs._
 
 object RequestRegisterGooglePushCodec extends Codec[RequestRegisterGooglePush] {
