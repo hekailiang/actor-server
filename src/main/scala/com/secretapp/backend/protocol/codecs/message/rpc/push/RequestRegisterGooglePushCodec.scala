@@ -9,7 +9,7 @@ object RequestRegisterGooglePushCodec extends Codec[RequestRegisterGooglePush] {
 
   private val codec = (int32 :: utf8).as[RequestRegisterGooglePush]
 
-  def encode(r: RequestRegisterGooglePush) = codec.encode(r)
+  override def encode(r: RequestRegisterGooglePush) = codec.encode(r)
 
-  def decode(buf: BitVector) = codec.decode(buf)
+  override def decode(buf: BitVector) = codec.decode(buf)
 }
