@@ -1,15 +1,6 @@
 package com.secretapp.backend.protocol.codecs.message.rpc
 
-<<<<<<< HEAD
-=======
 import com.secretapp.backend.data.message.ResponseVoid
-import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.protocol.codecs.message.rpc.auth._
-import com.secretapp.backend.protocol.codecs.message.rpc.update._
-import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
-import com.secretapp.backend.protocol.codecs.message.rpc.contact._
-import com.secretapp.backend.protocol.codecs.message.rpc.file._
->>>>>>> fix(message): message classes are moved where they belong
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact._
