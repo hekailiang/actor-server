@@ -1,6 +1,5 @@
 package com.secretapp.backend.protocol.codecs.message.rpc
 
-import com.secretapp.backend.data.message.ResponseVoid
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact._
@@ -9,7 +8,6 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.user._
-import com.secretapp.backend.data.message.update.{ CommonUpdateTooLong, CommonUpdate }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.contact._
