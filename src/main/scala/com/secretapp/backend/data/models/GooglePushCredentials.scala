@@ -1,3 +1,3 @@
 package com.secretapp.backend.data.models
 
-case class GooglePushCredentials(userId: Int, authId: Long, projectId: Int, token: String)
+case class GooglePushCredentials(uid: Int, authId: Long, projectId: Int, regId: String)

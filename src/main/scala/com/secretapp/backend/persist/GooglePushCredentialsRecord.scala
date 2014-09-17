@@ -12,7 +12,7 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
 
   override lazy val tableName = "google_push_credentials"
 
-  object userId extends IntColumn(this) with PartitionKey[Int]
+  object uid extends IntColumn(this) with PartitionKey[Int]
 
   object authId extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "auth_id"
@@ -22,22 +22,29 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
     override lazy val name = "project_id"
   }
 
-  object token extends StringColumn(this)
+  object regId extends StringColumn(this) {
+    override lazy val name = "reg_id"
+  }
 
   override def fromRow(r: Row): GooglePushCredentials =
-    GooglePushCredentials(userId(r), authId(r), projectId(r), token(r))
+    GooglePushCredentials(uid(r), authId(r), projectId(r), regId(r))
 }
 
 object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with DBConnector {
 
   def set(c: GooglePushCredentials)(implicit s: Session): Future[Unit] =
     update
-      .where(_.userId eqs c.userId).and(_.authId eqs c.authId)
-      .modify(_.projectId setTo c.projectId).and(_.token setTo c.token)
+      .where(_.uid eqs c.uid).and(_.authId eqs c.authId)
+      .modify(_.projectId setTo c.projectId).and(_.regId setTo c.regId)
       .future.mapTo[Unit]
 
-  def remove(userId: Int, authId: Long)(implicit s: Session): Future[Unit] =
+  def remove(uid: Int, authId: Long)(implicit s: Session): Future[Unit] =
     delete
-      .where(_.userId eqs userId).and(_.authId eqs authId)
+      .where(_.uid eqs uid).and(_.authId eqs authId)
       .future.mapTo[Unit]
+
+  def get(uid: Int, authId: Long)(implicit s: Session): Future[Option[GooglePushCredentials]] =
+    select
+      .where(_.uid eqs uid).and(_.authId eqs authId)
+      .one()
 }
