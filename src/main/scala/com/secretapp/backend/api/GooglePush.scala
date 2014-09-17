@@ -43,7 +43,7 @@ trait GooglePush {
     }
 
   private def deliverGooglePush(uid: Int, authId: Long, seq: Int, optCreds: Option[GooglePushCredentials])
-                       (implicit s: CSession): Future[Unit] =
+                               (implicit s: CSession): Future[Unit] =
     optCreds some { c =>
       sendGooglePush(c.regId, seq)
     } none Future.successful()
