@@ -18,8 +18,9 @@ object PublicKey {
     try {
       curve.decodePoint(buf.toByteArray)
       true
-    } catch { case _: Throwable => false }
-    true // TODO: remove
+    } catch {
+      case _: Throwable => false
+    }
   }
 
   def keyHash(pk: BitVector): Long = {

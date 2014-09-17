@@ -1,22 +1,28 @@
 package com.secretapp.backend.api
 
 import akka.actor._
+import akka.pattern.ask
+import akka.util.Timeout
+import com.secretapp.backend.api.UpdatesBroker.NewUpdatePush
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.update.CommonUpdateMessage
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
 import com.secretapp.backend.services.rpc.auth.SignService
+import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
-import akka.util.Timeout
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{ Success, Failure }
 import scalaz._
 import Scalaz._
 
@@ -24,15 +30,16 @@ trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
 trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
-with PublicKeysService with PresenceService with ActorLogging {
+with PublicKeysService with PresenceService with UserService with ActorLogging {
   self: ApiBrokerActor =>
+  import SocialProtocol._
 
   val clusterProxies: ClusterProxies
   val sessionActor: ActorRef
   val currentAuthId: Long
 
   val context: ActorContext
-  import context.system
+  import context._
 
   implicit val timeout = Timeout(5.seconds)
 
@@ -73,7 +80,8 @@ with PublicKeysService with PresenceService with ActorLogging {
           orElse(handleRpcFiles).
           orElse(handleRpcContact).
           orElse(handleRpcPresence).
-          orElse(handleRpcPublicKeys)(body)
+          orElse(handleRpcPublicKeys).
+          orElse(handleRpcUser)(body)
     }
   }
 
@@ -84,4 +92,29 @@ with PublicKeysService with PresenceService with ActorLogging {
   protected def unauthorizedRequest(f: => Future[RpcResponse]): \/[Throwable, Future[RpcResponse]] = {
     f.right
   }
+
+  protected def withAuthIds(uid: Int)(f: Seq[Long] => Unit): Unit =
+    UserPublicKeyRecord.fetchAuthIdsByUid(uid)(session) onComplete {
+      case Success(authIds) =>
+        log.debug(s"Fetched authIds for uid=$uid $authIds")
+        f(authIds)
+
+      case Failure(e) =>
+        log.error(s"Failed to get authIds for uid=$uid to push new device updates")
+        throw e
+    }
+
+  protected def withRelations(uid: Int)(f: Seq[Long] => Unit): Unit =
+    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+      case Success(uids) =>
+        log.debug(s"Got relations for $uid -> $uids")
+        uids.foreach(withAuthIds(_)(f))
+
+      case Failure(e) =>
+        log.error(s"Failed to get relations for uid=$uid to push new device updates")
+        throw e
+    }
+
+  protected def pushUpdate(destAuthId: Long, msg: CommonUpdateMessage): Unit =
+    updatesBrokerRegion ! NewUpdatePush(destAuthId, msg)
 }

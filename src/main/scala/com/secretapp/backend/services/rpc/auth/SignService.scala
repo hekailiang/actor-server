@@ -30,7 +30,6 @@ import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.util.HandleFutureOpt._
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import scalaz._

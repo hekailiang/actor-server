@@ -100,7 +100,7 @@ sealed trait UpdatesService {
     }
     if (updates.length > 0) {
       val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
-      Future.sequence(userIds.map(getUserStruct(_)).toVector) map (_.flatten)
+      Future.sequence(userIds.map(getUserStruct).toVector) map (_.flatten)
     } else { Future.successful(Vector.empty) }
   }
 
@@ -113,7 +113,7 @@ sealed trait UpdatesService {
   }
 
   protected def handleSubscribeAck(subscribe: Subscribe) = {
-    log.info(s"Handling subscribe ack ${subscribe}")
+    log.info(s"Handling subscribe ack $subscribe")
     if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == updatesPusher) {
       subscribingToUpdates = false
       subscribedToUpdates = true
@@ -125,9 +125,7 @@ sealed trait UpdatesService {
     for {
       seq <- getSeq(authId)
       muuid <- CommonUpdateRecord.getState(authId)
-    } yield {
-      (seq, muuid)
-    }
+    } yield (seq, muuid)
   }
 
   private def getSeq(authId: Long): Future[Int] = {
@@ -138,11 +136,11 @@ sealed trait UpdatesService {
 sealed class PusherActor(sessionActor: ActorRef, authId: Long) extends Actor with ActorLogging {
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
-      log.info(s"Pushing update to session authId=${authId} ${u}")
+      log.info(s"Pushing update to session authId=$authId $u")
       val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
       val ub = UpdateBox(upd)
       sessionActor ! UpdateBoxToSend(ub)
     case u =>
-      log.error(s"Unknown update in topic ${u}")
+      log.error(s"Unknown update in topic $u")
   }
 }

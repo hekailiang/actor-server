@@ -41,6 +41,8 @@ object Dependencies {
 //    "org.typelevel" %% "scalaz-nscala-time"        % V.scalazContrib,
 //    "org.typelevel" %% "scalaz-spire"              % V.scalazContrib,
 
+    "com.sksamuel.scrimage" %% "scrimage-core" % "1.4.1",
+
     "ch.qos.logback" % "logback-classic" % "1.1.2",
 
     "org.typelevel" %% "scodec-core" % "1.2.0",
@@ -56,8 +58,8 @@ object Dependencies {
     "org.scalautils" %% "scalautils" % "2.1.3",
 
     "com.websudos"  %% "phantom-dsl" % V.phantom,
-    // val phantomExample = "com.newzly"  %% "phantom-example" % V.phantom
-    // val phantomThrift = "com.newzly"  %% "phantom-thrift" % V.phantom
+    "com.websudos"  %% "phantom-udt" % V.phantom,
+
     "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"  excludeAll(ExclusionRule(organization = "org.slf4j")),
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"

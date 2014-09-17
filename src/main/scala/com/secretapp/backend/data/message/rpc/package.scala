@@ -1,6 +1,7 @@
 package com.secretapp.backend.data.message
 
-import com.secretapp.backend.data.message._
+import scalaz._
+import Scalaz._
 
 package object rpc {
   trait RpcRequest

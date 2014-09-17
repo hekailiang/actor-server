@@ -1,8 +1,11 @@
 package com.secretapp.backend.persist
 
+import java.security.MessageDigest
+
 import akka.dispatch.Dispatcher
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.Session
+import com.secretapp.backend.Configuration
 import com.secretapp.backend.data.Implicits._
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.keys.ClusteringOrder
@@ -23,6 +26,9 @@ class LimitInvalid extends FileRecordError("LIMIT_INVALID", false)
 class FileLost extends FileRecordError("FILE_LOST", false)
 
 class FileRecord(implicit session: Session, context: ExecutionContext with Executor) {
+
+  import Configuration._
+
   private lazy val blockRecord = new FileBlockRecord
   private lazy val sourceBlockRecord = new FileSourceBlockRecord
 
@@ -59,15 +65,13 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     f
   }
 
-  def getFileAccessSalt(fileId: Int): Future[String] = {
+  def getFileAccessSalt(fileId: Int): Future[String] =
     blockRecord.select(_.accessSalt).where(_.fileId eqs fileId).one() map {
-      case Some(salt) => salt
-      case None => throw new LocationInvalid
+      _.getOrElse(throw new LocationInvalid)
     }
-  }
 
   def getFile(fileId: Int, offset: Int, limit: Int): Future[Array[Byte]] = {
-    println(s"getFile ${offset} ${limit}")
+    println(s"getFile $offset $limit")
     for {
       blocks <- blockRecord.getFileBlocks(fileId, offset, limit)
     } yield {
@@ -84,4 +88,12 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
   def blocksByFileId(fileId: Int) = blockRecord.blocksByFileId(fileId)
 
   def countSourceBlocks(fileId: Int) = sourceBlockRecord.countBlocks(fileId)
+
+  def getAccessHash(fileId: Int): Future[Long] = {
+    getFileAccessSalt(fileId) map { accessSalt =>
+      val str = s"$fileId:$accessSalt:$secretKey"
+      val res = MessageDigest.getInstance("MD5").digest(str.getBytes)
+      ByteBuffer.wrap(res).getLong
+    }
+  }
 }
