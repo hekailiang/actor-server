@@ -11,8 +11,8 @@ class Handler(val currentUser: User)
   extends Actor with ActorLogging with HandlerService {
 
   override def receive = {
-    case RpcProtocol.Request(RequestRegisterGooglePush(projectId, regId)) =>
-      handleRequestRegisterGooglePush(projectId, regId)
+    case RpcProtocol.Request(RequestRegisterGooglePush(projectId, token)) =>
+      handleRequestRegisterGooglePush(projectId, token)
 
     case RpcProtocol.Request(RequestUnregisterPush()) =>
       handleRequestUnregisterPush
