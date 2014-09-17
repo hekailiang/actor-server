@@ -26,7 +26,7 @@ trait GooglePush {
   private def payload(regId: String, seq: Int) =
     s"""
        |{
-       |  "registration_ids": [$regId],
+       |  "registration_ids": ["$regId"],
        |  "dry_run": $dryRun,
        |  "data": {
        |    "seq": $seq
