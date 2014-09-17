@@ -1,8 +1,8 @@
 package com.secretapp.backend.data.message.rpc.push
 
-import com.secretapp.backend.data.message.rpc.{RpcResponseMessageObject, RpcResponseMessage}
+import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcRequestMessage}
 
-case class RequestRegisterGooglePush(projectId: Int, token: String) extends RpcResponseMessage
-object RequestRegisterGooglePush extends RpcResponseMessageObject {
-  override val responseType = 0x33
+case class RequestRegisterGooglePush(projectId: Int, token: String) extends RpcRequestMessage
+object RequestRegisterGooglePush extends RpcRequestMessageObject {
+  override val requestType = 0x33
 }
