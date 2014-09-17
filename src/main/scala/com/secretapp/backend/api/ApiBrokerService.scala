@@ -14,6 +14,7 @@ import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
 import com.secretapp.backend.services.rpc.auth.SignService
+import com.secretapp.backend.services.rpc.push.PushService
 import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
@@ -30,7 +31,7 @@ trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
 trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
-with PublicKeysService with PresenceService with UserService with ActorLogging {
+with PublicKeysService with PresenceService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
 
@@ -81,7 +82,8 @@ with PublicKeysService with PresenceService with UserService with ActorLogging {
           orElse(handleRpcContact).
           orElse(handleRpcPresence).
           orElse(handleRpcPublicKeys).
-          orElse(handleRpcUser)(body)
+          orElse(handleRpcUser).
+          orElse(handleRpcPush)(body)
     }
   }
 

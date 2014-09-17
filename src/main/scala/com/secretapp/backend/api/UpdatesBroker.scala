@@ -62,7 +62,7 @@ object UpdatesBroker {
   )
 }
 
-class UpdatesBroker(implicit session: CSession) extends PersistentActor with ActorLogging {
+class UpdatesBroker(implicit session: CSession) extends PersistentActor with ActorLogging with GooglePush {
   import context.dispatcher
   import ShardRegion.Passivate
   import UpdatesBroker._
@@ -87,7 +87,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       sender() ! this.seq
     case p @ NewUpdatePush(authId, update) =>
       val replyTo = sender()
-      log.info(s"NewUpdateEvent ${authId} ${update}")
+      log.info(s"NewUpdateEvent $authId $update")
       persist(p) { _ =>
         seq += 1
         pushUpdate(authId, update)
@@ -95,20 +95,20 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       }
     case p @ NewUpdateEvent(authId, NewMessageSent(randomId)) =>
       val replyTo = sender()
-      log.info(s"NewMessageSent ${p} from ${replyTo.path}")
+      log.info(s"NewMessageSent $p from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
         mid += 1
         val update = updateProto.MessageSent(mid, randomId)
         pushUpdate(authId, update) map { reply =>
           replyTo ! reply
-          log.info(s"Replying to ${replyTo.path} with ${reply}")
+          log.info(s"Replying to ${replyTo.path} with $reply")
         }
         maybeSnapshot()
       }
     case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message, aesMessage)) =>
       val replyTo = sender()
-      log.info(s"NewMessage ${p} from ${replyTo.path}")
+      log.info(s"NewMessage $p from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
         mid += 1
@@ -119,12 +119,10 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
           keyHash = message.publicKeyHash,
           useAesKey = aesMessage.isDefined,
           aesKey = message.aesEncryptedKey,
-          message = aesMessage match {
-            case Some(message) => message
-            case None => message.message.get
-          }
+          message = aesMessage getOrElse message.message.get
         )
         pushUpdate(authId, update)
+        deliverGooglePush(destUID, authId, seq)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>

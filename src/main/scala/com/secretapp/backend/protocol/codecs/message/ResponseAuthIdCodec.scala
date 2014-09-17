@@ -5,7 +5,6 @@ import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
 
-
 object ResponseAuthIdCodec extends Codec[ResponseAuthId] {
 
   private val codec = int64.pxmap[ResponseAuthId](ResponseAuthId.apply, ResponseAuthId.unapply)

@@ -5,3 +5,8 @@ sms {
     api-id = "invalid"
   }
 }
+
+gcm {
+  api-key = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
+  dry-run = true
+}
