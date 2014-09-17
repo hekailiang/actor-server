@@ -1,17 +1,24 @@
 package org.specs2.mutable
 
 import akka.actor._
-import akka.io.Tcp.{Write, Received}
-import akka.testkit.{TestProbe, TestKitBase}
+import akka.io.Tcp.{ Received, Write }
+import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
-import com.secretapp.backend.api.ApiHandlerActor
-import com.secretapp.backend.api.Singletons
-import com.secretapp.backend.api.ClusterProxies
-import com.secretapp.backend.api.PackageAck
-import com.secretapp.backend.data.transport.{Package, PackageBox, MessageBox}
-import com.secretapp.backend.protocol.codecs.transport.PackageBoxCodec
+import com.datastax.driver.core.{ Session => CSession }
+import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.secretapp.backend.api.{ ClusterProxies, Singletons }
+import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
+import com.secretapp.backend.data.models._
+import com.secretapp.backend.data.transport.{ MessageBox, Package, PackageBox }
+import com.secretapp.backend.persist.{ AuthIdRecord, SessionIdRecord, UserRecord }
+import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.protocol.transport.{ PackageBoxCodec, TcpConnector }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon.Authenticate
+import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.session._
+import java.security.{ KeyPairGenerator, SecureRandom, Security }
+import java.util.concurrent.atomic.AtomicLong
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -20,23 +27,14 @@ import org.scalamock.specs2.MockFactory
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
 import scala.collection.immutable
-import scala.concurrent.blocking
-import scala.language.implicitConversions
-import com.secretapp.backend.data.message.{Container, MessageAck, TransportMessage, NewSession}
-import com.secretapp.backend.data.models.{Phone, SessionId, AuthId, User}
-import com.secretapp.backend.persist.{PhoneRecord, UserRecord, SessionIdRecord, AuthIdRecord}
-import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.services.common.RandomService
-import scala.util.Random
-import scodec.bits._
-import scala.concurrent.duration._
-import scalaz._
-import Scalaz._
-import com.datastax.driver.core.{ Session => CSession }
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
-import java.util.concurrent.atomic.AtomicLong
-import java.security.{Security, KeyPairGenerator, SecureRandom}
+import scala.concurrent.blocking
+import scala.concurrent.duration._
+import scala.language.implicitConversions
+import scala.util.Random
+import scalaz._
+import scalaz.Scalaz._
+import scodec.bits._
 
 trait ActorServiceHelpers extends RandomService {
   self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers with MockFactory =>
@@ -127,11 +125,12 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   val counters = new Singletons
-  val countersProxies = new ClusterProxies
+  implicit val clusterProxies = new ClusterProxies
+  val sessionRegion = SessionActor.startRegion()
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new ApiHandlerActor(probe.ref, countersProxies)(session) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpConnector(probe.ref, sessionRegion, session) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 
@@ -217,8 +216,7 @@ trait ActorServiceHelpers extends RandomService {
     pack(index, authId, m.body, m.messageId)
   }
 
-  def pack(index: Int, authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())
-          (implicit s: SessionIdentifier): PackResult = {
+  def pack(index: Int, authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())(implicit s: SessionIdentifier): PackResult = {
     val p = protoPackageBox.build(index, authId, s.id, messageId, m)
     PackResult(codecRes2BS(p), messageId)
   }
@@ -230,7 +228,7 @@ trait ActorServiceHelpers extends RandomService {
 
   def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
     val receivedPackages = tcpReceiveN(n * 2)
-    val unboxed = for ( p <- receivedPackages ) yield {
+    val unboxed = for (p <- receivedPackages) yield {
       p match {
         case Write(bs, ack) =>
           protoPackageBox.decode(bs) match {
@@ -243,10 +241,10 @@ trait ActorServiceHelpers extends RandomService {
     }
     val mboxes = unboxed flatMap {
       case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(_, Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
+      case PackageBox(_, Package(_, _, mb @ MessageBox(_, _))) => Seq(mb)
     }
     val (ackPackages, packages) = mboxes partition {
-      case MessageBox(_, ma@MessageAck(_)) => true
+      case MessageBox(_, ma @ MessageAck(_)) => true
       case _ => false
     }
     ackPackages.length should equalTo(packages.length)
@@ -263,7 +261,7 @@ trait ActorServiceHelpers extends RandomService {
 
   def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe, destActor: ActorRef) = {
     val receivedPackages = tcpReceiveN(messages.size * 2)
-    val unboxed = for ( p <- receivedPackages ) yield {
+    val unboxed = for (p <- receivedPackages) yield {
       p match {
         case Write(bs, ack) =>
           protoPackageBox.decode(bs) match {
@@ -276,13 +274,13 @@ trait ActorServiceHelpers extends RandomService {
     }
     val mboxes = unboxed flatMap {
       case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(_, Package(_, _, mb@MessageBox(_, _))) => Seq(mb)
+      case PackageBox(_, Package(_, _, mb @ MessageBox(_, _))) => Seq(mb)
     }
     val (ackPackages, expectedPackages) = mboxes partition {
-      case MessageBox(_, ma@MessageAck(_)) => true
+      case MessageBox(_, ma @ MessageAck(_)) => true
       case _ => false
     }
-    val acks = ackPackages flatMap(a => a.body.asInstanceOf[MessageAck].messageIds)
+    val acks = ackPackages flatMap (a => a.body.asInstanceOf[MessageAck].messageIds)
     val expectedMsgIds = messages.map(_.messageId)
     expectedMsgIds.length should_== acks.length
     expectedMsgIds should containAllOf(acks)

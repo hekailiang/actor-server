@@ -10,8 +10,7 @@ import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.update.NewDevice
 import com.secretapp.backend.data.message.update.NewYourDevice
-import com.secretapp.backend.services.RpcService
-import com.secretapp.backend.services.UserManagerService
+import com.secretapp.backend.api.ApiBrokerService
 import scala.collection.immutable
 import scala.collection.immutable.Seq
 import scala.util.Success
@@ -32,16 +31,14 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSMSEngine
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.util.HandleFutureOpt._
-import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.rpc.RpcCommon
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 import Function.tupled
 
-trait SignService extends PackageCommon with RpcCommon {
-  self: RpcService with Actor with GeneratorService with UserManagerService =>
+trait SignService {
+  self: ApiBrokerService =>
   implicit val session: CSession
 
   import context._
@@ -50,16 +47,22 @@ trait SignService extends PackageCommon with RpcCommon {
   val serverConfig = ConfigFactory.load()
   val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
-  def handleRpcAuth(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
+  def handleRpcAuth: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestAuthCode =>
-      sendRpcResult(p, messageId)(handleRequestAuthCode(r.phoneNumber, r.appId, r.apiKey))
+      unauthorizedRequest {
+        handleRequestAuthCode(r.phoneNumber, r.appId, r.apiKey)
+      }
     case r: RequestSignIn =>
-      sendRpcResult(p, messageId)(handleSign(p)(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.left))
+      unauthorizedRequest {
+        handleSign(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.left)
+      }
     case r: RequestSignUp =>
-      sendRpcResult(p, messageId)(handleSign(p)(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.right))
+      unauthorizedRequest {
+        handleSign(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.right)
+      }
   }
 
-  def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): RpcResult = {
+  def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
     //    TODO: validate phone number
     for {
       smsR <- AuthSmsCodeRecord.getEntity(phoneNumber)
@@ -78,23 +81,23 @@ trait SignService extends PackageCommon with RpcCommon {
           (smsHash, smsCode)
       }
       clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: move it to actor with persistence
-      ResponseAuthCode(smsHash, phoneR.isDefined).right
+      Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
     }
   }
 
-  private def handleSign(p: Package)(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)(m: RequestSignIn \/ RequestSignUp): RpcResult = {
-    val authId = p.authId // TODO
+  private def handleSign(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)(m: RequestSignIn \/ RequestSignUp): Future[RpcResponse] = {
+    val authId = currentAuthId // TODO
 
     @inline
-    def auth(u: User) = {
+    def auth(u: User): RpcResponse = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
       log.info(s"Authenticate currentUser=${u}")
       this.currentUser = Some(u)
-      ResponseAuth(u.publicKeyHash, u.toStruct(authId)).right
+      Ok(ResponseAuth(u.publicKeyHash, u.toStruct(authId)))
     }
 
     @inline
-    def signIn(userId: Int): RpcResult = {
+    def signIn(userId: Int) = {
       @inline
       def updateUserRecord(): Future[ResultSet] = m match {
         case -\/(_: RequestSignIn) =>
@@ -108,7 +111,7 @@ trait SignService extends PackageCommon with RpcCommon {
         userAuthR <- UserRecord.getEntity(userId, authId)
         userR <- UserRecord.getEntity(userId) // remove it when it cause bottleneck
       } yield {
-        if (userR.isEmpty) internalError.left
+        if (userR.isEmpty) Error(400, "INTERNAL_ERROR", "", true)
         else userAuthR match {
           case None =>
             updateUserRecord() onSuccess {
@@ -150,19 +153,19 @@ trait SignService extends PackageCommon with RpcCommon {
     def validPublicKey(k: BitVector): \/[NonEmptyList[String], BitVector] =
       if (k == BitVector.empty) "Should be nonempty".wrapNel.left else k.right
 
-    def validationFailed(errorName: String, errors: NonEmptyList[String]): Future[\/[Error, RpcResponseMessage]] =
-      Future.successful(Error(400, errorName, errors.toList.mkString(", "), false).left)
+    def validationFailed(errorName: String, errors: NonEmptyList[String]): Future[RpcResponse] =
+      Future.successful(Error(400, errorName, errors.toList.mkString(", "), false))
 
     def withValidName(n: String)
-                     (f: String => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+                     (f: String => Future[RpcResponse]): Future[RpcResponse] =
       validName(n).fold(validationFailed("NAME_INVALID", _), f)
 
     def withValidPublicKey(k: BitVector)
-                          (f: BitVector => Future[\/[Error, RpcResponseMessage]]): Future[\/[Error, RpcResponseMessage]] =
+                          (f: BitVector => Future[RpcResponse]): Future[RpcResponse] =
       validPublicKey(k).fold(validationFailed("PUBLIC_KEY_INVALID", _), f)
 
-    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false).left)
-    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false).left)
+    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false))
+    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false))
     else {
       val f = for {
         smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
@@ -170,14 +173,14 @@ trait SignService extends PackageCommon with RpcCommon {
       } yield (smsCodeR, phoneR)
       f flatMap tupled {
         (smsCodeR, phoneR) =>
-          if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
+          if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
           else smsCodeR.get match {
-            case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false).left)
-            case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false).left)
+            case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
+            case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
             case _ =>
               m match {
                 case -\/(_: RequestSignIn) => phoneR match {
-                  case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false).left)
+                  case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
                   case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
                 }
                 case \/-(req: RequestSignUp) =>

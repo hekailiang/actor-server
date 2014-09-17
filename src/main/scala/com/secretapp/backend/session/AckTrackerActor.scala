@@ -1,21 +1,23 @@
-package com.secretapp.backend.api
+package com.secretapp.backend.session
 
 import akka.actor._
 import scala.annotation.tailrec
 import scala.collection.immutable
 import akka.util.ByteString
 
-sealed trait AckTrackerMessage
+object AckTrackerProtocol {
+  sealed trait AckTrackerMessage
 
-case class RegisterMessage[K](key: K, value: ByteString) extends AckTrackerMessage
-case class RegisterMessageAck[K](key: K) extends AckTrackerMessage
-case class RegisterMessageAcks[K](keys: List[K]) extends AckTrackerMessage
+  case class RegisterMessage[K](key: K, value: ByteString) extends AckTrackerMessage
+  case class RegisterMessageAck[K](key: K) extends AckTrackerMessage
+  case class RegisterMessageAcks[K](keys: List[K]) extends AckTrackerMessage
 
-// perhaps in future we will need it to be case class with key or key and value
-case object MessageAlreadyRegistered extends AckTrackerMessage
-case object GetUnackdMessages extends AckTrackerMessage
-case object MessagesSizeOverflow extends AckTrackerMessage
-case class UnackdMessages[K](messages: immutable.Map[K, ByteString]) extends AckTrackerMessage
+  // perhaps in future we will need it to be case class with key or key and value
+  case object MessageAlreadyRegistered extends AckTrackerMessage
+  case object GetUnackdMessages extends AckTrackerMessage
+  case object MessagesSizeOverflow extends AckTrackerMessage
+  case class UnackdMessages[K](messages: immutable.Map[K, ByteString]) extends AckTrackerMessage
+}
 
 /**
   * Actor for tracking undelivered things
@@ -23,6 +25,7 @@ case class UnackdMessages[K](messages: immutable.Map[K, ByteString]) extends Ack
   * @param sizeLimit things size limit - when it's reached actor sends dies to prevent too large memory consumption
   */
 class AckTrackerActor[K](val sizeLimit: Int) extends Actor with ActorLogging {
+  import AckTrackerProtocol._
   import context._
 
   case class State(messages: immutable.Map[K, ByteString], messagesSize: Int)

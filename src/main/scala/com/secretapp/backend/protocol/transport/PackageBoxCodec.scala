@@ -1,4 +1,4 @@
-package com.secretapp.backend.protocol.codecs.transport
+package com.secretapp.backend.protocol.transport
 
 import com.secretapp.backend.protocol.codecs.utils._
 import com.secretapp.backend.protocol.codecs._

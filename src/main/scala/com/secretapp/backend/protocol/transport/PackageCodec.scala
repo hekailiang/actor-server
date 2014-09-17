@@ -1,4 +1,4 @@
-package com.secretapp.backend.protocol.codecs.transport
+package com.secretapp.backend.protocol.transport
 
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.data.transport._

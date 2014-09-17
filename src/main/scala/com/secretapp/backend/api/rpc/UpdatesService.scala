@@ -4,13 +4,13 @@ import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Subscribe, SubscribeAck }
 import akka.event.Logging
-import akka.pattern.ask
+import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.{ struct, update => updateProto }
-import com.secretapp.backend.data.message.rpc.{ Ok, update => updateRpcProto }
+import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.models.User
@@ -18,7 +18,6 @@ import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.services.rpc.RpcCommon
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -30,7 +29,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 
-class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService with PackageCommon with RpcCommon {
+class UpdatesServiceActor(val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   val mediator = DistributedPubSubExtension(context.system).mediator
@@ -39,10 +38,10 @@ class UpdatesServiceActor(val handleActor: ActorRef, val updatesBrokerRegion: Ac
   log.info(s"Starting UpdatesService for uid=${uid} authId=${authId}")
 
   def receive = {
-    case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetDifference(seq, state)) =>
-      handleRequestGetDifference(p, messageId)(seq, state)
-    case RpcProtocol.Request(p, messageId, updateRpcProto.RequestGetState()) =>
-      handleRequestGetState(p, messageId)
+    case RpcProtocol.Request(updateRpcProto.RequestGetDifference(seq, state)) =>
+      handleRequestGetDifference(seq, state) pipeTo sender
+    case RpcProtocol.Request(updateRpcProto.RequestGetState()) =>
+      handleRequestGetState() pipeTo sender
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
   }
@@ -54,45 +53,34 @@ sealed trait UpdatesService {
   import context._
   implicit val timeout = Timeout(5.seconds)
 
-  private val updatesPusher = context.actorOf(Props(new PusherActor(handleActor, authId)))
+  private val updatesPusher = context.actorOf(Props(new PusherActor(sessionActor, authId)))
   private var subscribedToUpdates = false
   private var subscribingToUpdates = false
   private val differenceSize = 300
 
-  protected def handleRequestGetDifference(p: Package, messageId: Long)(
-    seq: Int, state: Option[UUID]) = {
+  protected def handleRequestGetDifference(
+    seq: Int, state: Option[UUID]): Future[RpcResponse] = {
     subscribeToUpdates(authId)
 
-    val res = for {
+    for {
       seq <- getSeq(authId)
       difference <- CommonUpdateRecord.getDifference(
         authId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
-      difference.right
+      Ok(difference)
     }
-
-    val f = res recover {
-      case e: Throwable =>
-        log.error(s"Error getting difference ${e} ${Logging.stackTraceFor(e)}")
-        internalError.left
-    }
-    sendRpcResult(p, messageId)(f)
   }
 
-  protected def handleRequestGetState(p: Package, messageId: Long) = {
+  protected def handleRequestGetState(): Future[RpcResponse] = {
     subscribeToUpdates(authId)
 
     val f = getState(authId)
 
-    f onComplete {
-      case Success((seq, muuid)) =>
+    f map {
+      case (seq, muuid) =>
         val rsp = updateRpcProto.State(seq, muuid)
-        handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
-      case Failure(err) =>
-        // TODO: Handle failure
-        log.error("Failed to get state")
-        throw err
+        Ok(rsp)
     }
   }
 
@@ -147,13 +135,13 @@ sealed trait UpdatesService {
   }
 }
 
-sealed class PusherActor(handleActor: ActorRef, authId: Long) extends Actor with ActorLogging {
+sealed class PusherActor(sessionActor: ActorRef, authId: Long) extends Actor with ActorLogging {
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
       log.info(s"Pushing update to session authId=${authId} ${u}")
       val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
       val ub = UpdateBox(upd)
-      handleActor ! UpdateBoxToSend(ub)
+      sessionActor ! UpdateBoxToSend(ub)
     case u =>
       log.error(s"Unknown update in topic ${u}")
   }

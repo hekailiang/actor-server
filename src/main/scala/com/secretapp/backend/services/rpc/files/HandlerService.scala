@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.{ Error, Ok }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.LocationInvalid
@@ -35,38 +35,27 @@ trait HandlerService extends GeneratorService {
 
   implicit val timeout = Timeout(5.seconds)
 
-  protected def handleRequestUploadStart(p: Package, messageId: Long)() = {
+  protected def handleRequestUploadStart(): Future[RpcResponse] = {
     ask(filesCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { id =>
       fileRecord.createFile(id, genFileAccessSalt) map (_ => id)
-    } onComplete {
-      case Success(fileId) =>
-        val rsp = ResponseUploadStarted(UploadConfig(int32codec.encodeValid(fileId)))
-        handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
-      case Failure(e) =>
-        val msg = s"Failed to get next value if file id sequence: ${e.getMessage}"
-        handleActor ! PackageToSend(
-          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", msg, true))).right)
-        log.error(msg)
+    } map { fileId =>
+      val rsp = ResponseUploadStarted(UploadConfig(int32codec.encodeValid(fileId)))
+      Ok(rsp)
     }
   }
 
-  protected def handleRequestUploadFile(p: Package, messageId: Long)(config: UploadConfig, offset: Int, data: BitVector) = {
+  protected def handleRequestUploadFile(config: UploadConfig, offset: Int, data: BitVector): Future[RpcResponse] = {
     // TODO: handle failures
     val fileId = int32codec.decodeValidValue(config.serverData)
 
     try {
-      println(s"BEFORE WRITING ${fileId} ${offset} ${data.toByteArray.length}")
-      fileRecord.write(fileId, offset, data.toByteArray) onComplete {
-        case Success(_) =>
-          val rsp = ResponsePartUploaded()
-          handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
-        case Failure(e) =>
-          log.error("Failed to upload file chunk {} {} {}", p, messageId, e)
+      fileRecord.write(fileId, offset, data.toByteArray) map { _ =>
+        val rsp = ResponsePartUploaded()
+        Ok(rsp)
       }
     } catch {
       case e: FileRecordError =>
-        handleActor ! PackageToSend(
-          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, e.tag, "", e.canTryAgain))).right)
+        Future.successful(Error(400, e.tag, "", e.canTryAgain))
     }
   }
 
@@ -84,68 +73,66 @@ trait HandlerService extends GeneratorService {
     }
   }
 
-  protected def handleRequestCompleteUpload(p: Package, messageId: Long)(config: UploadConfig, blocksCount: Int, crc32: Long) = {
+  protected def handleRequestCompleteUpload(config: UploadConfig, blocksCount: Int, crc32: Long): Future[RpcResponse] = {
     val fileId = int32codec.decodeValidValue(config.serverData)
     val faccessHash = getAccessHash(fileId)
 
-    fileRecord.countSourceBlocks(fileId) onComplete {
-      case Success(sourceBlocksCount) =>
-        if (blocksCount == sourceBlocksCount) {
-          Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) onComplete {
-            case Success(realcrc32) =>
-              if (crc32 == realcrc32) {
-                faccessHash onComplete {
-                  case Success(accessHash) =>
-                    val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
-                    handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
-                  case Failure(e) =>
-                    log.error("Failed to get file accessHash")
-                    handleActor ! PackageToSend(
-                      p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))).right)
-                    throw e
-                }
-              } else {
-                handleActor ! PackageToSend(
-                  p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "WRONG_CRC", "", true))).right)
-              }
-            case Failure(e) =>
-              log.error("Failed to calculate file crc32")
-              handleActor ! PackageToSend(
-                p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))).right)
-              throw e
+    val f = fileRecord.countSourceBlocks(fileId) flatMap { sourceBlocksCount =>
+      if (blocksCount == sourceBlocksCount) {
+        val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
+          if (crc32 == realcrc32) {
+            val f = faccessHash map { accessHash =>
+                val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
+                Ok(rsp)
+            }
+            f onFailure {
+              case e: Throwable =>
+                log.error("Failed to get file accessHash")
+                throw e
+            }
+            f
+          } else {
+            Future.successful(Error(400, "WRONG_CRC", "", true))
           }
-        } else {
-          handleActor ! PackageToSend(
-            p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "WRONG_BLOCKS_COUNT", "", true))).right)
         }
-      case Failure(e) =>
+        f onFailure {
+          case e: Throwable =>
+            log.error("Failed to calculate file crc32")
+            throw e
+        }
+        f
+      } else {
+        Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
+      }
+    }
+    f onFailure {
+      case e: Throwable =>
         log.error("Failed to get source blocks count")
-        handleActor ! PackageToSend(
-          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))).right)
         throw e
     }
+    f
   }
 
-  protected def handleRequestGetFile(p: Package, messageId: Long)(location: FileLocation, offset: Int, limit: Int) = {
+  protected def handleRequestGetFile(location: FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
     // TODO: Int vs Long
-    getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
+    val f = getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
       if (realAccessHash != location.accessHash) {
         throw new LocationInvalid
       }
       fileRecord.getFile(location.fileId.toInt, offset, limit)
-    } onComplete {
-      case Success(bytes) =>
+    } map { bytes =>
         val rsp = ResponseFilePart(BitVector(bytes))
-        handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(rsp))).right)
-      case Failure(e: FileRecordError) =>
-        handleActor ! PackageToSend(
-          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, e.tag, "", e.canTryAgain))).right)
-      case Failure(e) =>
+        Ok(rsp)
+    } recover {
+      case e: FileRecordError =>
+        Error(400, e.tag, "", e.canTryAgain)
+    }
+    f onFailure {
+      case e: Throwable =>
         log.error("Failed to check file accessHash")
-        handleActor ! PackageToSend(
-          p.replyWith(messageId, RpcResponseBox(messageId, Error(400, "INTERNAL_ERROR", "", true))).right)
         throw e
     }
+    f
   }
 
   protected def getAccessHash(fileId: Int): Future[Long] = {

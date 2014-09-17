@@ -1,27 +1,37 @@
 package com.secretapp.backend.services.rpc.presence
 
 import akka.actor._
-import com.secretapp.backend.api.ApiHandlerActor
+import akka.pattern.ask
+import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.presence._
-import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.services.transport.PackageManagerService
+ import com.secretapp.backend.data.transport.Package
+ import com.secretapp.backend.protocol.transport._
+import scala.concurrent.Future
+import scalaz._
+import Scalaz._
 
 trait PresenceService {
-  this: ApiHandlerActor =>
+  this: ApiBrokerService =>
 
   import context.dispatcher
   import context.system
 
-  private lazy val presenceHandler = context.actorOf(Props(new Handler(handleActor, getUser.get, clusterProxies.presenceBroker)), "presence")
+  private lazy val presenceHandler = context.actorOf(Props(new Handler(sessionActor, getUser.get, clusterProxies.presenceBroker)), "presence")
 
-  def handleRpcPresence(p: Package, messageId: Long): PartialFunction[RpcRequestMessage, Any] = {
+  def handleRpcPresence: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case rq: RequestSetOnline =>
-      presenceHandler ! RpcProtocol.Request(p, messageId, rq)
+      authorizedRequest {
+        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
+      }
     case rq: SubscribeForOnline =>
-      presenceHandler ! RpcProtocol.Request(p, messageId, rq)
+      authorizedRequest {
+        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
+      }
     case rq: UnsubscribeForOnline =>
-      presenceHandler ! RpcProtocol.Request(p, messageId, rq)
+      authorizedRequest {
+        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
+      }
   }
 }

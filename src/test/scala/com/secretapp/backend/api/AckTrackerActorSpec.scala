@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
+import com.secretapp.backend.session.{ AckTrackerActor, AckTrackerProtocol }
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -16,6 +17,7 @@ import org.specs2.mutable.ActorSpecification
 
 class AckTrackerActorSpec extends ActorSpecification {
   import system.dispatcher
+  import AckTrackerProtocol._
 
   override lazy val actorSystemName = "api"
 

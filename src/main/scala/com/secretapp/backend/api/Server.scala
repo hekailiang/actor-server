@@ -6,6 +6,8 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.FilesCounter
 import com.secretapp.backend.protocol.codecs.common.VarIntCodec
 import com.secretapp.backend.services.rpc.presence.PresenceBroker
+import com.secretapp.backend.session._
+import com.secretapp.backend.protocol.transport._
 import scodec.bits.BitVector
 
 final class Singletons(implicit val system: ActorSystem) {
@@ -18,11 +20,13 @@ final class ClusterProxies(implicit val system: ActorSystem) {
   val presenceBroker = PresenceBroker.startProxy(system)
 }
 
-class Server(session: CSession) extends Actor with ActorLogging {
+class Server(implicit session: CSession) extends Actor with ActorLogging {
   import context.system
 
+  implicit val clusterProxies = new ClusterProxies
+
   val singletons = new Singletons
-  val clusterProxies = new ClusterProxies
+  val sessionRegion = SessionActor.startRegion()
 
   def receive = {
     case b @ Bound(localAddress) =>
@@ -33,7 +37,7 @@ class Server(session: CSession) extends Actor with ActorLogging {
     case c @ Connected(remote, local) =>
       log.info(s"Connected: $c")
       val connection = sender()
-      val handler = context.actorOf(Props(new ApiHandlerActor(connection, clusterProxies)(session)))
-      connection ! Register(handler, keepOpenOnPeerClosed = true)
+      val frontendActor = context.actorOf(Props(new TcpConnector(connection, sessionRegion, session)))
+      connection ! Register(frontendActor, keepOpenOnPeerClosed = true)
   }
 }

@@ -14,7 +14,6 @@ import org.specs2.mutable.ActorLikeSpecification
 import org.specs2.mutable.ActorServiceHelpers
 import akka.actor._
 import akka.testkit._
-import com.secretapp.backend.api.ApiHandlerActor
 import scodec.codecs.{ int32 => int32codec }
 import scodec.bits._
 

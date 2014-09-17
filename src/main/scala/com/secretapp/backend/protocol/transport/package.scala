@@ -1,4 +1,4 @@
-package com.secretapp.backend.services
+package com.secretapp.backend.protocol
 
 package object transport {
   sealed trait HandleError

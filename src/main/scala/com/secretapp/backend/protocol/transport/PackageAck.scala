@@ -1,4 +1,4 @@
-package com.secretapp.backend.api
+package com.secretapp.backend.protocol.transport
 
 import akka.io.Tcp._
 

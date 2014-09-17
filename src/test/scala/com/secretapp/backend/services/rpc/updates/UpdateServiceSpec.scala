@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.updates
 
 import akka.actor._
 import akka.testkit._
-import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.RequestGetDifference
 import com.secretapp.backend.data.message.update

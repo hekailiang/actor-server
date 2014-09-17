@@ -1,11 +1,12 @@
-package com.secretapp.backend.api
+package com.secretapp.backend.protocol.transport
 
-import akka.actor.{ Actor, ActorRef, ActorLogging }
-import akka.util.ByteString
+import akka.actor._
+import akka.util.{ ByteString, Timeout }
 import com.secretapp.backend.data.transport.MessageBox
 import scodec.bits._
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.Package
-import com.secretapp.backend.services.transport._
+import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.protocol.codecs._
@@ -15,10 +16,11 @@ import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
 
-// TODO: replace connection: ActorRef hack with real sender (or forget it?)
-class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(implicit val session: CSession) extends Actor with ActorLogging
-    with WrappedPackageService with PackageService {
+class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends Connector with ActorLogging with WrappedPackageService with PackageService {
   import akka.io.Tcp._
+  import scala.concurrent.duration._
+
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
   var packageIndex = 0
   var closing = false
@@ -46,8 +48,17 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
   def receive = writing
 
   def writing: Receive = {
-    case PackageToSend(pe) =>
-      wlog(s"PackageToSend($pe)")
+/*
+    case UpdateBoxToSend(ub) =>
+      wlog(s"UpdateBoxToSend($ub)")
+      // FIXME: real message id SA-32
+      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+        write(index, data)
+      } */
+    case pe: PackageEither =>
+      wlog(pe)
       pe match {
         case \/-(p) =>
           nextPackage(p) { (index, data) =>
@@ -61,27 +72,6 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
           }
           connection ! Close
       }
-
-    case MessageBoxToSend(mb) =>
-      wlog(s"MessageBoxToSend($mb)")
-      val p = Package(getAuthId, getSessionId, mb)
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-        write(index, data)
-      }
-
-    case UpdateBoxToSend(ub) =>
-      wlog(s"UpdateBoxToSend($ub)")
-      // FIXME: real message id SA-32
-      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-        write(index, data)
-      }
-
-    case m: ServiceMessage =>
-      wlog(s"ServiceMessage: $m")
-      serviceMessagesPF(m)
 
     case Received(data) =>
       wlog(s"Received: $data ${data.length}")
@@ -99,7 +89,16 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
   }
 
   def buffering: Receive = {
-    case PackageToSend(pe) =>
+    /*
+    case UpdateBoxToSend(ub) =>
+      blog(s"UpdateBoxToSend($ub)")
+      // FIXME: real message id SA-32
+      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+      }
+ */
+    case pe: PackageEither =>
       blog(s"PackageToSend($pe)")
       pe match {
         case \/-(p) =>
@@ -112,26 +111,6 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
           }
           closing = true
       }
-
-    case MessageBoxToSend(mb) =>
-      blog(s"MessageBoxToSend($mb)")
-      val p = Package(getAuthId, getSessionId, mb)
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-      }
-
-    case UpdateBoxToSend(ub) =>
-      blog(s"UpdateBoxToSend($ub)")
-      // FIXME: real message id SA-32
-      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-      }
-
-    case m: ServiceMessage =>
-      blog(s"ServiceMessage: $m")
-      serviceMessagesPF(m)
-
     case Received(data) =>
       blog(s"Received: $data ${data.length}")
       handleByteStream(BitVector(data.toArray))(handlePackage, handleError)
@@ -199,6 +178,14 @@ class ApiHandlerActor(connection: ActorRef, val clusterProxies: ClusterProxies)(
     }
   }
 
-  def wlog(str: String) = log.info(s"[writing] ${str}")
-  def blog(str: String) = log.info(s"[buffering] ${str}")
+  def wlog(obj: Object) = log.info(s"[writing] ${logstr(obj)}")
+  def blog(obj: Object) = log.info(s"[buffering] ${logstr(obj)}")
+
+  @inline
+  private def logstr(o: Object) = {
+    o match {
+      case s: String => s
+      case _ => o
+    }
+  }
 }

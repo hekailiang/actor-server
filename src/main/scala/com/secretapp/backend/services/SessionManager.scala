@@ -3,6 +3,8 @@ package com.secretapp.backend.services
 import akka.actor._
 import akka.util._
 import akka.pattern.ask
+import com.secretapp.backend.protocol.transport.Connector
+import com.secretapp.backend.session._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.persist._
 import scala.concurrent._
@@ -10,8 +12,8 @@ import scala.concurrent.duration._
 import scala.collection.mutable
 import com.datastax.driver.core.{ Session => CSession }
 
-trait SessionManager extends ActorLogging {
-  self: Actor  =>
+trait SessionManager {
+  self: Connector =>
 
   import context._
 
@@ -29,10 +31,10 @@ trait SessionManager extends ActorLogging {
         val f = sessionFutures.get(sessionId) match {
           case None =>
             log.info(s"GetOrCreate Creating Future")
-            val f = SessionIdRecord.getEntity(authId, sessionId).flatMap {
+            val f = SessionIdRecord.getEntity(authId, sessionId)(session).flatMap {
               case s@Some(sessionIdRecord) => Future { Left(sessionId) }
               case None =>
-                SessionIdRecord.insertEntity(SessionId(authId, sessionId)).map(_ => Right(sessionId))
+                SessionIdRecord.insertEntity(SessionId(authId, sessionId))(session).map(_ => Right(sessionId))
             }
             sessionFutures.put(sessionId, f)
             f
@@ -49,8 +51,6 @@ trait SessionManager extends ActorLogging {
         f map (sessionId => replyTo ! sessionId)
     }
   }))
-
-  implicit val timeout = Timeout(5.seconds)
 
   /**
    * Gets existing session from database or creates new

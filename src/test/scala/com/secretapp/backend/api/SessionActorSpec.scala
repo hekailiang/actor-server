@@ -31,7 +31,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
 
-class ApiHandlerActorSpec extends RpcSpec {
+class SessionActorSpec extends RpcSpec {
   import system.dispatcher
 
   "actor" should {

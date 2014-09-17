@@ -2,7 +2,7 @@ package com.secretapp.backend.services.rpc
 
 import akka.actor._
 import akka.testkit._
-import com.secretapp.backend.api.{ ApiHandlerActor, Singletons, ClusterProxies }
+import com.secretapp.backend.api.{ Singletons, ClusterProxies }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.transport.MessageBox

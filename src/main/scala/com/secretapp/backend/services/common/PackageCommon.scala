@@ -12,18 +12,9 @@ object PackageCommon {
   type PackageEither = Package \/ Package
 
   trait PackageServiceMessage
-  case class PackageToSend(p: PackageEither) extends PackageServiceMessage
-  case class MessageBoxToSend(mb: MessageBox) extends PackageServiceMessage
+  case class PackageToSend(connector: ActorRef, p: PackageEither) extends PackageServiceMessage
   case class UpdateBoxToSend(mb: UpdateBox) extends PackageServiceMessage
 
   trait ServiceMessage
   case class Authenticate(u: User) extends ServiceMessage
-}
-
-trait PackageCommon extends LoggerService with RandomService {
-  val handleActor: ActorRef
-
-  def sendReply(reply: PackageEither): Unit = {
-    handleActor ! PackageToSend(reply)
-  }
 }

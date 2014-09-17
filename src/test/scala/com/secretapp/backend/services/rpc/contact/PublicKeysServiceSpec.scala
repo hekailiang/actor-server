@@ -6,7 +6,6 @@ import scala.collection.immutable
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
-import com.secretapp.backend.api.ApiHandlerActor
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService

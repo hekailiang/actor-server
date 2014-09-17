@@ -25,7 +25,7 @@ class ApiKernel extends Bootable {
     val hostname = Try(serverConfig.getString("hostname")).getOrElse("0.0.0.0")
     val session = DBConnector.session
     DBConnector.createTables(session)
-    implicit val service = system.actorOf(Props(new Server(session)), "api-service")
+    implicit val service = system.actorOf(Props(new Server()(session)), "api-service")
     val address = new InetSocketAddress(hostname, port)
     IO(Tcp) ! Bind(service, address)
     system.actorOf(Props(new HeatingUpActor(address)), "heat-service")

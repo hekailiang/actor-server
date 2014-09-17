@@ -1,4 +1,4 @@
-package com.secretapp.backend.services.transport
+package com.secretapp.backend.protocol.transport
 
 import akka.actor.Actor
 import akka.util.ByteString
@@ -11,7 +11,8 @@ import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
 
-trait WrappedPackageService extends PackageManagerService with PackageAckService { self: Actor =>
+trait WrappedPackageService extends PackageManagerService {
+  self: Connector =>
   import ByteConstants._
 
   sealed trait ParseState
@@ -19,7 +20,7 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
   case class WrappedPackageParsing(bitsLen: Long) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
-  type PackageFunc = (Package, Option[TransportMessage]) => Unit
+  type PackageFunc = Package => Unit
 
   val minParseLength = intSize // we need first bytes for package size
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
@@ -47,7 +48,8 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
         if (buf.length >= bitsLen) {
           protoPackageBox.decode(buf) match {
             case \/-((remain, wp)) =>
-              handlePackageAuthentication(wp.p)(f)
+              // handlePackageAuthentication(wp.p)(f)
+              f(wp.p)
               log.info(s"remain: $remain, buf: $buf")
               parseByteStream(WrappedPackageSizeParsing(), remain)(f)
             case -\/(e) => ParseError(e).left
@@ -84,7 +86,6 @@ trait WrappedPackageService extends PackageManagerService with PackageAckService
     protoPackageBox.encode(index, p) match {
       case \/-(bv) =>
         val bs = ByteString(bv.toByteArray)
-        registerSentMessage(p.messageBox, bs)
         bs
       case -\/(e) => ByteString(e)
     }
