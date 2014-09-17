@@ -7,7 +7,6 @@ import com.websudos.phantom.Implicits._
 import com.websudos.phantom.keys.{PrimaryKey, PartitionKey}
 
 import scala.concurrent.Future
-import scala.Function.const
 
 sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCredentialsRecord, GooglePushCredentials] {
 
@@ -35,10 +34,10 @@ object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with DBCo
     update
       .where(_.userId eqs c.userId).and(_.authId eqs c.authId)
       .modify(_.projectId setTo c.projectId).and(_.token setTo c.token)
-      .future map const()
+      .future.mapTo[Unit]
 
   def remove(userId: Int, authId: Long)(implicit s: Session): Future[Unit] =
     delete
       .where(_.userId eqs userId).and(_.authId eqs authId)
-      .future map const()
+      .future.mapTo[Unit]
 }
