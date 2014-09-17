@@ -1,6 +1,6 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{Session, Row}
+import com.datastax.driver.core.{Session, ResultSet, Row}
 import com.secretapp.backend.data.models.GooglePushCredentials
 import com.websudos.phantom.CassandraTable
 import com.websudos.phantom.Implicits._
@@ -32,16 +32,16 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
 
 object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with DBConnector {
 
-  def set(c: GooglePushCredentials)(implicit s: Session): Future[Unit] =
+  def set(c: GooglePushCredentials)(implicit s: Session): Future[ResultSet] =
     update
       .where(_.uid eqs c.uid).and(_.authId eqs c.authId)
       .modify(_.projectId setTo c.projectId).and(_.regId setTo c.regId)
-      .future.mapTo[Unit]
+      .future
 
-  def remove(uid: Int, authId: Long)(implicit s: Session): Future[Unit] =
+  def remove(uid: Int, authId: Long)(implicit s: Session): Future[ResultSet] =
     delete
       .where(_.uid eqs uid).and(_.authId eqs authId)
-      .future.mapTo[Unit]
+      .future
 
   def get(uid: Int, authId: Long)(implicit s: Session): Future[Option[GooglePushCredentials]] =
     select
