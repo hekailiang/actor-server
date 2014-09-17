@@ -5,3 +5,7 @@ sms {
     api-id = "3486451"
   }
 }
+
+gcm {
+  api-key = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
+}
