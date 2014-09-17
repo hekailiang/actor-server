@@ -7,7 +7,7 @@ import scodec.codecs._
 
 object RequestRegisterGooglePushCodec extends Codec[RequestRegisterGooglePush] {
 
-  private val codec = (int32 :: utf8).as[RequestRegisterGooglePush]
+  private val codec = (int64 :: utf8).as[RequestRegisterGooglePush]
 
   override def encode(r: RequestRegisterGooglePush) = codec.encode(r)
 
