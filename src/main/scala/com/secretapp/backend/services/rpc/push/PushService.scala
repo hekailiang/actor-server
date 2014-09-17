@@ -16,7 +16,8 @@ trait PushService {
   lazy val handler = context.actorOf(Props(new Handler(currentUser.get)), "pushes")
 
   val handleRpcPush: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case r @ (_: RequestRegisterGooglePush | _: RequestUnregisterPush) =>
+    case r @ (_: RequestRegisterGooglePush |
+              _: RequestUnregisterPush) =>
       authorizedRequest {
         (handler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
       }
