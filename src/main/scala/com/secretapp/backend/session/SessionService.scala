@@ -17,17 +17,17 @@ trait SessionService {
   import AckTrackerProtocol._
   import ApiBrokerProtocol._
 
-  def handleMessage(connector: ActorRef, p: Package, m: MessageBox): Unit = {
-    acknowledgeReceivedPackage(connector, p, m)
+  def handleMessage(connector: ActorRef, p: Package, mb: MessageBox): Unit = {
+    acknowledgeReceivedPackage(connector, p, mb)
 
-    m.body match { // TODO: move into pluggable traits
+    mb.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
-        val reply = p.replyWith(m.messageId, Pong(randomId)).right
+        val reply = p.replyWith(mb.messageId, Pong(randomId)).right
         connector.tell(reply, context.self)
       case MessageAck(mids) =>
         ackTracker.tell(RegisterMessageAcks(mids.toList), context.self)
       case RpcRequestBox(body) =>
-        apiBroker.tell(ApiBrokerRequest(connector, p.messageBox.messageId, body), context.self)
+        apiBroker.tell(ApiBrokerRequest(connector, mb.messageId, body), context.self)
       case _ =>
     }
   }
