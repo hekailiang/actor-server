@@ -122,7 +122,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
           message = aesMessage getOrElse message.message.get
         )
         pushUpdate(authId, update)
-        sendGooglePush()
+        sendGooglePush(42, seq)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
