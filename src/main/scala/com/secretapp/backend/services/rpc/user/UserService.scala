@@ -61,9 +61,9 @@ trait UserService {
       _               <- fr.write(smallImageLoc.fileId.toInt, 0, smallImageBytes);
       _               <- fr.write(largeImageLoc.fileId.toInt, 0, largeImageBytes);
 
-      smallAvatarImage = AvatarImage(smallImageLoc, 100, 100);
-      largeAvatarImage = AvatarImage(largeImageLoc, 200, 200);
-      fullAvatarImage  = AvatarImage(r.fileLocation, fullImage.width, fullImage.height);
+      smallAvatarImage = AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length);
+      largeAvatarImage = AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
+      fullAvatarImage  = AvatarImage(r.fileLocation, fullImage.width, fullImage.height, fullImageBytes.length);
 
       avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some);
 

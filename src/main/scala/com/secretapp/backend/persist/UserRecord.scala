@@ -44,17 +44,26 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object smallAvatarFileHash extends OptionalLongColumn(this) {
     override lazy val name = "small_avatar_file_hash"
   }
+  object smallAvatarFileSize extends OptionalIntColumn(this) {
+    override lazy val name = "small_avatar_file_size"
+  }
   object largeAvatarFileId extends OptionalIntColumn(this) {
     override lazy val name = "large_avatar_file_id"
   }
   object largeAvatarFileHash extends OptionalLongColumn(this) {
     override lazy val name = "large_avatar_file_hash"
   }
+  object largeAvatarFileSize extends OptionalIntColumn(this) {
+    override lazy val name = "large_avatar_file_size"
+  }
   object fullAvatarFileId extends OptionalIntColumn(this) {
     override lazy val name = "full_avatar_file_id"
   }
   object fullAvatarFileHash extends OptionalLongColumn(this) {
     override lazy val name = "full_avatar_file_hash"
+  }
+  object fullAvatarFileSize extends OptionalIntColumn(this) {
+    override lazy val name = "full_avatar_file_size"
   }
   object fullAvatarWidth extends OptionalIntColumn(this) {
     override lazy val name = "full_avatar_width"
@@ -76,10 +85,13 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       sex = intToSex(sex(row)),
       smallAvatarFileId = smallAvatarFileId(row),
       smallAvatarFileHash = smallAvatarFileHash(row),
+      smallAvatarFileSize = smallAvatarFileSize(row),
       largeAvatarFileId = largeAvatarFileId(row),
       largeAvatarFileHash = largeAvatarFileHash(row),
+      largeAvatarFileSize = largeAvatarFileSize(row),
       fullAvatarFileId = fullAvatarFileId(row),
       fullAvatarFileHash = fullAvatarFileHash(row),
+      fullAvatarFileSize = fullAvatarFileSize(row),
       fullAvatarWidth = fullAvatarWidth(row),
       fullAvatarHeight = fullAvatarHeight(row)
     )
@@ -116,10 +128,13 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.sex, sexToInt(entity.sex))
       .value(_.smallAvatarFileId, entity.smallAvatarFileId)
       .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
+      .value(_.smallAvatarFileSize, entity.smallAvatarFileSize)
       .value(_.largeAvatarFileId, entity.largeAvatarFileId)
       .value(_.largeAvatarFileHash, entity.largeAvatarFileHash)
+      .value(_.largeAvatarFileSize, entity.largeAvatarFileSize)
       .value(_.fullAvatarFileId, entity.fullAvatarFileId)
       .value(_.fullAvatarFileHash, entity.fullAvatarFileHash)
+      .value(_.fullAvatarFileSize, entity.fullAvatarFileSize)
       .value(_.fullAvatarWidth, entity.fullAvatarWidth)
       .value(_.fullAvatarHeight, entity.fullAvatarHeight)
       .future().
@@ -172,10 +187,13 @@ object UserRecord extends UserRecord with DBConnector {
     update.where(_.uid eqs uid).and(_.authId eqs authId)
       .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
       .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
+      .and   (_.smallAvatarFileSize setTo avatar.smallImage.map(_.fileSize))
       .and   (_.largeAvatarFileId   setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
       .and   (_.largeAvatarFileHash setTo avatar.largeImage.map(_.fileLocation.accessHash))
+      .and   (_.largeAvatarFileSize setTo avatar.largeImage.map(_.fileSize))
       .and   (_.fullAvatarFileId    setTo avatar.fullImage.map(_.fileLocation.fileId.toInt))
       .and   (_.fullAvatarFileHash  setTo avatar.fullImage.map(_.fileLocation.accessHash))
+      .and   (_.fullAvatarFileSize  setTo avatar.fullImage.map(_.fileSize))
       .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
