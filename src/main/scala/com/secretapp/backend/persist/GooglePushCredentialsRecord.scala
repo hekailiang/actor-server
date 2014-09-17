@@ -18,7 +18,7 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
     override lazy val name = "auth_id"
   }
 
-  object projectId extends IntColumn(this) {
+  object projectId extends LongColumn(this) {
     override lazy val name = "project_id"
   }
 

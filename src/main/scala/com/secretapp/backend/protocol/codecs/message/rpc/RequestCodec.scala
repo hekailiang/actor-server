@@ -6,6 +6,7 @@ import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.presence._
+import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.user._
 import com.secretapp.backend.protocol.codecs._
@@ -15,6 +16,7 @@ import com.secretapp.backend.protocol.codecs.message.rpc.contact._
 import com.secretapp.backend.protocol.codecs.message.rpc.file._
 import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.message.rpc.presence._
+import com.secretapp.backend.protocol.codecs.message.rpc.push._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
 import scodec.Codec
 import scodec.bits._
@@ -38,6 +40,7 @@ object RequestCodec extends Codec[Request] {
     .\(UnsubscribeForOnline.requestType) { case r: UnsubscribeForOnline => r } (protoPayload(UnsubscribeForOnlineCodec))
     .\(RequestSetOnline.requestType) { case r: RequestSetOnline => r } (protoPayload(RequestSetOnlineCodec))
     .\(RequestSetAvatar.requestType) { case r: RequestSetAvatar => r } (protoPayload(RequestSetAvatarCodec))
+    .\(RequestRegisterGooglePush.requestType) { case r: RequestRegisterGooglePush => r } (protoPayload(RequestRegisterGooglePushCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)

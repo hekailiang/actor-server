@@ -9,7 +9,7 @@ trait HandlerService {
 
   import context.dispatcher
 
-  protected def handleRequestRegisterGooglePush(projectId: Int, regId: String) =
+  protected def handleRequestRegisterGooglePush(projectId: Long, regId: String) =
     GooglePushCredentialsRecord.set(GooglePushCredentials(currentUser.uid, currentUser.authId, projectId, regId)) map { _ =>
       Ok(ResponseVoid())
     }
