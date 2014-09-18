@@ -88,7 +88,7 @@ trait ActorServiceHelpers extends RandomService {
     u
   }
 
-  def authDefaultUser(uid: Int = 1, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): User = blocking {
+  def authDefaultUser(uid: Int, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): User = blocking {
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
     val user = User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",

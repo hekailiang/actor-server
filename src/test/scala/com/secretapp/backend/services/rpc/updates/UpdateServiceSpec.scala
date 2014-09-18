@@ -50,7 +50,7 @@ class UpdatesServiceSpec extends RpcSpec {
         protoReceiveN(1)(scope.probe, scope.apiActor)
 
         val state = RequestGetState() :~> <~:[State]
-        state.state must not equalTo (None)
+        state.state must not equalTo None
       }
     }
 
