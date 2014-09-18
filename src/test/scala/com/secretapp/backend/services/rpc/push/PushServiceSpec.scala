@@ -11,7 +11,6 @@ import scalaz._
 import Scalaz._
 
 class PushServiceSpec extends RpcSpec with BeforeExample {
-  import system.dispatcher
 
   "push service" should {
 
