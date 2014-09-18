@@ -22,7 +22,22 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
   "profile service" should {
 
     "respond to `RequestSetAvatar` with `ResponseAvatarUploaded`" in {
-      setAvatarShouldBeOk
+      val r = setAvatarShouldBeOk
+
+      r.avatar.fullImage.get.width          should_== origDimensions._1
+      r.avatar.fullImage.get.height         should_== origDimensions._2
+      r.avatar.fullImage.get.fileSize       should_== origBytes.length
+      dbImageBytes(r.avatar.fullImage.get)  should_== origBytes
+
+      r.avatar.smallImage.get.width         should_== smallDimensions._1
+      r.avatar.smallImage.get.height        should_== smallDimensions._2
+      r.avatar.smallImage.get.fileSize      should_== smallBytes.length
+      dbImageBytes(r.avatar.smallImage.get) should_== smallBytes
+
+      r.avatar.largeImage.get.width         should_== largeDimensions._1
+      r.avatar.largeImage.get.height        should_== largeDimensions._2
+      r.avatar.largeImage.get.fileSize      should_== largeBytes.length
+      dbImageBytes(r.avatar.largeImage.get) should_== largeBytes
     }
 
     "update user avatar on receiving `RequestSetAvatar`" in {

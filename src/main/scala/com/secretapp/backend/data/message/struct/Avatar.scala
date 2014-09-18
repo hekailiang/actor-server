@@ -17,9 +17,9 @@ object Avatar {
   def fromProto(avatar: protobuf.Avatar): Avatar = avatar match {
     case protobuf.Avatar(smallImage, largeImage, fullImage) =>
       Avatar(
-        smallImage map (AvatarImage.fromProto),
-        largeImage map (AvatarImage.fromProto),
-        fullImage map (AvatarImage.fromProto)
+        smallImage map AvatarImage.fromProto,
+        largeImage map AvatarImage.fromProto,
+        fullImage map AvatarImage.fromProto
       )
   }
 }
