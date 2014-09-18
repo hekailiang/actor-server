@@ -77,16 +77,6 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
 
-    /* TODO: Fix case.
-    "add new avatar to difference" in {
-      val d1 = RequestGetDifference(0, None) :~> <~:[Difference]
-      setAvatarShouldBeOk
-
-      val d2 = RequestGetDifference(d1.seq, d1.state) :~> <~:[Difference]
-
-      d2.users should have size 1
-    }
-    */
   }
 
   import system.dispatcher

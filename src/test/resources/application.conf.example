@@ -7,6 +7,6 @@ sms {
 }
 
 gcm {
-  api-key = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
+  token = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
   dry-run = true
 }

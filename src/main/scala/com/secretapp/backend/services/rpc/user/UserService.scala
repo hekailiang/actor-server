@@ -3,17 +3,13 @@ package com.secretapp.backend.services.rpc.user
 import akka.pattern.ask
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.counters.CounterProtocol
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcRequestMessage, RpcResponse }
+import com.secretapp.backend.data.message.rpc.{ Ok, RpcRequestMessage, RpcResponse }
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestSetAvatar, ResponseAvatarUploaded}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
 import com.secretapp.backend.data.message.update.AvatarChanged
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.{FileRecord, UserRecord}
-import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.rpc.files.FilesService
 import com.sksamuel.scrimage.{AsyncImage, Format, Position}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random

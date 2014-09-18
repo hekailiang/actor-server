@@ -125,8 +125,8 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         CommonUpdateRecord.select.orderBy(_.uuid.asc)
           .where(_.authId eqs authId)
     }
-    val queryString = query.queryString
-    println(s"Difference ${queryString}")
+
+    println(s"Difference ${query.queryString}")
     query.limit(limit).fetch map (_.toList)
   }
 
@@ -158,6 +158,9 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.updateId, 3)
           .value(_.newYourDeviceUid, uid).value(_.newYourDevicePublicKeyHash, publicKeyHash)
           .value(_.newYourDevicePublicKey, publicKey.toByteBuffer)
+      case updateProto.AvatarChanged(uid, avatar) =>
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.updateId, updateProto.AvatarChanged.commonUpdateType)
+          .value(_.userIds, Set(uid))
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }
