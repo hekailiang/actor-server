@@ -1,6 +1,7 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{Files, Paths}
+import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference}
 import com.secretapp.backend.data.message.struct.AvatarImage
 import org.specs2.specification.BeforeExample
 
@@ -75,11 +76,22 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbSmallImage.fileSize      should_== smallBytes.length
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
+
+    /* TODO: Fix case.
+    "add new avatar to difference" in {
+      val d1 = RequestGetDifference(0, None) :~> <~:[Difference]
+      setAvatarShouldBeOk
+
+      val d2 = RequestGetDifference(d1.seq, d1.state) :~> <~:[Difference]
+
+      d2.users should have size 1
+    }
+    */
   }
 
   import system.dispatcher
 
-  implicit val timeout = 10.seconds
+  implicit val timeout = 5.seconds
 
   private implicit var scope: TestScope = _
   private var fl: FileLocation = _
