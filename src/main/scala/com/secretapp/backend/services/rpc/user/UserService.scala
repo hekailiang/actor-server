@@ -89,7 +89,7 @@ trait UserService {
     avatar flatMap { a =>
       UserRecord.byUid(user.uid).flatMap { users =>
         Future.sequence(users.map { u =>
-          UserRecord.updateAvatar(u.authId, u.uid, a)
+          UserRecord.updateAvatar(u.authId, user.uid, a)
         })
       } map { _ =>
         sendUpdates(user, a)

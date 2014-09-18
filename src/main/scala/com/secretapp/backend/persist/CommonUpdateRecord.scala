@@ -138,8 +138,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
           updateProto.Message(senderUID(row), destUID(row), mid(row), destKeyHash(row), useAesKey(row),
             aesKey(row) map (BitVector(_)), BitVector(message(row))))
       case 2L =>
-        Entity(uuid(row),
-          updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row)))
+        Entity(uuid(row), updateProto.NewDevice(newDeviceUid(row), newDevicePublicKeyHash(row)))
       case 3L =>
         Entity(uuid(row),
           updateProto.NewYourDevice(
@@ -147,8 +146,7 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
             newYourDevicePublicKeyHash(row),
             BitVector(newYourDevicePublicKey(row))))
       case 4L =>
-        Entity(uuid(row),
-          updateProto.MessageSent(mid(row), randomId(row)))
+        Entity(uuid(row), updateProto.MessageSent(mid(row), randomId(row)))
       case updateProto.AvatarChanged.commonUpdateType => {
         val s =
           for (

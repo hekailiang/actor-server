@@ -1,11 +1,15 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{Files, Paths}
+import com.secretapp.backend.data.message.rpc.messaging.{EncryptedMessage, ResponseSendMessage, RequestSendMessage}
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference}
 import com.secretapp.backend.data.message.struct.AvatarImage
+import com.secretapp.backend.data.models.User
 import org.specs2.specification.BeforeExample
 
+import scala.collection.immutable
 import scala.util.Random
+import scodec.bits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarUploaded, RequestSetAvatar}
@@ -77,11 +81,49 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
 
+    "append update to chain on receiving `RequestSetAvatar`" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+
+      val diff1 = {
+        implicit val scope = scope1
+        RequestGetDifference(0, None) :~> <~:[Difference]
+      }
+
+      {
+        implicit val scope = scope2
+        connectWithUser(scope1.user)
+        setAvatarShouldBeOk
+      }
+
+      val diff2 = {
+        implicit val scope = scope1
+        protoReceiveN(1)(scope.probe, scope.apiActor)
+        RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+      }
+
+      println(diff2.users)
+      val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
+
+      a.fullImage.get.width          should_== origDimensions._1
+      a.fullImage.get.height         should_== origDimensions._2
+      a.fullImage.get.fileSize       should_== origBytes.length
+      dbImageBytes(a.fullImage.get)  should_== origBytes
+
+      a.smallImage.get.width         should_== smallDimensions._1
+      a.smallImage.get.height        should_== smallDimensions._2
+      a.smallImage.get.fileSize      should_== smallBytes.length
+      dbImageBytes(a.smallImage.get) should_== smallBytes
+
+      a.largeImage.get.width         should_== largeDimensions._1
+      a.largeImage.get.height        should_== largeDimensions._2
+      a.largeImage.get.fileSize      should_== largeBytes.length
+      dbImageBytes(a.largeImage.get) should_== largeBytes
+    }
   }
 
   import system.dispatcher
 
-  implicit val timeout = 5.seconds
+  implicit val timeout = 30.seconds
 
   private implicit var scope: TestScope = _
   private var fl: FileLocation = _
@@ -117,7 +159,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     ffl.sync()
   }
 
-  private def setAvatarShouldBeOk =
+  private def setAvatarShouldBeOk(implicit scope: TestScope) =
     RequestSetAvatar(fl) :~> <~:[ResponseAvatarUploaded]
 
   private def dbUser =
@@ -128,6 +170,23 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
   private def dbLargeImage = dbAvatar.largeImage.get
   private def dbSmallImage = dbAvatar.smallImage.get
 
-  private def dbImageBytes(a: AvatarImage) =
+  private def dbImageBytes(a: AvatarImage)(implicit scope: TestScope) =
     fr.getFile(a.fileLocation.fileId.toInt).sync()
+
+  private def connectWithUser(u: User)(implicit scope: TestScope) = {
+    val rq = RequestSendMessage(
+      u.uid,
+      u.accessHash(scope.user.authId),
+      555L,
+      false,
+      None,
+      immutable.Seq(
+        EncryptedMessage(
+          u.uid,
+          u.publicKeyHash,
+          None,
+          Some(BitVector(1, 2, 3)))))
+
+    rq :~> <~:[ResponseSendMessage]
+  }
 }
