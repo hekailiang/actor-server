@@ -13,8 +13,8 @@ import com.secretapp.backend.persist.{FileRecord, UserRecord}
 import com.sksamuel.scrimage.{AsyncImage, Format, Position}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
-import scalaz.Scalaz._
 import scalaz._
+import Scalaz._
 
 object AvatarUtils {
 
@@ -53,10 +53,10 @@ trait UserService {
       }
   }
 
-  private def handleSetAvatar(u: User, r: RequestSetAvatar): Future[RpcResponse] = {
+  private def handleSetAvatar(user: User, r: RequestSetAvatar): Future[RpcResponse] = {
     val fr = new FileRecord
 
-    for (
+    val avatar = for (
       fullImageBytes  <- fr.getFile(r.fileLocation.fileId.toInt);
       (fiw, fih)      <- AvatarUtils.dimensions(fullImageBytes);
 
@@ -82,13 +82,19 @@ trait UserService {
       largeAvatarImage = AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
       fullAvatarImage  = AvatarImage(r.fileLocation, fiw, fih, fullImageBytes.length);
 
-      avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some);
+      avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
 
-      _               <- UserRecord.updateAvatar(u.authId, u.uid, avatar)
+    ) yield avatar
 
-    ) yield {
-      sendUpdates(u, avatar)
-      Ok(ResponseAvatarUploaded(avatar))
+    avatar flatMap { a =>
+      UserRecord.byUid(user.uid).flatMap { users =>
+        Future.sequence(users.map { u =>
+          UserRecord.updateAvatar(u.authId, u.uid, a)
+        })
+      } map { _ =>
+        sendUpdates(user, a)
+        Ok(ResponseAvatarUploaded(a))
+      }
     }
   }
 
