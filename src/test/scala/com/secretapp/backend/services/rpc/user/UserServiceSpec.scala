@@ -22,15 +22,11 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
   "profile service" should {
 
     "respond to `RequestSetAvatar` with `ResponseAvatarUploaded`" in {
-      val fl = storeOrigImage
-
-      setAvatarShouldBeOk(fl)
+      setAvatarShouldBeOk
     }
 
     "update user avatar on receiving `RequestSetAvatar`" in {
-      val fl = storeOrigImage
-
-      setAvatarShouldBeOk(fl)
+      setAvatarShouldBeOk
 
       dbUser.avatar       should beSome
       dbAvatar.fullImage  should beSome
@@ -39,9 +35,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     }
 
     "store full image in user avatar on receiving `RequestSetAvatar`" in {
-      val fl = storeOrigImage
-
-      setAvatarShouldBeOk(fl)
+      setAvatarShouldBeOk
 
       dbFullImage.width         should_== origDimensions._1
       dbFullImage.height        should_== origDimensions._2
@@ -50,9 +44,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     }
 
     "store large image in user avatar on receiving `RequestSetAvatar`" in {
-      val fl = storeOrigImage
-
-      setAvatarShouldBeOk(fl)
+      setAvatarShouldBeOk
 
       dbLargeImage.width         should_== largeDimensions._1
       dbLargeImage.height        should_== largeDimensions._2
@@ -61,9 +53,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     }
 
     "store small image in user avatar on receiving `RequestSetAvatar`" in {
-      val fl = storeOrigImage
-
-      setAvatarShouldBeOk(fl)
+      setAvatarShouldBeOk
 
       dbSmallImage.width         should_== smallDimensions._1
       dbSmallImage.height        should_== smallDimensions._2
@@ -77,8 +67,12 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
   implicit val timeout = 10.seconds
 
   private implicit var scope: TestScope = _
+  private var fl: FileLocation = _
 
-  override def before = scope = TestScope()
+  override def before = {
+    scope = TestScope()
+    fl = storeOrigImage
+  }
 
   private val fr = new FileRecord
 
@@ -106,7 +100,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     ffl.sync()
   }
 
-  private def setAvatarShouldBeOk(fl: FileLocation) =
+  private def setAvatarShouldBeOk =
     RequestSetAvatar(fl) :~> <~:[ResponseAvatarUploaded]
 
   private def dbUser =
