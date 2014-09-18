@@ -49,6 +49,7 @@ trait ActorServiceHelpers extends RandomService {
   protected val incMessageId = new AtomicLong(1L)
 
   def codecRes2BS(res: String \/ BitVector): ByteString = {
+    // TODO: Should we really use `get` here?
     ByteString(res.toOption.get.toByteBuffer)
   }
 
