@@ -39,6 +39,8 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
   val sessionActor: ActorRef
   val currentAuthId: Long
 
+  val subscribedToUpdates: Boolean
+
   val context: ActorContext
   import context._
 

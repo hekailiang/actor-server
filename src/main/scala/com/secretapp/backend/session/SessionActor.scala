@@ -1,6 +1,8 @@
 package com.secretapp.backend.session
 
 import akka.actor._
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.contrib.pattern.ClusterSharding
 import akka.contrib.pattern.ShardRegion
 import akka.persistence._
@@ -36,6 +38,7 @@ object SessionProtocol {
   case class NewConnection(connector: ActorRef) extends SessionMessage
   case class HandlePackage(p: Package) extends SessionMessage
   case class AuthorizeUser(user: User) extends SessionMessage
+  case object SubscribeToUpdates extends SessionMessage
   case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
 }
 
@@ -64,11 +67,11 @@ object SessionActor {
 
 }
 
-// TODO: replace connection: ActorRef hack with real sender (or forget it?)
 class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with ActorLogging with PackageAckService with RandomService {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
+  case object Stop
 
   context.setReceiveTimeout(15.minutes)
 
@@ -80,10 +83,14 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
   val authId = java.lang.Long.parseLong(splitName(0))
   val sessionId = java.lang.Long.parseLong(splitName(1))
 
+  val mediator = DistributedPubSubExtension(context.system).mediator
+  val updatesPusher = context.actorOf(Props(new PusherActor(context.self, authId)))
+
   var connectors = immutable.Set.empty[ActorRef]
   var lastConnector: Option[ActorRef] = None
 
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, session)), "api-broker")
+  // we need lazy here because subscribedToUpdates sets during receiveRecover
+  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
   val receiveCommand: Receive = {
     case NewConnection(connector) =>
@@ -111,14 +118,32 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
       connectors foreach (_ ! pe)
     case AuthorizeUser(user) =>
       apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+    case msg @ SubscribeToUpdates =>
+      if (!subscribedToUpdates && !subscribingToUpdates) {
+        persist(msg) { _ =>
+          subscribeToUpdates()
+        }
+      }
+    case SubscribeAck(ack) =>
+      handleSubscribeAck(ack)
     case Terminated(connector) =>
       log.debug(s"removing connector $connector")
       connectors = connectors - connector
+    case ReceiveTimeout ⇒
+      context.parent ! Passivate(stopMessage = Stop)
+    case Stop =>
+      context.stop(self)
     case x =>
       throw new Exception(s"Unhandled session message ${x} ${sender}")
   }
 
   val receiveRecover: Receive = {
+    case RecoveryCompleted =>
+      if (subscribingToUpdates) {
+        subscribeToUpdates()
+      }
+    case SubscribeToUpdates =>
+      subscribingToUpdates = true
     case _ =>
   }
 }

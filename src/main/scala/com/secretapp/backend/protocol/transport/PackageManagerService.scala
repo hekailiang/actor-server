@@ -10,7 +10,7 @@ import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.services.{ GeneratorService, UserManagerService, SessionManager }
 import com.secretapp.backend.services.common.{ RandomService, PackageCommon }
-import com.secretapp.backend.services.common.PackageCommon.{ PackageToSend, Authenticate, ServiceMessage }
+import com.secretapp.backend.services.common.PackageCommon.PackageToSend
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 import scalaz._

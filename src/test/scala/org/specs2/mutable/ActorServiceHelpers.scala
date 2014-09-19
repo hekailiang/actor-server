@@ -14,7 +14,6 @@ import com.secretapp.backend.persist.{ AuthIdRecord, SessionIdRecord, UserRecord
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.transport.{ PackageBoxCodec, TcpConnector }
 import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.common.PackageCommon.Authenticate
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.session._
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
@@ -84,7 +83,6 @@ trait ActorServiceHelpers extends RandomService {
   def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
     insertAuthAndSessionId(u.authId, u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
-    destActor ! Authenticate(u)
     u
   }
 

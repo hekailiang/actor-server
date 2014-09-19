@@ -1,7 +1,10 @@
 package com.secretapp.backend.session
 
-import akka.actor.ActorRef
+import akka.actor._
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
 import com.secretapp.backend.api.ApiBrokerProtocol
+import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.AuthIdRecord
@@ -17,7 +20,10 @@ trait SessionService {
   import AckTrackerProtocol._
   import ApiBrokerProtocol._
 
-  def handleMessage(connector: ActorRef, p: Package, mb: MessageBox): Unit = {
+  var subscribedToUpdates = false
+  var subscribingToUpdates = false
+
+  protected def handleMessage(connector: ActorRef, p: Package, mb: MessageBox): Unit = {
     acknowledgeReceivedPackage(connector, p, mb)
 
     mb.body match { // TODO: move into pluggable traits
@@ -29,6 +35,20 @@ trait SessionService {
       case RpcRequestBox(body) =>
         apiBroker.tell(ApiBrokerRequest(connector, mb.messageId, body), context.self)
       case _ =>
+    }
+  }
+
+  protected def subscribeToUpdates() = {
+    subscribingToUpdates = true
+    log.info("Subscribing to updates authId={}", authId)
+    mediator ! Subscribe(UpdatesBroker.topicFor(authId), updatesPusher)
+  }
+
+  protected def handleSubscribeAck(subscribe: Subscribe) = {
+    log.info(s"Handling subscribe ack $subscribe")
+    if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == updatesPusher) {
+      subscribingToUpdates = false
+      subscribedToUpdates = true
     }
   }
 }

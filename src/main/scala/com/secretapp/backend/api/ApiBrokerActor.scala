@@ -19,8 +19,10 @@ object ApiBrokerProtocol {
   case class AuthorizeUser(user: User) extends ApiBrokerMessage
 }
 
-class ApiBrokerActor(val currentAuthId: Long, val currentSessionId: Long, val clusterProxies: ClusterProxies, val session: CSession) extends Actor with ActorLogging
-    with ApiBrokerService {
+class ApiBrokerActor(
+  val currentAuthId: Long, val currentSessionId: Long, val clusterProxies: ClusterProxies,
+  val subscribedToUpdates: Boolean, val session: CSession
+) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 
   import context._

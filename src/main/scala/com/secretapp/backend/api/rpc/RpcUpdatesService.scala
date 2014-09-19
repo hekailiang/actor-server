@@ -28,10 +28,8 @@ trait RpcUpdatesService {
   import context.system
 
   lazy val updatesService = context.actorOf(Props(
-    new UpdatesServiceActor(context.parent, updatesBrokerRegion, getUser.get.uid, getUser.get.authId)
+    new UpdatesServiceActor(context.parent, updatesBrokerRegion, subscribedToUpdates, getUser.get.uid, getUser.get.authId)
   ), "updates-service")
-
-  private var subscribedToUpdates = false
 
   def handleUpdatesRpc(rq: RpcRequestMessage): Future[RpcResponse] = {
     (updatesService ? RpcProtocol.Request(rq)).mapTo[RpcResponse]

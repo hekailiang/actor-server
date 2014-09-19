@@ -14,7 +14,4 @@ object PackageCommon {
   trait PackageServiceMessage
   case class PackageToSend(connector: ActorRef, p: PackageEither) extends PackageServiceMessage
   case class UpdateBoxToSend(mb: UpdateBox) extends PackageServiceMessage
-
-  trait ServiceMessage
-  case class Authenticate(u: User) extends ServiceMessage
 }

@@ -18,6 +18,7 @@ import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
+import com.secretapp.backend.session.SessionProtocol
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -29,11 +30,11 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 
-class UpdatesServiceActor(val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val uid: Int, val authId: Long)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+class UpdatesServiceActor(
+  val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val subscribedToUpdates: Boolean,
+  val uid: Int, val authId: Long
+)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
-
-  val mediator = DistributedPubSubExtension(context.system).mediator
-  val topic = UpdatesBroker.topicFor(authId)
 
   log.info(s"Starting UpdatesService for uid=${uid} authId=${authId}")
 
@@ -42,8 +43,6 @@ class UpdatesServiceActor(val sessionActor: ActorRef, val updatesBrokerRegion: A
       handleRequestGetDifference(seq, state) pipeTo sender
     case RpcProtocol.Request(updateRpcProto.RequestGetState()) =>
       handleRequestGetState() pipeTo sender
-    case SubscribeAck(ack) =>
-      handleSubscribeAck(ack)
   }
 }
 
@@ -53,14 +52,11 @@ sealed trait UpdatesService {
   import context._
   implicit val timeout = Timeout(5.seconds)
 
-  private val updatesPusher = context.actorOf(Props(new PusherActor(sessionActor, authId)))
-  private var subscribedToUpdates = false
-  private var subscribingToUpdates = false
   private val differenceSize = 300
 
   protected def handleRequestGetDifference(
     seq: Int, state: Option[UUID]): Future[RpcResponse] = {
-    subscribeToUpdates(authId)
+    subscribeToUpdates()
 
     for {
       seq <- getSeq(authId)
@@ -73,7 +69,7 @@ sealed trait UpdatesService {
   }
 
   protected def handleRequestGetState(): Future[RpcResponse] = {
-    subscribeToUpdates(authId)
+    subscribeToUpdates()
 
     val f = getState(authId)
 
@@ -104,19 +100,9 @@ sealed trait UpdatesService {
     } else { Future.successful(Vector.empty) }
   }
 
-  protected def subscribeToUpdates(authId: Long) = {
-    if (!subscribedToUpdates && !subscribingToUpdates) {
-      subscribingToUpdates = true
-      log.info("Subscribing to updates authId={}", authId)
-      mediator ! Subscribe(UpdatesBroker.topicFor(authId), updatesPusher)
-    }
-  }
-
-  protected def handleSubscribeAck(subscribe: Subscribe) = {
-    log.info(s"Handling subscribe ack $subscribe")
-    if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == updatesPusher) {
-      subscribingToUpdates = false
-      subscribedToUpdates = true
+  protected def subscribeToUpdates() = {
+    if (!subscribedToUpdates) {
+      sessionActor ! SessionProtocol.SubscribeToUpdates
     }
   }
 
@@ -130,17 +116,5 @@ sealed trait UpdatesService {
 
   private def getSeq(authId: Long): Future[Int] = {
     ask(updatesBrokerRegion, UpdatesBroker.GetSeq(authId)).mapTo[Int]
-  }
-}
-
-sealed class PusherActor(sessionActor: ActorRef, authId: Long) extends Actor with ActorLogging {
-  def receive = {
-    case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
-      log.info(s"Pushing update to session authId=$authId $u")
-      val upd = CommonUpdate(seq, uuidCodec.encode(state).toOption.get, u)
-      val ub = UpdateBox(upd)
-      sessionActor ! UpdateBoxToSend(ub)
-    case u =>
-      log.error(s"Unknown update in topic $u")
   }
 }
