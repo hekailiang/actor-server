@@ -7,6 +7,7 @@ import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
+import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{ MessageBox, Package, PackageBox }
@@ -133,7 +134,13 @@ trait ActorServiceHelpers extends RandomService {
     (probe, actor)
   }
 
-  case class TestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User)
+  case class TestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User) {
+    def reconnect(): TestScope = {
+      val (probe, actor) = probeAndActor()
+      this.copy(probe = probe, apiActor = actor)
+    }
+  }
+
   object TestScope {
     def pair(): (TestScope, TestScope) = {
       pair(1, 2)
@@ -174,7 +181,6 @@ trait ActorServiceHelpers extends RandomService {
       // TODO: move to argument
       probe.receiveN(1, duration).head match {
         case message @ Write(data, ack) =>
-          println("acking")
           probe.send(destActor, ack)
 
           if (acc.length + 1 < n) {
@@ -192,9 +198,10 @@ trait ActorServiceHelpers extends RandomService {
     receive()
   }
 
-  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef) = {
+  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[Package] = {
     tcpReceiveN(n, duration) map {
-      case Write(data, _) => PackageBoxCodec.decodeValidValue(data).p
+      case Write(data, _) =>
+        PackageBoxCodec.decodeValidValue(data).p
     }
   }
 

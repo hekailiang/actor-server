@@ -1,21 +1,18 @@
 package com.secretapp.backend.protocol.transport
 
-import com.secretapp.backend.session.SessionProtocol
-import java.util.concurrent.ConcurrentLinkedQueue
 import akka.actor._
-import com.secretapp.backend.api.ApiBrokerService
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ Drop, NewSession, TransportMessage }
 import com.secretapp.backend.data.models.{ AuthId, User }
 import com.secretapp.backend.data.transport.Package
 import com.secretapp.backend.persist.AuthIdRecord
-import com.secretapp.backend.services.{ GeneratorService, UserManagerService, SessionManager }
-import com.secretapp.backend.services.common.{ RandomService, PackageCommon }
-import com.secretapp.backend.services.common.PackageCommon.PackageToSend
+import com.secretapp.backend.services.{ GeneratorService, SessionManager, UserManagerService }
+import com.secretapp.backend.session.SessionProtocol
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 import scalaz._
-import Scalaz._
-import com.datastax.driver.core.{ Session => CSession }
+import scalaz.Scalaz._
 
 trait PackageManagerService extends UserManagerService with GeneratorService with SessionManager {
   self: Connector =>
@@ -27,7 +24,7 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
   private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
 
-    // TODO: move to KeyFrontend!
+  // TODO: move to KeyFrontend!
   private def checkPackageAuth(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Future[Any] = {
     log.debug(s"Checking package auth ${p}")
     if (p.authId == 0L) { // check for auth request - simple key registration
@@ -78,16 +75,16 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
     }
   }
 
-
   private def checkPackageSession(p: Package)(f: (Package, Option[TransportMessage]) => Unit): Future[Any] = {
     log.debug(s"Checking package session currentUser=${currentUser} currentAuthId=${currentAuthId} package=${p}")
 
     @inline
     def updateCurrentSession(sessionId: Long): Unit = {
+      log.info(s"updateCurrentSession $sessionId")
       if (currentSessionId == 0L) {
         currentSessionId = sessionId
-        sessionRegion ! SessionProtocol.Envelope(currentAuthId, currentSessionId, SessionProtocol.NewConnection(context.self))
       }
+      sessionRegion ! SessionProtocol.Envelope(currentAuthId, sessionId, SessionProtocol.NewConnection(context.self))
       currentSessions.add(sessionId)
     }
 
