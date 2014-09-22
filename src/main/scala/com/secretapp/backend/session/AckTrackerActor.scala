@@ -1,6 +1,7 @@
 package com.secretapp.backend.session
 
 import akka.actor._
+import akka.persistence._
 import scala.annotation.tailrec
 import scala.collection.immutable
 import akka.util.ByteString
@@ -8,79 +9,89 @@ import akka.util.ByteString
 object AckTrackerProtocol {
   sealed trait AckTrackerMessage
 
-  case class RegisterMessage[K](key: K, value: ByteString) extends AckTrackerMessage
-  case class RegisterMessageAck[K](key: K) extends AckTrackerMessage
-  case class RegisterMessageAcks[K](keys: List[K]) extends AckTrackerMessage
+  case class RegisterMessage(key: Long, value: ByteString) extends AckTrackerMessage
+  case class RegisterMessageAck(key: Long) extends AckTrackerMessage
+  case class RegisterMessageAcks(keys: List[Long]) extends AckTrackerMessage
 
   // perhaps in future we will need it to be case class with key or key and value
   case object MessageAlreadyRegistered extends AckTrackerMessage
   case object GetUnackdMessages extends AckTrackerMessage
   case object MessagesSizeOverflow extends AckTrackerMessage
-  case class UnackdMessages[K](messages: immutable.Map[K, ByteString]) extends AckTrackerMessage
+  case class UnackdMessages(messages: immutable.Map[Long, ByteString]) extends AckTrackerMessage
 }
 
 /**
-  * Actor for tracking undelivered things
-  *
-  * @param sizeLimit things size limit - when it's reached actor sends dies to prevent too large memory consumption
-  */
-class AckTrackerActor[K](val sizeLimit: Int) extends Actor with ActorLogging {
+ * Actor for tracking undelivered things
+ *
+ * @param sizeLimit things size limit - when it's reached actor sends dies to prevent too large memory consumption
+ */
+class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends PersistentActor with ActorLogging {
   import AckTrackerProtocol._
   import context._
 
-  case class State(messages: immutable.Map[K, ByteString], messagesSize: Int)
+  override def persistenceId: String = s"ackTracker-$authId-$sessionId"
 
-  def trackMessages(state: State): Receive = {
-    case m: RegisterMessage[K] =>
-      state.messages.get(m.key) match {
-        case Some(value) =>
-          sender() ! MessageAlreadyRegistered
+  case class State(messages: immutable.Map[Long, ByteString], messagesSize: Int) {
+    /**
+     * Add new element
+     */
+    def withNew(key: Long, message: ByteString): State = {
+      State(messages + Tuple2(key, message), messagesSize + message.size)
+    }
+
+    /**
+     * Remove element (consider delivered)
+     */
+    def without(key: Long): State = {
+      messages.get(key) match {
+        case Some(message) =>
+          State(messages - key, messagesSize - message.size)
         case None =>
-          val newState = addNew(state, m.key, m.value)
-
-          if (newState.messagesSize > sizeLimit) {
-            log.warning("Messages size overflow")
-            sender() ! MessagesSizeOverflow
-            context stop self
-          } else {
-            become(trackMessages(newState))
-          }
+          log.warning("Trying to remove element which is not present in undelivered things list")
+          this
       }
-    case m: RegisterMessageAck[K] =>
-      registerMessageAck(state, m.key)
-    case ms: RegisterMessageAcks[K] =>
-      ms.keys.foreach (key => registerMessageAck(state, key))
+    }
+  }
+
+  var state = State(immutable.Map[Long, ByteString](), 0)
+
+  def receiveCommand: Receive = {
+    case m: RegisterMessage =>
+      println(s"RegisterMessage $state")
+      persist(m) { _ =>
+        val newState = state.withNew(m.key, m.value)
+
+        if (newState.messagesSize > sizeLimit) {
+          log.warning("Messages size overflow")
+          sender() ! MessagesSizeOverflow
+          context stop self
+        } else {
+          state = newState
+        }
+      }
+    case m: RegisterMessageAck =>
+      persist(m){ _ =>
+        registerMessageAck(m.key)
+      }
+    case ms: RegisterMessageAcks =>
+      persist(ms)(_.keys.foreach(registerMessageAck))
     case GetUnackdMessages =>
       sender() ! UnackdMessages(state.messages)
   }
 
-  def receive = trackMessages(State(immutable.Map[K, ByteString](), 0))
-
-  /**
-    * Register message ack
-    */
-  private def registerMessageAck(state: State, key: K) = {
-    val newState = remove(state, key)
-    become(trackMessages(newState))
+  def receiveRecover: Receive = {
+    case m: RegisterMessage =>
+      state = state.withNew(m.key, m.value)
+    case m: RegisterMessageAck =>
+      registerMessageAck(m.key)
+    case ms: RegisterMessageAcks =>
+      ms.keys.foreach(registerMessageAck)
   }
 
   /**
-    * Add new element
-    */
-  private def addNew(state: State, key: K, message: ByteString): State = {
-    State(state.messages + Tuple2(key, message), state.messagesSize + message.size)
-  }
-
-  /**
-    * Remove element (consider delivered)
-    */
-  private def remove(state: State, key: K): State = {
-    state.messages.get(key) match {
-      case Some(message) =>
-        State(state.messages - key, state.messagesSize - message.size)
-      case None =>
-        log.info("Trying to remove element which is not present in undelivered things list")
-        state
-    }
+   * Register message ack
+   */
+  private def registerMessageAck(key: Long) = {
+    state = state.without(key)
   }
 }

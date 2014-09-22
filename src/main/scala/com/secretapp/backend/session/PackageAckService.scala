@@ -1,19 +1,26 @@
 package com.secretapp.backend.session
 
 import akka.actor._
+import akka.event.LoggingAdapter
 import akka.util.ByteString
-import com.secretapp.backend.data.message.{MessageAck, Pong, Ping}
-import com.secretapp.backend.data.transport.{MessageBox, Package}
+import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
+import com.secretapp.backend.data.transport.{ MessageBox, Package }
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon.PackageToSend
 import scalaz._
 import Scalaz._
 
-trait PackageAckService { this: Actor with ActorLogging =>
+trait PackageAckService {
   import AckTrackerProtocol._
 
+  val authId: Long
+  val sessionId: Long
+  val context: ActorContext
+  def log: LoggingAdapter
+
+  // TODO: configurable
   val unackedSizeLimit = 1024 * 100
-  val ackTracker = context.actorOf(Props(new AckTrackerActor(unackedSizeLimit)))
+  val ackTracker = context.actorOf(Props(classOf[AckTrackerActor], authId, sessionId, unackedSizeLimit))
 
   def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {
     case MessageBox(mid, m) =>

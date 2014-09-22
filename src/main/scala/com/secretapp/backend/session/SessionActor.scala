@@ -67,7 +67,7 @@ object SessionActor {
 
 }
 
-class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with ActorLogging with PackageAckService with RandomService {
+class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
