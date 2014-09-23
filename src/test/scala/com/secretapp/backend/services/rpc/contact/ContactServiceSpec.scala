@@ -25,7 +25,7 @@ class ContactServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "ContactService" should {
-    "handle RPC request import contacts" in {
+    "handle RPC request import contacts(old)" in {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val sessionId = SessionIdentifier()
       implicit val authId = rand.nextLong
@@ -52,6 +52,20 @@ class ContactServiceSpec extends RpcSpec {
       val rpcRes = RpcResponseBox(messageId, Ok(resBody))
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
+    }
+
+    "handle RPC import contacts request" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+
+      {
+        implicit val scope = scope1
+        val contacts = immutable.Seq(ContactToImport(42, scope2.user.phoneNumber))
+        val response = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
+
+        response should_== ResponseImportedContacts(
+          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(ImportedContact(42, scope2.user.uid)))
+      }
     }
   }
 }
