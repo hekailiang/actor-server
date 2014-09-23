@@ -3,7 +3,7 @@ package com.secretapp.backend.data.models
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar}
-import scala.collection.immutable
+import scala.collection.immutable.{Set, Seq}
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.crypto.ec
@@ -32,7 +32,8 @@ case class User(uid: Int,
                 fullAvatarFileSize: Option[Int] = None,
                 fullAvatarWidth: Option[Int] = None,
                 fullAvatarHeight: Option[Int] = None,
-                keyHashes: immutable.Set[Long] = Set()) {
+                keyHashes: Set[Long] = Set(),
+                contactPhones: Set[Long] = Set()) {
 
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 

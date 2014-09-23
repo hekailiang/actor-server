@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.persist.PhoneRecord
+import com.secretapp.backend.persist.{UserRecord, PhoneRecord}
 import com.secretapp.backend.data.models.User
 import com.datastax.driver.core.{ Session => CSession }
 import scala.collection.immutable.Seq
@@ -26,19 +26,20 @@ trait ContactService {
   def handleRpcContact: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case RequestImportContacts(contacts) =>
       authorizedRequest {
-        handleRequestImportContacts(contacts)
+        handleRequestImportContacts(contacts.toSet)
       }
   }
 
-  def handleRequestImportContacts(contacts: Seq[ContactToImport]): Future[RpcResponse] = {
+  def handleRequestImportContacts(contacts: Set[ContactToImport]): Future[RpcResponse] = {
     val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
     val authId = currentAuthId
     for {
       phones <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
     } yield {
 
-      val (users, contacts, uids) = phones.foldLeft((Seq[struct.User](), Seq[ImportedContact](), Set[Int]())) {
-        case ((users, contacts, uids), p) =>
+      val (users, impContacts, uids, registeredPhones) = phones.foldLeft(
+        (Seq[struct.User](), Seq[ImportedContact](), Set[Int](), Set[Long]())) {
+        case ((users, impContacts, uids, registeredPhones), p) =>
           val u = struct.User(
             p.userId,
             User.getAccessHash(
@@ -51,11 +52,14 @@ trait ContactService {
             p.number)
           val c = ImportedContact(clientPhoneMap(p.number), p.userId)
 
-          (u +: users, c +: contacts, uids + p.userId)
+          (u +: users, c +: impContacts, uids + p.userId, registeredPhones + p.number)
       }
 
+      val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
+      UserRecord.addContactPhones(currentUser.get.uid, unregisteredPhones)
+
       socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
-      Ok(ResponseImportedContacts(users, contacts))
+      Ok(ResponseImportedContacts(users, impContacts))
     }
   }
 }

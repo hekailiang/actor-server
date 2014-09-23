@@ -190,9 +190,9 @@ trait SignService {
                         withValidPublicKey(publicKey) { publicKey =>
                           val userId = genUserId
                           val accessSalt = genUserAccessSalt
-                          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                            phoneNumber = phoneNumber, name = name)
+                          val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
                           UserRecord.insertEntityWithPhoneAndPK(user)
+                          pushContactRegisteredUpdates()
                           Future.successful(auth(user))
                       }
                     }
@@ -242,5 +242,9 @@ trait SignService {
         log.error(s"Failed to get relations to push new device updates authId=${authId} uid=${uid} ${publicKeyHash}")
         throw e
     }
+  }
+
+  private def pushContactRegisteredUpdates(): Unit = {
+
   }
 }
