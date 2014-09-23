@@ -21,7 +21,7 @@ package object codecs {
 //  val protoRpcResponse = message.rpc.RpcResponseCodec
 
   // transport
-  val protoPackage = transport.PackageCodec
-  val protoPackageBox = transport.PackageBoxCodec
+  val protoPackage = transport.MTPackageCodec
+  val protoPackageBox = transport.MTPackageBoxCodec
 
 }

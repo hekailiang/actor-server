@@ -6,7 +6,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.Subscribe
 import com.secretapp.backend.api.ApiBrokerProtocol
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.common.PackageCommon
@@ -23,12 +23,12 @@ trait SessionService {
   var subscribedToUpdates = false
   var subscribingToUpdates = false
 
-  protected def handleMessage(connector: ActorRef, p: Package, mb: MessageBox): Unit = {
-    acknowledgeReceivedPackage(connector, p, mb)
+  protected def handleMessage(connector: ActorRef, mb: MessageBox): Unit = {
+    acknowledgeReceivedPackage(connector, mb)
 
     mb.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
-        val reply = p.replyWith(mb.messageId, Pong(randomId)).right
+        val reply = mb.replyWith(authId, sessionId, Pong(randomId)).right
         connector.tell(reply, context.self)
       case MessageAck(mids) =>
         ackTracker.tell(RegisterMessageAcks(mids.toList), context.self)

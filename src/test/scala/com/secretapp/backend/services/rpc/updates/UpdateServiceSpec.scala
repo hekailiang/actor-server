@@ -5,10 +5,10 @@ import akka.testkit._
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.presence.{ RequestSetOnline, ResponseOnline }
-import com.secretapp.backend.data.message.rpc.update.RequestGetDifference
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -106,7 +106,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
         // Update
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
-        p.head.messageBox.body.assertInstanceOf[UpdateBox]
+        MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.assertInstanceOf[UpdateBox]
       }
     }
 

@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.CommonUpdateMessage
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService

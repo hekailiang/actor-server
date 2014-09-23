@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.presence._
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services.common.PackageCommon._
 import scala.collection.immutable
 import scala.concurrent.Future

@@ -8,7 +8,7 @@ import com.secretapp.backend.Configuration
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.LocationInvalid
 import com.secretapp.backend.persist.{ FileRecordError, FileRecord }
 import com.secretapp.backend.services.GeneratorService

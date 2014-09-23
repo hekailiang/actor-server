@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message.rpc.RpcResponse
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.CommonUpdateRecord
 import com.secretapp.backend.services._
 import com.secretapp.backend.protocol.transport._

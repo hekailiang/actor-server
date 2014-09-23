@@ -4,12 +4,12 @@ import PackageCommon._
 import akka.actor.ActorRef
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.{MessageBox, Package}
+import com.secretapp.backend.data.transport.{MessageBox, MTPackage}
 import scalaz._
 import scalaz.Scalaz._
 
 object PackageCommon {
-  type PackageEither = Package \/ Package
+  type PackageEither = MTPackage \/ MTPackage
 
   trait PackageServiceMessage
   case class PackageToSend(connector: ActorRef, p: PackageEither) extends PackageServiceMessage

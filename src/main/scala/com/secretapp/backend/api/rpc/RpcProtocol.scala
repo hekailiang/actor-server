@@ -1,7 +1,7 @@
 package com.secretapp.backend.api.rpc
 
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 
 object RpcProtocol {
   sealed trait RpcMessage

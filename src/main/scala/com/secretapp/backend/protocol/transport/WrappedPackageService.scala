@@ -3,7 +3,7 @@ package com.secretapp.backend.protocol.transport
 import akka.actor.Actor
 import akka.util.ByteString
 import com.secretapp.backend.data.message.TransportMessage
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.protocol.codecs._
 import scodec.bits.BitVector
 import scodec.codecs.int32
@@ -20,7 +20,7 @@ trait WrappedPackageService extends PackageManagerService {
   case class WrappedPackageParsing(bitsLen: Long) extends ParseState
 
   type ParseResult = (ParseState, BitVector)
-  type PackageFunc = Package => Unit
+  type PackageFunc = MTPackage => Unit
 
   val minParseLength = intSize // we need first bytes for package size
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
@@ -82,7 +82,7 @@ trait WrappedPackageService extends PackageManagerService {
     }
   }
 
-  def replyPackage(index: Int, p: Package): ByteString = {
+  def replyPackage(index: Int, p: MTPackage): ByteString = {
     protoPackageBox.encode(index, p) match {
       case \/-(bv) =>
         val bs = ByteString(bv.toByteArray)

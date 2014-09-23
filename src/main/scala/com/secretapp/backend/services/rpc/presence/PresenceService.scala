@@ -6,7 +6,7 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.presence._
- import com.secretapp.backend.data.transport.Package
+ import com.secretapp.backend.data.transport.MTPackage
  import com.secretapp.backend.protocol.transport._
 import scala.concurrent.Future
 import scalaz._

@@ -7,9 +7,11 @@ import akka.contrib.pattern.ClusterSharding
 import akka.contrib.pattern.ShardRegion
 import akka.persistence._
 import com.secretapp.backend.data.message.Container
+import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.data.message.ResponseAuthId
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.SessionManager
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
@@ -18,14 +20,14 @@ import scala.collection.immutable
 import com.secretapp.backend.data.transport.MessageBox
 import com.datastax.driver.core.{ Session => CSession }
 import scodec.bits._
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.api._
 import com.secretapp.backend.api.rpc._
-import com.secretapp.backend.data.message.{MessageAck, Pong, Ping}
+import com.secretapp.backend.data.message.{ Pong, Ping }
 import com.secretapp.backend.data._
 import PackageCommon._
 import scalaz._
@@ -36,9 +38,11 @@ object SessionProtocol {
   // TODO: wrap all messages into Envelope
   sealed trait SessionMessage
   case class NewConnection(connector: ActorRef) extends SessionMessage
-  case class HandlePackage(p: Package) extends SessionMessage
+  case class HandleMessageBox(mb: MessageBox) extends SessionMessage
   case class AuthorizeUser(user: User) extends SessionMessage
+  case class SendMessageBox(connector: ActorRef, mb: MessageBox) extends SessionMessage
   case object SubscribeToUpdates extends SessionMessage
+
   case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
 }
 
@@ -47,7 +51,6 @@ object SessionActor {
 
   private val idExtractor: ShardRegion.IdExtractor = {
     case Envelope(authId, sessionId, msg) => (s"${authId}_${sessionId}", msg)
-    case msg @ HandlePackage(Package(authId, sessionId, _)) => (s"${authId}_${sessionId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -55,7 +58,6 @@ object SessionActor {
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
     case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
-    case msg @ HandlePackage(Package(authId, sessionId, _)) => (authId * sessionId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem, clusterProxies: ClusterProxies, session: CSession) = ClusterSharding(system).start(
@@ -71,6 +73,8 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
+  import context.dispatcher
+
   case object Stop
 
   context.setReceiveTimeout(15.minutes)
@@ -98,24 +102,39 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
       connectors = connectors + connector
       lastConnector = Some(connector)
       context.watch(connector)
-    case HandlePackage(p) =>
+
+      getUnsentMessages() map { messages =>
+        println(s"unsent messages $messages")
+        messages foreach { case Tuple2(mid, message) =>
+          val pe = MTPackage(authId, sessionId, BitVector(message)).right
+          connector ! pe
+        }
+      }
+    case HandleMessageBox(mb) =>
       val connector = sender()
-      log.debug(s"HandlePackage $p $connector")
+      log.debug(s"HandleMessageBox $mb $connector")
       lastConnector = Some(connector)
 
-      p.messageBox.body match {
-        case c@Container(_) => c.messages foreach (handleMessage(connector, p, _))
-        case _ => handleMessage(connector, p, p.messageBox)
+      mb.body match {
+        case c@Container(_) => c.messages foreach (handleMessage(connector, _))
+        case _ => handleMessage(connector, mb)
       }
-    case PackageToSend(connector, pe) =>
-      log.debug(s"PackageToSend ${connector} ${pe}")
-      // TODO: persist
+    case SendMessageBox(connector, mb) =>
+      log.debug(s"SendMessageBox $connector $mb")
+
+      val encoded = MessageBoxCodec.encodeValid(mb)
+      registerSentMessage(mb, ByteString(encoded.toByteArray))
+      val pe = MTPackage(authId, sessionId, encoded).right
+
       connector ! pe
     case UpdateBoxToSend(ub) =>
       log.debug(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
-      val pe = Package(authId, sessionId, MessageBox(rand.nextLong, ub)).right
+      val mb = MessageBox(rand.nextLong, ub)
+      val encoded = MessageBoxCodec.encodeValid(mb)
+      val pe = MTPackage(authId, sessionId, encoded).right
       connectors foreach (_ ! pe)
+      registerSentMessage(mb, ByteString(encoded.toByteArray))
     case AuthorizeUser(user) =>
       apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
     case msg @ SubscribeToUpdates =>

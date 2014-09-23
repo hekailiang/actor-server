@@ -7,7 +7,7 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services._
 import com.secretapp.backend.protocol.transport._
 import scala.concurrent.Future

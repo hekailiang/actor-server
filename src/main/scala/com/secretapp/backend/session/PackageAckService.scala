@@ -2,11 +2,15 @@ package com.secretapp.backend.session
 
 import akka.actor._
 import akka.event.LoggingAdapter
-import akka.util.ByteString
+import akka.util.{ ByteString, Timeout }
+import akka.pattern.ask
 import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
-import com.secretapp.backend.data.transport.{ MessageBox, Package }
+import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon.PackageToSend
+import scala.collection.immutable
+import scala.concurrent.duration._
+import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
@@ -17,6 +21,8 @@ trait PackageAckService {
   val sessionId: Long
   val context: ActorContext
   def log: LoggingAdapter
+
+  import context.dispatcher
 
   // TODO: configurable
   val unackedSizeLimit = 1024 * 100
@@ -32,17 +38,22 @@ trait PackageAckService {
       }
   }
 
-  def acknowledgeReceivedPackage(connector: ActorRef, p: Package, mb: MessageBox): Unit = mb match {
+  def acknowledgeReceivedPackage(connector: ActorRef, mb: MessageBox): Unit = mb match {
     case MessageBox(mid, m) =>
       m match {
         case _: MessageAck =>
         case _: Pong =>
         case _ =>
           // TODO: aggregation
-          log.info(s"Sending acknowledgement for $m $p to $connector")
+          log.info(s"Sending acknowledgement for $m to $connector")
 
-          val reply = p.replyWith(p.messageBox.messageId * 10, MessageAck(Vector(mb.messageId))).right
+          val reply = mb.replyWith(authId, sessionId, mb.messageId * 10, MessageAck(Vector(mb.messageId))).right
           connector ! reply
       }
+  }
+
+  def getUnsentMessages(): Future[immutable.Map[Long, ByteString]] = {
+    implicit val timeout = Timeout(5.seconds)
+    ask(ackTracker, GetUnackdMessages).mapTo[UnackdMessages] map (_.messages)
   }
 }

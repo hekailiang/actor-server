@@ -1,5 +1,6 @@
 package com.secretapp.backend.protocol.transport
 
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.codecs.utils._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.transport._
@@ -11,10 +12,10 @@ import scalaz._
 import Scalaz._
 import scodec.bits._
 
-object PackageBoxCodec extends Codec[PackageBox] {
+object MTPackageBoxCodec extends Codec[MTPackageBox] {
   import com.secretapp.backend.protocol.codecs.ByteConstants._
 
-  def encode(pb: PackageBox) = {
+  def encode(pb: MTPackageBox) = {
     for {
       p <- protoPackage.encode(pb.p)
       len <- int32.encode((intSize / byteSize + p.length / byteSize + crcByteSize).toInt)
@@ -35,15 +36,15 @@ object PackageBoxCodec extends Codec[PackageBox] {
           for {
             pt <- protoPackage.decode(body) ; (_, p) = pt
             remain = buf.drop(intSize + len * byteSize)
-          } yield (remain, PackageBox(index, p))
+          } yield (remain, MTPackageBox(index, p))
         } else s"invalid crc32 ${crc.toHex}, expected ${expectedCrc.toHex}".left
       case l@(-\/(e)) => l
     }
   }
 
-  def encode(index: Int, p: Package): String \/ BitVector = encode(PackageBox(index, p))
+  def encode(index: Int, p: MTPackage): String \/ BitVector = encode(MTPackageBox(index, p))
 
   def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
-    encode(index, Package(authId, sessionId, MessageBox(messageId, message)))
+    encode(index, MTPackage(authId, sessionId, MessageBoxCodec.encodeValid(MessageBox(messageId, message))))
   }
 }

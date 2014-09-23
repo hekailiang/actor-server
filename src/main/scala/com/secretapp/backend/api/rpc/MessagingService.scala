@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID

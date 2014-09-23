@@ -14,7 +14,7 @@ import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updat
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._

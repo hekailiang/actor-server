@@ -6,8 +6,9 @@ import com.secretapp.backend.api.rpc._
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Ok, Error, RpcRequest }
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.{ MessageBox, Package }
+import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon._
+import com.secretapp.backend.session.SessionProtocol
 import scala.util.{ Failure, Success }
 import scalaz._
 import Scalaz._
@@ -21,8 +22,7 @@ object ApiBrokerProtocol {
 
 class ApiBrokerActor(
   val currentAuthId: Long, val currentSessionId: Long, val clusterProxies: ClusterProxies,
-  val subscribedToUpdates: Boolean, val session: CSession
-) extends Actor with ActorLogging with ApiBrokerService {
+  val subscribedToUpdates: Boolean, val session: CSession) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 
   import context._
@@ -42,35 +42,30 @@ class ApiBrokerActor(
           fresp onComplete {
             case Success(resp) =>
               replyTo.tell(
-                PackageToSend(
+                SessionProtocol.SendMessageBox(
                   connector,
-                  Package(currentAuthId, currentSessionId, MessageBox(messageId, RpcResponseBox(messageId, resp))).right
-                ),
-                self
-              )
+                  MessageBox(messageId, RpcResponseBox(messageId, resp))),
+                self)
             case Failure(error) =>
               replyTo.tell(
-                PackageToSend(
+                SessionProtocol.SendMessageBox(
                   connector,
-                  Package(currentAuthId, currentSessionId, MessageBox(
-                    messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))
-                  ).right
-                ),
-                self
-              )
+                  MessageBox(
+                    messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
+                self)
               log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
           }
 
         case -\/(UserNotAuthenticated) =>
           replyTo.tell(
-            PackageToSend(connector, Package(currentAuthId, currentSessionId, MessageBox(messageId, RpcResponseBox(messageId, Error(401, "USER_NOT_AUTHORIZED", "", true)))).left),
-            self
-          )
+            SessionProtocol.SendMessageBox(
+              connector, MessageBox(messageId, RpcResponseBox(messageId, Error(401, "USER_NOT_AUTHORIZED", "", true)))),
+            self)
         case -\/(error) =>
           replyTo.tell(
-            PackageToSend(connector, Package(currentAuthId, currentSessionId, MessageBox(messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))).left),
-            self
-          )
+            SessionProtocol.SendMessageBox(
+              connector, MessageBox(messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
+            self)
           log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
           throw error
       }

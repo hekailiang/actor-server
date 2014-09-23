@@ -74,6 +74,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
         registerMessageAck(m.key)
       }
     case ms: RegisterMessageAcks =>
+      println(s"RegisterMessageAcks $ms")
       persist(ms)(_.keys.foreach(registerMessageAck))
     case GetUnackdMessages =>
       sender() ! UnackdMessages(state.messages)

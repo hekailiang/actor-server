@@ -10,16 +10,17 @@ import scalaz._
 import Scalaz._
 import scodec.bits._
 
-object PackageCodec extends Codec[Package] {
-  private val codec = (int64 :: int64 :: MessageBoxCodec).as[Package]
+object MTPackageCodec extends Codec[MTPackage] {
+  private val codec = (int64 :: int64 :: bits).as[MTPackage]
 
-  def encode(p: Package) = codec.encode(p)
+  def encode(p: MTPackage) = codec.encode(p)
 
   def decode(buf: BitVector) = {
     codec.decode(buf)
   }
 
+  @deprecated("use encode instead of build", "")
   def build(authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
-    encode(Package(authId, sessionId, MessageBox(messageId, message)))
+    encode(MTPackage(authId, sessionId, MessageBoxCodec.encodeValid(MessageBox(messageId, message))))
   }
 }

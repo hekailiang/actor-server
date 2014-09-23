@@ -10,10 +10,11 @@ import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.{ MessageBox, Package, PackageBox }
+import com.secretapp.backend.data.transport.{ MessageBox, MTPackage, MTPackageBox }
 import com.secretapp.backend.persist.{ AuthIdRecord, SessionIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.protocol.transport.{ PackageBoxCodec, TcpConnector }
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.secretapp.backend.protocol.transport.{ MTPackageBoxCodec, TcpConnector }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.session._
@@ -198,19 +199,19 @@ trait ActorServiceHelpers extends RandomService {
     receive()
   }
 
-  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[Package] = {
+  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[MTPackage] = {
     tcpReceiveN(n, duration) map {
       case Write(data, _) =>
-        PackageBoxCodec.decodeValidValue(data).p
+        MTPackageBoxCodec.decodeValidValue(data).p
     }
   }
 
   def @<~:(m: TransportMessage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, authId: Long): WrappedReceivePackage = WrappedReceivePackage { (messageId: Long) =>
     val received = protoReceiveN(3)
 
-    val res = Package(authId, s.id, MessageBox(messageId, m))
-    val ack = Package(authId, s.id, MessageBox(messageId * 10, MessageAck(Vector(messageId)))) // TODO: move into DSL method
-    val ses = Package(authId, s.id, MessageBox(messageId, NewSession(s.id, messageId)))
+    val res = MTPackage(authId, s.id, MessageBoxCodec.encodeValid(MessageBox(messageId, m)))
+    val ack = MTPackage(authId, s.id, MessageBoxCodec.encodeValid(MessageBox(messageId * 10, MessageAck(Vector(messageId))))) // TODO: move into DSL method
+    val ses = MTPackage(authId, s.id, MessageBoxCodec.encodeValid(MessageBox(messageId, NewSession(s.id, messageId))))
     val expectedMsg = Set(ses, ack, res)
 
     received.toSet should equalTo(expectedMsg)
@@ -246,8 +247,11 @@ trait ActorServiceHelpers extends RandomService {
       }
     }
     val mboxes = unboxed flatMap {
-      case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(_, Package(_, _, mb @ MessageBox(_, _))) => Seq(mb)
+      case MTPackageBox(_, MTPackage(_, _, mboxBytes)) =>
+        MessageBoxCodec.decodeValue(mboxBytes).toOption.get match {
+          case MessageBox(_, Container(mbox)) => mbox
+          case mb @ MessageBox(_, _) => Seq(mb)
+        }
     }
     val (ackPackages, packages) = mboxes partition {
       case MessageBox(_, ma @ MessageAck(_)) => true
@@ -279,8 +283,11 @@ trait ActorServiceHelpers extends RandomService {
       }
     }
     val mboxes = unboxed flatMap {
-      case PackageBox(_, Package(_, _, MessageBox(_, Container(mbox)))) => mbox
-      case PackageBox(_, Package(_, _, mb @ MessageBox(_, _))) => Seq(mb)
+      case MTPackageBox(_, MTPackage(_, _, mboxBytes)) =>
+        MessageBoxCodec.decodeValue(mboxBytes).toOption.get match {
+          case MessageBox(_, Container(mbox)) => mbox
+          case mb @ MessageBox(_, _) => Seq(mb)
+        }
     }
     val (ackPackages, expectedPackages) = mboxes partition {
       case MessageBox(_, ma @ MessageAck(_)) => true

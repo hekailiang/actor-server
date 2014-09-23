@@ -5,7 +5,7 @@ import akka.util.{ ByteString, Timeout }
 import com.secretapp.backend.data.transport.MessageBox
 import scodec.bits._
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.data.transport.Package
+import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
@@ -39,7 +39,7 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
 
   context watch connection
 
-  def nextPackage(p: Package)(f: (Int, ByteString) => Unit): Unit = {
+  def nextPackage(p: MTPackage)(f: (Int, ByteString) => Unit): Unit = {
     val data = replyPackage(packageIndex, p)
     f(packageIndex, data)
     packageIndex = packageIndex + 1
@@ -48,15 +48,6 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
   def receive = writing
 
   def writing: Receive = {
-/*
-    case UpdateBoxToSend(ub) =>
-      wlog(s"UpdateBoxToSend($ub)")
-      // FIXME: real message id SA-32
-      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-        write(index, data)
-      } */
     case pe: PackageEither =>
       wlog(pe)
       pe match {
@@ -89,15 +80,6 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
   }
 
   def buffering: Receive = {
-    /*
-    case UpdateBoxToSend(ub) =>
-      blog(s"UpdateBoxToSend($ub)")
-      // FIXME: real message id SA-32
-      val p = Package(getAuthId, getSessionId, MessageBox(rand.nextLong, ub))
-      nextPackage(p) { (index, data) =>
-        buffer(index, data)
-      }
- */
     case pe: PackageEither =>
       blog(s"PackageToSend($pe)")
       pe match {
