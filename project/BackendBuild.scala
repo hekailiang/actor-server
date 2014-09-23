@@ -57,7 +57,7 @@ object BackendBuild extends Build {
     javacOptions ++= Seq(
       "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"
     ),
-    parallelExecution in Test := true,
+    parallelExecution in Test := false,
     fork in Test := true
   )
 }

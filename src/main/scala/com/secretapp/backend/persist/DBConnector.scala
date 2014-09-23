@@ -11,6 +11,7 @@ import scala.concurrent.ExecutionContext
 
 object DBConnector {
   val dbConfig = ConfigFactory.load().getConfig("cassandra")
+
   val keySpace = dbConfig.getString("keyspace")
 
   val cluster =  Cluster.builder()
