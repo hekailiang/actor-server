@@ -164,7 +164,8 @@ trait SignService {
       validPublicKey(k).fold(validationFailed("PUBLIC_KEY_INVALID", _), f)
 
     if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false))
-    else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false))
+    //else if (!ec.PublicKey.isPrime192v1(publicKey)) Future.successful(Error(400, "INVALID_KEY", "", false))
+    else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
     else {
       val f = for {
         smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
