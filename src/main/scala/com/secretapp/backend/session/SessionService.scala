@@ -34,7 +34,8 @@ trait SessionService {
         ackTracker.tell(RegisterMessageAcks(mids.toList), context.self)
       case RpcRequestBox(body) =>
         apiBroker.tell(ApiBrokerRequest(connector, mb.messageId, body), context.self)
-      case _ =>
+      case x =>
+        log.error("unhandled session message $x")
     }
   }
 

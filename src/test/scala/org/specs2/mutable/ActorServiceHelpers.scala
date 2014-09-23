@@ -14,6 +14,7 @@ import com.secretapp.backend.data.transport.{ MessageBox, MTPackage, MTPackageBo
 import com.secretapp.backend.persist.{ AuthIdRecord, SessionIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.transport.{ MTPackageBoxCodec, TcpConnector }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
@@ -202,7 +203,17 @@ trait ActorServiceHelpers extends RandomService {
   def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[MTPackage] = {
     tcpReceiveN(n, duration) map {
       case Write(data, _) =>
-        MTPackageBoxCodec.decodeValidValue(data).p
+        val p = MTPackageBoxCodec.decodeValidValue(data).p
+        // FIXME: real index
+        val mb = MessageBoxCodec.decodeValidValue(p.messageBoxBytes)
+        val pb = MTPackageBox(0, MTPackage(p.authId, p.sessionId,
+          MessageBoxCodec.encodeValid(
+            MessageBox(mb.messageId * 10, MessageAck(Vector(mb.messageId)))
+          )
+        ))
+        probe.send(destActor, Received(ByteString(MTPackageBoxCodec.encodeValid(pb).toByteArray)))
+        Thread.sleep(100) // let acktracker handle the ack
+        p
     }
   }
 
@@ -234,21 +245,13 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
-    val receivedPackages = tcpReceiveN(n * 2)
-    val unboxed = for (p <- receivedPackages) yield {
-      p match {
-        case Write(bs, ack) =>
-          protoPackageBox.decode(bs) match {
-            case -\/(e) =>
-              throw new Exception(s"Cannot decode PackageBox $e")
-            case \/-(p) =>
-              p._2
-          }
-      }
-    }
-    val mboxes = unboxed flatMap {
-      case MTPackageBox(_, MTPackage(_, _, mboxBytes)) =>
-        MessageBoxCodec.decodeValue(mboxBytes).toOption.get match {
+    val receivedPackages = protoReceiveN(n * 2)
+
+    val mboxes = receivedPackages flatMap {
+      case MTPackage(authId, sessionId, mboxBytes) =>
+        val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
+
+        messageBox match {
           case MessageBox(_, Container(mbox)) => mbox
           case mb @ MessageBox(_, _) => Seq(mb)
         }
@@ -270,21 +273,15 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def expectMsgWithAck(messages: MessageBox*)(implicit probe: TestProbe, destActor: ActorRef) = {
-    val receivedPackages = tcpReceiveN(messages.size * 2)
-    val unboxed = for (p <- receivedPackages) yield {
-      p match {
-        case Write(bs, ack) =>
-          protoPackageBox.decode(bs) match {
-            case -\/(e) =>
-              throw new Exception(s"Cannot decode PackageBox $e")
-            case \/-(p) =>
-              p._2
-          }
-      }
-    }
-    val mboxes = unboxed flatMap {
-      case MTPackageBox(_, MTPackage(_, _, mboxBytes)) =>
-        MessageBoxCodec.decodeValue(mboxBytes).toOption.get match {
+    // TODO: DRY (receiveNWithAck)
+
+    val receivedPackages = protoReceiveN(messages.size * 2)
+
+    val mboxes = receivedPackages flatMap {
+      case MTPackage(authId, sessionId, mboxBytes) =>
+        val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
+
+        messageBox match {
           case MessageBox(_, Container(mbox)) => mbox
           case mb @ MessageBox(_, _) => Seq(mb)
         }
