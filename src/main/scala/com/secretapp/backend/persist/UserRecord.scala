@@ -72,9 +72,6 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object fullAvatarHeight extends OptionalIntColumn(this) {
     override lazy val name = "full_avatar_height"
   }
-  object contactPhones extends SetColumn[UserRecord, User, Long](this) with StaticColumn[Set[Long]] {
-    override lazy val name = "contact_phones"
-  }
 
   override def fromRow(row: Row): User = {
     User(
@@ -97,8 +94,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
       fullAvatarFileHash  = fullAvatarFileHash(row),
       fullAvatarFileSize  = fullAvatarFileSize(row),
       fullAvatarWidth     = fullAvatarWidth(row),
-      fullAvatarHeight    = fullAvatarHeight(row),
-      contactPhones       = contactPhones(row)
+      fullAvatarHeight    = fullAvatarHeight(row)
     )
   }
 }
@@ -142,7 +138,6 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.fullAvatarFileSize, entity.fullAvatarFileSize)
       .value(_.fullAvatarWidth, entity.fullAvatarWidth)
       .value(_.fullAvatarHeight, entity.fullAvatarHeight)
-      .value(_.contactPhones, entity.contactPhones)
       .future().
       flatMap(_ => PhoneRecord.insertEntity(phone)).
       flatMap(_ => UserPublicKeyRecord.insertEntity(userPK)).
@@ -218,9 +213,4 @@ object UserRecord extends UserRecord with DBConnector {
 
   def byUid(uid: Int)(implicit session: Session): Future[Seq[User]] =
     select.where(_.uid eqs uid).fetch()
-
-  def addContactPhones(uid: Int, phones: Set[Long])
-                         (implicit session: Session): Future[ResultSet] =
-    update.where(_.uid eqs uid)
-      .modify(_.contactPhones addAll phones).future
 }

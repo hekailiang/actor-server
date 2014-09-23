@@ -32,8 +32,7 @@ case class User(uid: Int,
                 fullAvatarFileSize: Option[Int] = None,
                 fullAvatarWidth: Option[Int] = None,
                 fullAvatarHeight: Option[Int] = None,
-                keyHashes: Set[Long] = Set(),
-                contactPhones: Set[Long] = Set()) {
+                keyHashes: Set[Long] = Set()) {
 
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 

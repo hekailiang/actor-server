@@ -7,8 +7,8 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.persist.{UserRecord, PhoneRecord}
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord}
+import com.secretapp.backend.data.models.{UnregisteredContact, User}
 import com.datastax.driver.core.{ Session => CSession }
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -33,9 +33,7 @@ trait ContactService {
   def handleRequestImportContacts(contacts: Set[ContactToImport]): Future[RpcResponse] = {
     val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
     val authId = currentAuthId
-    for {
-      phones <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
-    } yield {
+    PhoneRecord.getEntities(contacts.map(_.phoneNumber)) flatMap { phones =>
 
       val (users, impContacts, uids, registeredPhones) = phones.foldLeft(
         (Seq[struct.User](), Seq[ImportedContact](), Set[Int](), Set[Long]())) {
@@ -56,10 +54,11 @@ trait ContactService {
       }
 
       val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
-      UserRecord.addContactPhones(currentUser.get.uid, unregisteredPhones)
-
-      socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
-      Ok(ResponseImportedContacts(users, impContacts))
+      val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(currentUser.get.uid, _))
+      Future.sequence(unregisteredContacts.map(UnregisteredContactRecord.insertEntity)) map { _ =>
+        socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
+        Ok(ResponseImportedContacts(users, impContacts))
+      }
     }
   }
 }
