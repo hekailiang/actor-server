@@ -6,6 +6,7 @@ import akka.testkit._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.rpc.update.{State, RequestGetState}
 import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
 import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.models._
@@ -15,12 +16,13 @@ import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import scala.collection.immutable
 import scala.language.{ postfixOps, higherKinds }
 import scala.util.Random
-import scalaz._
+import scalaz.{State => _, _}
 import Scalaz._
 import scodec.bits._
 
@@ -288,21 +290,34 @@ class SignServiceSpec extends RpcSpec {
     }.pendingUntilFixed("bring pubkey check back")
 
     "send ContactRegistered notifications" in {
-      implicit val scope = TestScope()
       val unregPhone = 79009009090L
+      val (registered, unregistered) = TestScope.pair(1, 2)
 
-      UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.uid)).sync()
+      {
+        implicit val scope = registered
 
-      implicit val authId = rand.nextLong
-      val publicKey = genPublicKey
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)(scope.session)
-      AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
+        UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.authId)).sync()
+        RequestGetState() :~> <~:[State] // Subscribe
+      }
 
-      RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey) :~> <~:[ResponseAuth]
+      {
+        implicit val scope = unregistered
 
-      val p = protoReceiveN(1)(scope.probe, scope.apiActor)
-      p.head.messageBox.body.assertInstanceOf[UpdateBox]
+        implicit val authId = rand.nextLong()
+        val publicKey = genPublicKey
+        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+        insertAuthAndSessionId(authId)(scope.session)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
+
+        RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey) :~> <~:[ResponseAuth]
+      }
+
+      {
+        implicit val scope = registered
+
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.assertInstanceOf[UpdateBox]
+      }
     }
   }
 

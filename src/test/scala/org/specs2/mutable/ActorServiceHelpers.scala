@@ -158,7 +158,7 @@ trait ActorServiceHelpers extends RandomService {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong
-      val user = authDefaultUser(uid)
+      val user = authDefaultUser(uid, phone)
       TestScope(probe, apiActor, session, user)
     }
   }

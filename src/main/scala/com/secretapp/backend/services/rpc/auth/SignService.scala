@@ -195,7 +195,8 @@ trait SignService {
                         Future.successful(auth(user))
                       }
                     }
-                    case Some(rec) => signIn(rec.userId)
+                    case Some(rec) =>
+                      signIn(rec.userId)
                   }
               }
           }
@@ -244,11 +245,9 @@ trait SignService {
   }
 
   private def pushContactRegisteredUpdates(u: User): Unit = {
-    log.error("Pushing CRU")
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
       contacts.foreach { c =>
-        log.error(s"Pushing ContactRegisteredUpdate to $u.uid")
-        pushUpdate(c.userId, ContactRegistered(u.toStruct(u.authId)))
+        pushUpdate(c.authId, ContactRegistered(u.toStruct(u.authId)))
       }
     }
   }

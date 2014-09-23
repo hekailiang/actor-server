@@ -1,8 +1,10 @@
 package com.secretapp.backend.persist
 
+import java.nio.ByteBuffer
+
 import com.datastax.driver.core.ConsistencyLevel
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar}
+import com.secretapp.backend.data.message.struct.{User, AvatarImage, Avatar}
 import com.websudos.phantom.query.ExecutableStatement
 import com.secretapp.backend.data.message.update.CommonUpdate
 import com.secretapp.backend.data.message.{ update => updateProto }
@@ -18,6 +20,7 @@ import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 import scalaz._
 import Scalaz._
+import com.reactive.messenger.api.{User => ProtoUser}
 
 sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entity[UUID, updateProto.CommonUpdateMessage]] {
   override lazy val tableName = "common_updates"
@@ -131,6 +134,14 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "AvatarChanged_full_avatar_height"
   }
 
+  /**
+   * ContactRegistered
+   */
+
+  object contactRegisteredUser extends BlobColumn(this) {
+    override lazy val name = "ContactRegistered_user"
+  }
+
   override def fromRow(row: Row): Entity[UUID, updateProto.CommonUpdateMessage] = {
     updateId(row) match {
       case 1L =>
@@ -150,30 +161,37 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
       case updateProto.AvatarChanged.commonUpdateType => {
         val s =
           for (
-            id   <- smallAvatarFileId(row);
+            id <- smallAvatarFileId(row);
             hash <- smallAvatarFileHash(row);
             size <- smallAvatarFileSize(row)
           ) yield AvatarImage(FileLocation(id, hash), 100, 100, size)
 
         val l =
           for (
-            id   <- largeAvatarFileId(row);
+            id <- largeAvatarFileId(row);
             hash <- largeAvatarFileHash(row);
             size <- largeAvatarFileSize(row)
           ) yield AvatarImage(FileLocation(id, hash), 200, 200, size)
 
         val f =
           for (
-            id   <- fullAvatarFileId(row);
+            id <- fullAvatarFileId(row);
             hash <- fullAvatarFileHash(row);
             size <- fullAvatarFileSize(row);
-            w    <- fullAvatarWidth(row);
-            h    <- fullAvatarHeight(row)
+            w <- fullAvatarWidth(row);
+            h <- fullAvatarHeight(row)
           ) yield AvatarImage(FileLocation(id, hash), w, h, size)
 
         val a = if (Seq(s, l, f).exists(_.isDefined)) Avatar(s, l, f).some else None
 
         Entity(uuid(row), updateProto.AvatarChanged(avatarChangedUid(row), a))
+      }
+      case updateProto.ContactRegistered.commonUpdateType => {
+        val userbb = contactRegisteredUser(row)
+        val userBytes = new Array[Byte](userbb.remaining)
+        userbb.get(userBytes)
+
+        Entity(uuid(row), updateProto.ContactRegistered(User.fromProto(ProtoUser.parseFrom(userBytes))))
       }
     }
 
@@ -245,6 +263,11 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .value(_.fullAvatarFileSize, a.flatMap(_.fullImage.map(_.fileSize)))
           .value(_.fullAvatarWidth, a.flatMap(_.fullImage.map(_.width)))
           .value(_.fullAvatarHeight, a.flatMap(_.fullImage.map(_.height)))
+      case updateProto.ContactRegistered(u) =>
+        insert
+          .value(_.authId, authId)
+          .value(_.uuid, uuid)
+          .value(_.contactRegisteredUser, ByteBuffer.wrap(u.toProto.toByteArray).asReadOnlyBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

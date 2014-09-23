@@ -54,7 +54,7 @@ trait ContactService {
       }
 
       val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
-      val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(_, currentUser.get.uid))
+      val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(_, currentUser.get.authId))
       Future.sequence(unregisteredContacts.map(UnregisteredContactRecord.insertEntity)) map { _ =>
         socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
         Ok(ResponseImportedContacts(users, impContacts))
