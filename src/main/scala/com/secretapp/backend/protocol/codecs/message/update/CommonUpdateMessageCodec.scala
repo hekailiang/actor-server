@@ -14,6 +14,7 @@ object CommonUpdateMessageCodec {
       case m: MessageSent => MessageSentCodec.encode(m)
       case n: NewDevice => NewDeviceCodec.encode(n)
       case n: NewYourDevice => NewYourDeviceCodec.encode(n)
+      case u: AvatarChanged => AvatarChangedCodec.encode(u)
     }
   }
 
@@ -23,6 +24,7 @@ object CommonUpdateMessageCodec {
       case MessageSent.commonUpdateType => MessageSentCodec.decode(buf)
       case NewDevice.commonUpdateType => NewDeviceCodec.decode(buf)
       case NewYourDevice.commonUpdateType => NewYourDeviceCodec.decode(buf)
+      case AvatarChanged.commonUpdateType => AvatarChangedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {
