@@ -7,7 +7,7 @@ import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
-import com.secretapp.backend.data.message.{RpcResponseBox, struct, RpcRequestBox}
+import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist._
@@ -286,6 +286,24 @@ class SignServiceSpec extends RpcSpec {
       val expectMsg = MessageBox(messageId, rpcRes)
       expectMsgWithAck(expectMsg)
     }.pendingUntilFixed("bring pubkey check back")
+
+    "send ContactRegistered notifications" in {
+      implicit val scope = TestScope()
+      val unregPhone = 79009009090L
+
+      UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.uid)).sync()
+
+      implicit val authId = rand.nextLong
+      val publicKey = genPublicKey
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+      insertAuthAndSessionId(authId)(scope.session)
+      AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
+
+      RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey) :~> <~:[ResponseAuth]
+
+      val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+      p.head.messageBox.body.assertInstanceOf[UpdateBox]
+    }
   }
 
   "sign in" should {

@@ -191,7 +191,7 @@ trait SignService {
                         val accessSalt = genUserAccessSalt
                         val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
                         UserRecord.insertEntityWithPhoneAndPK(user)
-                        pushContactRegisteredUpdates(user, req.phoneNumber)
+                        pushContactRegisteredUpdates(user)
                         Future.successful(auth(user))
                       }
                     }
@@ -243,9 +243,11 @@ trait SignService {
     }
   }
 
-  private def pushContactRegisteredUpdates(u: User, phoneNumber: Long): Unit = {
-    UnregisteredContactRecord.byNumber(phoneNumber) map { contacts =>
+  private def pushContactRegisteredUpdates(u: User): Unit = {
+    log.error("Pushing CRU")
+    UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
       contacts.foreach { c =>
+        log.error(s"Pushing ContactRegisteredUpdate to $u.uid")
         pushUpdate(c.userId, ContactRegistered(u.toStruct(u.authId)))
       }
     }
