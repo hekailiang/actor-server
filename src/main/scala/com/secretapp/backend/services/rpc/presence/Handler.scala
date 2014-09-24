@@ -12,9 +12,9 @@ class Handler(val sessionActor: ActorRef, val currentUser: User, val presenceBro
 
   def receive = {
     case rq @ RpcProtocol.Request(SubscribeForOnline(users)) =>
-      handleSubscribeForOnline(users)
+      handleSubscribeForOnline(users) pipeTo sender
     case rq @ RpcProtocol.Request(UnsubscribeForOnline(users)) =>
-      handleUnsubscribeForOnline(users)
+      handleUnsubscribeForOnline(users) pipeTo sender
     case rq @ RpcProtocol.Request(RequestSetOnline(isOnline, timeout)) =>
       handleRequestSetOnline(isOnline, timeout) pipeTo sender
   }

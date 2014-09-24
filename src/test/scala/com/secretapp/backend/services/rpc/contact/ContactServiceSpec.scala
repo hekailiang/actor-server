@@ -55,6 +55,6 @@ class ContactServiceSpec extends RpcSpec {
           immutable.Seq(ImportedContact(42, scope2.user.uid)))
       }
     }
-    
+
   }
 }

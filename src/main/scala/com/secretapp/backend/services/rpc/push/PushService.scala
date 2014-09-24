@@ -17,10 +17,9 @@ trait PushService {
 
   val handleRpcPush: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r @ (_: RequestRegisterGooglePush |
-              _: RequestUnregisterPush) =>
-      authorizedRequest {
-        (handler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
-      }
+              _: RequestUnregisterPush     ) => authorizedRequest {
+      (handler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
+    }
   }
 
 }

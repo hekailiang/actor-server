@@ -21,17 +21,10 @@ trait PresenceService {
   private lazy val presenceHandler = context.actorOf(Props(new Handler(sessionActor, getUser.get, clusterProxies.presenceBroker)), "presence")
 
   def handleRpcPresence: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case rq: RequestSetOnline =>
-      authorizedRequest {
-        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
-      }
-    case rq: SubscribeForOnline =>
-      authorizedRequest {
-        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
-      }
-    case rq: UnsubscribeForOnline =>
-      authorizedRequest {
-        (presenceHandler ? RpcProtocol.Request(rq)).mapTo[RpcResponse]
-      }
+    case r @ (_: RequestSetOnline    |
+              _: SubscribeForOnline  |
+              _: UnsubscribeForOnline) => authorizedRequest {
+      (presenceHandler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
+    }
   }
 }

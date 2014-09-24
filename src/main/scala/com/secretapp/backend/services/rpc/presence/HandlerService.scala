@@ -6,7 +6,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Subscribe, SubscribeAck,
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
+import com.secretapp.backend.data.message.rpc.{ResponseVoid, Error, Ok, RpcResponse}
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services.common.PackageCommon._
@@ -27,8 +27,8 @@ trait HandlerService {
   var subscribedTo = immutable.Set.empty[Int]
 
   // TODO: check accessHash
-  protected def handleSubscribeForOnline(users: immutable.Seq[UserId]) = {
-    log.info(s"handling SubscribeForOnline ${users}")
+  protected def handleSubscribeForOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
+    log.info(s"handling SubscribeForOnline $users")
     users foreach { userId =>
       if (!subscribedTo.contains(userId.uid)) {
         log.info(s"Subscribing ${userId.uid}")
@@ -38,13 +38,15 @@ trait HandlerService {
     }
 
     presenceBrokerProxy ! TellPresences(users map (_.uid), updatesPusher)
+    Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeForOnline(users: immutable.Seq[UserId]) = {
+  protected def handleUnsubscribeForOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
     users foreach { userId =>
       subscribedTo = subscribedTo - userId.uid
       mediator ! Unsubscribe(PresenceBroker.topicFor(userId.uid), updatesPusher)
     }
+    Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleRequestSetOnline(isOnline: Boolean, timeout: Long): Future[RpcResponse] = {
