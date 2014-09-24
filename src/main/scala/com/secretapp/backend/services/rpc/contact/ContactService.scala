@@ -30,7 +30,8 @@ trait ContactService {
       }
   }
 
-  def handleRequestImportContacts(contacts: Set[ContactToImport]): Future[RpcResponse] = {
+  def handleRequestImportContacts(rawContacts: Set[ContactToImport]): Future[RpcResponse] = {
+    val contacts = rawContacts.filter(_.phoneNumber != currentUser.get.phoneNumber)
     val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
     val authId = currentAuthId
     PhoneRecord.getEntities(contacts.map(_.phoneNumber)) flatMap { phones =>

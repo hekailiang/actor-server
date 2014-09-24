@@ -40,5 +40,21 @@ class ContactServiceSpec extends RpcSpec {
       }
     }
 
+    "filter out self number" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+
+      {
+        implicit val scope = scope1
+        val contacts = immutable.Seq(
+          ContactToImport(42, scope2.user.phoneNumber),
+          ContactToImport(43, scope1.user.phoneNumber))
+        val response = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
+
+        response should_== ResponseImportedContacts(
+          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(ImportedContact(42, scope2.user.uid)))
+      }
+    }
+    
   }
 }
