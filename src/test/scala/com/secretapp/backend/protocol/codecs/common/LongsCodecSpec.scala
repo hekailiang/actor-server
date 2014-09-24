@@ -8,7 +8,7 @@ import scodec.bits._
 import org.specs2.mutable.Specification
 import scalaz._
 import Scalaz._
-/*
+
 object LongsCodecSpec extends Properties("Longs") {
   val genLong = for {
     l <- Gen.choose(Long.MinValue, Long.MaxValue)
@@ -40,4 +40,3 @@ class LongsCodecSpec extends Specification {
     }
   }
 }
-*/
