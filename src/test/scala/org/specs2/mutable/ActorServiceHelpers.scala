@@ -212,7 +212,7 @@ trait ActorServiceHelpers extends RandomService {
           )
         ))
         probe.send(destActor, Received(ByteString(MTPackageBoxCodec.encodeValid(pb).toByteArray)))
-        Thread.sleep(100) // let acktracker handle the ack
+        //Thread.sleep(200) // let acktracker handle the ack
         p
     }
   }
