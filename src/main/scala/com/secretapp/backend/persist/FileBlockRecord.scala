@@ -62,7 +62,6 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   def write(fileId: Int, offset: Int, bytes: Array[Byte]): Future[Iterator[ResultSet]] = {
     @inline def offsetValid(offset: Int) = offset >= 0 && offset % blockSize == 0
 
-    println(s"WRITING $offset ${bytes.length}")
     if (!offsetValid(offset)) {
       throw new OffsetInvalid
     }
@@ -71,7 +70,6 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
     val finserts = bytes.grouped(blockSize).zipWithIndex map {
       case (blockBytes, i) =>
         val e = Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
-        println(e)
         e
     } map insertEntity
     Future.sequence(finserts)

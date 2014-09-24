@@ -10,21 +10,23 @@ import Scalaz._
 object CommonUpdateMessageCodec {
   def encode(body: CommonUpdateMessage): String \/ BitVector = {
     body match {
-      case m: Message => MessageCodec.encode(m)
-      case m: MessageSent => MessageSentCodec.encode(m)
-      case n: NewDevice => NewDeviceCodec.encode(n)
-      case n: NewYourDevice => NewYourDeviceCodec.encode(n)
+      case m: Message           => MessageCodec.encode(m)
+      case m: MessageSent       => MessageSentCodec.encode(m)
+      case n: NewDevice         => NewDeviceCodec.encode(n)
+      case n: NewYourDevice     => NewYourDeviceCodec.encode(n)
       case u: AvatarChanged => AvatarChangedCodec.encode(u)
+      case u: ContactRegistered => ContactRegisteredCodec.encode(u)
     }
   }
 
   def decode(commonUpdateType: Int, buf: BitVector): String \/ CommonUpdateMessage = {
     val tried = Try(commonUpdateType match {
-      case Message.commonUpdateType => MessageCodec.decode(buf)
-      case MessageSent.commonUpdateType => MessageSentCodec.decode(buf)
-      case NewDevice.commonUpdateType => NewDeviceCodec.decode(buf)
-      case NewYourDevice.commonUpdateType => NewYourDeviceCodec.decode(buf)
+      case Message.commonUpdateType           => MessageCodec.decode(buf)
+      case MessageSent.commonUpdateType       => MessageSentCodec.decode(buf)
+      case NewDevice.commonUpdateType         => NewDeviceCodec.decode(buf)
+      case NewYourDevice.commonUpdateType     => NewYourDeviceCodec.decode(buf)
       case AvatarChanged.commonUpdateType => AvatarChangedCodec.decode(buf)
+      case ContactRegistered.commonUpdateType => ContactRegisteredCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

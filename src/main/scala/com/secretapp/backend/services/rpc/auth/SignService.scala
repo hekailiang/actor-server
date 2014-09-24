@@ -8,8 +8,7 @@ import com.datastax.driver.core.ResultSet
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.message.update.NewDevice
-import com.secretapp.backend.data.message.update.NewYourDevice
+import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
 import com.secretapp.backend.api.ApiBrokerService
 import scala.collection.immutable
 import scala.collection.immutable.Seq
@@ -187,16 +186,17 @@ trait SignService {
                   AuthSmsCodeRecord.dropEntity(phoneNumber)
                   phoneR match {
                     case None => withValidName(req.name) { name =>
-                        withValidPublicKey(publicKey) { publicKey =>
-                          val userId = genUserId
-                          val accessSalt = genUserAccessSalt
-                          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = accessSalt,
-                            phoneNumber = phoneNumber, name = name)
-                          UserRecord.insertEntityWithPhoneAndPK(user)
-                          Future.successful(auth(user))
+                      withValidPublicKey(publicKey) { publicKey =>
+                        val userId = genUserId
+                        val accessSalt = genUserAccessSalt
+                        val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
+                        UserRecord.insertEntityWithPhoneAndPK(user)
+                        pushContactRegisteredUpdates(user)
+                        Future.successful(auth(user))
                       }
                     }
-                    case Some(rec) => signIn(rec.userId)
+                    case Some(rec) =>
+                      signIn(rec.userId)
                   }
               }
           }
@@ -241,6 +241,14 @@ trait SignService {
       case Failure(e) =>
         log.error(s"Failed to get relations to push new device updates authId=${authId} uid=${uid} ${publicKeyHash}")
         throw e
+    }
+  }
+
+  private def pushContactRegisteredUpdates(u: User): Unit = {
+    UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
+      contacts.foreach { c =>
+        pushUpdate(c.authId, ContactRegistered(u.toStruct(u.authId)))
+      }
     }
   }
 }

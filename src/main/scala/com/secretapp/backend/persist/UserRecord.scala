@@ -9,6 +9,7 @@ import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.types._
 import scodec.bits.BitVector
 import scala.concurrent.Future
+import scala.collection.immutable.Set
 import scalaz._
 import Scalaz._
 
@@ -74,26 +75,26 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 
   override def fromRow(row: Row): User = {
     User(
-      uid = uid(row),
-      authId = authId(row),
-      publicKeyHash = publicKeyHash(row),
-      publicKey = BitVector(publicKey(row)),
-      keyHashes = keyHashes(row),
-      accessSalt = accessSalt(row),
-      phoneNumber = phoneNumber(row),
-      name = name(row),
-      sex = intToSex(sex(row)),
-      smallAvatarFileId = smallAvatarFileId(row),
+      uid                 = uid(row),
+      authId              = authId(row),
+      publicKeyHash       = publicKeyHash(row),
+      publicKey           = BitVector(publicKey(row)),
+      keyHashes           = keyHashes(row),
+      accessSalt          = accessSalt(row),
+      phoneNumber         = phoneNumber(row),
+      name                = name(row),
+      sex                 = intToSex(sex(row)),
+      smallAvatarFileId   = smallAvatarFileId(row),
       smallAvatarFileHash = smallAvatarFileHash(row),
       smallAvatarFileSize = smallAvatarFileSize(row),
-      largeAvatarFileId = largeAvatarFileId(row),
+      largeAvatarFileId   = largeAvatarFileId(row),
       largeAvatarFileHash = largeAvatarFileHash(row),
       largeAvatarFileSize = largeAvatarFileSize(row),
-      fullAvatarFileId = fullAvatarFileId(row),
-      fullAvatarFileHash = fullAvatarFileHash(row),
-      fullAvatarFileSize = fullAvatarFileSize(row),
-      fullAvatarWidth = fullAvatarWidth(row),
-      fullAvatarHeight = fullAvatarHeight(row)
+      fullAvatarFileId    = fullAvatarFileId(row),
+      fullAvatarFileHash  = fullAvatarFileHash(row),
+      fullAvatarFileSize  = fullAvatarFileSize(row),
+      fullAvatarWidth     = fullAvatarWidth(row),
+      fullAvatarHeight    = fullAvatarHeight(row)
     )
   }
 }
