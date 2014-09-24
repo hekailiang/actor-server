@@ -1,7 +1,6 @@
 package com.secretapp.backend.util
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
 import scalaz._
 import Scalaz._
 

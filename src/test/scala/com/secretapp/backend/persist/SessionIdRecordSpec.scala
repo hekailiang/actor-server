@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist
 
-import scala.collection.immutable.Seq
 import com.websudos.phantom.Implicits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.types._

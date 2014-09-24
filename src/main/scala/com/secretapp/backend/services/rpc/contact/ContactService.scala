@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord}
 import com.secretapp.backend.data.models.{UnregisteredContact, User}
 import com.datastax.driver.core.{ Session => CSession }
-import scala.collection.immutable.Seq
+import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
@@ -37,7 +37,7 @@ trait ContactService {
     PhoneRecord.getEntities(contacts.map(_.phoneNumber)) flatMap { phones =>
 
       val (users, impContacts, uids, registeredPhones) = phones.foldLeft(
-        (Seq[struct.User](), Seq[ImportedContact](), Set[Int](), Set[Long]())) {
+        (immutable.Seq[struct.User](), immutable.Seq[ImportedContact](), immutable.Set[Int](), immutable.Set[Long]())) {
         case ((users, impContacts, uids, registeredPhones), p) =>
           val u = struct.User(
             p.userId,

@@ -5,7 +5,6 @@ import com.secretapp.backend.data.models.UnregisteredContact
 import com.websudos.phantom.Implicits._
 
 import scala.concurrent.Future
-import scala.collection.immutable.Set
 
 sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContactRecord, UnregisteredContact] {
 

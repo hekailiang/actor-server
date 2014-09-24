@@ -9,7 +9,7 @@ import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.types._
 import scodec.bits.BitVector
 import scala.concurrent.Future
-import scala.collection.immutable.Set
+import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
@@ -107,7 +107,7 @@ object UserRecord extends UserRecord with DBConnector {
       number = entity.phoneNumber,
       userId = entity.uid,
       userAccessSalt = entity.accessSalt,
-      userKeyHashes = Set(entity.publicKeyHash),
+      userKeyHashes = immutable.Set(entity.publicKeyHash),
       userName = entity.name,
       userSex = sexToInt(entity.sex))
 
@@ -122,7 +122,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
-      .value(_.keyHashes, Set(entity.publicKeyHash))
+      .value(_.keyHashes, immutable.Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.name, entity.name)

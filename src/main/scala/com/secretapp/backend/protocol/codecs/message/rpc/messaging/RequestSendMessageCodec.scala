@@ -1,6 +1,5 @@
 package com.secretapp.backend.protocol.codecs.message.rpc.messaging
 
-import scala.collection.immutable.Seq
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._

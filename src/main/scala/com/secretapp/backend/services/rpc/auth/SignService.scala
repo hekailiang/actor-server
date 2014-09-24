@@ -10,8 +10,6 @@ import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
 import com.secretapp.backend.api.ApiBrokerService
-import scala.collection.immutable
-import scala.collection.immutable.Seq
 import scala.util.Success
 import scala.util.{ Random, Try, Success, Failure }
 import scala.concurrent.Future

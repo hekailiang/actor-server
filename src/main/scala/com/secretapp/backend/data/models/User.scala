@@ -3,7 +3,7 @@ package com.secretapp.backend.data.models
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar}
-import scala.collection.immutable.{Set, Seq}
+import scala.collection.immutable
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.crypto.ec
@@ -32,7 +32,7 @@ case class User(uid: Int,
                 fullAvatarFileSize: Option[Int] = None,
                 fullAvatarWidth: Option[Int] = None,
                 fullAvatarHeight: Option[Int] = None,
-                keyHashes: Set[Long] = Set()) {
+                keyHashes: immutable.Set[Long] = immutable.Set()) {
 
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
@@ -62,7 +62,7 @@ case class User(uid: Int,
     ) yield AvatarImage(FileLocation(id, hash), w, h, size)
 
   lazy val avatar =
-    if (Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
+    if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
       Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
     else
       None
@@ -87,7 +87,7 @@ object User {
       accessSalt = accessSalt,
       name = name,
       sex = sex,
-      keyHashes = Set(publicKeyHash))
+      keyHashes = immutable.Set(publicKeyHash))
   }
 
   def getAccessHash(authId: Long, uid: Int, accessSalt: String): Long = {
