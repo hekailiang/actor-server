@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
 import akka.dispatch.Dispatcher
+import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
 import java.util.concurrent.Executor
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
@@ -19,6 +20,8 @@ object DBConnector {
     .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
     .withoutMetrics()
+    .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
+    .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
     .build()
 
   lazy val session = blocking {
