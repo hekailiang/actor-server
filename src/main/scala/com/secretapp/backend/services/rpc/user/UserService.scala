@@ -18,21 +18,23 @@ import Scalaz._
 
 object AvatarUtils {
 
-  private def resizeTo(imgBytes: Array[Byte], w: Int, h: Int)
-              (implicit ec: ExecutionContext): Future[Array[Byte]] =
+  private def resizeTo(imgBytes: Array[Byte], side: Int)
+                      (implicit ec: ExecutionContext): Future[Array[Byte]] =
     for (
       img          <- AsyncImage(imgBytes);
-      resizedImg   <- img.resizeTo(w, h, Position.Center);
+      scaleCoef     = side.toDouble / math.min(img.width, img.height);
+      scaledImg    <- img.scale(scaleCoef);
+      resizedImg   <- scaledImg.resizeTo(side, side, Position.Center);
       resizedBytes <- resizedImg.writer(Format.JPEG).write()
     ) yield resizedBytes
 
   def resizeToSmall(imgBytes: Array[Byte])
                    (implicit ec: ExecutionContext) =
-    resizeTo(imgBytes, 100, 100)
+    resizeTo(imgBytes, 100)
 
   def resizeToLarge(imgBytes: Array[Byte])
                    (implicit ec: ExecutionContext) =
-    resizeTo(imgBytes, 200, 200)
+    resizeTo(imgBytes, 200)
 
   def dimensions(imgBytes: Array[Byte])
                 (implicit ec: ExecutionContext): Future[(Int, Int)] =
