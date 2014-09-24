@@ -40,10 +40,7 @@ trait ContactService {
         case ((users, impContacts, uids, registeredPhones), p) =>
           val u = struct.User(
             p.userId,
-            User.getAccessHash(
-              authId,
-              p.userId,
-              p.userAccessSalt),
+            User.getAccessHash(authId, p.userId, p.userAccessSalt),
             p.userName,
             p.userSex.toOption,
             p.userKeyHashes,
