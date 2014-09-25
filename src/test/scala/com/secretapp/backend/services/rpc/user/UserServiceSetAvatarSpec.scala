@@ -16,7 +16,7 @@ import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarUploaded, Requ
 import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.rpc.RpcSpec
 
-class UserServiceSpec extends RpcSpec with BeforeExample {
+class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
 
   "test avatar" should {
     "have proper size" in {
@@ -24,9 +24,9 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
     }
   }
 
-  "profile service" should {
+  "user service on receiving `RequestSetAvatar`" should {
 
-    "respond to `RequestSetAvatar` with `ResponseAvatarUploaded`" in {
+    "respond with `ResponseAvatarUploaded`" in {
       val r = setAvatarShouldBeOk
 
       r.avatar.fullImage.get.width          should_== origDimensions._1
@@ -45,7 +45,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(r.avatar.largeImage.get) should_== largeBytes
     }
 
-    "update user avatar on receiving `RequestSetAvatar`" in {
+    "update user avatar" in {
       setAvatarShouldBeOk
 
       dbUser.avatar       should beSome
@@ -54,7 +54,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbAvatar.largeImage should beSome
     }
 
-    "store full image in user avatar on receiving `RequestSetAvatar`" in {
+    "store full image in user avatar" in {
       setAvatarShouldBeOk
 
       dbFullImage.width         should_== origDimensions._1
@@ -63,7 +63,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbFullImage) should_== origBytes
     }
 
-    "store large image in user avatar on receiving `RequestSetAvatar`" in {
+    "store large image in user avatar" in {
       setAvatarShouldBeOk
 
       dbLargeImage.width         should_== largeDimensions._1
@@ -72,7 +72,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbLargeImage) should_== largeBytes
     }
 
-    "store small image in user avatar on receiving `RequestSetAvatar`" in {
+    "store small image in user avatar" in {
       setAvatarShouldBeOk
 
       dbSmallImage.width         should_== smallDimensions._1
@@ -81,7 +81,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
 
-    "append update to chain on receiving `RequestSetAvatar`" in {
+    "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
 
       val diff1 = {
@@ -101,7 +101,6 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
 
-      println(diff2.users)
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
       a.fullImage.get.width          should_== origDimensions._1
@@ -123,7 +122,7 @@ class UserServiceSpec extends RpcSpec with BeforeExample {
 
   import system.dispatcher
 
-  implicit val timeout = 30.seconds
+  implicit val timeout = 5.seconds
 
   private implicit var scope: TestScope = _
   private var fl: FileLocation = _

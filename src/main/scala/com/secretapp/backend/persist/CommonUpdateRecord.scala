@@ -135,6 +135,14 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
   }
 
   /**
+   * UserChanged
+   */
+
+  object userChangedUser extends BlobColumn(this) {
+    override lazy val name = "UserChanged_user"
+  }
+
+  /**
    * ContactRegistered
    */
 
@@ -165,14 +173,12 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
             hash <- smallAvatarFileHash(row);
             size <- smallAvatarFileSize(row)
           ) yield AvatarImage(FileLocation(id, hash), 100, 100, size)
-
         val l =
           for (
             id <- largeAvatarFileId(row);
             hash <- largeAvatarFileHash(row);
             size <- largeAvatarFileSize(row)
           ) yield AvatarImage(FileLocation(id, hash), 200, 200, size)
-
         val f =
           for (
             id <- fullAvatarFileId(row);
@@ -181,26 +187,26 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
             w <- fullAvatarWidth(row);
             h <- fullAvatarHeight(row)
           ) yield AvatarImage(FileLocation(id, hash), w, h, size)
-
         val a = if (Seq(s, l, f).exists(_.isDefined)) Avatar(s, l, f).some else None
-
         Entity(uuid(row), updateProto.AvatarChanged(avatarChangedUid(row), a))
       }
-      case updateProto.ContactRegistered.commonUpdateType => {
-        val userbb = contactRegisteredUser(row)
-        val userBytes = new Array[Byte](userbb.remaining)
-        userbb.get(userBytes)
+      case updateProto.UserChanged.commonUpdateType =>
+        Entity(uuid(row), updateProto.UserChanged(deserializeUser(contactRegisteredUser(row))))
 
-        Entity(uuid(row), updateProto.ContactRegistered(User.fromProto(ProtoUser.parseFrom(userBytes))))
-      }
+      case updateProto.ContactRegistered.commonUpdateType =>
+        Entity(uuid(row), updateProto.ContactRegistered(deserializeUser(contactRegisteredUser(row))))
     }
 
+  }
+
+  private def deserializeUser(bb: ByteBuffer): User = {
+    val userBytes = new Array[Byte](bb.remaining)
+    bb.get(userBytes)
+    User.fromProto(ProtoUser.parseFrom(userBytes))
   }
 }
 
 object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
-  //import com.datastax.driver.core.querybuilder._
-  //import com.newzly.phantom.query.QueryCondition
 
   // TODO: limit by size, not rows count
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]] = {
@@ -263,6 +269,11 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .value(_.fullAvatarFileSize, a.flatMap(_.fullImage.map(_.fileSize)))
           .value(_.fullAvatarWidth, a.flatMap(_.fullImage.map(_.width)))
           .value(_.fullAvatarHeight, a.flatMap(_.fullImage.map(_.height)))
+      case updateProto.UserChanged(u) =>
+        insert
+          .value(_.authId, authId)
+          .value(_.uuid, uuid)
+          .value(_.userChangedUser, ByteBuffer.wrap(u.toProto.toByteArray).asReadOnlyBuffer)
       case updateProto.ContactRegistered(u) =>
         insert
           .value(_.authId, authId)

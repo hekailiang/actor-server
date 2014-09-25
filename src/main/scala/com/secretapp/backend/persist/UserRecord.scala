@@ -39,37 +39,37 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
     override lazy val name = "first_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
-  object smallAvatarFileId extends OptionalIntColumn(this) {
+  object smallAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "small_avatar_file_id"
   }
-  object smallAvatarFileHash extends OptionalLongColumn(this) {
+  object smallAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
     override lazy val name = "small_avatar_file_hash"
   }
-  object smallAvatarFileSize extends OptionalIntColumn(this) {
+  object smallAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "small_avatar_file_size"
   }
-  object largeAvatarFileId extends OptionalIntColumn(this) {
+  object largeAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "large_avatar_file_id"
   }
-  object largeAvatarFileHash extends OptionalLongColumn(this) {
+  object largeAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
     override lazy val name = "large_avatar_file_hash"
   }
-  object largeAvatarFileSize extends OptionalIntColumn(this) {
+  object largeAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "large_avatar_file_size"
   }
-  object fullAvatarFileId extends OptionalIntColumn(this) {
+  object fullAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "full_avatar_file_id"
   }
-  object fullAvatarFileHash extends OptionalLongColumn(this) {
+  object fullAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
     override lazy val name = "full_avatar_file_hash"
   }
-  object fullAvatarFileSize extends OptionalIntColumn(this) {
+  object fullAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "full_avatar_file_size"
   }
-  object fullAvatarWidth extends OptionalIntColumn(this) {
+  object fullAvatarWidth extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "full_avatar_width"
   }
-  object fullAvatarHeight extends OptionalIntColumn(this) {
+  object fullAvatarHeight extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "full_avatar_height"
   }
 
@@ -184,8 +184,8 @@ object UserRecord extends UserRecord with DBConnector {
       future().flatMap(_ => PhoneRecord.removeKeyHash(phoneNumber, publicKeyHash))
   }
 
-  def updateAvatar(authId: Long, uid: Int, avatar: Avatar)(implicit session: Session) =
-    update.where(_.uid eqs uid).and(_.authId eqs authId)
+  def updateAvatar(uid: Int, avatar: Avatar)(implicit session: Session) =
+    update.where(_.uid eqs uid)
       .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
       .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
       .and   (_.smallAvatarFileSize setTo avatar.smallImage.map(_.fileSize))
@@ -197,6 +197,11 @@ object UserRecord extends UserRecord with DBConnector {
       .and   (_.fullAvatarFileSize  setTo avatar.fullImage.map(_.fileSize))
       .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
+      .future
+
+  def updateName(uid: Int, name: String)(implicit session: Session) =
+    update.where(_.uid eqs uid)
+      .modify(_.name setTo name)
       .future
 
   def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
