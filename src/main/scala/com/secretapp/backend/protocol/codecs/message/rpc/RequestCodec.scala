@@ -43,6 +43,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestUpdateUser.requestType)         { case r: RequestUpdateUser         => r } (protoPayload(RequestUpdateUserCodec))
     .\(RequestRegisterGooglePush.requestType) { case r: RequestRegisterGooglePush => r } (protoPayload(RequestRegisterGooglePushCodec))
     .\(RequestUnregisterPush.requestType)     { case r: RequestUnregisterPush     => r } (protoPayload(RequestUnregisterPushCodec))
+    .\(RequestMessageReceived.requestType)    { case r: RequestMessageReceived    => r } (protoPayload(RequestMessageReceivedCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)

@@ -1,22 +1,25 @@
 package com.secretapp.backend.api.rpc
 
 import akka.actor._
-import akka.pattern.ask
+import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.message.rpc.messaging.{ EncryptedMessage, RequestSendMessage, ResponseSendMessage }
+import com.secretapp.backend.data.message.rpc.ResponseVoid
+import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.update.MessageReceived
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID
 import scala.collection.concurrent.TrieMap
+import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.util.Success
@@ -36,6 +39,10 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
   def receive: Actor.Receive = {
+    case RpcProtocol.Request(RequestMessageReceived(uid, randomId, accessHash)) =>
+      val replyTo = sender()
+      handleRequestMessageReceived(uid, randomId, accessHash) pipeTo replyTo
+
     case RpcProtocol.Request(RequestSendMessage(_, _, _, _, _, messages)) if messages.length == 0 =>
       sender ! Error(400, "ZERO_MESSAGES_LENGTH", "Messages lenght is zero.", false)
 
@@ -67,7 +74,37 @@ sealed trait MessagingService {
   import UpdatesBroker._
 
   // Stores (userId, publicKeyHash) -> authId associations
+  // TODO: migrate to ConcurrentLinkedHashMap
   val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
+
+  // Caches userId -> accessHash associations
+  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[User]]
+    .initialCapacity(10).maximumWeightedCapacity(100).build
+
+  protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
+    val fUsers = Option(usersCache.get(uid)) match {
+      case Some(users) =>
+        Future.successful(users)
+      case None =>
+        UserRecord.getEntities(uid)
+    }
+
+    fUsers map {
+      case users if users.isEmpty =>
+        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
+      case users =>
+        val user = users.head
+
+        if (user.accessHash(currentUser.authId) == accessHash) {
+          users map { u =>
+            updatesBrokerRegion ! NewUpdatePush(u.authId, MessageReceived(currentUser.uid, randomId))
+          }
+          Ok(ResponseVoid())
+        } else {
+          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
+        }
+    }
+  }
 
   protected def handleRequestSendMessage(uid: Int,
     accessHash: Long,

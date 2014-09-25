@@ -10,10 +10,12 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.update.{ CommonUpdate, MessageReceived, MessageSent }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -142,6 +144,40 @@ class RpcMessagingSpec extends RpcSpec {
     "respond to RequestSendMessage with error if messages.length is zero" in {
       implicit val scope = TestScope()
       RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
+    }
+
+    "send UpdateMessageReceived on RequestMessageReceived" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 555L, useAesKey = false,
+          aesMessage = None,
+          messages = immutable.Seq(
+            EncryptedMessage(uid = scope2.user.uid, publicKeyHash = scope2.user.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
+        rq :~> <~:[ResponseSendMessage]
+
+        // subscribe to updates
+        getState(scope)
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageReceived(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+        val update = updBox.body.asInstanceOf[CommonUpdate]
+        update.body should beAnInstanceOf[MessageReceived]
+      }
     }
   }
 }
