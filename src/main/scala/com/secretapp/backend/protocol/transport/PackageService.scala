@@ -27,7 +27,6 @@ trait PackageService extends PackageManagerService {
           pMsg match {
             case Some(m) =>
               log.info(s"m: $m")
-              //        val messageId = p.messageBox.messageId * System.currentTimeMillis() // TODO
               val messageId = mb.messageId
               context.self ! p.replyWith(messageId, m).right
             case None =>

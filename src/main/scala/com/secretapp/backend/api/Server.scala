@@ -1,6 +1,6 @@
 package com.secretapp.backend.api
 
-import akka.actor.{ Actor, ActorLogging, ActorSystem, Props }
+import akka.actor._
 import akka.io.Tcp._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.FilesCounter
@@ -10,23 +10,12 @@ import com.secretapp.backend.session._
 import com.secretapp.backend.protocol.transport._
 import scodec.bits.BitVector
 
-final class Singletons(implicit val system: ActorSystem) {
-  val filesCounter = FilesCounter.start(system)
-  val presenceBroker = PresenceBroker.start(system)
+object Server {
+  def props(sessionRegion: ActorRef)(implicit session: CSession) = Props(new Server(sessionRegion))
 }
 
-final class ClusterProxies(implicit val system: ActorSystem) {
-  val filesCounter = FilesCounter.startProxy(system)
-  val presenceBroker = PresenceBroker.startProxy(system)
-}
-
-class Server(implicit session: CSession) extends Actor with ActorLogging {
+class Server(sessionRegion: ActorRef)(implicit session: CSession) extends Actor with ActorLogging {
   import context.system
-
-  implicit val clusterProxies = new ClusterProxies
-
-  val singletons = new Singletons
-  val sessionRegion = SessionActor.startRegion()
 
   def receive = {
     case b @ Bound(localAddress) =>
