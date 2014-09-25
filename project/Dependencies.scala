@@ -29,6 +29,7 @@ object Dependencies {
     "com.typesafe.akka"          %% "akka-remote"                   % V.akka,
     "com.typesafe.akka"          %% "akka-slf4j"                    % V.akka,
     "com.typesafe.akka"          %% "akka-stream-experimental"      % "0.4",
+    "com.typesafe.play"          %% "play-json"                     % "2.4.0-M1",
     "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2",
     "com.websudos"               %% "phantom-dsl"                   % V.phantom,
     "com.websudos"               %% "phantom-udt"                   % V.phantom,
