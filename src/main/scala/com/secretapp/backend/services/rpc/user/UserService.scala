@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessa
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar, ResponseAvatarUploaded}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
-import com.secretapp.backend.data.message.update.AvatarChanged
+import com.secretapp.backend.data.message.update.UserChanged
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.{FileRecord, UserRecord}
 import com.sksamuel.scrimage.{AsyncImage, Format, Position}
@@ -93,7 +93,7 @@ trait UserService {
 
     avatar flatMap { a =>
       UserRecord.updateAvatar(user.uid, a) map { _ =>
-        sendAvatarChangedUpdates(user, a)
+        sendUserChangedUpdates(user)
         Ok(ResponseAvatarUploaded(a))
       }
     }
@@ -101,11 +101,12 @@ trait UserService {
 
   private def handleUpdateUser(user: User, r: RequestUpdateUser): Future[RpcResponse] = {
     UserRecord.updateName(user.uid, r.name) map { _ =>
+      sendUserChangedUpdates(user)
       Ok(ResponseVoid())
     }
   }
 
-  private def sendAvatarChangedUpdates(u: User, avatar: Avatar): Unit = withRelations(u.uid) {
-    _.foreach(pushUpdate(_, AvatarChanged(u.uid, avatar.some)))
+  private def sendUserChangedUpdates(u: User): Unit = withRelations(u.uid) {
+    _.foreach(pushUpdate(_, UserChanged(u.toStruct(u.authId))))
   }
 }
