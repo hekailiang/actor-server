@@ -75,7 +75,6 @@ class PresenceBroker extends PersistentActor with ActorLogging {
         if (onlineUids.contains(uid)) {
           target ! UserOnlineUpdate(uid)
         } else {
-          target ! UserOfflineUpdate(uid)
           lastSeens.get(uid) match {
             case Some(time) =>
               target ! UserLastSeenUpdate(uid, time)

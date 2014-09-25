@@ -21,7 +21,7 @@ class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
   def assertResponseVoidReceived(implicit scope: TestScope) =
-    receiveNWithAck(3)(scope.probe, scope.apiActor).exists { p =>
+    receiveNWithAck(2)(scope.probe, scope.apiActor).exists { p =>
       p.body match {
         case p: RpcResponseBox => p.body match {
           case p: Ok => p.body.isInstanceOf[ResponseVoid]
@@ -62,14 +62,6 @@ class PresenceServiceSpec extends RpcSpec {
 
         SubscribeForOnline(immutable.Seq(UserId(6, 0))) :~> <~:[ResponseVoid]
 
-        {
-          val p = protoReceiveN(1)(scope.probe, scope.apiActor)
-          val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
-          val update = updBox.body.asInstanceOf[WeakUpdate]
-          val offlineUpdate = update.body.asInstanceOf[UserOfflineUpdate]
-          offlineUpdate.uid should equalTo(6)
-        }
-
         scope.probe.expectNoMsg(duration)
       }
 
@@ -78,14 +70,6 @@ class PresenceServiceSpec extends RpcSpec {
 
         RequestSetOnline(true, 3000) :~> <~:[ResponseOnline]
         SubscribeForOnline(immutable.Seq(UserId(5, 0))) :~> <~:[ResponseVoid]
-
-        {
-          val p = protoReceiveN(1)(scope.probe, scope.apiActor)
-          val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
-          val update = updBox.body.asInstanceOf[WeakUpdate]
-          val offlineUpdate = update.body.asInstanceOf[UserOfflineUpdate]
-          offlineUpdate.uid should equalTo(5)
-        }
 
         scope.probe.expectNoMsg(duration)
       }
