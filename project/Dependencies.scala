@@ -3,9 +3,9 @@ import sbt._
 object Dependencies {
   object V {
     val akka = "2.3.6"
-    val scalaz = "7.1.0" // "7.1.0-RC1"
+    val scalaz = "7.1.0"
     val scalazContrib = "0.1.5"
-    val spray = "1.3.1"
+    val spray = "1.3.2-20140909"
     val phantom = "1.2.8"
     val newzlyUtil = "0.1.19"
   }
@@ -23,6 +23,7 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-contrib" % V.akka,
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
     "com.typesafe.akka" %% "akka-slf4j" % V.akka,
+    "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
 
     "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
 
@@ -60,7 +61,7 @@ object Dependencies {
     "com.websudos"  %% "phantom-dsl" % V.phantom,
     "com.websudos"  %% "phantom-udt" % V.phantom,
 
-    "com.newzly" %% "util-testing" % V.newzlyUtil % "provided"  excludeAll(ExclusionRule(organization = "org.slf4j")),
+    "com.newzly" %% "util-testing" % V.newzlyUtil % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
 //
 //    val async = "org.scala-lang.modules" %% "scala-async" % "0.9.1"
 //
