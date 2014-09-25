@@ -199,6 +199,11 @@ object UserRecord extends UserRecord with DBConnector {
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
 
+  def updateName(authId: Long, uid: Int, name: String)(implicit session: Session) =
+    update.where(_.uid eqs uid).and(_.authId eqs authId)
+      .modify(_.name setTo name)
+      .future
+
   def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
     select.where(_.uid eqs uid).limit(100).fetch()
   }

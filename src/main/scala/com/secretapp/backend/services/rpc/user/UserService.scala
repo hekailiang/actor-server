@@ -3,9 +3,9 @@ package com.secretapp.backend.services.rpc.user
 import akka.pattern.ask
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.counters.CounterProtocol
-import com.secretapp.backend.data.message.rpc.{ Ok, RpcRequestMessage, RpcResponse }
+import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessage, RpcResponse}
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.rpc.user.{RequestSetAvatar, ResponseAvatarUploaded}
+import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar, ResponseAvatarUploaded}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
 import com.secretapp.backend.data.message.update.AvatarChanged
 import com.secretapp.backend.data.models.User
@@ -48,11 +48,14 @@ trait UserService {
   import context._
 
   def handleRpcUser: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case r: RequestSetAvatar =>
-      authorizedRequest {
-        // FIXME: don't use Option.get
-        handleSetAvatar(currentUser.get, r)
-      }
+    case r: RequestSetAvatar => authorizedRequest {
+      // FIXME: don't use Option.get
+      handleSetAvatar(currentUser.get, r)
+    }
+
+    case r: RequestUpdateUser => authorizedRequest {
+      handleUpdateUser(currentUser.get, r)
+    }
   }
 
   private def handleSetAvatar(user: User, r: RequestSetAvatar): Future[RpcResponse] = {
@@ -89,18 +92,29 @@ trait UserService {
     ) yield avatar
 
     avatar flatMap { a =>
-      UserRecord.byUid(user.uid).flatMap { users =>
-        Future.sequence(users.map { u =>
-          UserRecord.updateAvatar(u.authId, user.uid, a)
-        })
+      foreachAuthId(user.uid) { u =>
+        UserRecord.updateAvatar(u.authId, u.uid, a)
       } map { _ =>
-        sendUpdates(user, a)
+        sendAvatarChangedUpdates(user, a)
         Ok(ResponseAvatarUploaded(a))
       }
     }
   }
 
-  private def sendUpdates(u: User, avatar: Avatar): Unit = withRelations(u.uid) {
+  private def handleUpdateUser(user: User, r: RequestUpdateUser): Future[RpcResponse] =
+    foreachAuthId(user.uid) { u =>
+      UserRecord.updateName(u.authId, u.uid, r.name)
+    } map { _ =>
+      Ok(ResponseVoid())
+    }
+
+  private def foreachAuthId[A](uid: Int)(f: User => Future[A]): Future[Seq[A]] = {
+    UserRecord.byUid(uid).flatMap { users =>
+      Future.sequence(users.map(f))
+    }
+  }
+
+  private def sendAvatarChangedUpdates(u: User, avatar: Avatar): Unit = withRelations(u.uid) {
     _.foreach(pushUpdate(_, AvatarChanged(u.uid, avatar.some)))
   }
 }
