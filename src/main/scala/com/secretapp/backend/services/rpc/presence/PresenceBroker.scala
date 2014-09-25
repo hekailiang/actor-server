@@ -15,6 +15,7 @@ object PresenceProtocol {
   case class TellPresences(uids: immutable.Seq[Int], target: ActorRef) extends PresenceMessage
 }
 
+// TODO: rename to WeakUpdatesBroker
 object PresenceBroker {
   def topicFor(userId: Int): String = s"presences-${userId}"
 

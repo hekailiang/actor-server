@@ -62,6 +62,7 @@ object UpdatesBroker {
   )
 }
 
+// TODO: rename to CommonUpdatesBroker
 class UpdatesBroker(implicit session: CSession) extends PersistentActor with ActorLogging with GooglePush {
   import context.dispatcher
   import ShardRegion.Passivate

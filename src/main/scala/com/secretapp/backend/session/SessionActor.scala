@@ -42,6 +42,8 @@ object SessionProtocol {
   case class AuthorizeUser(user: User) extends SessionMessage
   case class SendMessageBox(connector: ActorRef, mb: MessageBox) extends SessionMessage
   case object SubscribeToUpdates extends SessionMessage
+  case class SubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
+  case class UnsubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
 
   case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
 }
@@ -69,7 +71,7 @@ object SessionActor {
 
 }
 
-class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
+class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -84,11 +86,12 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
   val splitName = self.path.name.split("_")
-  val authId = java.lang.Long.parseLong(splitName(0))
-  val sessionId = java.lang.Long.parseLong(splitName(1))
+  override val authId = java.lang.Long.parseLong(splitName(0))
+  override val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val updatesPusher = context.actorOf(Props(new PusherActor(context.self, authId)))
+  val commonUpdatesPusher = context.actorOf(Props(new CommonPusherActor(context.self, authId)))
+  val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.Set.empty[ActorRef]
   var lastConnector: Option[ActorRef] = None
@@ -104,7 +107,7 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
       context.watch(connector)
 
       getUnsentMessages() map { messages =>
-        println(s"unsent messages $messages")
+        log.debug(s"unsent messages $messages")
         messages foreach { case Tuple2(mid, message) =>
           val pe = MTPackage(authId, sessionId, BitVector(message)).right
           connector ! pe
@@ -143,6 +146,14 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
           subscribeToUpdates()
         }
       }
+    case msg @ SubscribeToPresences(uids) =>
+      persist(msg) { _ =>
+        subscribeToPresences(uids)
+      }
+    case msg @ UnsubscribeToPresences(uids) =>
+      persist(msg) { _ =>
+        unsubscribeToPresences(uids)
+      }
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
     case Terminated(connector) =>
@@ -161,8 +172,14 @@ class SessionActor(clusterProxies: ClusterProxies, session: CSession) extends Se
       if (subscribingToUpdates) {
         subscribeToUpdates()
       }
+
+      subscribeToPresences(subscribedToPresencesUids.toList)
     case SubscribeToUpdates =>
       subscribingToUpdates = true
+    case SubscribeToPresences(uids) =>
+      subscribedToPresencesUids = subscribedToPresencesUids ++ uids
+    case UnsubscribeToPresences(uids) =>
+      subscribedToPresencesUids = subscribedToPresencesUids -- uids
     case _ =>
   }
 }

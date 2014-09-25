@@ -1,11 +1,21 @@
 package com.secretapp.backend.services.rpc.presence
 
-import com.secretapp.backend.data.message.rpc.{Ok, ResponseVoid}
+import akka.actor._
+import akka.testkit._
+import com.secretapp.backend.data.message.UpdateBox
+import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.update
+import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.update.{ UserLastSeenUpdate, UserOfflineUpdate, UserOnlineUpdate }
+import com.secretapp.backend.data.message.update.WeakUpdate
+import com.secretapp.backend.data.models.User
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
+import scala.concurrent.duration._
 
 class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
@@ -35,7 +45,7 @@ class PresenceServiceSpec extends RpcSpec {
     }
 
     "return ResponseVoid for unsubscribe" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(3, 4)
 
       {
         implicit val scope = scope1
@@ -44,28 +54,51 @@ class PresenceServiceSpec extends RpcSpec {
     }
 
     "subscribe to updates and receive them" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(5, 6)
+      val duration = DurationInt(1).seconds
 
       {
         implicit val scope = scope1
 
-        SubscribeForOnline(immutable.Seq(UserId(2, 0))) :~>! scope
+        SubscribeForOnline(immutable.Seq(UserId(6, 0))) :~> <~:[ResponseVoid]
 
-        protoReceiveN(2)(scope.probe, scope.apiActor)
+        {
+          val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+          val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+          val update = updBox.body.asInstanceOf[WeakUpdate]
+          val offlineUpdate = update.body.asInstanceOf[UserOfflineUpdate]
+          offlineUpdate.uid should equalTo(6)
+        }
+
+        scope.probe.expectNoMsg(duration)
       }
 
       {
         implicit val scope = scope2
 
         RequestSetOnline(true, 3000) :~> <~:[ResponseOnline]
-        SubscribeForOnline(immutable.Seq(UserId(2, 0))) :~>! scope
-        val received = protoReceiveN(1)(scope.probe, scope.apiActor)
+        SubscribeForOnline(immutable.Seq(UserId(5, 0))) :~> <~:[ResponseVoid]
+
+        {
+          val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+          val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+          val update = updBox.body.asInstanceOf[WeakUpdate]
+          val offlineUpdate = update.body.asInstanceOf[UserOfflineUpdate]
+          offlineUpdate.uid should equalTo(5)
+        }
+
+        scope.probe.expectNoMsg(duration)
       }
 
       {
         implicit val scope = scope1
 
-        protoReceiveN(1)(scope.probe, scope.apiActor)
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+        val update = updBox.body.asInstanceOf[WeakUpdate]
+        val offlineUpdate = update.body.asInstanceOf[UserOnlineUpdate]
+        offlineUpdate.uid should equalTo(6)
+        scope.probe.expectNoMsg(duration)
       }
     }
   }

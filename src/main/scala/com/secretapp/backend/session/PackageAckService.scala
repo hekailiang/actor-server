@@ -26,7 +26,7 @@ trait PackageAckService {
 
   // TODO: configurable
   val unackedSizeLimit = 1024 * 100
-  val ackTracker = context.actorOf(Props(classOf[AckTrackerActor], authId, sessionId, unackedSizeLimit))
+  lazy val ackTracker = context.actorOf(Props(classOf[AckTrackerActor], authId, sessionId, unackedSizeLimit))
 
   def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {
     case MessageBox(mid, m) =>
@@ -34,7 +34,9 @@ trait PackageAckService {
         case _: Ping =>
         case _: Pong =>
         case _: MessageAck =>
-        case _ => ackTracker ! RegisterMessage(mid, b)
+        case _ =>
+          log.debug(s"Registering sent message $mb")
+          ackTracker ! RegisterMessage(mid, b)
       }
   }
 
