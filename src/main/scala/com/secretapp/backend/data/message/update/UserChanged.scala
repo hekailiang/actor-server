@@ -9,5 +9,5 @@ case class UserChanged(user: User) extends CommonUpdateMessage {
 }
 
 object UserChanged extends CommonUpdateMessageObject {
-  override val commonUpdateType = 0x36
+  override val commonUpdateType = 0x11
 }

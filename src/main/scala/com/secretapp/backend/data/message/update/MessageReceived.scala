@@ -7,5 +7,5 @@ case class MessageReceived(uid: Int, randomId: Long) extends CommonUpdateMessage
 }
 
 object MessageReceived extends CommonUpdateMessageObject {
-  val commonUpdateType = 0x38
+  val commonUpdateType = 0x12
 }
