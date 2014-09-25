@@ -19,7 +19,6 @@ object WSServer {
 
   class WebSocketServer(sessionRegion: ActorRef)(implicit session: CSession) extends Actor with ActorLogging {
     def receive = {
-      // when a new connection comes in we register a WebSocketConnection actor as the per connection handler
       case Http.Connected(remoteAddress, localAddress) =>
         val connection = sender()
         val wsActor = context.actorOf(WSConnector.props(connection, sessionRegion, session))
