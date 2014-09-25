@@ -13,6 +13,7 @@ object CommonUpdateMessageCodec {
       case m: MessageSent       => MessageSentCodec.encode(m)
       case n: NewDevice         => NewDeviceCodec.encode(n)
       case n: NewYourDevice     => NewYourDeviceCodec.encode(n)
+      case u: AvatarChanged     => AvatarChangedCodec.encode(u)
       case u: UserChanged       => UserChangedCodec.encode(u)
       case u: ContactRegistered => ContactRegisteredCodec.encode(u)
     }
@@ -24,6 +25,7 @@ object CommonUpdateMessageCodec {
       case MessageSent.commonUpdateType       => MessageSentCodec.decode(buf)
       case NewDevice.commonUpdateType         => NewDeviceCodec.decode(buf)
       case NewYourDevice.commonUpdateType     => NewYourDeviceCodec.decode(buf)
+      case AvatarChanged.commonUpdateType     => AvatarChangedCodec.decode(buf)
       case UserChanged.commonUpdateType       => UserChangedCodec.decode(buf)
       case ContactRegistered.commonUpdateType => ContactRegisteredCodec.decode(buf)
     })
