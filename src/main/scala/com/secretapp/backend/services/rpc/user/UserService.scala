@@ -92,25 +92,16 @@ trait UserService {
     ) yield avatar
 
     avatar flatMap { a =>
-      foreachAuthId(user.uid) { u =>
-        UserRecord.updateAvatar(u.authId, u.uid, a)
-      } map { _ =>
+      UserRecord.updateAvatar(user.uid, a) map { _ =>
         sendAvatarChangedUpdates(user, a)
         Ok(ResponseAvatarUploaded(a))
       }
     }
   }
 
-  private def handleUpdateUser(user: User, r: RequestUpdateUser): Future[RpcResponse] =
-    foreachAuthId(user.uid) { u =>
-      UserRecord.updateName(u.authId, u.uid, r.name)
-    } map { _ =>
+  private def handleUpdateUser(user: User, r: RequestUpdateUser): Future[RpcResponse] = {
+    UserRecord.updateName(user.uid, r.name) map { _ =>
       Ok(ResponseVoid())
-    }
-
-  private def foreachAuthId[A](uid: Int)(f: User => Future[A]): Future[Seq[A]] = {
-    UserRecord.byUid(uid).flatMap { users =>
-      Future.sequence(users.map(f))
     }
   }
 
