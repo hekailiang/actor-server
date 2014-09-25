@@ -46,9 +46,13 @@ trait SessionService {
 
   protected def subscribeToPresences(uids: immutable.Seq[Int]) = {
     uids foreach { uid =>
-      log.info(s"Subscribing $uid")
-      subscribedToPresencesUids = subscribedToPresencesUids + uid
-      mediator ! Subscribe(PresenceBroker.topicFor(uid), weakUpdatesPusher)
+      if (!subscribedToPresencesUids.contains(uid)) {
+        log.info(s"Subscribing $uid")
+        subscribedToPresencesUids = subscribedToPresencesUids + uid
+        mediator ! Subscribe(PresenceBroker.topicFor(uid), weakUpdatesPusher)
+      } else {
+        log.error(s"Already subscribed to $uid")
+      }
     }
 
     clusterProxies.presenceBroker ! PresenceProtocol.TellPresences(uids, weakUpdatesPusher)
