@@ -1,6 +1,8 @@
 package com.secretapp.backend.data.message
 
-case class ResponseAuthId(authId: Long) extends TransportMessage
+case class ResponseAuthId(authId: Long) extends TransportMessage {
+  override val header = ResponseAuthId.header
+}
 object ResponseAuthId extends TransportMessageMessageObject {
-  val header = 0xf1
+  override val header = 0xf1
 }

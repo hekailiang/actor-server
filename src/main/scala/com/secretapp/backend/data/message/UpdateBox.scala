@@ -2,7 +2,9 @@ package com.secretapp.backend.data.message
 
 import com.secretapp.backend.data.message.update.UpdateMessage
 
-case class UpdateBox(body: UpdateMessage) extends TransportMessage
+case class UpdateBox(body: UpdateMessage) extends TransportMessage {
+  override val header = UpdateBox.header
+}
 object UpdateBox extends TransportMessageMessageObject {
-  val header = 0x5
+  override val header = 0x5
 }

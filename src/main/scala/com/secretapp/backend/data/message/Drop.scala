@@ -1,6 +1,8 @@
 package com.secretapp.backend.data.message
 
-case class Drop(messageId: Long, message: String) extends TransportMessage
+case class Drop(messageId: Long, message: String) extends TransportMessage {
+  override val header = Drop.header
+}
 object Drop extends TransportMessageMessageObject {
-  val header = 0xd
+  override val header = 0xd
 }

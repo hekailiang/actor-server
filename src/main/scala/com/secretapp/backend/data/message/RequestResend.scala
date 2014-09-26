@@ -1,6 +1,8 @@
 package com.secretapp.backend.data.message
 
-case class RequestResend(messageId: Long) extends TransportMessage
+case class RequestResend(messageId: Long) extends TransportMessage {
+  override val header = RequestResend.header
+}
 object RequestResend extends TransportMessageMessageObject {
-  val header = 0x9
+  override val header = 0x9
 }
