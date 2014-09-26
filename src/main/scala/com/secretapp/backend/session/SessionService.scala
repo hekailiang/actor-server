@@ -9,6 +9,7 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.protocol.transport._
+import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.data.message._
@@ -18,7 +19,7 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-trait SessionService {
+trait SessionService extends UserManagerService {
   self: SessionActor =>
   import AckTrackerProtocol._
   import ApiBrokerProtocol._

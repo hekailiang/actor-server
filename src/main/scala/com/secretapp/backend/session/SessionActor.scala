@@ -157,8 +157,10 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       val pe = MTPackage(authId, sessionId, encoded).right
       connectors foreach (_ ! pe)
       registerSentMessage(mb, ByteString(encoded.toByteArray))
-    case AuthorizeUser(user) =>
-      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+    case msg @ AuthorizeUser(user) =>
+      persist(msg) { _ =>
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
     case msg @ SubscribeToUpdates =>
       if (!subscribedToUpdates && !subscribingToUpdates) {
         persist(msg) { _ =>
@@ -193,6 +195,11 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       }
 
       subscribeToPresences(subscribedToPresencesUids.toList)
+      currentUser map { user =>
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
+    case AuthorizeUser(user) =>
+      currentUser = Some(user)
     case SubscribeToUpdates =>
       subscribingToUpdates = true
     case SubscribeToPresences(uids) =>
