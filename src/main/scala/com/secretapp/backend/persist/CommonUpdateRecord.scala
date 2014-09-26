@@ -288,16 +288,19 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
         insert
           .value(_.authId, authId)
           .value(_.uuid, uuid)
+          .value(_.updateId, updateProto.AvatarChanged.commonUpdateType)
           .value(_.userChangedUser, ByteBuffer.wrap(u.toProto.toByteArray).asReadOnlyBuffer)
       case updateProto.ContactRegistered(u) =>
         insert
           .value(_.authId, authId)
           .value(_.uuid, uuid)
+          .value(_.updateId, updateProto.ContactRegistered.commonUpdateType)
           .value(_.contactRegisteredUser, ByteBuffer.wrap(u.toProto.toByteArray).asReadOnlyBuffer)
       case updateProto.MessageReceived(uid, randomId) =>
         insert
           .value(_.authId, authId)
           .value(_.uuid, uuid)
+          .value(_.updateId, updateProto.MessageReceived.commonUpdateType)
           .value(_.messageReceivedUid, uid)
           .value(_.messageReceivedRandomId, randomId)
       case _ =>
