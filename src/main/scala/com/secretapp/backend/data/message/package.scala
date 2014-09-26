@@ -2,11 +2,13 @@ package com.secretapp.backend.data
 
 package object message {
 
-  trait TransportMessage
+  trait TransportMessage {
+    def header: Int
+  }
   trait ProtobufMessage
 
   trait TransportMessageMessageObject {
-    val header: Int
+    def header: Int
   }
 
 }
