@@ -10,6 +10,9 @@ import com.secretapp.backend.data.message.Container
 import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.data.message.ResponseAuthId
 import com.secretapp.backend.data.message.RpcRequestBox
+import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.UnsentResponse
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.SessionManager
@@ -82,6 +85,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   context.setReceiveTimeout(15.minutes)
 
   implicit val timeout = Timeout(5.seconds)
+  val maxResponseLength = 1024 * 1024 // if more, register UnsentResponse for resend
 
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
@@ -125,7 +129,22 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
     case SendMessageBox(connector, mb) =>
       log.debug(s"SendMessageBox $connector $mb")
 
-      val encoded = MessageBoxCodec.encodeValid(mb)
+      val origEncoded = MessageBoxCodec.encodeValid(mb)
+      val origLength = origEncoded.length
+
+      val encoded = mb.body match {
+        case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
+          val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
+          log.debug(s"Response is too large, generated $unsentResponse")
+          MessageBoxCodec.encodeValid(
+            MessageBox(
+              mb.messageId,
+              unsentResponse
+            )
+          )
+        case _ => origEncoded
+      }
+
       registerSentMessage(mb, ByteString(encoded.toByteArray))
       val pe = MTPackage(authId, sessionId, encoded).right
 
