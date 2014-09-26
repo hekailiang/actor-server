@@ -32,6 +32,7 @@ object UpdatesBroker {
   case class NewUpdatePush(authId: Long, update: CommonUpdateMessage)
 
   case class GetSeq(authId: Long)
+
   case object Stop
 
   type State = (Int, Int, Option[UUID]) // seq mid mstate
@@ -103,7 +104,6 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         val update = updateProto.MessageSent(mid, randomId)
         pushUpdate(authId, update) map { reply =>
           replyTo ! reply
-          log.info(s"Replying to ${replyTo.path} with $reply")
         }
         maybeSnapshot()
       }
@@ -155,7 +155,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       this.mid += 1
   }
 
-  private def pushUpdate(authId: Long, update: updateProto.CommonUpdateMessage): Future[Tuple3[Int, Int, UUID]] = {
+  private def pushUpdate(authId: Long, update: updateProto.CommonUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
     val updSeq = seq
     val uuid = TimeUuid()

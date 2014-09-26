@@ -89,9 +89,9 @@ sealed trait MessagingService {
         UserRecord.getEntities(uid)
     }
 
-    fUsers map {
+    fUsers flatMap {
       case users if users.isEmpty =>
-        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
+        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
       case users =>
         val user = users.head
 
@@ -99,9 +99,11 @@ sealed trait MessagingService {
           users map { u =>
             updatesBrokerRegion ! NewUpdatePush(u.authId, MessageReceived(currentUser.uid, randomId))
           }
-          Ok(ResponseVoid())
+          for {
+            seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
+          } yield Ok(ResponseMessageReceived(seq))
         } else {
-          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         }
     }
   }

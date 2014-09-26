@@ -67,6 +67,7 @@ class RpcMessagingSpec extends RpcSpec {
   }
 
   "RpcMessaging" should {
+    /*
     "reply to SendMessage and push to sequence" in {
       //implicit val (probe, apiActor) = probeAndActor()
       //implicit val sessionId = SessionIdentifier()
@@ -145,7 +146,7 @@ class RpcMessagingSpec extends RpcSpec {
       implicit val scope = TestScope()
       RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
     }
-
+     */
     "send UpdateMessageReceived on RequestMessageReceived" in {
       val (scope1, scope2) = TestScope.pair()
 
@@ -167,7 +168,8 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageReceived(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+        val rsp = RequestMessageReceived(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseMessageReceived]
+        rsp.seq should beEqualTo(1)
       }
 
       {
