@@ -1,6 +1,7 @@
 package com.secretapp.backend.protocol.transport
 
 import akka.actor._
+import akka.event.LoggingAdapter
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ Drop, NewSession, TransportMessage }
 import com.secretapp.backend.data.models.{ AuthId, User }
@@ -25,6 +26,8 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
   protected var currentAuthId: Long = _
   private var currentSessionId: Long = _
   private val currentSessions = new ConcurrentLinkedQueue[Long]()
+
+  def log: LoggingAdapter
 
   // TODO: move to KeyFrontend!
   private def checkPackageAuth(p: MTPackage, mb: MessageBox)(f: (MTPackage, Option[TransportMessage]) => Unit): Future[Any] = {
@@ -116,7 +119,9 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
   }
 
   private def sendDrop(p: MTPackage, messageId: Long, msg: String): Future[Unit] = {
-    val reply = p.replyWith(messageId, Drop(messageId, msg)).left
+    val drop = Drop(messageId, msg)
+    val reply = p.replyWith(messageId, drop).left
+    log.warning(s"Sending drop $drop")
     context.self ! reply
     Future.successful()
   }
