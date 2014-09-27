@@ -119,7 +119,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       }
     case HandleMessageBox(mb) =>
       val connector = sender()
-      log.debug(s"HandleMessageBox $mb $connector")
+      log.debug(s"HandleMessageBox $authId $sessionId $mb $connector")
       lastConnector = Some(connector)
 
       mb.body match {
@@ -127,7 +127,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
         case _ => handleMessage(connector, mb)
       }
     case SendMessageBox(connector, mb) =>
-      log.debug(s"SendMessageBox $connector $mb")
+      log.debug(s"SendMessageBox $authId $sessionId $connector $mb")
 
       val origEncoded = MessageBoxCodec.encodeValid(mb)
       val origLength = origEncoded.length
@@ -150,7 +150,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
 
       connector ! pe
     case UpdateBoxToSend(ub) =>
-      log.debug(s"UpdateBoxToSend($ub)")
+      log.debug(s"UpdateBoxToSend $authId $sessionId $ub")
       // FIXME: real message id SA-32
       val mb = MessageBox(rand.nextLong, ub)
       val encoded = MessageBoxCodec.encodeValid(mb)
