@@ -43,6 +43,7 @@ with TestKitBase
 
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)
+    Thread.sleep(500)
   }
 
   override def map(fs: => Fragments) = super.map(fs) ^ Step(shutdownActorSystem)

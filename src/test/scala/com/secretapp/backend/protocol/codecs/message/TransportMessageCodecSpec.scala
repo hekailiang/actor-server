@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct._
 import java.util.UUID
-import scala.collection.immutable.Seq
+import scala.collection.immutable
 import scodec.bits._
 import org.specs2.mutable.Specification
 import scalaz._
@@ -183,7 +183,7 @@ class TransportMessageCodecSpec extends Specification {
     "encode and decode RpcRequest.RequestSendMessage" in {
       val encoded = hex"0320010000000e1a08011002180320012a020ae5320c080110021a020ae52202ac1d".bits
       val message = EncryptedMessage(1, 2L, hex"ae5".bits.some, hex"ac1d".bits.some)
-      val decoded = RpcRequestBox(Request(RequestSendMessage(1, 2L, 3L, true, hex"ae5".bits.some, Seq(message))))
+      val decoded = RpcRequestBox(Request(RequestSendMessage(1, 2L, 3L, true, hex"ae5".bits.some, immutable.Seq(message))))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -217,7 +217,7 @@ class TransportMessageCodecSpec extends Specification {
       val encoded = hex"0400000000000000014c010000000c4608e7071210c62a5342b7624d6586138ccbb48dfa691a22080110b9601a0c54696d6f746879204b6c696d28023001300230033888a0a5bda902220908021205087b10e7072800".bits
       val user = User(1, 12345L, "Timothy Klim", Some(types.Male), Set(1L, 2L, 3L), 79853867016L)
       val update = DifferenceUpdate(NewDevice(123, 999L))
-      val decoded = RpcResponseBox(1L, Ok(Difference(999, Some(UUID.fromString("c62a5342-b762-4d65-8613-8ccbb48dfa69")), Seq(user), Seq(update), false)))
+      val decoded = RpcResponseBox(1L, Ok(Difference(999, Some(UUID.fromString("c62a5342-b762-4d65-8613-8ccbb48dfa69")), immutable.Seq(user), immutable.Seq(update), false)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -291,9 +291,9 @@ class TransportMessageCodecSpec extends Specification {
     "encode and decode RpcResponse.ResponseImportedContacts" in {
       val encoded = hex"0400000000000000013101000000082b0a22080110b9601a0c54696d6f746879204b6c696d28023001300230033888a0a5bda90212050889061001".bits
       val user = User(1, 12345L, "Timothy Klim", Some(types.Male), Set(1L, 2L, 3L), 79853867016L)
-      val users = Seq(user)
+      val users = immutable.Seq(user)
       val contact = ImportedContact(777L, user.uid)
-      val contacts = Seq(contact)
+      val contacts = immutable.Seq(contact)
       val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right

@@ -5,7 +5,6 @@ import com.datastax.driver.core.ConsistencyLevel
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
-import scala.collection.immutable.Seq
 import scala.concurrent.{ Await }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

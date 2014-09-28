@@ -15,6 +15,7 @@ object PresenceProtocol {
   case class TellPresences(uids: immutable.Seq[Int], target: ActorRef) extends PresenceMessage
 }
 
+// TODO: rename to WeakUpdatesBroker
 object PresenceBroker {
   def topicFor(userId: Int): String = s"presences-${userId}"
 
@@ -74,7 +75,6 @@ class PresenceBroker extends PersistentActor with ActorLogging {
         if (onlineUids.contains(uid)) {
           target ! UserOnlineUpdate(uid)
         } else {
-          target ! UserOfflineUpdate(uid)
           lastSeens.get(uid) match {
             case Some(time) =>
               target ! UserLastSeenUpdate(uid, time)

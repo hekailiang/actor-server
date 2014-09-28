@@ -32,7 +32,7 @@ case class User(uid: Int,
                 fullAvatarFileSize: Option[Int] = None,
                 fullAvatarWidth: Option[Int] = None,
                 fullAvatarHeight: Option[Int] = None,
-                keyHashes: immutable.Set[Long] = Set()) {
+                keyHashes: immutable.Set[Long] = immutable.Set()) {
 
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
@@ -62,7 +62,7 @@ case class User(uid: Int,
     ) yield AvatarImage(FileLocation(id, hash), w, h, size)
 
   lazy val avatar =
-    if (Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
+    if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
       Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
     else
       None
@@ -87,7 +87,7 @@ object User {
       accessSalt = accessSalt,
       name = name,
       sex = sex,
-      keyHashes = Set(publicKeyHash))
+      keyHashes = immutable.Set(publicKeyHash))
   }
 
   def getAccessHash(authId: Long, uid: Int, accessSalt: String): Long = {

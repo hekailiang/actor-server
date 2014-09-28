@@ -40,6 +40,7 @@ object RequestCodec extends Codec[Request] {
     .\(UnsubscribeForOnline.requestType)      { case r: UnsubscribeForOnline      => r } (protoPayload(UnsubscribeForOnlineCodec))
     .\(RequestSetOnline.requestType)          { case r: RequestSetOnline          => r } (protoPayload(RequestSetOnlineCodec))
     .\(RequestSetAvatar.requestType)          { case r: RequestSetAvatar          => r } (protoPayload(RequestSetAvatarCodec))
+    .\(RequestUpdateUser.requestType)         { case r: RequestUpdateUser         => r } (protoPayload(RequestUpdateUserCodec))
     .\(RequestRegisterGooglePush.requestType) { case r: RequestRegisterGooglePush => r } (protoPayload(RequestRegisterGooglePushCodec))
     .\(RequestUnregisterPush.requestType)     { case r: RequestUnregisterPush     => r } (protoPayload(RequestUnregisterPushCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))

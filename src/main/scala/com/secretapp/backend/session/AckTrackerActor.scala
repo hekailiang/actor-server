@@ -57,7 +57,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
 
   def receiveCommand: Receive = {
     case m: RegisterMessage =>
-      println(s"RegisterMessage $state")
+      log.debug(s"RegisterMessage $persistenceId ${m.key} $state")
       persist(m) { _ =>
         val newState = state.withNew(m.key, m.value)
 
@@ -74,14 +74,16 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
         registerMessageAck(m.key)
       }
     case ms: RegisterMessageAcks =>
-      println(s"RegisterMessageAcks $ms")
+      log.debug(s"RegisterMessageAcks $ms")
       persist(ms)(_.keys.foreach(registerMessageAck))
     case GetUnackdMessages =>
+      log.debug(s"GetUnackdMessages $state")
       sender() ! UnackdMessages(state.messages)
   }
 
   def receiveRecover: Receive = {
     case m: RegisterMessage =>
+      log.debug(s"recovering $persistenceId $m")
       state = state.withNew(m.key, m.value)
     case m: RegisterMessageAck =>
       registerMessageAck(m.key)

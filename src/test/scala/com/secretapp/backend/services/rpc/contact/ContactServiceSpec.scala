@@ -25,33 +25,36 @@ class ContactServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "ContactService" should {
-    "handle RPC request import contacts" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
 
-      val messageId = rand.nextLong()
-      val publicKey = hex"ac1d".bits
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      val name = "Timothy Klim"
-      val clientPhoneId = rand.nextLong()
-      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, name = name)
-      authUser(user, defaultPhoneNumber)
-      val secondUser = User.build(uid = userId + 1, authId = authId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber + 1, name = name)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+    "handle RPC import contacts request" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
 
-      val reqContacts = immutable.Seq(ContactToImport(clientPhoneId, defaultPhoneNumber + 1))
-      val rpcReq = RpcRequestBox(Request(RequestImportContacts(reqContacts)))
-      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      send(packageBlob)
+      {
+        implicit val scope = scope1
+        val contacts = immutable.Seq(ContactToImport(42, scope2.user.phoneNumber))
+        val response = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
 
-      val resContacts = immutable.Seq(ImportedContact(clientPhoneId, secondUser.uid))
-      val resBody = ResponseImportedContacts(immutable.Seq(secondUser.toStruct(authId)), resContacts)
-      val rpcRes = RpcResponseBox(messageId, Ok(resBody))
-      val expectMsg = MessageBox(messageId, rpcRes)
-      expectMsgWithAck(expectMsg)
+        response should_== ResponseImportedContacts(
+          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(ImportedContact(42, scope2.user.uid)))
+      }
     }
+
+    "filter out self number" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+
+      {
+        implicit val scope = scope1
+        val contacts = immutable.Seq(
+          ContactToImport(42, scope2.user.phoneNumber),
+          ContactToImport(43, scope1.user.phoneNumber))
+        val response = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
+
+        response should_== ResponseImportedContacts(
+          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(ImportedContact(42, scope2.user.uid)))
+      }
+    }
+
   }
 }

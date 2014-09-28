@@ -68,7 +68,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     select.where(_.number eqs number).one()
   }
 
-  def getEntities(numbers: immutable.Seq[Long])(implicit session: Session): Future[immutable.Seq[Phone]] = {
+  def getEntities(numbers: immutable.Set[Long])(implicit session: Session): Future[immutable.Set[Phone]] = {
     val q = numbers.map { number =>
       select.where(_.number eqs number).one()
     }

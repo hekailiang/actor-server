@@ -7,7 +7,7 @@ import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID
 import scodec.codecs.{ uuid => uuidCodec }
 
-private[session] class PusherActor(sessionActor: ActorRef, authId: Long) extends Actor with ActorLogging {
+private[session] class CommonPusherActor(sessionActor: ActorRef, authId: Long) extends Actor with ActorLogging {
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.CommonUpdateMessage) =>
       log.info(s"Pushing update to session authId=$authId $u")

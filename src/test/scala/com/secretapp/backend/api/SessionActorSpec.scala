@@ -2,7 +2,6 @@ package com.secretapp.backend.api
 
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.language.{ postfixOps, higherKinds }
-import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import akka.testkit._

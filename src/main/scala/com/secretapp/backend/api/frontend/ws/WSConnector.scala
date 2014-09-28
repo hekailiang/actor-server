@@ -20,6 +20,8 @@ import spray.json._
 import DefaultJsonProtocol._
 
 import com.secretapp.backend.protocol.transport.{PackageService, WrappedPackageService, Connector}
+import com.secretapp.backend.data.json.message._
+import play.api.libs.json.{ Json => PJson }
 import scalaz._
 import Scalaz._
 
@@ -42,8 +44,8 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
       parseJsonPackage(x.payload) match {
         case \/-(p) => handleJsonPackage(p)
         case -\/(e) =>
-          val mb = MessageBox(0L, Drop(0L, e))
-          self ! JsonPackage(0L, 0L, mb).left
+          val json = PJson.stringify(PJson.toJson(MessageBox(0L, Drop(0L, e))))
+          self ! JsonPackage(0L, 0L, BitVector(json.getBytes)).left
       }
 
     case pe: JsonPackageEither =>

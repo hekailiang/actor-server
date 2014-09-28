@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
 import akka.dispatch.Dispatcher
+import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
 import java.util.concurrent.Executor
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
@@ -19,6 +20,8 @@ object DBConnector {
     .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
     .withoutMetrics()
+    .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
+    .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
     .build()
 
   lazy val session = blocking {
@@ -33,7 +36,7 @@ object DBConnector {
       SessionIdRecord.createTable(session), AuthSmsCodeRecord.createTable(session),
       PhoneRecord.createTable(session), CommonUpdateRecord.createTable(session),
       UserPublicKeyRecord.createTable(session), fileRecord.createTable(session),
-      GooglePushCredentialsRecord.createTable(session)
+      GooglePushCredentialsRecord.createTable(session), UnregisteredContactRecord.createTable(session)
     ))
   }
 
@@ -42,7 +45,8 @@ object DBConnector {
       UserRecord.truncateTable(session), AuthIdRecord.truncateTable(session),
       SessionIdRecord.truncateTable(session), AuthSmsCodeRecord.truncateTable(session),
       PhoneRecord.truncateTable(session), CommonUpdateRecord.truncateTable(session),
-      UserPublicKeyRecord.truncateTable(session), GooglePushCredentialsRecord.truncateTable(session)
+      UserPublicKeyRecord.truncateTable(session), GooglePushCredentialsRecord.truncateTable(session),
+      UnregisteredContactRecord.truncateTable(session)
     ))
   }
 

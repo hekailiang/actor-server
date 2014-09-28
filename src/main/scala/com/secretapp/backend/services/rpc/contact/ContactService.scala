@@ -4,15 +4,11 @@ import akka.actor._
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.types
 import com.secretapp.backend.api.ApiBrokerService
-import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.transport._
-import com.secretapp.backend.persist.PhoneRecord
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord}
+import com.secretapp.backend.data.models.{UnregisteredContact, User}
 import com.datastax.driver.core.{ Session => CSession }
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -30,30 +26,37 @@ trait ContactService {
   def handleRpcContact: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case RequestImportContacts(contacts) =>
       authorizedRequest {
-        handleRequestImportContacts(contacts)
+        handleRequestImportContacts(contacts.toSet)
       }
   }
 
-  def handleRequestImportContacts(contacts: immutable.Seq[ContactToImport]): Future[RpcResponse] = {
+  def handleRequestImportContacts(rawContacts: Set[ContactToImport]): Future[RpcResponse] = {
+    val contacts = rawContacts.filter(_.phoneNumber != currentUser.get.phoneNumber)
     val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
     val authId = currentAuthId
-    for {
-      items <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
-    } yield {
-      // FIXME: Fuck this three cycles in a row!
-      val users = items.map { item =>
-        struct.User(uid = item.userId, accessHash = User.getAccessHash(authId, item.userId, item.userAccessSalt),
-          phoneNumber = item.number, keyHashes = item.userKeyHashes, name = item.userName,
-          sex = item.userSex.toOption)
-      }
-      val contacts = items.map { user =>
-        ImportedContact(clientPhoneId = clientPhoneMap(user.number), userId = user.userId)
+    PhoneRecord.getEntities(contacts.map(_.phoneNumber)) flatMap { phones =>
+
+      val (users, impContacts, uids, registeredPhones) = phones.foldLeft(
+        (immutable.Seq[struct.User](), immutable.Seq[ImportedContact](), immutable.Set[Int](), immutable.Set[Long]())) {
+        case ((users, impContacts, uids, registeredPhones), p) =>
+          val u = struct.User(
+            p.userId,
+            User.getAccessHash(authId, p.userId, p.userAccessSalt),
+            p.userName,
+            p.userSex.toOption,
+            p.userKeyHashes,
+            p.number)
+          val c = ImportedContact(clientPhoneMap(p.number), p.userId)
+
+          (u +: users, c +: impContacts, uids + p.userId, registeredPhones + p.number)
       }
 
-      val uids: Set[Int] = items.map(_.userId).toSet
-      socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
-
-      Ok(ResponseImportedContacts(users, contacts))
+      val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
+      val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(_, currentUser.get.authId))
+      Future.sequence(unregisteredContacts.map(UnregisteredContactRecord.insertEntity)) map { _ =>
+        socialBrokerRegion ! SocialMessageBox(currentUser.get.uid, RelationsNoted(uids))
+        Ok(ResponseImportedContacts(users, impContacts))
+      }
     }
   }
 }

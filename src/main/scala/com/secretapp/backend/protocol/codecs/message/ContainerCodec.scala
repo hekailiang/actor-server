@@ -1,7 +1,7 @@
 package com.secretapp.backend.protocol.codecs.message
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
+import scala.collection.immutable
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message._
@@ -47,7 +47,7 @@ object ContainerCodec extends Codec[Container] {
 
     for {
       s <- varint.decode(buf); (xs, size) = s
-      msgs <- messages(xs, size.toInt)(Seq())
-    } yield (BitVector.empty, Container(msgs))
+      msgs <- messages(xs, size.toInt)(immutable.Seq())
+    } yield (BitVector.empty, Container(immutable.Seq(msgs: _*)))
   }
 }

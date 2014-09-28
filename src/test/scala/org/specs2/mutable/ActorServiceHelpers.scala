@@ -158,7 +158,7 @@ trait ActorServiceHelpers extends RandomService {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong
-      val user = authDefaultUser(uid)
+      val user = authDefaultUser(uid, phone)
       TestScope(probe, apiActor, session, user)
     }
   }
@@ -212,7 +212,7 @@ trait ActorServiceHelpers extends RandomService {
           )
         ))
         probe.send(destActor, Received(ByteString(MTPackageBoxCodec.encodeValid(pb).toByteArray)))
-        Thread.sleep(100) // let acktracker handle the ack
+        //Thread.sleep(200) // let acktracker handle the ack
         p
     }
   }
@@ -245,7 +245,7 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
-    val receivedPackages = protoReceiveN(n * 2)
+    val receivedPackages = protoReceiveN(n)
 
     val mboxes = receivedPackages flatMap {
       case MTPackage(authId, sessionId, mboxBytes) =>
@@ -260,12 +260,12 @@ trait ActorServiceHelpers extends RandomService {
       case MessageBox(_, ma @ MessageAck(_)) => true
       case _ => false
     }
-    ackPackages.length should equalTo(packages.length)
+
     packages
   }
 
   def receiveOneWithAck()(implicit probe: TestProbe, destActor: ActorRef): MessageBox = {
-    receiveNWithAck(1) match {
+    receiveNWithAck(2) match {
       case Seq(x) => x
       case Seq() => null
       case _ => throw new Exception("Received more than one message")
