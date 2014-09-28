@@ -75,6 +75,9 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
       case rq: RequestMessageReceived =>
         handleMessaging(rq)
 
+      case rq: RequestMessageRead =>
+        handleMessaging(rq)
+
       case rq: updateProto.RequestGetState =>
         handleUpdates(rq)
 

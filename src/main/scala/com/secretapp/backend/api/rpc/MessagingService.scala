@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.update.MessageReceived
+import com.secretapp.backend.data.message.update.{ MessageReceived, MessageRead }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
@@ -42,6 +42,10 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
     case RpcProtocol.Request(RequestMessageReceived(uid, randomId, accessHash)) =>
       val replyTo = sender()
       handleRequestMessageReceived(uid, randomId, accessHash) pipeTo replyTo
+
+    case RpcProtocol.Request(RequestMessageRead(uid, randomId, accessHash)) =>
+      val replyTo = sender()
+      handleRequestMessageRead(uid, randomId, accessHash) pipeTo replyTo
 
     case RpcProtocol.Request(RequestSendMessage(_, _, _, _, _, messages)) if messages.length == 0 =>
       sender ! Error(400, "ZERO_MESSAGES_LENGTH", "Messages lenght is zero.", false)
@@ -102,6 +106,34 @@ sealed trait MessagingService {
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
           } yield Ok(ResponseMessageReceived(seq))
+        } else {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        }
+    }
+  }
+
+  // TODO: DRY
+  protected def handleRequestMessageRead(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
+    val fUsers = Option(usersCache.get(uid)) match {
+      case Some(users) =>
+        Future.successful(users)
+      case None =>
+        UserRecord.getEntities(uid)
+    }
+
+    fUsers flatMap {
+      case users if users.isEmpty =>
+        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
+      case users =>
+        val user = users.head
+
+        if (user.accessHash(currentUser.authId) == accessHash) {
+          users map { u =>
+            updatesBrokerRegion ! NewUpdatePush(u.authId, MessageRead(currentUser.uid, randomId))
+          }
+          for {
+            seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
+          } yield Ok(ResponseMessageRead(seq))
         } else {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         }

@@ -17,6 +17,7 @@ object CommonUpdateMessageCodec {
       case u: UserChanged       => UserChangedCodec.encode(u)
       case u: ContactRegistered => ContactRegisteredCodec.encode(u)
       case u: MessageReceived   => MessageReceivedCodec.encode(u)
+      case u: MessageRead       => MessageReadCodec.encode(u)
     }
   }
 
@@ -30,6 +31,7 @@ object CommonUpdateMessageCodec {
       case UserChanged.commonUpdateType       => UserChangedCodec.decode(buf)
       case ContactRegistered.commonUpdateType => ContactRegisteredCodec.decode(buf)
       case MessageReceived.commonUpdateType   => MessageReceivedCodec.decode(buf)
+      case MessageRead.commonUpdateType       => MessageReadCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

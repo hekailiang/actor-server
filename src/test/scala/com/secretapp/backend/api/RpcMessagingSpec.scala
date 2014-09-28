@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ CommonUpdate, MessageReceived, MessageSent }
+import com.secretapp.backend.data.message.update.{ CommonUpdate, MessageReceived, MessageSent, MessageRead }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
@@ -179,6 +179,44 @@ class RpcMessagingSpec extends RpcSpec {
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[CommonUpdate]
         update.body should beAnInstanceOf[MessageReceived]
+      }
+    }
+
+    "send UpdateMessageRead on RequestMessageRead" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 555L, useAesKey = false,
+          aesMessage = None,
+          messages = immutable.Seq(
+            EncryptedMessage(uid = scope2.user.uid, publicKeyHash = scope2.user.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
+        rq :~> <~:[ResponseSendMessage]
+
+        // subscribe to updates
+        getState(scope)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val rsp = RequestMessageRead(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseMessageRead]
+        rsp.seq should beEqualTo(1)
+      }
+
+      {
+        implicit val scope = scope1
+
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+        val update = updBox.body.asInstanceOf[CommonUpdate]
+        update.body should beAnInstanceOf[MessageRead]
+
+        val diff = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.last.body should beAnInstanceOf[MessageRead]
       }
     }
   }

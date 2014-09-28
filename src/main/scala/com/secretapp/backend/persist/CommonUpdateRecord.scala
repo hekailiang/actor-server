@@ -162,6 +162,18 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
     override lazy val name = "MessageReceived_random_id"
   }
 
+  /**
+    * MessageRead
+    */
+
+  object messageReadUid extends IntColumn(this) {
+    override lazy val name = "MessageRead_uid"
+  }
+
+  object messageReadRandomId extends LongColumn(this) {
+    override lazy val name = "MessageRead_random_id"
+  }
+
   override def fromRow(row: Row): Entity[UUID, updateProto.CommonUpdateMessage] = {
     updateId(row) match {
       case 1L =>
@@ -210,6 +222,9 @@ sealed class CommonUpdateRecord extends CassandraTable[CommonUpdateRecord, Entit
 
       case updateProto.MessageReceived.commonUpdateType =>
         Entity(uuid(row), updateProto.MessageReceived(messageReceivedUid(row), messageReceivedRandomId(row)))
+
+      case updateProto.MessageRead.commonUpdateType =>
+        Entity(uuid(row), updateProto.MessageRead(messageReadUid(row), messageReadRandomId(row)))
     }
 
   }
@@ -303,6 +318,13 @@ object CommonUpdateRecord extends CommonUpdateRecord with DBConnector {
           .value(_.updateId, updateProto.MessageReceived.commonUpdateType)
           .value(_.messageReceivedUid, uid)
           .value(_.messageReceivedRandomId, randomId)
+      case updateProto.MessageRead(uid, randomId) =>
+        insert
+          .value(_.authId, authId)
+          .value(_.uuid, uuid)
+          .value(_.updateId, updateProto.MessageRead.commonUpdateType)
+          .value(_.messageReadUid, uid)
+          .value(_.messageReadRandomId, randomId)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }
