@@ -24,6 +24,7 @@ object Dependencies {
 //    val akkaStreams = "com.typesafe.akka" % "akka-stream-experimental_2.11" % "0.4"
     "com.typesafe.akka" %% "akka-slf4j" % V.akka,
     "com.wandoulabs.akka" %% "spray-websocket" % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
+    "io.spray" %%  "spray-json" % "1.3.0",
 
     "net.databinder.dispatch" %% "dispatch-core" % "0.11.1",
 

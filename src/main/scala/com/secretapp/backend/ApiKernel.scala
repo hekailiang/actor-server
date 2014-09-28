@@ -8,6 +8,7 @@ import akka.kernel.Bootable
 import Tcp._
 import com.secretapp.backend.api.counters.FilesCounter
 import com.secretapp.backend.api._
+import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.services.rpc.presence.PresenceBroker
 import com.secretapp.backend.session.SessionActor
 import spray.can.Http
@@ -46,7 +47,7 @@ class ApiKernel extends Bootable {
     system.actorOf(Props(new HeatingUpActor(address)), "heat-service")
 
     // WS transport bootstrap
-    val wsPort = Try(serverConfig.getInt("ws-port")).getOrElse(8081)
+    val wsPort = Try(serverConfig.getInt("ws-port")).getOrElse(8082)
     val wsService = system.actorOf(WSServer.WebSocketServer.props(sessionRegion), "ws-service")
     IO(UHttp) ! Http.Bind(wsService, hostname, wsPort)
 

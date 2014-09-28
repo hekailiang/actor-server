@@ -7,7 +7,8 @@ import com.secretapp.backend.data.models.AuthId
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.session._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
+import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage}
+import com.secretapp.backend.protocol.codecs.message.JsonMessageBoxCodec
 import scalaz._
 import Scalaz._
 
@@ -23,7 +24,33 @@ trait PackageService extends PackageManagerService {
   def handlePackage(p: MTPackage): Unit = {
     MessageBoxCodec.decodeValue(p.messageBoxBytes) match {
       case \/-(mb) =>
-        handlePackageAuthentication(p, mb) { (p, pMsg) =>
+        handlePackageAuthentication(p, mb, BinaryConnection) { (p, pMsg) =>
+          pMsg match {
+            case Some(m) =>
+              log.info(s"m: $m")
+              val messageId = mb.messageId
+              context.self ! p.replyWith(messageId, m).right
+            case None =>
+          }
+
+          if (p.authId == 0L && p.sessionId == 0L) {
+            val reply = p.replyWith(mb.messageId, ResponseAuthId(currentAuthId)).right // TODO: move SessionActor logic from SA-45
+            context.self ! reply
+          } else {
+            log.debug(s"Sending to session $p")
+            sessionRegion.tell(Envelope(p.authId, p.sessionId, HandleMessageBox(mb)), context.self)
+          }
+        }
+      case -\/(e) =>
+        sendDrop(p, 0, new Exception(e))
+    }
+  }
+
+  //  TODO: DRY
+  def handleJsonPackage(p: JsonPackage): Unit = {
+    JsonMessageBoxCodec.decodeValue(p.messageBoxBytes) match {
+      case \/-(mb) =>
+        handlePackageAuthentication(p, mb, JsonConnection) { (p, pMsg) =>
           pMsg match {
             case Some(m) =>
               log.info(s"m: $m")
@@ -35,17 +62,14 @@ trait PackageService extends PackageManagerService {
           if (p.authId == 0L && p.sessionId == 0L) {
             val reply = p.replyWith(mb.messageId, ResponseAuthId(currentAuthId)).right
             context.self ! reply
-          }
-
-        } andThen {
-          case _ =>
+          } else {
             log.debug(s"Sending to session $p")
             sessionRegion.tell(Envelope(p.authId, p.sessionId, HandleMessageBox(mb)), context.self)
+          }
         }
       case -\/(e) =>
         sendDrop(p, 0, new Exception(e))
     }
-
   }
 
   def handleError(e: HandleError): Unit = e match {

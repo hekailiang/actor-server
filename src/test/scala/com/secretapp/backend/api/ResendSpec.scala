@@ -70,6 +70,8 @@ class ResendServiceSpec extends RpcSpec {
           mb.body
         }
 
+        println(s"m1: $m1, m2: $m2")
+
         if (m1.isInstanceOf[MessageAck]) {
           m2 should beAnInstanceOf[RpcResponseBox]
         } else {

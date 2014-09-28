@@ -1,6 +1,5 @@
-package com.secretapp.backend.api
+package com.secretapp.backend.api.frontend.ws
 
-import com.secretapp.backend.protocol.transport.WSConnector
 import akka.actor._
 import akka.io.IO
 import spray.can.Http
@@ -12,7 +11,6 @@ import spray.routing.HttpServiceActor
 import com.datastax.driver.core.{ Session => CSession }
 
 object WSServer {
-
   object WebSocketServer {
     def props(sessionRegion: ActorRef)(implicit session: CSession) = Props(new WebSocketServer(sessionRegion))
   }
@@ -25,5 +23,4 @@ object WSServer {
         connection ! Http.Register(wsActor)
     }
   }
-
 }

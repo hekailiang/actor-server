@@ -48,7 +48,7 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
   def receive = writing
 
   def writing: Receive = {
-    case pe: PackageEither =>
+    case pe: MTPackageEither =>
       wlog(pe)
       pe match {
         case \/-(p) =>
@@ -80,17 +80,13 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
   }
 
   def buffering: Receive = {
-    case pe: PackageEither =>
+    case pe: MTPackageEither =>
       blog(s"PackageToSend($pe)")
       pe match {
         case \/-(p) =>
-          nextPackage(p) { (index, data) =>
-            buffer(index, data)
-          }
+          nextPackage(p)(buffer)
         case -\/(p) =>
-          nextPackage(p) { (index, data) =>
-            buffer(index, data)
-          }
+          nextPackage(p)(buffer)
           closing = true
       }
     case Received(data) =>
