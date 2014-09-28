@@ -17,7 +17,7 @@ object Resolvers {
     "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
     "spray repo" at "http://repo.spray.io/",
     "Websudos releases" at "http://maven.websudos.co.uk/ext-release-local",
-    Resolver.url("secret repository", url("http://54.77.139.175:8082/content/repositories/snapshots"))(Resolver.ivyStylePatterns),
+    Resolver.url("secret repository", url("http://54.77.139.175:8081/content/repositories/snapshots"))(Resolver.ivyStylePatterns),
     "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven",
     mavenOrg
   )
