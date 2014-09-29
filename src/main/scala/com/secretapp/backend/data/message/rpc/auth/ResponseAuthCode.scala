@@ -2,7 +2,9 @@ package com.secretapp.backend.data.message.rpc.auth
 
 import com.secretapp.backend.data.message.rpc._
 
-case class ResponseAuthCode(smsHash: String, isRegistered: Boolean) extends RpcResponseMessage
+case class ResponseAuthCode(smsHash: String, isRegistered: Boolean) extends RpcResponseMessage {
+  override val header = ResponseAuthCode.responseType
+}
 object ResponseAuthCode extends RpcResponseMessageObject {
-  val responseType = 0x2
+  override val responseType = 0x2
 }

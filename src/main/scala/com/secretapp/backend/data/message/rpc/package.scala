@@ -4,10 +4,14 @@ import scalaz._
 import Scalaz._
 
 package object rpc {
-  trait RpcRequest
+  trait RpcRequest {
+    def rpcType: Int
+  }
   trait RpcResponse
 
-  trait RpcMessage extends ProtobufMessage
+  trait RpcMessage extends ProtobufMessage {
+    def header: Int
+  }
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
 

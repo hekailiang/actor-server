@@ -2,7 +2,9 @@ package com.secretapp.backend.data.message.rpc.update
 
 import com.secretapp.backend.data.message.rpc._
 
-case class RequestGetState() extends RpcRequestMessage
+case class RequestGetState() extends RpcRequestMessage {
+  override val header = RequestGetState.requestType
+}
 object RequestGetState extends RpcRequestMessageObject {
-  val requestType = 0x9
+  override val requestType = 0x9
 }

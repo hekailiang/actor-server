@@ -9,7 +9,9 @@ case class Difference(seq: Int,
                       state: Option[UUID],
                       users: immutable.Seq[struct.User],
                       updates: immutable.Seq[DifferenceUpdate],
-                      needMore: Boolean) extends RpcResponseMessage
+                      needMore: Boolean) extends RpcResponseMessage {
+  override val header = Difference.responseType
+}
 object Difference extends RpcResponseMessageObject {
-  val responseType = 0xc
+  override val responseType = 0xc
 }

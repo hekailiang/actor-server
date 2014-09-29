@@ -11,7 +11,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-case class DifferenceUpdate(body: CommonUpdateMessage) extends RpcResponseMessage
+case class DifferenceUpdate(body: CommonUpdateMessage)
 {
   def toProto: String \/ protobuf.DifferenceUpdate = {
     for {
