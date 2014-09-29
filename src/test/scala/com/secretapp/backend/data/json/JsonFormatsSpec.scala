@@ -15,11 +15,11 @@ class JsonFormatsSpec extends Specification {
     "(de)serialize MessageBox" in {
       val v = MessageBox(1, Ping(2))
       val j = Json.obj(
-        "messageId" -> 1,
+        "messageId" -> "1",
         "body"      -> Json.obj(
           "header" -> Ping.header,
           "body"   -> Json.obj(
-            "randomId" -> 2
+            "randomId" -> "2"
           )
         )
       )
@@ -36,20 +36,20 @@ class JsonFormatsSpec extends Specification {
         "body"   -> Json.obj(
           "messages" -> Json.arr(
             Json.obj(
-              "messageId" -> 1,
+              "messageId" -> "1",
               "body"      -> Json.obj(
                 "header" -> Ping.header,
                 "body"   -> Json.obj(
-                  "randomId" -> 2
+                  "randomId" -> "2"
                 )
               )
             ),
             Json.obj(
-              "messageId" -> 3,
+              "messageId" -> "3",
               "body"      -> Json.obj(
                 "header"   -> Pong.header,
                 "body"     -> Json.obj(
-                  "randomId" -> 4
+                  "randomId" -> "4"
                 )
               )
             )
@@ -64,7 +64,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> Drop.header,
         "body"   -> Json.obj(
-          "messageId" -> 42,
+          "messageId" -> "42",
           "message"   -> "Body"
         )
       )
@@ -76,7 +76,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> MessageAck.header,
         "body"   -> Json.obj(
-          "messageIds" -> Json.arr(1, 2, 3)
+          "messageIds" -> Json.arr("1", "2", "3")
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -87,8 +87,8 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> NewSession.header,
         "body"   -> Json.obj(
-          "sessionId" -> 1,
-          "messageId" -> 2
+          "sessionId" -> "1",
+          "messageId" -> "2"
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -99,7 +99,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> Ping.header,
         "body"   -> Json.obj(
-          "randomId" -> 1
+          "randomId" -> "1"
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -110,7 +110,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header"   -> Pong.header,
         "body"     -> Json.obj(
-          "randomId" -> 1
+          "randomId" -> "1"
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -130,7 +130,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> RequestResend.header,
         "body"   -> Json.obj(
-          "messageId" -> 1
+          "messageId" -> "1"
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -141,7 +141,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> ResponseAuthId.header,
         "body"   -> Json.obj(
-          "authId" -> 1
+          "authId" -> "1"
         )
       )
       testToAndFromJson[TransportMessage](j, v)
@@ -156,7 +156,7 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> UnsentMessage.header,
         "body"   -> Json.obj(
-          "messageId" -> 1,
+          "messageId" -> "1",
           "length"    -> 2
         )
       )
@@ -168,8 +168,8 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> UnsentResponse.header,
         "body"   -> Json.obj(
-          "messageId"        -> 1,
-          "requestMessageId" -> 2,
+          "messageId"        -> "1",
+          "requestMessageId" -> "2",
           "length"           -> 3
         )
       )

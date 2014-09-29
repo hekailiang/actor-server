@@ -1,11 +1,13 @@
 package com.secretapp.backend.data.json.message
 
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc.{RpcResponse, RpcRequest}
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.update.UpdateMessage
 import com.secretapp.backend.data.transport._
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import com.secretapp.backend.data.json._
 
 class UnitFormat[A](implicit m: scala.reflect.Manifest[A]) extends Format[A] {
   override def writes(o: A): JsValue = Json.obj()
@@ -15,21 +17,45 @@ class UnitFormat[A](implicit m: scala.reflect.Manifest[A]) extends Format[A] {
 trait JsonFormats {
 
   implicit object rpcRequestFormat extends Format[RpcRequest] {
-    override def writes(o: RpcRequest): JsValue = ???
+    override def writes(o: RpcRequest): JsValue = Json.obj(
+      "rpcType" -> o.rpcType,
+      "body"    -> (o match {
+        case r: Request         => requestFormat.writes(r)
+        case r: RequestWithInit => requestWithInitFormat.writes(r)
+      })
+    )
 
-    override def reads(json: JsValue): JsResult[RpcRequest] = ???
+    private case class RpcRequestPrepared(rpcType: Int, body: JsObject)
+
+    private implicit val rpcRequestReads: Reads[RpcRequestPrepared] = (
+      (JsPath \ "rpcType").read[Int] ~
+      (JsPath \ "body"   ).read[JsObject]
+    )(RpcRequestPrepared.apply _)
+
+    override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[RpcRequestPrepared](json) flatMap {
+      case RpcRequestPrepared(rpcType, body) => rpcType match {
+        case Request.rpcType         => requestFormat.reads(body)
+        case RequestWithInit.rpcType => requestWithInitFormat.reads(body)
+      }
+    }
+  }
+
+  implicit object rpcRequestMessageFormat extends Format[RpcRequestMessage] {
+    override def reads(json: JsValue): JsResult[RpcRequestMessage] = JsError(Seq(JsPath() -> Seq(ValidationError("not-implemented"))))
+
+    override def writes(o: RpcRequestMessage): JsValue = JsString("Not implemented")
   }
 
   implicit object rpcResponseFormat extends Format[RpcResponse] {
-    override def writes(o: RpcResponse): JsValue = ???
+    override def writes(o: RpcResponse): JsValue = JsString("Not implemented")
 
-    override def reads(json: JsValue): JsResult[RpcResponse] = ???
+    override def reads(json: JsValue): JsResult[RpcResponse] = JsError(Seq(JsPath() -> Seq(ValidationError("not-implemented"))))
   }
 
   implicit object updateMessageFormat extends Format[UpdateMessage] {
-    override def writes(o: UpdateMessage): JsValue = ???
+    override def writes(o: UpdateMessage): JsValue = JsString("Not implemented")
 
-    override def reads(json: JsValue): JsResult[UpdateMessage] = ???
+    override def reads(json: JsValue): JsResult[UpdateMessage] = JsError(Seq(JsPath() -> Seq(ValidationError("not-implemented"))))
   }
 
   implicit object transportMessageFormat extends Format[TransportMessage] {
@@ -98,4 +124,12 @@ trait JsonFormats {
   val unsentMessageFormat  = Json.format[UnsentMessage]
   val unsentResponseFormat = Json.format[UnsentResponse]
   val updateBoxFormat      = Json.format[UpdateBox]
+
+  // RpcRequest decendants
+  val requestFormat         = Json.format[Request]
+  val requestWithInitFormat: Format[RequestWithInit] = new Format[RequestWithInit] {
+    override def writes(o: RequestWithInit): JsValue = JsString("Not implemented")
+
+    override def reads(json: JsValue): JsResult[RequestWithInit] = JsError(Seq(JsPath() -> Seq(ValidationError("not-implemented"))))
+  }
 }

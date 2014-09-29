@@ -4,8 +4,10 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct.UserId
 import scala.collection.immutable
 
-case class UnsubscribeForOnline(users: immutable.Seq[UserId]) extends RpcRequestMessage
+case class UnsubscribeForOnline(users: immutable.Seq[UserId]) extends RpcRequestMessage {
+  override val header = UnsubscribeForOnline.requestType
+}
 
 object UnsubscribeForOnline extends RpcRequestMessageObject {
-  val requestType = 0x21
+  override val requestType = 0x21
 }

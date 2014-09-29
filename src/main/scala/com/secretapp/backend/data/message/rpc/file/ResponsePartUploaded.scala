@@ -2,8 +2,10 @@ package com.secretapp.backend.data.message.rpc.file
 
 import com.secretapp.backend.data.message.rpc._
 
-case class ResponsePartUploaded() extends RpcResponseMessage
+case class ResponsePartUploaded() extends RpcResponseMessage {
+  override val header = ResponsePartUploaded.responseType
+}
 
 object ResponsePartUploaded extends RpcResponseMessageObject {
-  val responseType = 0x15
+  override val responseType = 0x15
 }

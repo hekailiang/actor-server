@@ -5,7 +5,9 @@ import java.util.UUID
 
 case class ResponseSendMessage(mid: Int,
                                seq: Int,
-                               state: UUID) extends RpcResponseMessage
+                               state: UUID) extends RpcResponseMessage {
+  override val header = ResponseSendMessage.responseType
+}
 object ResponseSendMessage extends RpcResponseMessageObject {
-  val responseType = 0xf
+  override val responseType = 0xf
 }

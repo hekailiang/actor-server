@@ -6,8 +6,10 @@ import scodec.bits.BitVector
 case class RequestSignIn(phoneNumber: Long,
                          smsHash: String,
                          smsCode: String,
-                         publicKey: BitVector) extends RequestSign
+                         publicKey: BitVector) extends RequestSign {
+  override val header = RequestSignIn.requestType
+}
 
 object RequestSignIn extends RpcRequestMessageObject {
-  val requestType = 0x3
+  override val requestType = 0x3
 }
