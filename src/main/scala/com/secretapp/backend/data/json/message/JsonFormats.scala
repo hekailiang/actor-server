@@ -10,9 +10,10 @@ import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeForOnline, Su
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar}
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar, User, UserId}
 import com.secretapp.backend.data.message.update.UpdateMessage
 import com.secretapp.backend.data.transport._
+import com.secretapp.backend.data.types.{Male, Female, NoSex, Sex}
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -52,7 +53,7 @@ trait JsonFormats {
         case e: Error                    => errorFormat.writes(e)
         case w: FloodWait                => floodWaitFormat.writes(w)
         case e: InternalError            => internalErrorFormat.writes(e)
-        case o: Ok                       => okFormat.writes(o)
+        //case o: Ok                       => okFormat.writes(o)
       })
     )
 
@@ -69,7 +70,7 @@ trait JsonFormats {
         case Error.rpcType                    => errorFormat.reads(body)
         case FloodWait.rpcType                => floodWaitFormat.reads(body)
         case InternalError.rpcType            => internalErrorFormat.reads(body)
-        case Ok.rpcType                       => okFormat.reads(body)
+        //case Ok.rpcType                       => okFormat.reads(body)
       }
     }
   }
@@ -213,6 +214,23 @@ trait JsonFormats {
   implicit val publicKeyRequestFormat = Json.format[PublicKeyRequest]
   implicit val encryptedMessageFormat = Json.format[EncryptedMessage]
   implicit val userIdFormat           = Json.format[UserId]
+  implicit val avatarImageFormat      = Json.format[AvatarImage]
+  implicit val avatarFormat           = Json.format[Avatar]
+  implicit val sexFormat              = new Format[Sex] {
+    override def reads(json: JsValue): JsResult[Sex] = json match {
+      case JsString("male")   => JsSuccess(Male)
+      case JsString("female") => JsSuccess(Female)
+      case JsString("nosex")  => JsSuccess(NoSex)
+    }
+
+    override def writes(o: Sex): JsValue = o match {
+      case Male   => JsString("male")
+      case Female => JsString("female")
+      case NoSex  => JsString("nosex")
+    }
+  }
+  implicit val userFormat             = Json.format[User]
+  //implicit val differenceUpdate: Format[DifferenceUpdate]       = ???
 
   // TransportMessage descendants
   val containerFormat      = Json.format[Container]
@@ -230,7 +248,7 @@ trait JsonFormats {
   val unsentResponseFormat = Json.format[UnsentResponse]
   val updateBoxFormat      = Json.format[UpdateBox]
 
-  // RpcMessage descendants
+  // RpcRequestMessage descendants
   val requestAuthCodeFormat           = Json.format[RequestAuthCode]
   val requestCompleteUploadFormat     = Json.format[RequestCompleteUpload]
   val requestGetDifferenceFormat      = Json.format[RequestGetDifference]
@@ -253,6 +271,9 @@ trait JsonFormats {
   val subscribeForOnlineFormat        = Json.format[SubscribeForOnline]
   val unsubscribeForOnlineFormat      = Json.format[UnsubscribeForOnline]
 
+  // RpcResponseMessage descendants
+  //val differenceFormat                = Json.format[Difference]
+
   // RpcRequest descendants
   val requestFormat         = Json.format[Request]
   val requestWithInitFormat = Json.format[RequestWithInit]
@@ -262,5 +283,5 @@ trait JsonFormats {
   val errorFormat                    = Json.format[Error]
   val floodWaitFormat                = Json.format[FloodWait]
   val internalErrorFormat            = Json.format[InternalError]
-  val okFormat                       = Json.format[Ok]
+  //val okFormat                       = Json.format[Ok]
 }

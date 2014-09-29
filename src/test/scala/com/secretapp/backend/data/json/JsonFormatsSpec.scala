@@ -12,8 +12,9 @@ import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeForOnline, Su
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
 import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar}
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.struct.{User, Avatar, AvatarImage, UserId}
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.data.types.{NoSex, Female, Sex, Male}
 import org.specs2.mutable.Specification
 import com.secretapp.backend.data.json.message._
 import play.api.libs.json
@@ -109,6 +110,113 @@ class JsonFormatsSpec extends Specification {
         "accessHash" -> "2"
       )
       testToAndFromJson[UserId](j, v)
+    }
+
+    "(de)serialize AvatarImage" in {
+      val v = AvatarImage(FileLocation(1, 2), 3, 4, 5)
+      val j = Json.obj(
+        "fileLocation" -> Json.obj(
+          "fileId"     -> "1",
+          "accessHash" -> "2"
+        ),
+        "width"        -> 3,
+        "height"       -> 4,
+        "fileSize"     -> 5
+      )
+      testToAndFromJson[AvatarImage](j, v)
+    }
+
+    "(de)serialize Avatar" in {
+      val v = Avatar(
+        AvatarImage(FileLocation(1, 2), 3, 4, 5).some,
+        AvatarImage(FileLocation(6, 7), 8, 9, 10).some,
+        AvatarImage(FileLocation(11, 12), 13, 14, 15).some)
+      val j = Json.obj(
+        "smallImage" -> Json.obj(
+          "fileLocation" -> Json.obj(
+            "fileId"     -> "1",
+            "accessHash" -> "2"
+          ),
+          "width"        -> 3,
+          "height"       -> 4,
+          "fileSize"     -> 5
+        ),
+        "largeImage" -> Json.obj(
+          "fileLocation" -> Json.obj(
+            "fileId"     -> "6",
+            "accessHash" -> "7"
+          ),
+          "width"        -> 8,
+          "height"       -> 9,
+          "fileSize"     -> 10
+        ),
+        "fullImage" -> Json.obj(
+          "fileLocation" -> Json.obj(
+            "fileId"     -> "11",
+            "accessHash" -> "12"
+          ),
+          "width"        -> 13,
+          "height"       -> 14,
+          "fileSize"     -> 15
+        )
+      )
+      testToAndFromJson[Avatar](j, v)
+    }
+
+    "(de)serialize Sex" in {
+      Json.toJson(Male)                        should be_== (JsString("male"))
+      Json.fromJson[Sex](JsString("male")).get should be_== (Male)
+
+      Json.toJson(Female)                        should be_== (JsString("female"))
+      Json.fromJson[Sex](JsString("female")).get should be_== (Female)
+
+      Json.toJson(NoSex)                        should be_== (JsString("nosex"))
+      Json.fromJson[Sex](JsString("nosex")).get should be_== (NoSex)
+    }
+
+    "(de)serialize User" in {
+      val v = User(16, 17, "name", Male.some, Set(18), 19, Avatar(
+        AvatarImage(FileLocation(1, 2), 3, 4, 5).some,
+        AvatarImage(FileLocation(6, 7), 8, 9, 10).some,
+        AvatarImage(FileLocation(11, 12), 13, 14, 15).some).some)
+      val j = Json.obj(
+        "uid"         -> 16,
+        "accessHash"  -> "17",
+        "name"        -> "name",
+        "sex"         -> "male",
+        "keyHashes"   -> Json.arr("18"),
+        "phoneNumber" -> "19",
+        "avatar"      -> Json.obj(
+          "smallImage" -> Json.obj(
+            "fileLocation" -> Json.obj(
+              "fileId"     -> "1",
+              "accessHash" -> "2"
+            ),
+            "width"        -> 3,
+            "height"       -> 4,
+            "fileSize"     -> 5
+          ),
+          "largeImage" -> Json.obj(
+            "fileLocation" -> Json.obj(
+              "fileId"     -> "6",
+              "accessHash" -> "7"
+            ),
+            "width"        -> 8,
+            "height"       -> 9,
+            "fileSize"     -> 10
+          ),
+          "fullImage" -> Json.obj(
+            "fileLocation" -> Json.obj(
+              "fileId"     -> "11",
+              "accessHash" -> "12"
+            ),
+            "width"        -> 13,
+            "height"       -> 14,
+            "fileSize"     -> 15
+          )
+        )
+      )
+      testToAndFromJson[User](j, v)
     }
 
     "(de)serialize Container" in {
