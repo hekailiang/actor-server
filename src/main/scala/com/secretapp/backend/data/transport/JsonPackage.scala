@@ -12,6 +12,8 @@ case class JsonPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector
     JsonPackage(authId, sessionId, JsonMessageBoxCodec.encodeValid(mb))
   }
 
+  // TODO
+  @deprecated("move into JsonPackageCodec", "")
   def toJson: ByteString = {
     ByteString(s"[${this.authId},${this.sessionId},") ++ ByteString(this.messageBoxBytes.toByteBuffer) ++ ByteString("]")
   }

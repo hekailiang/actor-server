@@ -35,7 +35,7 @@ object Dependencies {
     "com.websudos"               %% "phantom-udt"                   % V.phantom,
     "com.wandoulabs.akka"        %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
     "io.spray"                   %% "spray-caching"                 % V.spray,
-	  "io.spray"                   %%  "spray-json"                   % "1.3.0",
+    "io.spray"                   %% "spray-json"                   % "1.3.0",
     "net.databinder.dispatch"    %% "dispatch-core"                 % "0.11.1",
     "net.sandrogrzicic"          %% "scalabuff-compiler"            % "1.3.8",
     "net.sandrogrzicic"          %% "scalabuff-runtime"             % "1.3.8",

@@ -88,7 +88,6 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
       if (currentSessionId == 0L) {
         currentSessionId = sessionId
       }
-      println(s"sessionRegion ! SessionProtocol.Envelope: ${SessionProtocol.NewConnection(context.self, transport)}")
       sessionRegion ! SessionProtocol.Envelope(currentAuthId, sessionId, SessionProtocol.NewConnection(context.self, transport))
       currentSessions.add(sessionId)
     }
@@ -104,11 +103,9 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
             case Success(ms) => ms match {
               case Left(sessionId) =>
                 updateCurrentSession(sessionId)
-                println("before f!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 f(p, None)
               case Right(sessionId) =>
                 updateCurrentSession(sessionId)
-                println("before f!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 f(p, Some(NewSession(sessionId, mb.messageId)))
             }
             case Failure(e) => sendDrop(p, mb.messageId, e)
