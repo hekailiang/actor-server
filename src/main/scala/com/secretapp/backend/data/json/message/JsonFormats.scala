@@ -45,9 +45,33 @@ trait JsonFormats {
   }
 
   implicit object rpcResponseFormat extends Format[RpcResponse] {
-    override def reads(json: JsValue): JsResult[RpcResponse] = ???
+    override def writes(o: RpcResponse): JsValue = Json.obj(
+      "header" -> o.rpcType,
+      "body"   -> (o match {
+        case e: ConnectionNotInitedError => connectionNotInitedErrorFormat.writes(e)
+        case e: Error                    => errorFormat.writes(e)
+        case w: FloodWait                => floodWaitFormat.writes(w)
+        case e: InternalError            => internalErrorFormat.writes(e)
+        case o: Ok                       => okFormat.writes(o)
+      })
+    )
 
-    override def writes(o: RpcResponse): JsValue = ???
+    private case class RpcResponsePrepared(rpcType: Int, body: JsObject)
+
+    private implicit val rpcResponseReads: Reads[RpcResponsePrepared] = (
+      (JsPath \ "header").read[Int] ~
+      (JsPath \ "body"  ).read[JsObject]
+    )(RpcResponsePrepared.apply _)
+
+    override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[RpcResponsePrepared](json) flatMap {
+      case RpcResponsePrepared(rpcType, body) => rpcType match {
+        case ConnectionNotInitedError.rpcType => connectionNotInitedErrorFormat.reads(body)
+        case Error.rpcType                    => errorFormat.reads(body)
+        case FloodWait.rpcType                => floodWaitFormat.reads(body)
+        case InternalError.rpcType            => internalErrorFormat.reads(body)
+        case Ok.rpcType                       => okFormat.reads(body)
+      }
+    }
   }
 
   // Remove me!
@@ -229,7 +253,14 @@ trait JsonFormats {
   val subscribeForOnlineFormat        = Json.format[SubscribeForOnline]
   val unsubscribeForOnlineFormat      = Json.format[UnsubscribeForOnline]
 
-  // RpcRequest decendants
+  // RpcRequest descendants
   val requestFormat         = Json.format[Request]
   val requestWithInitFormat = Json.format[RequestWithInit]
+
+  // RpcResponse descendants
+  val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]
+  val errorFormat                    = Json.format[Error]
+  val floodWaitFormat                = Json.format[FloodWait]
+  val internalErrorFormat            = Json.format[InternalError]
+  val okFormat                       = Json.format[Ok]
 }

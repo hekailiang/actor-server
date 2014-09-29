@@ -527,6 +527,118 @@ class JsonFormatsSpec extends Specification {
       )
       testToAndFromJson[RpcRequestMessage](j, v)
     }
+
+    "(de)serialize Request" in {
+      val v = Request(UnsubscribeForOnline(immutable.Seq(UserId(1, 2))))
+      val j = Json.obj(
+        "header" -> Request.rpcType,
+        "body"   -> Json.obj(
+          "body" -> Json.obj(
+            "header" -> UnsubscribeForOnline.requestType,
+            "body"   -> Json.obj(
+              "users" -> Json.arr(
+                Json.obj(
+                  "uid"        -> 1,
+                  "accessHash" -> "2"
+                )
+              )
+            )
+          )
+        )
+      )
+      testToAndFromJson[RpcRequest](j, v)
+    }
+
+    "(de)serialize RequestWithInit" in {
+      val v = RequestWithInit(
+        InitConnection(1, 2, "vendor", "model", "appLanguage", "osLanguage", "countryIso".some),
+        UnsubscribeForOnline(immutable.Seq(UserId(1, 2)))
+      )
+      val j = Json.obj(
+        "header" -> RequestWithInit.rpcType,
+        "body"   -> Json.obj(
+          "initConnection" -> Json.obj(
+            "applicationId"           -> 1,
+            "applicationVersionIndex" -> 2,
+            "deviceVendor"            -> "vendor",
+            "deviceModel"             -> "model",
+            "appLanguage"             -> "appLanguage",
+            "osLanguage"              -> "osLanguage",
+            "countryISO"              -> "countryIso"
+          ),
+          "body" -> Json.obj(
+            "header" -> UnsubscribeForOnline.requestType,
+            "body"   -> Json.obj(
+              "users" -> Json.arr(
+                Json.obj(
+                  "uid"        -> 1,
+                  "accessHash" -> "2"
+                )
+              )
+            )
+          )
+        )
+      )
+      testToAndFromJson[RpcRequest](j, v)
+    }
+
+    "(de)serialize ConnectionNotInitedError" in {
+      val v = ConnectionNotInitedError()
+      val j = Json.obj(
+        "header" -> ConnectionNotInitedError.rpcType,
+        "body"   -> Json.obj()
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }
+
+    "(de)serialize Error" in {
+      val v = Error(1, "tag", "userMessage", true)
+      val j = Json.obj(
+        "header" -> Error.rpcType,
+        "body"   -> Json.obj(
+          "code"        -> 1,
+          "tag"         -> "tag",
+          "userMessage" -> "userMessage",
+          "canTryAgain" -> true
+        )
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }
+
+    "(de)serialize FloodWait" in {
+      val v = FloodWait(1)
+      val j = Json.obj(
+        "header" -> FloodWait.rpcType,
+        "body"   -> Json.obj(
+          "delay"        -> 1
+        )
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }
+
+    "(de)serialize InternalError" in {
+      val v = InternalError(true, 1)
+      val j = Json.obj(
+        "header" -> InternalError.rpcType,
+        "body"   -> Json.obj(
+          "canTryAgain"   -> true,
+          "tryAgainDelay" -> 1
+        )
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }
+
+    /*"(de)serialize Ok" in {
+      val v = Ok(true, 1)
+      val j = Json.obj(
+        "header" -> InternalError.rpcType,
+        "body"   -> Json.obj(
+          "canTryAgain"   -> true,
+          "tryAgainDelay" -> 1
+        )
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }*/
   }
 
   private def testToAndFromJson[A](json: JsValue, value: A)
