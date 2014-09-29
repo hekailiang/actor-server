@@ -22,7 +22,7 @@ package object rpc {
     val rpcType: Int
   }
   trait RpcRequestMessageObject {
-    val requestType: Int
+    val requestType: Int // TODO: Rename to `header`
   }
   trait RpcResponseMessageObject {
     val responseType: Int
