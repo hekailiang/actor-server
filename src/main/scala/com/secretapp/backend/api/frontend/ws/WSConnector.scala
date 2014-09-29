@@ -66,6 +66,12 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
 
   private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {
     // TODO: remove this hack
+    def parseJsValue(v: JsValue): Long = v match {
+      case JsString(n) => n.toLong
+      case JsNumber(n) => n.toLong
+      case _ => throw new IllegalArgumentException("Long expected")
+    }
+
     type JsonHead = Tuple3[Long, Long, JsValue]
     object MyJsonProtocol extends DefaultJsonProtocol {
       implicit object JsonHeadFormat extends RootJsonFormat[JsonHead] {
@@ -73,8 +79,8 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
 
         def read(value: JsValue) = {
           value match {
-            case JsArray(Seq(JsNumber(authId), JsNumber(sessionId), message: JsValue)) =>
-              (authId.toLong, sessionId.toLong, message)
+            case JsArray(Seq(authId: JsValue, sessionId: JsValue, message: JsValue)) =>
+              (parseJsValue(authId), parseJsValue(sessionId), message)
             case _ => throw new DeserializationException("JsonHead expected")
           }
         }

@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon.PackageToSend
+import com.secretapp.backend.session.SessionProtocol.TransportConnection
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
@@ -20,6 +21,7 @@ trait PackageAckService {
   val authId: Long
   val sessionId: Long
   val context: ActorContext
+  var transport: Option[TransportConnection]
   def log: LoggingAdapter
 
   import context.dispatcher
@@ -49,7 +51,7 @@ trait PackageAckService {
           // TODO: aggregation
           log.info(s"Sending acknowledgement for $m to $connector")
 
-          val reply = mb.replyWith(authId, sessionId, mb.messageId * 10, MessageAck(Vector(mb.messageId))).right
+          val reply = mb.replyWith(authId, sessionId, mb.messageId * 10, MessageAck(Vector(mb.messageId)), transport.get).right
           connector ! reply
       }
   }

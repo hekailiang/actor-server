@@ -33,7 +33,7 @@ trait SessionService {
 
     mb.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
-        val reply = mb.replyWith(authId, sessionId, Pong(randomId)).right
+        val reply = mb.replyWith(authId, sessionId, Pong(randomId), transport.get).right
         connector.tell(reply, context.self)
       case MessageAck(mids) =>
         ackTracker.tell(RegisterMessageAcks(mids.toList), context.self)
