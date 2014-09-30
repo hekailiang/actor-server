@@ -81,7 +81,7 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
   private def forgetSentCode(phoneNumber: Long, code: String) = sentCodes -= ((phoneNumber, code))
 
   private def forgetSentCodeAfterDelay(phoneNumber: Long, code: String) =
-    context.system.scheduler.scheduleOnce(smsWaitIntervalMs.milliseconds, self, forgetSentCode(phoneNumber, code))
+    context.system.scheduler.scheduleOnce(smsWaitIntervalMs.milliseconds, self, ForgetSentCode(phoneNumber, code))
 
   private def sendCode(phoneNumber: Long, code: String): Unit = {
     if (codeWasNotSent(phoneNumber, code)) {
@@ -92,12 +92,14 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
   }
 
   override def receive: Receive = {
-    case Send(phoneNumber, code) => sendCode(phoneNumber, code)
+    case Send(phoneNumber, code)           => sendCode(phoneNumber, code)
+    case ForgetSentCode(phoneNumber, code) => forgetSentCode(phoneNumber, code)
   }
 }
 
 object ClickatellSmsEngineActor {
   case class Send(phoneNumber: Long, code: String)
+  case class ForgetSentCode(phoneNumber: Long, code: String)
 
   def apply(config: Config)(implicit system: ActorSystem): ActorRef = system.actorOf(
     Props(classOf[ClickatellSmsEngineActor], config),
