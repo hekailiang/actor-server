@@ -165,7 +165,7 @@ message RequestEditName {
 message RequestEditAvatar {
     required FileLocation fileLocation = 1;
 }
-// API#0x20
+// API#0x44
 message ResponseAvatarChanged {
     required Avatar avatar = 1;
 }
