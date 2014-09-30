@@ -40,10 +40,12 @@ trait ClickatellSmsEngine {
       .addQueryParameter("api_id", apiId)
   }
 
-  def send(phoneNumber: Long, text: String): Future[String] = {
+  private def message(code: String) = s"Your secret app activation code: $code"
+
+  def send(phoneNumber: Long, code: String): Future[String] = {
     val req = svc
       .addQueryParameter("to", phoneNumber.toString)
-      .addQueryParameter("text", text)
+      .addQueryParameter("text", message(code))
 
     http(req OK as.String)
   }
@@ -53,12 +55,12 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
   import ClickatellSmsEngineActor._
 
   override def receive: Receive = {
-    case Send(phoneNumber, text) => send(phoneNumber, text)
+    case Send(phoneNumber, code) => send(phoneNumber, code)
   }
 }
 
 object ClickatellSmsEngineActor {
-  case class Send(phoneNumber: Long, text: String)
+  case class Send(phoneNumber: Long, code: String)
 
   def apply(config: Config)(implicit system: ActorSystem): ActorRef = system.actorOf(
     Props(classOf[ClickatellSmsEngineActor], config),

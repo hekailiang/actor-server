@@ -66,7 +66,7 @@ trait SignService {
           AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
-      clickatell ! ClickatellSmsEngineActor.Send(phoneNumber, s"Your secret app activation code: $smsCode") // TODO: move it to actor with persistence
+      clickatell ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
       Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
     }
   }
