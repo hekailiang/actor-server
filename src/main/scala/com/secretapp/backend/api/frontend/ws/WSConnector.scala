@@ -14,14 +14,11 @@ import spray.can.websocket.Send
 import spray.http.HttpRequest
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
-
-// TODO: remove this hack
-import spray.json._
-import DefaultJsonProtocol._
-
+import scala.util.{ Try, Success, Failure }
 import com.secretapp.backend.protocol.transport.{PackageService, WrappedPackageService, Connector}
 import com.secretapp.backend.data.json.message._
-import play.api.libs.json.{ Json => PJson }
+import com.secretapp.backend.util.parser.BS._
+import play.api.libs.json.Json
 import scalaz._
 import Scalaz._
 
@@ -37,65 +34,41 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
   implicit val timeout: Timeout = Timeout(5.seconds)
 
   def businessLogic: Receive = {
-    //    case x @ (_: BinaryFrame | _: TextFrame) =>
-    case x: TextFrame =>
-      log.info(s"Frame: ${new String(x.payload.toArray)}")
-
-      parseJsonPackage(x.payload) match {
+    case frame: TextFrame =>
+      log.info(s"Frame: ${new String(frame.payload.toArray)}")
+      parseJsonPackage(frame.payload) match {
         case \/-(p) => handleJsonPackage(p)
         case -\/(e) =>
-          val json = PJson.stringify(PJson.toJson(MessageBox(0L, Drop(0L, e))))
+          // TODO
+          val json = Json.stringify(Json.toJson(MessageBox(0L, Drop(0L, e))))
           self ! JsonPackage(0L, 0L, BitVector(json.getBytes)).left
       }
-
     case pe: JsonPackageEither =>
-      println(s"JsonPackageEither: $pe")
       pe match {
         case \/-(p) =>
-          println(s"\\/-p: $p, ${new String(p.messageBoxBytes.toByteArray)}")
           send(TextFrame(p.toJson))
         case -\/(p) =>
-          println(s"-\\/p: $p, ${new String(p.messageBoxBytes.toByteArray)}")
           send(TextFrame(p.toJson))
-          serverConnection ! Send(CloseFrame())
+          send(CloseFrame())
       }
-
     case x: FrameCommandFailed =>
       log.error("frame command failed", x)
   }
 
   private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {
-    // TODO: remove this hack
-    def parseJsValue(v: JsValue): Long = v match {
-      case JsString(n) => n.toLong
-      case JsNumber(n) => n.toLong
-      case _ => throw new IllegalArgumentException("Long expected")
-    }
-
-    type JsonHead = Tuple3[Long, Long, JsValue]
-    object MyJsonProtocol extends DefaultJsonProtocol {
-      implicit object JsonHeadFormat extends RootJsonFormat[JsonHead] {
-        def write(p: JsonHead) = ???
-
-        def read(value: JsValue) = {
-          value match {
-            case JsArray(Seq(authId: JsValue, sessionId: JsValue, message: JsValue)) =>
-              (parseJsValue(authId), parseJsValue(sessionId), message)
-            case _ => throw new DeserializationException("JsonHead expected")
-          }
-        }
-      }
-    }
-    import MyJsonProtocol._
-
-    try {
-      val jsonAst = data.utf8String.parseJson
-      println(s"jsonAst: $jsonAst")
-      val (authId, sessionId, message) = jsonAst.convertTo[JsonHead]
-      JsonPackage(authId, sessionId, BitVector(message.toString.getBytes)).right
-    } catch {
-      case e: Throwable => e.getMessage.left
+    val jsonParser = for {
+      _ <- skipTill(c => c == '[' || isWhiteSpace(c) || c == '"')
+      authId <- parseSigned
+      _ <- skipTill (c => c == ',' || isWhiteSpace(c) || c == '"')
+      sessionId <- parseSigned
+      _ <- skipTill (c => c == ',' || isWhiteSpace(c) || c == '"')
+      _ <- skipRightTill(c => c == ']' || isWhiteSpace(c))
+      message <- slice
+    } yield JsonPackage(authId, sessionId, BitVector(message.toByteBuffer))
+    Try(runParser(jsonParser, data)) match {
+      case Success(jp) => jp.right
+      case Failure(e) =>
+        s"""Expected JSON format: ["authId", "sessionId", {/* message box */}]\nDebug: ${e.getMessage}""".left
     }
   }
 }
-

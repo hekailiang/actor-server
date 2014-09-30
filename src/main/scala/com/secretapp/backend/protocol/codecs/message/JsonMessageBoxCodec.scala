@@ -15,11 +15,13 @@ object JsonMessageBoxCodec {
   def encodeValid(mb: MessageBox): BitVector = encode(mb).toOption.get // TODO
 
   def decode(buf: BitVector): String \/ MessageBox = {
-    val jsonAst = Json.parse(buf.toByteArray)
-    Json.fromJson[MessageBox](jsonAst).asEither match {
-      case Right(mb) => mb.right
-      case Left(e) => e.map { t => s"${t._1}: ${t._2.mkString}" }.mkString("\n").left // TODO
-    }
+    try {
+      val jsonAst = Json.parse(buf.toByteArray)
+      Json.fromJson[MessageBox](jsonAst).asEither match {
+        case Right(mb) => mb.right
+        case Left(e) => e.map { t => s"${t._1}: ${t._2.mkString}"}.mkString("\n").left // TODO
+      }
+    } catch { case e: Throwable => e.getMessage.left }
   }
 
   def decodeValue(buf: BitVector) = decode(buf) // TODO

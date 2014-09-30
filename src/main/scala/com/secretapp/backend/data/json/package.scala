@@ -4,7 +4,6 @@ import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 package object json {
-
   implicit object longFormat extends Format[Long] {
     override def writes(o: Long): JsValue = JsString(o.toString)
 
