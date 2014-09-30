@@ -323,7 +323,7 @@ message UpdateGroupMessage {
 message UpdateGroupInvite {
     required int32 chatId = 1;
     required int64 accessHash = 2;
-    required String title = 3;
+    required string title = 3;
     repeated UserId users = 4;
     required int64 keyHash = 5; // Might be equals to device public key hash
     required bytes aesEncryptedKey = 6;
@@ -404,7 +404,7 @@ message UpdateAvatarChanged {
 // Событие о смене имени пользователя (в том числе и себя)
 message UpdateUserNameChanged {
     required int32 uid = 1;
-    optional String name = 2;
+    optional string name = 2;
 }
 
 // API#0x12
@@ -512,7 +512,7 @@ message InviteUser {
 // API#0x41
 message RequestCreateChat {
     required int64 randomId = 1;
-    required String title = 2;
+    required string title = 2;
     required bytes keyHash = 3;
     required bytes publicKey = 5;
     repeated InviteUser invites = 6;
