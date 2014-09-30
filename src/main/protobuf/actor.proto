@@ -159,7 +159,7 @@ message RequestEditName {
 }
 
 // API#0x1F
-// Ответ: ResponseAvatarChanged#0x20
+// Ответ: ResponseAvatarChanged#0x44
 // #400: IMAGE_LOAD_ERROR - невозможно открыть файл
 // #400: FILE_TOO_BIG - изображение слишком большое
 message RequestEditAvatar {
@@ -318,7 +318,7 @@ message UpdateGroupMessage {
     required bytes message = 7;
 }
 
-// API#019
+// API#0x19
 // Событие о приглашении в чат
 message UpdateGroupInvite {
     required int32 chatId = 1;
@@ -330,30 +330,23 @@ message UpdateGroupInvite {
     required bytes message = 7;
 }
 
-// API#015
+// API#0x15
 // Событие о добавлении участника в чат
 message UpdateGroupUserAdded {
     required int32 chatId = 1;
     required int32 uid = 2;
 }
 
-// API#016
-// Событие об исключении участника из чата
-message UpdateGroupUserRemoved {
-    required int32 chatId = 1;
-    required int32 uid = 2;
-}
-
-// API#017
+// API#0x17
 // Событие о том, что пользователь сам покинул чат
-message UpdateGroupLeave {
+message UpdateGroupUserLeave {
     required int32 chatId = 1;
     required int32 uid = 2;
 }
 
-// API#018
+// API#0x18
 // Событие о том, что пользователя исключили из чата
-message UpdateGroupKick {
+message UpdateGroupUserKick {
     required int32 chatId = 1;
     required int32 uid = 2;
     required int32 kickerUid = 3;
@@ -380,7 +373,7 @@ message UpdateMessageSent {
     required int64 randomId = 2;
 }
 
-// API#0x19
+// API#0x23
 // Событие об отправлении сообщения в группу
 message UpdateMessageGroupSent {
     required int32 chatId = 3;
@@ -430,7 +423,7 @@ message UpdateTyping {
     required int32 typingType = 4;
 }
 
-// API#0x10
+// API#0x22
 message UpdateTypingGroup {
     required int32 chatId = 1;
     required int32 uid = 2;
