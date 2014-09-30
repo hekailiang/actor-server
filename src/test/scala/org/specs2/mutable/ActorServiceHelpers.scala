@@ -128,6 +128,7 @@ trait ActorServiceHelpers extends RandomService {
 
   val counters = new Singletons
   implicit val clusterProxies = new ClusterProxies
+  implicit val singletons = new Singletons()
   val sessionRegion = SessionActor.startRegion()
 
   def probeAndActor() = {

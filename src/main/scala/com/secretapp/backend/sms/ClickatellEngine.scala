@@ -1,5 +1,7 @@
 package com.secretapp.backend.sms
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor._
 import dispatch._, Defaults._
 import com.ning.http.client.extra.ThrottleRequestFilter
@@ -59,7 +61,7 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
 
   private val ignoreIntervalInHours = {
     val clickatellConfig = config.getConfig("sms.clickatell")
-    clickatellConfig.getInt("ignore-interval-hours")
+    clickatellConfig.getDuration("sms-wait-interval", TimeUnit.MILLISECONDS)
   }
 
   private val sentCodes = new mutable.HashSet[(Long, String)]()
@@ -71,7 +73,7 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
   private def forgetSentCode(phoneNumber: Long, code: String) = sentCodes -= ((phoneNumber, code))
 
   private def forgetSentCodeAfterDelay(phoneNumber: Long, code: String) =
-    context.system.scheduler.scheduleOnce(ignoreIntervalInHours.hours) {
+    context.system.scheduler.scheduleOnce(ignoreIntervalInHours.milliseconds) {
       forgetSentCode(phoneNumber, code)
     }
 
