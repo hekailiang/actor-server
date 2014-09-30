@@ -5,6 +5,9 @@ import dispatch._, Defaults._
 import com.ning.http.client.extra.ThrottleRequestFilter
 import com.typesafe.config._
 
+import scala.collection.mutable
+import scala.concurrent.duration._
+
 trait ClickatellSmsEngine {
 
   val config: Config
@@ -54,8 +57,34 @@ trait ClickatellSmsEngine {
 class ClickatellSmsEngineActor(override val config: Config) extends Actor with ActorLogging with ClickatellSmsEngine {
   import ClickatellSmsEngineActor._
 
+  private val ignoreIntervalInHours = {
+    val clickatellConfig = config.getConfig("sms.clickatell")
+    clickatellConfig.getInt("ignore-interval-hours")
+  }
+
+  private val sentCodes = new mutable.HashSet[(Long, String)]()
+
+  private def codeWasNotSent(phoneNumber: Long, code: String) = !sentCodes.contains((phoneNumber, code))
+
+  private def rememberSentCode(phoneNumber: Long, code: String) = sentCodes += ((phoneNumber, code))
+
+  private def forgetSentCode(phoneNumber: Long, code: String) = sentCodes -= ((phoneNumber, code))
+
+  private def forgetSentCodeAfterDelay(phoneNumber: Long, code: String) =
+    context.system.scheduler.scheduleOnce(ignoreIntervalInHours.hours) {
+      forgetSentCode(phoneNumber, code)
+    }
+
+  private def sendCode(phoneNumber: Long, code: String): Unit = {
+    if (codeWasNotSent(phoneNumber, code)) {
+      rememberSentCode(phoneNumber, code)
+      send(phoneNumber, code)
+      forgetSentCodeAfterDelay(phoneNumber, code)
+    }
+  }
+
   override def receive: Receive = {
-    case Send(phoneNumber, code) => send(phoneNumber, code)
+    case Send(phoneNumber, code) => sendCode(phoneNumber, code)
   }
 }
 
