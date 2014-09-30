@@ -65,16 +65,16 @@ object SessionActor {
     case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
   }
 
-  def startRegion()(implicit system: ActorSystem, clusterProxies: ClusterProxies, session: CSession) = ClusterSharding(system).start(
+  def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) = ClusterSharding(system).start(
     typeName = "Session",
-    entryProps = Some(Props(new SessionActor(clusterProxies, session))),
+    entryProps = Some(Props(new SessionActor(singletons, clusterProxies, session))),
     idExtractor = idExtractor,
     shardResolver = shardResolver
   )
 
 }
 
-class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
+class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -101,7 +101,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   var lastConnector: Option[ActorRef] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, subscribedToUpdates, session)), "api-broker")
+  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
   val receiveCommand: Receive = {
     case NewConnection(connector) =>

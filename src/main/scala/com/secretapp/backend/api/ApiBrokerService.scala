@@ -39,6 +39,8 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
   val sessionActor: ActorRef
   val currentAuthId: Long
 
+  val smsEngine = singletons.smsEngine
+
   val subscribedToUpdates: Boolean
 
   val context: ActorContext
@@ -97,7 +99,7 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
   }
 
   protected def authorizedRequest(f: => Future[RpcResponse]): \/[Throwable, Future[RpcResponse]] = {
-    currentUser map (_ => f.right) getOrElse (UserNotAuthenticated).left
+    currentUser map (_ => f.right) getOrElse UserNotAuthenticated.left
   }
 
   protected def unauthorizedRequest(f: => Future[RpcResponse]): \/[Throwable, Future[RpcResponse]] = {

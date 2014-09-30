@@ -40,8 +40,7 @@ trait SignService {
   import context._
   import UpdatesBroker._
 
-  val serverConfig = ConfigFactory.load()
-  val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
+  val clickatell = smsEngine
 
   def handleRpcAuth: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestAuthCode =>
