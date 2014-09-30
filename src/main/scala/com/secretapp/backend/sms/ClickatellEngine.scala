@@ -9,8 +9,10 @@ import com.typesafe.config._
 
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 trait ClickatellSmsEngine {
+  self: ActorLogging =>
 
   val config: Config
 
@@ -47,19 +49,25 @@ trait ClickatellSmsEngine {
 
   private def message(code: String) = s"Your secret app activation code: $code"
 
-  def send(phoneNumber: Long, code: String): Future[String] = {
+  def send(phoneNumber: Long, code: String): Future[Unit] = {
     val req = svc
       .addQueryParameter("to", phoneNumber.toString)
       .addQueryParameter("text", message(code))
 
-    http(req OK as.String)
+    http(req).either andThen {
+      case Success(v) => v match {
+        case Right(_) => log.debug(s"Sent $code to $phoneNumber")
+        case Left(e)  => log.error(e, s"Failed while sending $code to $phoneNumber")
+      }
+      case Failure(e) => log.error(e, s"Failed while sending $code to $phoneNumber")
+    } map { _ => }
   }
 }
 
 class ClickatellSmsEngineActor(override val config: Config) extends Actor with ActorLogging with ClickatellSmsEngine {
   import ClickatellSmsEngineActor._
 
-  private val ignoreIntervalInHours = {
+  private val smsWaitIntervalMs = {
     val clickatellConfig = config.getConfig("sms.clickatell")
     clickatellConfig.getDuration("sms-wait-interval", TimeUnit.MILLISECONDS)
   }
@@ -73,9 +81,7 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
   private def forgetSentCode(phoneNumber: Long, code: String) = sentCodes -= ((phoneNumber, code))
 
   private def forgetSentCodeAfterDelay(phoneNumber: Long, code: String) =
-    context.system.scheduler.scheduleOnce(ignoreIntervalInHours.milliseconds) {
-      forgetSentCode(phoneNumber, code)
-    }
+    context.system.scheduler.scheduleOnce(smsWaitIntervalMs.milliseconds, self, forgetSentCode(phoneNumber, code))
 
   private def sendCode(phoneNumber: Long, code: String): Unit = {
     if (codeWasNotSent(phoneNumber, code)) {
