@@ -88,6 +88,8 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
       rememberSentCode(phoneNumber, code)
       send(phoneNumber, code)
       forgetSentCodeAfterDelay(phoneNumber, code)
+    } else {
+      log.debug(s"Ignoring send $code to $phoneNumber")
     }
   }
 
