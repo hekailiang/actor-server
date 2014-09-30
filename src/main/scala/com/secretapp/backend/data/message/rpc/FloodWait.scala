@@ -1,6 +1,8 @@
 package com.secretapp.backend.data.message.rpc
 
-case class FloodWait(delay: Int) extends RpcResponse
+case class FloodWait(delay: Int) extends RpcResponse {
+  override val rpcType = FloodWait.rpcType
+}
 object FloodWait extends RpcResponseObject {
-  val rpcType = 0x3
+  override val rpcType = 0x3
 }

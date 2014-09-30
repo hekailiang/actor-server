@@ -7,7 +7,9 @@ package object rpc {
   trait RpcRequest {
     def rpcType: Int
   }
-  trait RpcResponse
+  trait RpcResponse {
+    def rpcType: Int
+  }
 
   trait RpcMessage extends ProtobufMessage {
     def header: Int
@@ -22,7 +24,7 @@ package object rpc {
     val rpcType: Int
   }
   trait RpcRequestMessageObject {
-    val requestType: Int
+    val requestType: Int // TODO: Rename to `header`
   }
   trait RpcResponseMessageObject {
     val responseType: Int
