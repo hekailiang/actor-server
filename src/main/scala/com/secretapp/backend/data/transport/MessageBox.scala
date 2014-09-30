@@ -2,7 +2,7 @@ package com.secretapp.backend.data.transport
 
 import com.secretapp.backend.data.message.TransportMessage
 import com.secretapp.backend.protocol.codecs.message.{JsonMessageBoxCodec, MessageBoxCodec}
-import com.secretapp.backend.session.SessionProtocol.{JsonConnection, BinaryConnection, TransportConnection}
+import com.secretapp.backend.api.frontend._
 
 case class MessageBox(messageId: Long, body: TransportMessage) {
   def replyWith(authId: Long, sessionId: Long, replyMessageId: Long, message: TransportMessage, transport: TransportConnection): TransportPackage = {

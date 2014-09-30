@@ -6,38 +6,25 @@ import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.contrib.pattern.ClusterSharding
 import akka.contrib.pattern.ShardRegion
 import akka.persistence._
-import com.secretapp.backend.data.message.Container
-import com.secretapp.backend.data.message.Drop
-import com.secretapp.backend.data.message.ResponseAuthId
-import com.secretapp.backend.data.message.RpcRequestBox
+import com.secretapp.backend.api.frontend._
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.{JsonMessageBoxCodec, MessageBoxCodec}
-import com.secretapp.backend.services.SessionManager
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
 import akka.util.{ ByteString, Timeout }
 import scala.collection.immutable
-import com.secretapp.backend.data.transport.{JsonPackage, TransportPackage, MessageBox, MTPackage}
+import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage}
 import com.datastax.driver.core.{ Session => CSession }
 import scodec.bits._
-import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.api._
-import com.secretapp.backend.api.rpc._
-import com.secretapp.backend.data.message.{ Pong, Ping }
-import com.secretapp.backend.data._
 import PackageCommon._
 import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
 
 object SessionProtocol {
-  sealed trait TransportConnection
-  case object JsonConnection extends TransportConnection
-  case object BinaryConnection extends TransportConnection
-
   // TODO: wrap all messages into Envelope
   sealed trait SessionMessage
   case class NewConnection(connector: ActorRef, transport: TransportConnection) extends SessionMessage
@@ -74,7 +61,7 @@ object SessionActor {
 
 }
 
-class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging {
+class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._

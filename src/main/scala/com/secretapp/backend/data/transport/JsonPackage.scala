@@ -12,9 +12,19 @@ case class JsonPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector
     JsonPackage(authId, sessionId, JsonMessageBoxCodec.encodeValid(mb))
   }
 
-  // TODO
-  @deprecated("move into JsonPackageCodec", "")
-  def toJson: ByteString = {
-    ByteString(s"[${this.authId},${this.sessionId},") ++ ByteString(this.messageBoxBytes.toByteBuffer) ++ ByteString("]")
+  def decodeMessageBox = JsonMessageBoxCodec.decodeValue(this.messageBoxBytes)
+
+  def encode = ByteString(s"[${this.authId},${this.sessionId},") ++ ByteString(this.messageBoxBytes.toByteBuffer) ++ ByteString("]")
+
+  def build(authId: Long, sessionId: Long, message: MessageBox) = JsonPackage.build(authId, sessionId, message)
+}
+
+object JsonPackage {
+  import play.api.libs.json.Json
+  import com.secretapp.backend.data.json.message._
+
+  def build(authId: Long, sessionId: Long, message: MessageBox) = {
+    val json = Json.stringify(Json.toJson(message))
+    JsonPackage(authId, sessionId, BitVector(json.getBytes))
   }
 }

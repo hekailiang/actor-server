@@ -3,19 +3,17 @@ package com.secretapp.backend.protocol.transport
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ Drop, NewSession, TransportMessage }
-import com.secretapp.backend.data.models.{ AuthId, User }
-import com.secretapp.backend.data.transport.{TransportPackage, MTPackage, MessageBox}
+import com.secretapp.backend.data.models.AuthId
+import com.secretapp.backend.data.transport.{TransportPackage, MessageBox}
 import com.secretapp.backend.persist.AuthIdRecord
-import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.{ GeneratorService, SessionManager, UserManagerService }
 import com.secretapp.backend.session.SessionProtocol
 import java.util.concurrent.ConcurrentLinkedQueue
-import com.secretapp.backend.session.SessionProtocol.{TransportConnection, BinaryConnection}
-
+import com.secretapp.backend.api.frontend._
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 import scalaz._
-import scalaz.Scalaz._
+import Scalaz._
 
 trait PackageManagerService extends UserManagerService with GeneratorService with SessionManager {
   self: Connector =>

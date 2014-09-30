@@ -1,11 +1,8 @@
 package com.secretapp.backend.protocol.transport
 
-import akka.actor.Actor
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
-import scala.util.{ Success, Failure }
-import com.secretapp.backend.data.models.AuthId
-import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.session._
+import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage}
 import com.secretapp.backend.protocol.codecs.message.JsonMessageBoxCodec

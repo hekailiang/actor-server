@@ -6,16 +6,14 @@ import akka.util.{ ByteString, Timeout }
 import akka.pattern.ask
 import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
-import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.common.PackageCommon.PackageToSend
-import com.secretapp.backend.session.SessionProtocol.TransportConnection
+import com.secretapp.backend.api.frontend._
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
-trait PackageAckService {
+trait PackageAckService { self: MessageIdGenerator =>
   import AckTrackerProtocol._
 
   val authId: Long
@@ -51,6 +49,7 @@ trait PackageAckService {
           // TODO: aggregation
           log.info(s"Sending acknowledgement for $m to $connector")
 
+          // getMessageId(TransportMsgId)
           val reply = mb.replyWith(authId, sessionId, mb.messageId * 10, MessageAck(Vector(mb.messageId)), transport.get).right
           connector ! reply
       }
