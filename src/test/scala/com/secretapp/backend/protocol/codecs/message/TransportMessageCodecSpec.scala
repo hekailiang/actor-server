@@ -232,7 +232,7 @@ class TransportMessageCodecSpec extends Specification {
     }
 
     "encode and decode RpcResponse.Error" in {
-      val encoded = hex"0400000000000000012202000000010b3430305f554e4b4e4f574e0f776f772c2073756368206572726f720100".bits
+      val encoded = hex"0400000000000000012302000000010b3430305f554e4b4e4f574e0f776f772c2073756368206572726f720100".bits
       val decoded = RpcResponseBox(1L, Error(1, "400_UNKNOWN", "wow, such error", true))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
