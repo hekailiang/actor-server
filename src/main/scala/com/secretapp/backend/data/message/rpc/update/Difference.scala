@@ -11,5 +11,5 @@ case class Difference(seq: Int,
                       updates: immutable.Seq[DifferenceUpdate],
                       needMore: Boolean) extends RpcResponseMessage
 object Difference extends RpcResponseMessageObject {
-  val responseType = 0xc
+  val responseType = 0x0C
 }

@@ -2,7 +2,7 @@ package com.secretapp.backend.services.rpc.files
 
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.Ok
+import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.Request
 import com.secretapp.backend.data.message.rpc.file._
@@ -38,13 +38,13 @@ class FilesServiceSpec extends RpcSpec {
   def uploadFileBlocks(config: UploadConfig)(
     implicit scope: TestScope) = {
     RequestUploadPart(config,
-      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
-    RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponsePartUploaded]
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
+    RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config,
-      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config,
       blockSize + blockSize + blockSize,
-      BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponsePartUploaded]
+      BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponseVoid]
   }
 
   "files service" should {

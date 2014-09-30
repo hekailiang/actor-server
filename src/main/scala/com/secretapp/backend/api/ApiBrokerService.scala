@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.secretapp.backend.api.UpdatesBroker.NewUpdatePush
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.CommonUpdateMessage
+import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.UserPublicKeyRecord
@@ -53,8 +53,6 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
   def handleRpc(messageId: Long): PartialFunction[RpcRequest, \/[Throwable, Future[RpcResponse]]] = {
     case Request(body) =>
       runHandler(messageId, body)
-    case RequestWithInit(initConnection, body) =>
-      runHandler(messageId, body)
   }
 
   def runHandler(messageId: Long, body: RpcRequestMessage): \/[Throwable, Future[RpcResponse]] = {
@@ -70,6 +68,9 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
 
     body match {
       case rq: RequestSendMessage =>
+        handleMessaging(rq)
+
+      case rq: RequestSendGroupMessage =>
         handleMessaging(rq)
 
       case rq: RequestMessageReceived =>
@@ -125,6 +126,6 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
         throw e
     }
 
-  protected def pushUpdate(destAuthId: Long, msg: CommonUpdateMessage): Unit =
+  protected def pushUpdate(destAuthId: Long, msg: SeqUpdateMessage): Unit =
     updatesBrokerRegion ! NewUpdatePush(destAuthId, msg)
 }

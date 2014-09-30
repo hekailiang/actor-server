@@ -3,7 +3,7 @@ package com.secretapp.backend.data.message.struct
 import scala.language.implicitConversions
 import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 import scalaz._
 import Scalaz._
 

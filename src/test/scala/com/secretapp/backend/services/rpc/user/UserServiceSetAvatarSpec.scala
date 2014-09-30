@@ -1,18 +1,17 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{Files, Paths}
-import com.secretapp.backend.data.message.rpc.messaging.{EncryptedMessage, ResponseSendMessage, RequestSendMessage}
-import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference}
+import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
+import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.AvatarImage
 import com.secretapp.backend.data.models.User
 import org.specs2.specification.BeforeExample
-
 import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarUploaded, RequestSetAvatar}
+import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, RequestEditAvatar}
 import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.rpc.RpcSpec
 
@@ -159,7 +158,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def setAvatarShouldBeOk(implicit scope: TestScope) =
-    RequestSetAvatar(fl) :~> <~:[ResponseAvatarUploaded]
+    RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
 
   private def dbUser =
     UserRecord.getEntity(scope.user.uid, scope.user.authId).sync().get
@@ -177,15 +176,16 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       u.uid,
       u.accessHash(scope.user.authId),
       555L,
-      false,
-      None,
-      immutable.Seq(
-        EncryptedMessage(
-          u.uid,
-          u.publicKeyHash,
-          None,
-          Some(BitVector(1, 2, 3)))))
+      message = EncryptedMessage(
+        message = BitVector(1, 2, 3),
+        keys = immutable.Seq(
+          EncryptedKey(
+            u.publicKeyHash, BitVector(1, 0, 1, 0)
+          )
+        )
+      ), selfMessage = None
+    )
 
-    rq :~> <~:[ResponseSendMessage]
+    rq :~> <~:[ResponseSeq]
   }
 }

@@ -2,12 +2,12 @@ package com.secretapp.backend.data.message.update
 
 import scodec.bits.BitVector
 
-case class NewYourDevice(uid: Int, keyHash: Long, key: BitVector) extends CommonUpdateMessage {
-  val commonUpdateType = NewYourDevice.commonUpdateType
+case class NewYourDevice(uid: Int, keyHash: Long, key: BitVector) extends SeqUpdateMessage {
+  val seqUpdateHeader = NewYourDevice.seqUpdateHeader
 
   def userIds: Set[Int] = Set()
 }
 
-object NewYourDevice extends CommonUpdateMessageObject {
-  val commonUpdateType = 0x3
+object NewYourDevice extends SeqUpdateMessageObject {
+  val seqUpdateHeader = 0x3
 }

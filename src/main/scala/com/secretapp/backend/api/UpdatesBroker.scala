@@ -8,13 +8,13 @@ import akka.persistence._
 import akka.util.Timeout
 import com.gilt.timeuuid.TimeUuid
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedMessage
-import com.secretapp.backend.data.message.update.CommonUpdateMessage
+import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import java.util.UUID
 import scala.concurrent.duration._
 import com.datastax.driver.core.{Session => CSession}
 import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.persist.CommonUpdateRecord
+import com.secretapp.backend.persist.SeqUpdateRecord
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import scala.concurrent.Future
@@ -25,18 +25,18 @@ object UpdatesBroker {
 
   // for events which should be processed by some internal logic inside UpdatesBroker
   case class NewUpdateEvent(authId: Long, event: UpdateEvent)
-  case class NewMessageSent(randomId: Long) extends UpdateEvent
-  case class NewMessage(senderUID: Int, destUID: Int, update: EncryptedMessage, aesMessage: Option[BitVector]) extends UpdateEvent
+  case class NewMessageSent(uid: Int, randomId: Long) extends UpdateEvent
+  case class NewMessage(senderUID: Int, destUID: Int, keyHash: Long, aesEncryptedKey: BitVector, message: BitVector) extends UpdateEvent
 
   // for events which should be just pushed to the sequence
-  case class NewUpdatePush(authId: Long, update: CommonUpdateMessage)
+  case class NewUpdatePush(authId: Long, update: SeqUpdateMessage)
 
   case class GetSeq(authId: Long)
 
   case object Stop
 
-  type State = (Int, Int, Option[UUID]) // seq mid mstate
-  type StrictState = (Int, Int, UUID) // seq mid state
+  type State = (Int, Option[UUID]) // seq mid mstate
+  type StrictState = (Int, UUID) // seq mid state
 
   def topicFor(authId: Long): String = s"updates-${authId.toString}"
   def topicFor(authId: String): String = s"updates-${authId}"
@@ -63,7 +63,7 @@ object UpdatesBroker {
   )
 }
 
-// TODO: rename to CommonUpdatesBroker
+// TODO: rename to SeqUpdatesBroker
 class UpdatesBroker(implicit session: CSession) extends PersistentActor with ActorLogging with GooglePush {
   import context.dispatcher
   import ShardRegion.Passivate
@@ -76,9 +76,8 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   val topic = UpdatesBroker.topicFor(self.path.name)
 
   var seq: Int = 0
-  var mid: Int = 0
 
-  type PersistentStateType = (Int, Int) // seq mid
+  type PersistentStateType = Int // Seq
   var lastSnapshottedAtSeq: Int = 0
   val minSnapshotStep: Int = 200
 
@@ -95,32 +94,28 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         pushUpdate(authId, update)
         maybeSnapshot()
       }
-    case p @ NewUpdateEvent(authId, NewMessageSent(randomId)) =>
+    case p @ NewUpdateEvent(authId, NewMessageSent(uid, randomId)) =>
       val replyTo = sender()
       log.info(s"NewMessageSent $p from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
-        mid += 1
-        val update = updateProto.MessageSent(mid, randomId)
+        val update = updateProto.MessageSent(uid, randomId)
         pushUpdate(authId, update) map { reply =>
           replyTo ! reply
         }
         maybeSnapshot()
       }
-    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message, aesMessage)) =>
+    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, keyHash, aesEncryptedKey, message)) =>
       val replyTo = sender()
       log.info(s"NewMessage $p from ${replyTo.path}")
       persist(p) { _ =>
         seq += 1
-        mid += 1
         val update = updateProto.Message(
           senderUID = senderUID,
           destUID = destUID,
-          mid = mid,
-          keyHash = message.publicKeyHash,
-          useAesKey = aesMessage.isDefined,
-          aesKey = message.aesEncryptedKey,
-          message = aesMessage getOrElse message.message.get
+          keyHash = keyHash,
+          aesEncryptedKey = aesEncryptedKey,
+          message = message
         )
         pushUpdate(authId, update)
         deliverGooglePush(destUID, authId, seq)
@@ -136,26 +131,20 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case RecoveryCompleted =>
     case SnapshotOffer(metadata, offeredSnapshot) =>
       log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
-      val (seq, mid) = offeredSnapshot.asInstanceOf[PersistentStateType]
+      val seq = offeredSnapshot.asInstanceOf[PersistentStateType]
       this.seq = seq
-      this.mid = mid
     case msg @ NewUpdatePush(_, update) =>
       log.debug(s"Recovering NewUpdatePush ${msg}")
       this.seq += 1
-      if (update.isInstanceOf[NewMessage] || update.isInstanceOf[NewMessageSent]) {
-        this.mid += 1
-      }
-    case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _)) =>
+    case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _, _)) =>
       log.debug(s"Recovering NewMessage ${msg}")
       this.seq += 1
-      this.mid += 1
-    case msg @ NewUpdateEvent(_, NewMessageSent(_)) =>
+    case msg @ NewUpdateEvent(_, NewMessageSent(_, _)) =>
       log.debug(s"Recovering NewMessageSent ${msg}")
       this.seq += 1
-      this.mid += 1
   }
 
-  private def pushUpdate(authId: Long, update: updateProto.CommonUpdateMessage): Future[StrictState] = {
+  private def pushUpdate(authId: Long, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
     val updSeq = seq
     val uuid = TimeUuid()
@@ -166,21 +155,21 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       case _ =>
         mediator ! Publish(topic, (updSeq, uuid, update))
         log.info(
-          s"Published update authId=$authId seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}"
+          s"Published update authId=$authId seq=${this.seq} state=${uuid} update=${update}"
         )
     }
 
-    CommonUpdateRecord.push(uuid, authId, update)(session) map { _ =>
-      log.debug(s"Wrote update authId=${authId} seq=${this.seq} mid=${this.mid} state=${uuid} update=${update}")
-      (seq, mid, uuid)
+    SeqUpdateRecord.push(uuid, authId, update)(session) map { _ =>
+      log.debug(s"Wrote update authId=${authId} seq=${this.seq} state=${uuid} update=${update}")
+      (seq, uuid)
     }
   }
 
   private def maybeSnapshot(): Unit = {
     if (seq - lastSnapshottedAtSeq >= minSnapshotStep) {
-      log.debug(s"Saving snapshot seq=${seq} mid=${mid} lastSnapshottedAtSeq=${lastSnapshottedAtSeq}")
+      log.debug(s"Saving snapshot seq=${seq} lastSnapshottedAtSeq=${lastSnapshottedAtSeq}")
       lastSnapshottedAtSeq = seq
-      saveSnapshot((seq, mid))
+      saveSnapshot(seq)
     }
   }
 }

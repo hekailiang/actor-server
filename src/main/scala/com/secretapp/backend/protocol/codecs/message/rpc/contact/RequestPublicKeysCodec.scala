@@ -8,7 +8,7 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object RequestPublicKeysCodec extends Codec[RequestPublicKeys] with utils.ProtobufCodec {
   def encode(r: RequestPublicKeys) = {

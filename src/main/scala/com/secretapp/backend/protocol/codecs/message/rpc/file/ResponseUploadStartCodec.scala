@@ -8,9 +8,9 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
-object ResponseUploadStartCodec extends Codec[ResponseUploadStarted] with utils.ProtobufCodec {
+object ResponseUploadStartedCodec extends Codec[ResponseUploadStarted] with utils.ProtobufCodec {
   def encode(r: ResponseUploadStarted) = {
     val boxed = protobuf.ResponseUploadStarted(r.config.toProto)
     encodeToBitVector(boxed)

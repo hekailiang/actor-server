@@ -4,7 +4,7 @@ import akka.actor._
 import akka.contrib.pattern.{ ClusterSingletonManager, ClusterSingletonProxy, DistributedPubSubExtension }
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
-import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.{ update => updateProto }
 import scala.collection.immutable
 import scala.concurrent.duration._
 
@@ -56,7 +56,7 @@ class PresenceBroker extends PersistentActor with ActorLogging {
           optScheduled map (_.cancel())
         case None =>
           log.info(s"Publishing UserOnline ${uid}")
-          mediator ! Publish(PresenceBroker.topicFor(uid), UserOnlineUpdate(uid))
+          mediator ! Publish(PresenceBroker.topicFor(uid), updateProto.UserOnline(uid))
       }
 
       onlineUids = onlineUids + Tuple2(uid, Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(uid))))
@@ -67,17 +67,17 @@ class PresenceBroker extends PersistentActor with ActorLogging {
         onlineUids.get(uid).flatten map (_.cancel())
         onlineUids = onlineUids - uid
         lastSeens = lastSeens + Tuple2(uid, currentTime)
-        mediator ! Publish(PresenceBroker.topicFor(uid), UserOfflineUpdate(uid))
+        mediator ! Publish(PresenceBroker.topicFor(uid), updateProto.UserOffline(uid))
       }
     case TellPresences(uids, target) =>
       log.info(s"TellPresences ${uids} ${target}")
       uids foreach { uid =>
         if (onlineUids.contains(uid)) {
-          target ! UserOnlineUpdate(uid)
+          target ! updateProto.UserOnline(uid)
         } else {
           lastSeens.get(uid) match {
             case Some(time) =>
-              target ! UserLastSeenUpdate(uid, time)
+              target ! updateProto.UserLastSeen(uid, time)
             case None =>
           }
         }

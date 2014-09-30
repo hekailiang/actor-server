@@ -47,10 +47,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestMessageRead(uid, randomId, accessHash) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestSendMessage(_, _, _, _, _, messages)) if messages.length == 0 =>
-      sender ! Error(400, "ZERO_MESSAGES_LENGTH", "Messages lenght is zero.", false)
-
-    case RpcProtocol.Request(RequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages)) =>
+    case RpcProtocol.Request(RequestSendMessage(uid, accessHash, randomId, message, selfMessage)) =>
       val replyTo = sender()
 
       Option(randomIds.get(randomId)) match {
@@ -58,7 +55,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
           replyTo ! Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
         case None =>
           randomIds.put(randomId, true)
-          val f = handleRequestSendMessage(uid, accessHash, randomId, useAesKey, aesMessage, messages) map { res =>
+          val f = handleRequestSendMessage(uid, accessHash, randomId, message, selfMessage) map { res =>
             replyTo ! res
           }
           f onFailure {
@@ -105,7 +102,7 @@ sealed trait MessagingService {
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
-          } yield Ok(ResponseMessageReceived(seq))
+          } yield Ok(ResponseVoid())
         } else {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         }
@@ -133,7 +130,7 @@ sealed trait MessagingService {
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
-          } yield Ok(ResponseMessageRead(seq))
+          } yield Ok(ResponseVoid())
         } else {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         }
@@ -143,9 +140,9 @@ sealed trait MessagingService {
   protected def handleRequestSendMessage(uid: Int,
     accessHash: Long,
     randomId: Long,
-    useAesKey: Boolean,
-    aesMessage: Option[BitVector],
-    messages: Seq[EncryptedMessage]): Future[RpcResponse] = {
+    message: EncryptedMessage,
+    selfMessage: Option[EncryptedMessage]
+  ): Future[RpcResponse] = {
     // TODO: check accessHash SA-21
 
     @inline
@@ -153,27 +150,40 @@ sealed trait MessagingService {
       log.debug(s"Resolving authId for ${uid} ${publicKeyHash}")
       authIds.get((uid, publicKeyHash)) match {
         case Some(f) =>
-          log.debug(s"Resolved(cache) authId for ${uid} ${publicKeyHash}")
+          f onSuccess {
+            case authId =>
+              log.debug(s"Resolved(cache) authId $authId for $uid $publicKeyHash")
+          }
           f
         case None =>
           val f = UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
           authIds.put((uid, publicKeyHash), f)
-          f onSuccess { case _ => log.debug(s"Resolved authId for ${uid} ${publicKeyHash}") }
+          f onSuccess { case authId => log.debug(s"Resolved authId $authId for $uid $publicKeyHash") }
           f
       }
     }
 
     @inline
     def pushUpdates(): Unit = {
-      val uids = messages map { message =>
-        authIdFor(message.uid, message.publicKeyHash) onComplete {
-          case Success(Some(authId)) =>
-            log.info(s"Pushing message ${message}")
-            updatesBrokerRegion ! NewUpdateEvent(authId, NewMessage(currentUser.uid, uid, message, aesMessage))
-          case x =>
-            log.error(s"Cannot find authId for uid=${message.uid} publicKeyHash=${message.publicKeyHash} ${x}")
+      val pairs = selfMessage match {
+        case Some(realSelfMessage) =>
+          Set(
+            (uid, message),
+            (currentUser.uid, realSelfMessage)
+          )
+        case None => Set((uid, message))
+      }
+
+      pairs map { case (targetUid, encMessage) =>
+        message.keys map { key =>
+          authIdFor(targetUid, key.keyHash) onComplete {
+            case Success(Some(targetAuthId)) =>
+              log.info(s"Pushing to authId $targetAuthId message ${encMessage}")
+              updatesBrokerRegion ! NewUpdateEvent(targetAuthId, NewMessage(currentUser.uid, targetUid, key.keyHash, key.aesEncryptedKey, encMessage.message))
+            case x =>
+              throw new Exception(s"Cannot find authId for uid=${targetUid} publicKeyHash=${key.keyHash}")
+          }
         }
-        message.uid
       }
     }
 
@@ -192,10 +202,10 @@ sealed trait MessagingService {
         // FIXME: handle failures (retry or error, should not break seq)
         for {
           s <- ask(
-            updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(randomId))).mapTo[UpdatesBroker.StrictState]
+            updatesBrokerRegion, NewUpdateEvent(currentUser.authId, NewMessageSent(uid, randomId))).mapTo[UpdatesBroker.StrictState]
         } yield {
           log.debug("Replying")
-          val rsp = ResponseSendMessage(mid = s._2, seq = s._1, state = s._3)
+          val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
           Ok(rsp)
         }
       case None =>

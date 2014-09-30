@@ -6,5 +6,5 @@ import scala.collection.immutable
 case class RequestPublicKeys(keys: immutable.Seq[PublicKeyRequest]) extends RpcRequestMessage
 
 object RequestPublicKeys extends RpcRequestMessageObject {
-  val requestType = 0x6
+  val requestType = 0x06
 }

@@ -94,7 +94,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   override val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new CommonPusherActor(context.self, authId)))
+  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.Set.empty[ActorRef]

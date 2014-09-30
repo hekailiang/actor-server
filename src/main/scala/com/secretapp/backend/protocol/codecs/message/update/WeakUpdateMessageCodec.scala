@@ -10,17 +10,17 @@ import Scalaz._
 object WeakUpdateMessageCodec {
   def encode(body: WeakUpdateMessage): String \/ BitVector = {
     body match {
-      case m: UserOnlineUpdate => UserOnlineUpdateCodec.encode(m)
-      case m: UserOfflineUpdate => UserOfflineUpdateCodec.encode(m)
-      case m: UserLastSeenUpdate => UserLastSeenUpdateCodec.encode(m)
+      case m: UserOnline => UserOnlineCodec.encode(m)
+      case m: UserOffline => UserOfflineCodec.encode(m)
+      case m: UserLastSeen => UserLastSeenCodec.encode(m)
     }
   }
 
-  def decode(weakUpdateType: Int, buf: BitVector): String \/ WeakUpdateMessage = {
-    val tried = Try(weakUpdateType match {
-      case UserOnlineUpdate.weakUpdateType => UserOnlineUpdateCodec.decode(buf)
-      case UserOfflineUpdate.weakUpdateType => UserOfflineUpdateCodec.decode(buf)
-      case UserLastSeenUpdate.weakUpdateType => UserLastSeenUpdateCodec.decode(buf)
+  def decode(weakUpdateHeader: Int, buf: BitVector): String \/ WeakUpdateMessage = {
+    val tried = Try(weakUpdateHeader match {
+      case UserOnline.weakUpdateHeader => UserOnlineCodec.decode(buf)
+      case UserOffline.weakUpdateHeader => UserOfflineCodec.decode(buf)
+      case UserLastSeen.weakUpdateHeader => UserLastSeenCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

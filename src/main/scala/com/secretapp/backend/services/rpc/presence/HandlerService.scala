@@ -23,14 +23,14 @@ trait HandlerService {
   import SessionProtocol._
 
   // TODO: check accessHash
-  protected def handleSubscribeForOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    log.info(s"handling SubscribeForOnline $users")
+  protected def handleSubscribeToOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
+    log.info(s"handling SubscribeToOnline $users")
     sessionActor ! SubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeForOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    log.info(s"handling UnsubscribeForOnline $users")
+  protected def handleUnsubscribeFromOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
+    log.info(s"handling UnsubscribeFromOnline $users")
     sessionActor ! UnsubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
@@ -45,6 +45,6 @@ trait HandlerService {
 
     presenceBrokerProxy ! message
 
-    Future.successful(Ok(ResponseOnline()))
+    Future.successful(Ok(ResponseVoid()))
   }
 }

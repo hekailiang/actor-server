@@ -12,7 +12,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.{ Try, Failure, Success }
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object WeakUpdateCodec extends Codec[WeakUpdate] with utils.ProtobufCodec {
   def encode(u: WeakUpdate) = {

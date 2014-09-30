@@ -9,7 +9,7 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object MessageReadCodec extends Codec[MessageRead] with utils.ProtobufCodec {
   def encode(u: MessageRead) = {

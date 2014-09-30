@@ -7,9 +7,9 @@ import scodec.bits.BitVector
 case class RequestSendMessage(uid: Int,
                               accessHash: Long,
                               randomId: Long,
-                              useAesKey: Boolean,
-                              aesMessage: Option[BitVector],
-                              messages: immutable.Seq[EncryptedMessage]) extends RpcRequestMessage
+                              message: EncryptedMessage,
+                              selfMessage: Option[EncryptedMessage]) extends RpcRequestMessage
+
 object RequestSendMessage extends RpcRequestMessageObject {
-  val requestType = 0xe
+  val requestType = 0x0E
 }

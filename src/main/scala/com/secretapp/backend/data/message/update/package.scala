@@ -2,28 +2,28 @@ package com.secretapp.backend.data.message
 
 package object update {
   trait UpdateMessage extends ProtobufMessage {
-    val updateType: Int
+    val updateHeader: Int
   }
 
-  trait CommonUpdateMessage extends ProtobufMessage {
-    val commonUpdateType: Int
+  trait SeqUpdateMessage extends ProtobufMessage {
+    val seqUpdateHeader: Int
 
     def userIds: Set[Int]
   }
 
   trait WeakUpdateMessage extends ProtobufMessage {
-    val weakUpdateType: Int
+    val weakUpdateHeader: Int
   }
 
   trait UpdateMessageObject {
-    val updateType: Int
+    val updateHeader: Int
   }
 
-  trait CommonUpdateMessageObject {
-    val commonUpdateType: Int
+  trait SeqUpdateMessageObject {
+    val seqUpdateHeader: Int
   }
 
   trait WeakUpdateMessageObject {
-    val weakUpdateType: Int
+    val weakUpdateHeader: Int
   }
 }

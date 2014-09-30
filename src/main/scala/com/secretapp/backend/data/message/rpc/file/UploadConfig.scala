@@ -2,7 +2,7 @@ package com.secretapp.backend.data.message.rpc.file
 
 import com.secretapp.backend.data.message.ProtobufMessage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 import scodec.bits.BitVector
 
 case class UploadConfig(serverData: BitVector) extends ProtobufMessage

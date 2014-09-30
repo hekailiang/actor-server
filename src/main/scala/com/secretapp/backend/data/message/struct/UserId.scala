@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.struct
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 case class UserId(uid: Int, accessHash: Long) extends ProtobufMessage {
   def toProto = protobuf.UserId(uid, accessHash)

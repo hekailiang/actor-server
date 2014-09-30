@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.{ struct, update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
-import com.secretapp.backend.data.message.update.CommonUpdate
+import com.secretapp.backend.data.message.update.SeqUpdate
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist._
@@ -60,7 +60,7 @@ sealed trait UpdatesService {
 
     for {
       seq <- getSeq(authId)
-      difference <- CommonUpdateRecord.getDifference(
+      difference <- SeqUpdateRecord.getDifference(
         authId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
@@ -75,12 +75,12 @@ sealed trait UpdatesService {
 
     f map {
       case (seq, muuid) =>
-        val rsp = updateRpcProto.State(seq, muuid)
+        val rsp = updateRpcProto.ResponseSeq(seq, muuid)
         Ok(rsp)
     }
   }
 
-  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[Difference] = {
+  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val users = mkUsers(authId, updates)
@@ -89,7 +89,7 @@ sealed trait UpdatesService {
       updates map { u => DifferenceUpdate(u.value) }, needMore))
   }
 
-  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.CommonUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
+  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     @inline
     def getUserStruct(uid: Int): Future[Option[struct.User]] = {
       UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
@@ -110,7 +110,7 @@ sealed trait UpdatesService {
   protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     for {
       seq <- getSeq(authId)
-      muuid <- CommonUpdateRecord.getState(authId)
+      muuid <- SeqUpdateRecord.getState(authId)
     } yield (seq, muuid)
   }
 

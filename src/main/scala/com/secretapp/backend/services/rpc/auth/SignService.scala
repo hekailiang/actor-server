@@ -245,7 +245,7 @@ trait SignService {
   private def pushContactRegisteredUpdates(u: User): Unit = {
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
       contacts.foreach { c =>
-        pushUpdate(c.authId, ContactRegistered(u.toStruct(c.authId)))
+        pushUpdate(c.authId, ContactRegistered(u.uid))
       }
     }
   }

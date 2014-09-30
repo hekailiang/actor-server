@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.update.{ UserLastSeenUpdate, UserOfflineUpdate, UserOnlineUpdate }
+import com.secretapp.backend.data.message.update.{ UserLastSeen, UserOffline, UserOnline }
 import com.secretapp.backend.data.message.update.WeakUpdate
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
@@ -38,7 +38,7 @@ class PresenceServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        SubscribeForOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~>! scope
+        SubscribeToOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~>! scope
 
         assertResponseVoidReceived
       }
@@ -49,7 +49,7 @@ class PresenceServiceSpec extends RpcSpec {
 
       {
         implicit val scope = scope1
-        UnsubscribeForOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~> <~:[ResponseVoid]
+        UnsubscribeFromOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~> <~:[ResponseVoid]
       }
     }
 
@@ -60,7 +60,7 @@ class PresenceServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        SubscribeForOnline(immutable.Seq(UserId(6, 0))) :~> <~:[ResponseVoid]
+        SubscribeToOnline(immutable.Seq(UserId(6, 0))) :~> <~:[ResponseVoid]
 
         scope.probe.expectNoMsg(duration)
       }
@@ -68,8 +68,8 @@ class PresenceServiceSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestSetOnline(true, 3000) :~> <~:[ResponseOnline]
-        SubscribeForOnline(immutable.Seq(UserId(5, 0))) :~> <~:[ResponseVoid]
+        RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
+        SubscribeToOnline(immutable.Seq(UserId(5, 0))) :~> <~:[ResponseVoid]
 
         scope.probe.expectNoMsg(duration)
       }
@@ -80,7 +80,7 @@ class PresenceServiceSpec extends RpcSpec {
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[WeakUpdate]
-        val offlineUpdate = update.body.asInstanceOf[UserOnlineUpdate]
+        val offlineUpdate = update.body.asInstanceOf[UserOnline]
         offlineUpdate.uid should equalTo(6)
         scope.probe.expectNoMsg(duration)
       }
