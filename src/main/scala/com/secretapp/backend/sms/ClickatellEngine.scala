@@ -1,11 +1,13 @@
 package com.secretapp.backend.sms
 
+import akka.actor._
 import dispatch._, Defaults._
 import com.ning.http.client.extra.ThrottleRequestFilter
-import scala.collection.immutable
 import com.typesafe.config._
 
-class ClickatellSMSEngine(val config: Config) extends SMSEngine {
+trait ClickatellSmsEngine {
+
+  val config: Config
 
   private val http = {
     val httpConfig              = config.getConfig("sms.clickatell.http")
@@ -38,7 +40,7 @@ class ClickatellSMSEngine(val config: Config) extends SMSEngine {
       .addQueryParameter("api_id", apiId)
   }
 
-  override def send(phoneNumber: Long, text: String): Future[String] = {
+  def send(phoneNumber: Long, text: String): Future[String] = {
     val req = svc
       .addQueryParameter("to", phoneNumber.toString)
       .addQueryParameter("text", text)
@@ -47,6 +49,21 @@ class ClickatellSMSEngine(val config: Config) extends SMSEngine {
   }
 }
 
-object ClickatellSMSEngine {
-  def apply(): ClickatellSMSEngine = new ClickatellSMSEngine(ConfigFactory.load())
+class ClickatellSmsEngineActor(override val config: Config) extends Actor with ActorLogging with ClickatellSmsEngine {
+  import ClickatellSmsEngineActor._
+
+  override def receive: Receive = {
+    case Send(phoneNumber, text) => send(phoneNumber, text)
+  }
+}
+
+object ClickatellSmsEngineActor {
+  case class Send(phoneNumber: Long, text: String)
+
+  def apply(config: Config)(implicit system: ActorSystem): ActorRef = system.actorOf(
+    Props(classOf[ClickatellSmsEngineActor], config),
+    "clickatell-sms-engine"
+  )
+
+  def apply()(implicit system: ActorSystem): ActorRef = ClickatellSmsEngineActor(ConfigFactory.load())
 }

@@ -7,12 +7,12 @@ import com.secretapp.backend.api.counters.FilesCounter
 import com.secretapp.backend.services.rpc.presence.PresenceBroker
 import com.secretapp.backend.session._
 import com.secretapp.backend.protocol.transport._
-import com.secretapp.backend.sms.{ClickatellSMSEngine, SMSEngine}
+import com.secretapp.backend.sms.ClickatellSmsEngineActor
 
 final class Singletons(implicit val system: ActorSystem) {
   val filesCounter = FilesCounter.start(system)
   val presenceBroker = PresenceBroker.start(system)
-  val smsEngine: SMSEngine = ClickatellSMSEngine()
+  val smsEngine = ClickatellSmsEngineActor()
 }
 
 final class ClusterProxies(implicit val system: ActorSystem) {
