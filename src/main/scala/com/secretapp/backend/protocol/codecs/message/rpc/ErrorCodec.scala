@@ -7,7 +7,7 @@ import scodec.Codec
 import scodec.codecs._
 
 object ErrorCodec extends Codec[Error] {
-  private val codec = (int32 :: protoString :: protoString :: protoBool).as[Error]
+  private val codec = (int32 :: protoString :: protoString :: protoBool :: protoBytes).as[Error]
 
   def encode(e: Error) = codec.encode(e)
 
