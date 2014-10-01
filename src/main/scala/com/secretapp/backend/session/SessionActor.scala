@@ -65,12 +65,13 @@ object SessionActor {
     case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
   }
 
-  def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) = ClusterSharding(system).start(
-    typeName = "Session",
-    entryProps = Some(Props(new SessionActor(singletons, clusterProxies, session))),
-    idExtractor = idExtractor,
-    shardResolver = shardResolver
-  )
+  def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) =
+    ClusterSharding(system).start(
+      typeName = "Session",
+      entryProps = Some(Props(new SessionActor(singletons, clusterProxies, session))),
+      idExtractor = idExtractor,
+      shardResolver = shardResolver
+    )
 
 }
 

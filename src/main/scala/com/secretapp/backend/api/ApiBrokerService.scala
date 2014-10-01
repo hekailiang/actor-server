@@ -38,8 +38,7 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
   val clusterProxies: ClusterProxies
   val sessionActor: ActorRef
   val currentAuthId: Long
-
-  val smsEngine = singletons.smsEngine
+  val singletons: Singletons
 
   val subscribedToUpdates: Boolean
 

@@ -5,10 +5,8 @@ import java.util.regex.Pattern
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
-import com.secretapp.backend.api.SocialProtocol
-import com.secretapp.backend.api.UpdatesBroker
+import com.secretapp.backend.api.{SocialProtocol, UpdatesBroker, ApiBrokerService}
 import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
-import com.secretapp.backend.api.ApiBrokerService
 import scala.util.{ Success, Failure }
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -30,8 +28,6 @@ trait SignService {
 
   import context._
   import UpdatesBroker._
-
-  val clickatell = smsEngine
 
   def handleRpcAuth: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestAuthCode =>
@@ -66,7 +62,8 @@ trait SignService {
           AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
-      clickatell ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
+
+      singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
       Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
     }
   }
