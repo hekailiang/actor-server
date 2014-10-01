@@ -7,11 +7,6 @@ import com.secretapp.backend.protocol.transport.MTPackageCodec
 import scodec.bits._
 
 case class MTPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
-  @deprecated("replyWith should be moved to MessageBox", "")
-  def replyWith(messageId: Long, tm: TransportMessage): MTPackage = {
-    MTPackage.build(authId, sessionId, MessageBox(messageId, tm))
-  }
-
   def decodeMessageBox = MessageBoxCodec.decodeValue(this.messageBoxBytes)
 
   def encode = ByteString(MTPackageCodec.encodeValid(this).toByteBuffer)

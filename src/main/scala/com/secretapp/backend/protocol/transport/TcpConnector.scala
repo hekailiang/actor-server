@@ -16,7 +16,7 @@ import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
 
-class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends Connector with ActorLogging with WrappedPackageService {
+class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends Connector with ActorLogging with MTPackageService {
   import akka.io.Tcp._
   import scala.concurrent.duration._
 

@@ -6,12 +6,6 @@ import com.secretapp.backend.protocol.codecs.message.{JsonMessageBoxCodec, Messa
 import scodec.bits._
 
 case class JsonPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
-  @deprecated("replyWith should be moved to MessageBox", "")
-  def replyWith(messageId: Long, tm: TransportMessage): JsonPackage = {
-    val mb = MessageBox(messageId, tm)
-    JsonPackage(authId, sessionId, JsonMessageBoxCodec.encodeValid(mb))
-  }
-
   def decodeMessageBox = JsonMessageBoxCodec.decodeValue(this.messageBoxBytes)
 
   def encode = ByteString(s"[${this.authId},${this.sessionId},") ++ ByteString(this.messageBoxBytes.toByteBuffer) ++ ByteString("]")

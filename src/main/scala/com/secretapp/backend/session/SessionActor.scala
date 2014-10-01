@@ -104,26 +104,25 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       }
       context.become(receiveCommand)
       receiveCommand(handleBox)
-    case p: AuthorizeUser => // TODO: remove it!
+    case p: AuthorizeUser =>
       receiveCommand(p)
-    case x => // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      println(s"case _ => x: $x")
-      // TODO: throw error
+    case m =>
+      log.error(s"received unmatched message: $m")
   }
 
-  def check4NewConnection(connection: ActorRef) = {
-    if (!connectors.contains(connection)) {
-      log.debug(s"NewConnection $connection")
-      connectors = connectors + connection
-      lastConnector = connection.some
-      context.watch(connection)
+  def checkNewConnection(connector: ActorRef) = {
+    if (!connectors.contains(connector)) {
+      log.debug(s"NewConnection $connector")
+      connectors = connectors + connector
+      lastConnector = connector.some
+      context.watch(connector)
 
       getUnsentMessages() map { messages =>
         messages foreach { case Tuple2(mid, message) =>
           // TODO
           val pe = MTPackage(authId, sessionId, BitVector(message)).right
           println(s"connector ! pe: $pe")
-          connection ! pe
+          connector ! pe
         }
       }
     }
@@ -132,7 +131,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
       val connector = sender()
-      check4NewConnection(connector)
+      checkNewConnection(connector)
       log.debug(s"HandleMessageBox ${handleBox.mb} $connector")
       lastConnector = connector.some
 

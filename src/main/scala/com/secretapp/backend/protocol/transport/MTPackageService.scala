@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
 
-trait WrappedPackageService extends PackageManagerService {
+trait MTPackageService {
   self: Connector =>
   import ByteConstants._
 

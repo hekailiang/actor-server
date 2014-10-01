@@ -19,7 +19,6 @@ sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, AuthId] {
   override def fromRow(row: Row): AuthId = {
     AuthId(authId(row), userId(row))
   }
-
 }
 
 object AuthIdRecord extends AuthIdRecord with DBConnector {
@@ -31,5 +30,12 @@ object AuthIdRecord extends AuthIdRecord with DBConnector {
 
   def getEntity(authId: Long)(implicit session: Session): Future[Option[AuthId]] = {
     select.where(_.authId eqs authId).one()
+  }
+
+  def getEntityWithUser(authId: Long)(implicit session: Session): Future[Option[(AuthId, Option[User])]] = {
+    getEntity(authId).flatMap {
+      case Some(auth) => auth.user.flatMap { u => Future.successful(Some(auth, u)) }
+      case None => Future.successful(None)
+    }
   }
 }

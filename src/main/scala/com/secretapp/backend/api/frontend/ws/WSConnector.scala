@@ -60,11 +60,10 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
     else secFrontend match {
       case Some(secRef) => secRef ! RequestPackage(p)
       case None =>
-        val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, JsonConnection)(session))
+        val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, JsonConnection)(session))
         secFrontend = secRef.some
         secRef ! RequestPackage(p)
     }
-    // TODO: else if (p.sessionId == 0L) silentClose()
   }
 
   private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {

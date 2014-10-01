@@ -12,8 +12,6 @@ trait TransportPackage {
   val sessionId: Long
   val messageBoxBytes: BitVector
 
-  def replyWith(messageId: Long, tm: TransportMessage): TransportPackage
-
   def decodeMessageBox: String \/ MessageBox
 
   def encode: ByteString

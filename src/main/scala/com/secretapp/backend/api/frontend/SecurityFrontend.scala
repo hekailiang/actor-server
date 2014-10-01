@@ -4,6 +4,7 @@ import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist.AuthIdRecord
+import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.session.SessionProtocol.{HandleMTMessageBox, HandleJsonMessageBox, HandleMessageBox, Envelope}
 import scala.collection.JavaConversions._
 import scala.util.Success
@@ -12,25 +13,25 @@ import scalaz._
 import Scalaz._
 
 object SecurityFrontend {
-  def props(connection: ActorRef, sessionRegion: ActorRef, authId: Long, transport: TransportConnection)(implicit csession: CSession) = {
-    Props(new SecurityFrontend(connection, sessionRegion, authId, transport)(csession))
+  def props(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) = {
+    Props(new SecurityFrontend(connection, sessionRegion, authId, sessionId, transport)(csession))
   }
 }
 
-class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, transport: TransportConnection)(implicit csession: CSession) extends Actor
+class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) extends Actor
 with ActorLogging
 {
   import context.dispatcher
   import context.system
 
   val receiveBuffer = new java.util.LinkedList[Any]()
-  val authRecF = AuthIdRecord.getEntity(authId)
-  var sessionId: Long = _ // last sessionId from EncryptPackage's
+  val authRecF = AuthIdRecord.getEntityWithUser(authId)
 
   override def preStart(): Unit = {
     super.preStart()
     authRecF.onComplete {
-      case Success(Some(authRec)) =>
+      case Success(Some((authRec, userOpt))) =>
+        userOpt.map { u => sessionRegion ! SessionProtocol.Envelope(authId, sessionId, SessionProtocol.AuthorizeUser(u)) }
         context.become(receivePF)
         receiveBuffer.foreach(self ! _)
         receiveBuffer.clear()
@@ -55,7 +56,6 @@ with ActorLogging
 
       if (p.sessionId == 0L) silentClose()
       else {
-        if (sessionId == 0L) sessionId = p.sessionId
         if (p.sessionId == sessionId) {
           p.decodeMessageBox match {
             case \/-(mb) =>
