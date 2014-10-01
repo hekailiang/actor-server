@@ -19,7 +19,7 @@ import scalaz._
 import Scalaz._
 
 trait SessionService {
-  self: SessionActor =>
+  self: SessionActor with TransportSerializers =>
   import AckTrackerProtocol._
   import ApiBrokerProtocol._
 
@@ -33,14 +33,14 @@ trait SessionService {
 
     mb.body match { // TODO: move into pluggable traits
       case Ping(randomId) =>
-        val reply = mb.replyWith(authId, sessionId, Pong(randomId), transport.get).right
+        val reply = serializePackage(MessageBox(getMessageId(TransportMsgId), Pong(randomId)))
         connector.tell(reply, context.self)
       case MessageAck(mids) =>
         ackTracker.tell(RegisterMessageAcks(mids.toList), context.self)
       case RpcRequestBox(body) =>
         apiBroker.tell(ApiBrokerRequest(connector, mb.messageId, body), context.self)
       case x =>
-        log.error("unhandled session message $x")
+        log.error(s"unhandled session message $x")
     }
   }
 
@@ -63,7 +63,7 @@ trait SessionService {
 
   protected def subscribeToUpdates() = {
     subscribingToUpdates = true
-    log.info("Subscribing to updates authId={}", authId)
+    log.info(s"Subscribing to updates authId=$authId")
     mediator ! Subscribe(UpdatesBroker.topicFor(authId), commonUpdatesPusher)
   }
 

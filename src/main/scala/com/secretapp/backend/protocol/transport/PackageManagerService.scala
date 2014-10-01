@@ -6,7 +6,7 @@ import com.secretapp.backend.data.message.{ Drop, NewSession, TransportMessage }
 import com.secretapp.backend.data.models.AuthId
 import com.secretapp.backend.data.transport.{TransportPackage, MessageBox}
 import com.secretapp.backend.persist.AuthIdRecord
-import com.secretapp.backend.services.{ GeneratorService, SessionManager, UserManagerService }
+import com.secretapp.backend.services.{ GeneratorService, UserManagerService }
 import com.secretapp.backend.session.SessionProtocol
 import java.util.concurrent.ConcurrentLinkedQueue
 import com.secretapp.backend.api.frontend._
@@ -15,7 +15,7 @@ import scala.util.{ Failure, Success }
 import scalaz._
 import Scalaz._
 
-trait PackageManagerService extends UserManagerService with GeneratorService with SessionManager {
+trait PackageManagerService extends UserManagerService with GeneratorService {
   self: Connector =>
   import context._
 
@@ -86,7 +86,7 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
       if (currentSessionId == 0L) {
         currentSessionId = sessionId
       }
-      sessionRegion ! SessionProtocol.Envelope(currentAuthId, sessionId, SessionProtocol.NewConnection(context.self, transport))
+//      sessionRegion ! SessionProtocol.Envelope(currentAuthId, sessionId, SessionProtocol.NewConnection(context.self, transport))
       currentSessions.add(sessionId)
     }
 
@@ -97,17 +97,19 @@ trait PackageManagerService extends UserManagerService with GeneratorService wit
         if (p.sessionId == currentSessionId || currentSessions.contains(p.sessionId)) {
           Future.successful(f(p, None))
         } else {
-          getOrCreateSession(p.authId, p.sessionId) andThen {
-            case Success(ms) => ms match {
-              case Left(sessionId) =>
-                updateCurrentSession(sessionId)
-                f(p, None)
-              case Right(sessionId) =>
-                updateCurrentSession(sessionId)
-                f(p, Some(NewSession(sessionId, mb.messageId)))
-            }
-            case Failure(e) => sendDrop(p, mb.messageId, e)
-          }
+//          TODO
+//          getOrCreateSession(p.authId, p.sessionId) andThen {
+//            case Success(ms) => ms match {
+//              case Left(sessionId) =>
+//                updateCurrentSession(sessionId)
+//                f(p, None)
+//              case Right(sessionId) =>
+//                updateCurrentSession(sessionId)
+//                f(p, Some(NewSession(sessionId, mb.messageId)))
+//            }
+//            case Failure(e) => sendDrop(p, mb.messageId, e)
+//          }
+          ???
         }
       }
     } else {

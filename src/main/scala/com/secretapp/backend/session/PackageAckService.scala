@@ -13,7 +13,7 @@ import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
-trait PackageAckService { self: MessageIdGenerator =>
+trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
   import AckTrackerProtocol._
 
   val authId: Long
@@ -49,8 +49,7 @@ trait PackageAckService { self: MessageIdGenerator =>
           // TODO: aggregation
           log.info(s"Sending acknowledgement for $m to $connector")
 
-          // getMessageId(TransportMsgId)
-          val reply = mb.replyWith(authId, sessionId, mb.messageId * 10, MessageAck(Vector(mb.messageId)), transport.get).right
+          val reply = serializePackage(MessageBox(getMessageId(TransportMsgId), MessageAck(Vector(mb.messageId))))
           connector ! reply
       }
   }

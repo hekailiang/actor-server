@@ -5,7 +5,6 @@ import com.secretapp.backend.data.message.{ RequestAuthId, ResponseAuthId, Drop 
 import com.secretapp.backend.data.models.AuthId
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.common.RandomService
 import com.datastax.driver.core.{ Session => CSession }
 import scalaz._

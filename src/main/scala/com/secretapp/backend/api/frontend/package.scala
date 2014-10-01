@@ -16,6 +16,9 @@ package object frontend {
   case class ResponseToClientWithDrop(payload: ByteString) extends ClientFrontendMessage
 
 
+  case class RequestPackage(p: TransportPackage)
+
+
   sealed trait TransportConnection {
     def buildPackage(authId: Long, sessionId: Long, message: MessageBox): TransportPackage
   }
@@ -26,7 +29,7 @@ package object frontend {
   }
 
   @SerialVersionUID(1L)
-  case object BinaryConnection extends TransportConnection {
+  case object MTConnection extends TransportConnection {
     def buildPackage(authId: Long, sessionId: Long, message: MessageBox) = MTPackage.build(authId, sessionId, message)
   }
 }

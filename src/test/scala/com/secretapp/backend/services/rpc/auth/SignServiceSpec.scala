@@ -122,7 +122,6 @@ class SignServiceSpec extends RpcSpec {
       val newAuthId = rand.nextLong()
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
-      SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, name, newPublicKey)))
       val messageId = rand.nextLong()
       val packageBlob = codecRes2BS(protoPackageBox.build(0, newAuthId, newSessionId, messageId, rpcReq))
@@ -361,7 +360,6 @@ class SignServiceSpec extends RpcSpec {
       val newAuthId = rand.nextLong()
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
-      SessionIdRecord.insertEntity(SessionId(newAuthId, newSessionId)).sync()
       UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, defaultPhoneNumber).sync()
 
       val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))

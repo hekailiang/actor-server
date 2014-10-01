@@ -14,7 +14,7 @@ import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
 import akka.util.{ ByteString, Timeout }
 import scala.collection.immutable
-import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage}
+import com.secretapp.backend.data.transport.{TransportPackage, JsonPackage, MessageBox, MTPackage}
 import com.datastax.driver.core.{ Session => CSession }
 import scodec.bits._
 import com.secretapp.backend.services.common.PackageCommon
@@ -27,8 +27,15 @@ import com.datastax.driver.core.{ Session => CSession }
 object SessionProtocol {
   // TODO: wrap all messages into Envelope
   sealed trait SessionMessage
-  case class NewConnection(connector: ActorRef, transport: TransportConnection) extends SessionMessage
-  case class HandleMessageBox(mb: MessageBox) extends SessionMessage
+
+  sealed trait HandleMessageBox {
+    val mb: MessageBox
+  }
+  @SerialVersionUID(1L)
+  case class HandleMTMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
+  @SerialVersionUID(1L)
+  case class HandleJsonMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
+
   case class AuthorizeUser(user: User) extends SessionMessage
   case class SendMessageBox(connector: ActorRef, mb: MessageBox) extends SessionMessage
   case object SubscribeToUpdates extends SessionMessage
@@ -61,7 +68,7 @@ object SessionActor {
 
 }
 
-class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
+class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends TransportSerializers with SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -83,20 +90,20 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   val commonUpdatesPusher = context.actorOf(Props(new CommonPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
-  var connectors = immutable.Set.empty[ActorRef]
+  var connectors = immutable.HashSet.empty[ActorRef]
   var lastConnector: Option[ActorRef] = None
-  var transport: Option[TransportConnection] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
   lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
   override def receive = {
-    case p@NewConnection(_, transportConnection) =>
-      transport = transportConnection.some
-      println(s"NewConnection transport: $transport")
-      log.debug(s"NewConnection $transport")
+    case handleBox: HandleMessageBox =>
+      transport = handleBox match {
+        case _: HandleJsonMessageBox => JsonConnection.some
+        case _: HandleMTMessageBox => MTConnection.some
+      }
       context.become(receiveCommand)
-      receiveCommand(p)
+      receiveCommand(handleBox)
     case p: AuthorizeUser => // TODO: remove it!
       receiveCommand(p)
     case x => // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -104,50 +111,53 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       // TODO: throw error
   }
 
-  val receiveCommand: Receive = {
-    case NewConnection(connector, _) =>
-//    TODO: check NewConnection.transport for equal with this.transport and return error if doesn't match
-
-      log.debug(s"NewConnection $connector")
-      connectors = connectors + connector
-      lastConnector = connector.some
-      context.watch(connector)
+  def check4NewConnection(connection: ActorRef) = {
+    if (!connectors.contains(connection)) {
+      log.debug(s"NewConnection $connection")
+      connectors = connectors + connection
+      lastConnector = connection.some
+      context.watch(connection)
 
       getUnsentMessages() map { messages =>
         messages foreach { case Tuple2(mid, message) =>
           // TODO
           val pe = MTPackage(authId, sessionId, BitVector(message)).right
           println(s"connector ! pe: $pe")
-          connector ! pe
+          connection ! pe
         }
       }
-    case HandleMessageBox(mb) =>
+    }
+  }
+
+  val receiveCommand: Receive = {
+    case handleBox: HandleMessageBox =>
       val connector = sender()
-      log.debug(s"HandleMessageBox $mb $connector")
+      check4NewConnection(connector)
+      log.debug(s"HandleMessageBox ${handleBox.mb} $connector")
       lastConnector = connector.some
 
-      mb.body match {
+      handleBox.mb.body match {
         case c@Container(_) => c.messages foreach (handleMessage(connector, _))
-        case _ => handleMessage(connector, mb)
+        case _ => handleMessage(connector, handleBox.mb)
       }
     case SendMessageBox(connector, mb) =>
       log.debug(s"SendMessageBox $connector $mb")
 
       val blob = serializeMessageBox(mb)
-      val pe = serializePackage(blob)
       registerSentMessage(mb, ByteString(blob.toByteArray))
 
+      val pe = serializePackage(blob)
       println(s"tell.! connector $connector ! pe: ${mb}")
       connector ! pe
     case UpdateBoxToSend(ub) =>
       log.debug(s"UpdateBoxToSend($ub)")
       // FIXME: real message id SA-32
       val mb = MessageBox(rand.nextLong, ub)
+      println(s"tell.! connectors $connectors ! pe: $mb")
       val blob = serializeMessageBox(mb)
-      val pe = serializePackage(blob)
-      println(s"tell.! connectors $connectors ! pe: ${mb}")
-      connectors foreach (_ ! pe)
       registerSentMessage(mb, ByteString(blob.toByteArray))
+      val pe = serializePackage(blob)
+      connectors foreach (_ ! pe)
     case AuthorizeUser(user) =>
       apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
     case msg @ SubscribeToUpdates =>
@@ -191,17 +201,5 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
     case UnsubscribeToPresences(uids) =>
       subscribedToPresencesUids = subscribedToPresencesUids -- uids
     case _ =>
-  }
-
-  private def serializeMessageBox(message: MessageBox): BitVector = transport match {
-    case Some(BinaryConnection) => MessageBoxCodec.encodeValid(message)
-    case Some(JsonConnection) => JsonMessageBoxCodec.encodeValid(message)
-    case None => throw new IllegalArgumentException("transport == None")
-  }
-
-  private def serializePackage(mb: BitVector): PackageEither = transport match {
-    case Some(BinaryConnection) => MTPackage(authId, sessionId, mb).right
-    case Some(JsonConnection) => JsonPackage(authId, sessionId, mb).right
-    case None => throw new IllegalArgumentException("transport == None")
   }
 }

@@ -16,7 +16,7 @@ import spray.http.HttpRequest
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
 import scala.util.{ Try, Success, Failure }
-import com.secretapp.backend.protocol.transport.{PackageService, WrappedPackageService, Connector}
+import com.secretapp.backend.protocol.transport.Connector
 import com.secretapp.backend.util.parser.BS._
 import scalaz._
 import Scalaz._
@@ -27,7 +27,7 @@ object WSConnector {
   }
 }
 
-class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Connector with websocket.WebSocketServerWorker with PackageService {
+class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Connector with websocket.WebSocketServerWorker {
   import KeyFrontend._
   import scala.concurrent.duration._
 
@@ -37,35 +37,34 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
     case frame: TextFrame =>
       log.info(s"Frame: ${new String(frame.payload.toArray)}")
       parseJsonPackage(frame.payload) match {
-        case \/-(p) => handleJPackage(p)
+        case \/-(p) => handleJsonPackage(p)
         case -\/(e) => self ! JsonPackage.build(0L, 0L, MessageBox(0L, Drop(0L, e))).left
       }
-    case pe: JsonPackageEither =>
-      pe match {
-        case \/-(p) =>
-          send(TextFrame(p.encode))
-        case -\/(p) =>
-          send(TextFrame(p.encode))
-          send(CloseFrame())
-      }
+    case ResponseToClient(bs) =>
+      log.info(s"ResponseToClient: $bs")
+      send(TextFrame(bs))
+    case ResponseToClientWithDrop(bs) =>
+      send(TextFrame(bs))
+      send(CloseFrame())
     case x: FrameCommandFailed =>
       log.error("frame command failed", x)
+    case x =>
+      println(s"ws actor: $x")
   }
 
-  lazy val keyFrontend = context.system.actorOf(KeyFrontend.props(self, JsonConnection)(session), name = "key-frontend")
+  lazy val keyFrontend = context.system.actorOf(KeyFrontend.props(self, JsonConnection)(session))
+  var secFrontend: Option[ActorRef] = None
 
-
-  // TODO: rename to handleJsonPackage
-  def handleJPackage(p: JsonPackage): Unit = {
+  def handleJsonPackage(p: JsonPackage): Unit = {
     if (p.authId == 0L) keyFrontend ! InitDH(p)
-//    else secFrontendMap.get(p.authId) match {
-//      case Some(secFrontend) => secFrontend ! p
-//      case None =>
-//        val secFrontend = context.system.actorOf(SecurityFrontend.props(self, sessionActor, p.authId)(csession),
-//          name = s"security-frontend_${p.authId}")
-//        secFrontendMap += Tuple2(p.authId, secFrontend)
-//        secFrontend ! p
-//    }
+    else secFrontend match {
+      case Some(secRef) => secRef ! RequestPackage(p)
+      case None =>
+        val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, JsonConnection)(session))
+        secFrontend = secRef.some
+        secRef ! RequestPackage(p)
+    }
+    // TODO: else if (p.sessionId == 0L) silentClose()
   }
 
   private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {
@@ -81,7 +80,13 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
     Try(runParser(jsonParser, data)) match {
       case Success(jp) => jp.right
       case Failure(e) =>
+        // TODO: silentClose ???
         s"""Expected JSON format: ["authId", "sessionId", {/* message box */}]\nDebug: ${e.getMessage}""".left
     }
+  }
+
+  def silentClose(): Unit = {
+    send(CloseFrame())
+    context stop self
   }
 }

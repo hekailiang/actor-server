@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage, MTPackageBox }
-import com.secretapp.backend.persist.{ AuthIdRecord, SessionIdRecord, UserRecord }
+import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
@@ -68,23 +68,13 @@ trait ActorServiceHelpers extends RandomService {
     AuthIdRecord.insertEntity(AuthId(authId, userId)).sync()
   }
 
-  def insertSessionId(authId: Long)(implicit s: SessionIdentifier): Unit = blocking {
-    SessionIdRecord.insertEntity(SessionId(authId, s.id)).sync()
-  }
-
-  def insertAuthAndSessionId(authId: Long, userId: Option[Int] = None)(implicit s: SessionIdentifier): Unit = {
-    insertAuthId(authId, userId)
-    insertSessionId(authId)
-  }
-
   def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
     AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
-    SessionIdRecord.insertEntity(SessionId(authId, sessionId)).sync()
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
   }
 
   def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
-    insertAuthAndSessionId(u.authId, u.uid.some)
+    insertAuthId(u.authId, u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
     u
   }
