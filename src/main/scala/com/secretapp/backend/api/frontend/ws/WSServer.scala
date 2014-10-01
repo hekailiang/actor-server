@@ -19,7 +19,7 @@ object WSServer {
     def receive = {
       case Http.Connected(remoteAddress, localAddress) =>
         val connection = sender()
-        val wsActor = context.actorOf(WSConnector.props(connection, sessionRegion, session))
+        val wsActor = context.actorOf(WSFrontend.props(connection, sessionRegion, session))
         connection ! Http.Register(wsActor)
     }
   }

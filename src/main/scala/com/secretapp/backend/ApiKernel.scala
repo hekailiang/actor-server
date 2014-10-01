@@ -5,11 +5,9 @@ import java.net.InetSocketAddress
 import akka.actor.{ ActorSystem, Props }
 import akka.io.{ IO, Tcp }
 import akka.kernel.Bootable
-import Tcp._
-import com.secretapp.backend.api.counters.FilesCounter
 import com.secretapp.backend.api._
+import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
-import com.secretapp.backend.services.rpc.presence.PresenceBroker
 import com.secretapp.backend.session.SessionActor
 import spray.can.Http
 import spray.can.server.UHttp
@@ -17,6 +15,8 @@ import scala.util.Try
 import com.secretapp.backend.persist.DBConnector
 
 class ApiKernel extends Bootable {
+  import Tcp._
+
   implicit val system = ActorSystem("secret-api-server")
 
   val joinAddress = Cluster(system).selfAddress
@@ -39,7 +39,7 @@ class ApiKernel extends Bootable {
     // TCP transport bootstrap
     val tcpPort = Try(serverConfig.getInt("tcp-port")).getOrElse(8080)
     val hostname = Try(serverConfig.getString("hostname")).getOrElse("0.0.0.0")
-    val tcpService = system.actorOf(Server.props(sessionRegion), "api-service")
+    val tcpService = system.actorOf(TcpServer.props(sessionRegion), "api-service")
     val address = new InetSocketAddress(hostname, tcpPort)
     IO(Tcp) ! Bind(tcpService, address)
 

@@ -10,7 +10,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
 
-trait Connector extends Actor with ActorLogging {
+trait Frontend extends Actor with ActorLogging {
   import scala.concurrent.duration._
 
   val sessionRegion: ActorRef

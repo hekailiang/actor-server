@@ -3,7 +3,6 @@ package com.secretapp.backend.protocol
 import scodec.Codec
 
 package object codecs {
-
   //  common types
   val varint = common.VarIntCodec
   val protoLongs = common.LongsCodec
@@ -23,5 +22,4 @@ package object codecs {
   // transport
   val protoPackage = transport.MTPackageCodec
   val protoPackageBox = transport.MTPackageBoxCodec
-
 }

@@ -16,18 +16,18 @@ import spray.http.HttpRequest
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
 import scala.util.{ Try, Success, Failure }
-import com.secretapp.backend.protocol.transport.Connector
+import com.secretapp.backend.protocol.transport.Frontend
 import com.secretapp.backend.util.parser.BS._
 import scalaz._
 import Scalaz._
 
-object WSConnector {
+object WSFrontend {
   def props(connection: ActorRef, sessionRegion: ActorRef, session: CSession) = {
-    Props(new WSConnector(connection, sessionRegion, session))
+    Props(new WSFrontend(connection, sessionRegion, session))
   }
 }
 
-class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Connector with websocket.WebSocketServerWorker {
+class WSFrontend(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker {
   val transport = JsonConnection
 
   def businessLogic: Receive = {

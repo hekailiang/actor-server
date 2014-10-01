@@ -12,7 +12,7 @@ import scalaz._
 import Scalaz._
 
 trait MTPackageService {
-  self: Connector =>
+  self: Frontend =>
   import ByteConstants._
 
   sealed trait ParseState
@@ -43,7 +43,6 @@ trait MTPackageService {
         } else {
           (sp, buf).right
         }
-
       case pp@WrappedPackageParsing(bitsLen) =>
         if (buf.length >= bitsLen) {
           protoPackageBox.decode(buf) match {
@@ -57,7 +56,6 @@ trait MTPackageService {
         } else {
           (pp, buf).right
         }
-
       case _ => ParseError("internal error: wrong state").left
     }
 
@@ -79,13 +77,6 @@ trait MTPackageService {
       case -\/(e) =>
         log.error(s"handleByteStream#$parseState: $e")
         failureFunc(e)
-    }
-  }
-
-  def replyPackage(index: Int, p: MTPackage): ByteString = {
-    protoPackageBox.encode(index, p) match {
-      case \/-(bv) => ByteString(bv.toByteArray)
-      case -\/(e) => ByteString(e)
     }
   }
 }

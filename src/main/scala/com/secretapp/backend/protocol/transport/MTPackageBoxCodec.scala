@@ -24,6 +24,14 @@ object MTPackageBoxCodec extends Codec[MTPackageBox] {
     } yield body ++ encodeCRCR32(body)
   }
 
+  def encode(index: Int, p: BitVector) = {
+    for {
+      len <- int32.encode((intSize / byteSize + p.length / byteSize + crcByteSize).toInt)
+      index <- int32.encode(index)
+      body = len ++ index ++ p
+    } yield body ++ encodeCRCR32(body)
+  }
+
   def decode(buf: BitVector) = {
     (int32~int32).decode(buf) match { // read int length (index + body + crc32) and int index
       case \/-((xs, (len, index))) =>
@@ -40,11 +48,5 @@ object MTPackageBoxCodec extends Codec[MTPackageBox] {
         } else s"invalid crc32 ${crc.toHex}, expected ${expectedCrc.toHex}".left
       case l@(-\/(e)) => l
     }
-  }
-
-  def encode(index: Int, p: MTPackage): String \/ BitVector = encode(MTPackageBox(index, p))
-
-  def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
-    encode(index, MTPackage(authId, sessionId, MessageBoxCodec.encodeValid(MessageBox(messageId, message))))
   }
 }
