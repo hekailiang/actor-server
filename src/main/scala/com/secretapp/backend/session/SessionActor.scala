@@ -182,8 +182,6 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       context.parent ! Passivate(stopMessage = Stop)
     case Stop =>
       context.stop(self)
-    case x =>
-      throw new Exception(s"Unhandled session message ${x} ${sender}")
   }
 
   val receiveRecover: Receive = {

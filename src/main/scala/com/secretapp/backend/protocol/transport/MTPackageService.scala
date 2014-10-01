@@ -26,7 +26,7 @@ trait MTPackageService {
   val maxPackageLen = (1024 * 1024 * 1.5).toLong // 1.5 MB
 
   @tailrec @inline
-  private final def parseByteStream(state: ParseState, buf: BitVector)(f: PackageFunc): HandleError \/ ParseResult =
+  private final def parseByteStream(state: ParseState, buf: BitVector)(f: PackageFunc): ParseError \/ ParseResult =
     state match {
       case sp@WrappedPackageSizeParsing() =>
         if (buf.length >= minParseLength) {
@@ -71,7 +71,7 @@ trait MTPackageService {
    * @param packageFunc handle Package function and maybe additional reply message
    * @param failureFunc handle parsing failures function
    */
-  final def handleByteStream(buf: BitVector)(packageFunc: PackageFunc, failureFunc: (HandleError) => Unit): Unit = {
+  final def handleByteStream(buf: BitVector)(packageFunc: PackageFunc, failureFunc: (ParseError) => Unit): Unit = {
     parseByteStream(parseState, parseBuffer ++ buf)(packageFunc) match {
       case \/-((newState, remainBuf)) =>
         parseState = newState
@@ -84,9 +84,7 @@ trait MTPackageService {
 
   def replyPackage(index: Int, p: MTPackage): ByteString = {
     protoPackageBox.encode(index, p) match {
-      case \/-(bv) =>
-        val bs = ByteString(bv.toByteArray)
-        bs
+      case \/-(bv) => ByteString(bv.toByteArray)
       case -\/(e) => ByteString(e)
     }
   }

@@ -28,42 +28,25 @@ object WSConnector {
 }
 
 class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Connector with websocket.WebSocketServerWorker {
-  import KeyFrontend._
-  import scala.concurrent.duration._
-
-  implicit val timeout: Timeout = Timeout(5.seconds)
+  val transport = JsonConnection
 
   def businessLogic: Receive = {
     case frame: TextFrame =>
       log.info(s"Frame: ${new String(frame.payload.toArray)}")
       parseJsonPackage(frame.payload) match {
-        case \/-(p) => handleJsonPackage(p)
-        case -\/(e) => self ! JsonPackage.build(0L, 0L, MessageBox(0L, Drop(0L, e))).left
+        case \/-(p) => handlePackage(p)
+        case -\/(e) => sendDrop(e)
       }
+    case x: FrameCommandFailed =>
+      log.error(s"frame command failed: $x")
     case ResponseToClient(bs) =>
       log.info(s"ResponseToClient: $bs")
       send(TextFrame(bs))
     case ResponseToClientWithDrop(bs) =>
       send(TextFrame(bs))
-      send(CloseFrame())
-    case x: FrameCommandFailed =>
-      log.error("frame command failed", x)
-    case x =>
-      println(s"ws actor: $x")
-  }
-
-  lazy val keyFrontend = context.system.actorOf(KeyFrontend.props(self, JsonConnection)(session))
-  var secFrontend: Option[ActorRef] = None
-
-  def handleJsonPackage(p: JsonPackage): Unit = {
-    if (p.authId == 0L) keyFrontend ! InitDH(p)
-    else secFrontend match {
-      case Some(secRef) => secRef ! RequestPackage(p)
-      case None =>
-        val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, JsonConnection)(session))
-        secFrontend = secRef.some
-        secRef ! RequestPackage(p)
-    }
+      silentClose()
+    case SilentClose =>
+      silentClose()
   }
 
   private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {
@@ -86,6 +69,6 @@ class WSConnector(val serverConnection: ActorRef, val sessionRegion: ActorRef, v
 
   def silentClose(): Unit = {
     send(CloseFrame())
-    context stop self
+    context.stop(self)
   }
 }

@@ -2,6 +2,7 @@ package com.secretapp.backend.protocol.transport
 
 import akka.actor._
 import akka.util.{ ByteString, Timeout }
+import com.secretapp.backend.api.frontend.{MTConnection, ResponseToClientWithDrop}
 import com.secretapp.backend.data.transport.MessageBox
 import scodec.bits._
 import com.datastax.driver.core.{ Session => CSession }
@@ -11,6 +12,7 @@ import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
+import com.secretapp.backend.data.message.Drop
 import PackageCommon._
 import scalaz._
 import Scalaz._
@@ -18,9 +20,6 @@ import com.datastax.driver.core.{ Session => CSession }
 
 class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends Connector with ActorLogging with MTPackageService {
   import akka.io.Tcp._
-  import scala.concurrent.duration._
-
-  implicit val timeout: Timeout = Timeout(5.seconds)
 
   var packageIndex = 0
   var closing = false
@@ -36,6 +35,8 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
   var suspended = false
 
   val handleActor = self
+
+  val transport = MTConnection
 
   context watch connection
 
@@ -63,20 +64,23 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
           }
           connection ! Close
       }
-
     case Received(data) =>
       wlog(s"Received: $data ${data.length}")
-//      handleByteStream(BitVector(data.toArray))(handlePackage, handleError)
-
+      handleByteStream(BitVector(data.toArray))(handlePackage, handleParseError)
     case PeerClosed =>
       wlog("Connection closed by peer")
       context stop self
-
     case CommandFailed(x) =>
       wlog(s"CommandFailed ${x}")
-
     case PackageAck(index) =>
       throw new Exception("Received ack in writing mode")
+  }
+
+  def handleParseError(e: ParseError): Unit = sendDrop(e.msg)
+
+  def silentClose(): Unit = {
+    connection ! Close
+    context.stop(self)
   }
 
   def buffering: Receive = {
@@ -92,13 +96,10 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
     case Received(data) =>
       blog(s"Received: $data ${data.length}")
 //      handleByteStream(BitVector(data.toArray))(handlePackage, handleError)
-
     case PeerClosed =>
       closing = true
-
     case CommandFailed(x) =>
       blog(s"CommandFailed ${x}")
-
     case PackageAck(index) =>
       blog(s"Ack ${index}")
       acknowledge()

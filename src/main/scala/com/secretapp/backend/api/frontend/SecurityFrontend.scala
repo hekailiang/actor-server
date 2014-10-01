@@ -5,7 +5,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.session.SessionProtocol.{HandleMTMessageBox, HandleJsonMessageBox, HandleMessageBox, Envelope}
+import com.secretapp.backend.session.SessionProtocol.{HandleMTMessageBox, HandleJsonMessageBox, Envelope}
 import scala.collection.JavaConversions._
 import scala.util.Success
 import scodec.bits._
@@ -31,7 +31,7 @@ with ActorLogging
     super.preStart()
     authRecF.onComplete {
       case Success(Some((authRec, userOpt))) =>
-        userOpt.map { u => sessionRegion ! SessionProtocol.Envelope(authId, sessionId, SessionProtocol.AuthorizeUser(u)) }
+        userOpt.map { u => sessionRegion ! SessionProtocol.Envelope(authId, sessionId, SessionProtocol.AuthorizeUser(u)) } // TODO: guarantee delivery to session actor
         context.become(receivePF)
         receiveBuffer.foreach(self ! _)
         receiveBuffer.clear()
@@ -44,33 +44,22 @@ with ActorLogging
     context stop self
   }
 
-  @inline
-  private def wrapMessageBox(mb: MessageBox) = transport match {
-    case JsonConnection => HandleJsonMessageBox(mb)
-    case MTConnection => HandleMTMessageBox(mb)
-  }
-
   def receivePF: Receive = {
     case RequestPackage(p) =>
       log.info(s"RequestPackage: $p")
-
       if (p.sessionId == 0L) silentClose()
       else {
         if (p.sessionId == sessionId) {
           p.decodeMessageBox match {
-            case \/-(mb) =>
-              println(s"sessionRegion.tell: ${wrapMessageBox(mb)}")
-              sessionRegion.tell(Envelope(p.authId, p.sessionId, wrapMessageBox(mb)), connection)
-            case -\/(e) => ???
+            case \/-(mb) => sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
+            case -\/(e) => silentClose()
           }
         } else silentClose()
       }
     case SilentClose => silentClose()
-    case x =>
-      println(s"sessionactor: $x")
   }
 
   def receive = {
-    case m: Any => receiveBuffer.add(m)
+    case m => receiveBuffer.add(m)
   }
 }
