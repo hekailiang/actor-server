@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.LocationInvalid
@@ -49,7 +49,7 @@ trait HandlerService extends GeneratorService {
 
     try {
       fileRecord.write(fileId, offset, data.toByteArray) map { _ =>
-        val rsp = ResponsePartUploaded()
+        val rsp = ResponseVoid()
         Ok(rsp)
       }
     } catch {

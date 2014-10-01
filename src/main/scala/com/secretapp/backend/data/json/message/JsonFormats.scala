@@ -6,10 +6,10 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, ContactToImport, RequestPublicKeys, RequestImportContacts}
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.messaging.{EncryptedMessage, RequestSendMessage}
-import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeForOnline, SubscribeForOnline, RequestSetOnline}
+import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar}
+import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar, User, UserId}
 import com.secretapp.backend.data.message.update.UpdateMessage
 import com.secretapp.backend.data.transport._
@@ -26,7 +26,6 @@ trait JsonFormats {
       "header"  -> o.rpcType,
       "body"    -> (o match {
         case r: Request         => requestFormat.writes(r)
-        case r: RequestWithInit => requestWithInitFormat.writes(r)
       })
     )
 
@@ -40,7 +39,6 @@ trait JsonFormats {
     override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[RpcRequestPrepared](json) flatMap {
       case RpcRequestPrepared(rpcType, body) => rpcType match {
         case Request.rpcType         => requestFormat.reads(body)
-        case RequestWithInit.rpcType => requestWithInitFormat.reads(body)
       }
     }
   }
@@ -97,16 +95,15 @@ trait JsonFormats {
         case r: RequestPublicKeys         => requestPublicKeysFormat.writes(r)
         case r: RequestRegisterGooglePush => requestRegisterGooglePushFormat.writes(r)
         case r: RequestSendMessage        => requestSendMessageFormat.writes(r)
-        case r: RequestSetAvatar          => requestSetAvatarFormat.writes(r)
+        case r: RequestEditAvatar          => requestSetAvatarFormat.writes(r)
         case r: RequestSetOnline          => requestSetOnlineFormat.writes(r)
         case m: RequestSignIn             => requestSignInFormat.writes(m)
         case r: RequestSignUp             => requestSignUpFormat.writes(r)
         case u: RequestStartUpload        => requestStartUploadFormat.writes(u)
         case u: RequestUnregisterPush     => requestUnregisterPushFormat.writes(u)
-        case u: RequestUpdateUser         => requestUpdateUserFormat.writes(u)
         case u: RequestUploadPart         => requestUploadPartFormat.writes(u)
-        case u: SubscribeForOnline        => subscribeForOnlineFormat.writes(u)
-        case u: UnsubscribeForOnline      => unsubscribeForOnlineFormat.writes(u)
+        case u: SubscribeToOnline        => subscribeForOnlineFormat.writes(u)
+        case u: UnsubscribeFromOnline      => unsubscribeForOnlineFormat.writes(u)
       })
     )
 
@@ -130,16 +127,15 @@ trait JsonFormats {
         case RequestPublicKeys.requestType         => requestPublicKeysFormat.reads(body)
         case RequestRegisterGooglePush.requestType => requestRegisterGooglePushFormat.reads(body)
         case RequestSendMessage.requestType        => requestSendMessageFormat.reads(body)
-        case RequestSetAvatar.requestType          => requestSetAvatarFormat.reads(body)
+        case RequestEditAvatar.requestType          => requestSetAvatarFormat.reads(body)
         case RequestSetOnline.requestType          => requestSetOnlineFormat.reads(body)
         case RequestSignIn.requestType             => requestSignInFormat.reads(body)
         case RequestSignUp.requestType             => requestSignUpFormat.reads(body)
         case RequestStartUpload.requestType        => requestStartUploadFormat.reads(body)
         case RequestUnregisterPush.requestType     => requestUnregisterPushFormat.reads(body)
-        case RequestUpdateUser.requestType         => requestUpdateUserFormat.reads(body)
         case RequestUploadPart.requestType         => requestUploadPartFormat.reads(body)
-        case SubscribeForOnline.requestType        => subscribeForOnlineFormat.reads(body)
-        case UnsubscribeForOnline.requestType      => unsubscribeForOnlineFormat.reads(body)
+        case SubscribeToOnline.requestType        => subscribeForOnlineFormat.reads(body)
+        case UnsubscribeFromOnline.requestType      => unsubscribeForOnlineFormat.reads(body)
       }
     }
   }
@@ -207,7 +203,6 @@ trait JsonFormats {
 
   // Misc
   implicit val messageBoxFormat       = Json.format[MessageBox]
-  implicit val initConnectionFormat   = Json.format[InitConnection]
   implicit val uploadConfigFormat     = Json.format[UploadConfig]
   implicit val fileLocationFormat     = Json.format[FileLocation]
   implicit val contactToImportFormat  = Json.format[ContactToImport]
@@ -260,23 +255,21 @@ trait JsonFormats {
   val requestPublicKeysFormat         = Json.format[RequestPublicKeys]
   val requestRegisterGooglePushFormat = Json.format[RequestRegisterGooglePush]
   val requestSendMessageFormat        = Json.format[RequestSendMessage]
-  val requestSetAvatarFormat          = Json.format[RequestSetAvatar]
+  val requestSetAvatarFormat          = Json.format[RequestEditAvatar]
   val requestSetOnlineFormat          = Json.format[RequestSetOnline]
   val requestSignInFormat             = Json.format[RequestSignIn]
   val requestSignUpFormat             = Json.format[RequestSignUp]
   val requestStartUploadFormat        = UnitFormat[RequestStartUpload]
   val requestUnregisterPushFormat     = UnitFormat[RequestUnregisterPush]
-  val requestUpdateUserFormat         = Json.format[RequestUpdateUser]
   val requestUploadPartFormat         = Json.format[RequestUploadPart]
-  val subscribeForOnlineFormat        = Json.format[SubscribeForOnline]
-  val unsubscribeForOnlineFormat      = Json.format[UnsubscribeForOnline]
+  val subscribeForOnlineFormat        = Json.format[SubscribeToOnline]
+  val unsubscribeForOnlineFormat      = Json.format[UnsubscribeFromOnline]
 
   // RpcResponseMessage descendants
   //val differenceFormat                = Json.format[Difference]
 
   // RpcRequest descendants
   val requestFormat         = Json.format[Request]
-  val requestWithInitFormat = Json.format[RequestWithInit]
 
   // RpcResponse descendants
   val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]

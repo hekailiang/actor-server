@@ -4,17 +4,15 @@ import scodec.bits.BitVector
 
 case class Message(senderUID: Int,
                    destUID: Int,
-                   mid: Int,
                    keyHash: Long,
-                   useAesKey: Boolean,
-                   aesKey: Option[BitVector],
-                   message: BitVector) extends CommonUpdateMessage
+                   aesEncryptedKey: BitVector,
+                   message: BitVector) extends SeqUpdateMessage
 {
-  val commonUpdateType = Message.commonUpdateType
+  val seqUpdateHeader = Message.seqUpdateHeader
 
   def userIds: Set[Int] = Set(senderUID, destUID)
 }
 
-object Message extends CommonUpdateMessageObject {
-  val commonUpdateType = 0x1
+object Message extends SeqUpdateMessageObject {
+  val seqUpdateHeader = 0x1
 }

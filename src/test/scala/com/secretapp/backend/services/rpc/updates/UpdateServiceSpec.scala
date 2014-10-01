@@ -3,8 +3,9 @@ package com.secretapp.backend.services.rpc.updates
 import akka.actor._
 import akka.testkit._
 import com.secretapp.backend.data.message.UpdateBox
+import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.presence.{ RequestSetOnline, ResponseOnline }
+import com.secretapp.backend.data.message.rpc.presence.{ RequestSetOnline }
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.models.User
@@ -25,24 +26,39 @@ class UpdatesServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
-        RequestGetState() :~> <~:[State]
+        RequestGetState() :~> <~:[ResponseSeq]
       }
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
 
         val rq = RequestSendMessage(
           uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
-          randomId = 555L, useAesKey = false,
-          aesMessage = None,
-          messages = immutable.Seq(
-            EncryptedMessage(uid = scope1.user.uid, publicKeyHash = scope1.user.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
+          randomId = 555L,
+          message = EncryptedMessage(
+            message = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
+          ), selfMessage = Some(
+            EncryptedMessage(
+              message = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedKey(
+                  scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+                )
+              )
+            )
+          )
+        )
 
-        rq :~> <~:[ResponseSendMessage]
+        rq :~> <~:[ResponseSeq]
       }
 
       {
@@ -51,7 +67,7 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(1)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo None
       }
     }
@@ -62,9 +78,9 @@ class UpdatesServiceSpec extends RpcSpec {
       { // subscribe
         implicit val scope = scope1
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
-        RequestGetState() :~> <~:[State]
+        RequestGetState() :~> <~:[ResponseSeq]
       }
 
       val scope3 = scope1.reconnect()
@@ -73,22 +89,28 @@ class UpdatesServiceSpec extends RpcSpec {
         implicit val scope = scope3
 
         // just send any package to auth new connection
-        RequestSetOnline(false, 100) :~> <~:[ResponseOnline]
+        RequestSetOnline(false, 100) :~> <~:[ResponseVoid]
       }
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[State]
-        state.state must equalTo(None)
+        val state = RequestGetState() :~> <~:[ResponseSeq]
+        state.seq must equalTo(0)
 
         val rq = RequestSendMessage(
           uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
-          randomId = 555L, useAesKey = false,
-          aesMessage = None,
-          messages = immutable.Seq(
-            EncryptedMessage(uid = scope1.user.uid, publicKeyHash = scope1.user.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
+          randomId = 555L,
+          message = EncryptedMessage(
+            message = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedKey(
+                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
+          ), selfMessage = None
+        )
 
-        rq :~> <~:[ResponseSendMessage]
+        rq :~> <~:[ResponseSeq]
       }
 
       {
@@ -97,7 +119,7 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(1)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo None
       }
 
@@ -116,24 +138,30 @@ class UpdatesServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        RequestGetState() :~> <~:[State]
+        RequestGetState() :~> <~:[ResponseSeq]
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
       }
 
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
 
         for (i <- (1 to 330)) {
           val rq = RequestSendMessage(
             uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
-            randomId = i, useAesKey = false,
-            aesMessage = None,
-            messages = immutable.Seq(
-              EncryptedMessage(uid = scope1.user.uid, publicKeyHash = scope1.user.publicKeyHash, None, Some(BitVector(i)))))
+            randomId = i,
+            message = EncryptedMessage(
+              message = BitVector(i),
+              keys = immutable.Seq(
+                EncryptedKey(
+                  scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+                )
+              )
+            ), selfMessage = None
+          )
           rq :~>!
         }
       }
@@ -144,7 +172,7 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(330, DurationInt(180).seconds)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[State]
+        val state = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo (None)
 
         val diff1 = RequestGetDifference(0, None) :~> <~:[Difference]

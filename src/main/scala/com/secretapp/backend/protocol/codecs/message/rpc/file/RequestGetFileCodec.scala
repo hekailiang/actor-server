@@ -8,7 +8,7 @@ import scodec.Codec
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object RequestGetFileCodec extends Codec[RequestGetFile] with utils.ProtobufCodec {
   def encode(r: RequestGetFile) = {

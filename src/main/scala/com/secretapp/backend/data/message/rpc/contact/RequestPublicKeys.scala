@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcReque
 import scala.collection.immutable
 
 case class RequestPublicKeys(keys: immutable.Seq[PublicKeyRequest]) extends RpcRequestMessage {
-  override val header = RequestPublicKeys.requestType
+  val header = RequestPublicKeys.requestType
 }
 
 object RequestPublicKeys extends RpcRequestMessageObject {
-  val requestType = 0x6
+  val requestType = 0x06
 }

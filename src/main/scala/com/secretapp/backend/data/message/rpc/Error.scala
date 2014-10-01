@@ -1,8 +1,12 @@
 package com.secretapp.backend.data.message.rpc
 
-case class Error(code: Int, tag: String, userMessage: String, canTryAgain: Boolean = false) extends RpcResponse {
-  override val rpcType = Error.rpcType
-}
+import scodec.bits._
+
+case class Error(
+  code: Int, tag: String, userMessage: String, canTryAgain: Boolean,
+  errorData: BitVector = BitVector.empty
+) extends RpcResponse
+
 object Error extends RpcResponseObject {
-  override val rpcType = 0x2
+  val rpcType = 0x2
 }

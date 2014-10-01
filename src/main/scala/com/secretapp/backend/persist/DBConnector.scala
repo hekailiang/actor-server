@@ -33,7 +33,8 @@ object DBConnector {
 
     Future.sequence(List(
       UserRecord.createTable(session), AuthIdRecord.createTable(session),
-      PhoneRecord.createTable(session), CommonUpdateRecord.createTable(session),
+      AuthSmsCodeRecord.createTable(session), PhoneRecord.createTable(session),
+      SeqUpdateRecord.createTable(session),
       UserPublicKeyRecord.createTable(session), fileRecord.createTable(session),
       GooglePushCredentialsRecord.createTable(session), UnregisteredContactRecord.createTable(session)
     ))
@@ -42,7 +43,8 @@ object DBConnector {
   def truncateTables(session: Session) = blocking {
     Future.sequence(List(
       UserRecord.truncateTable(session), AuthIdRecord.truncateTable(session),
-      PhoneRecord.truncateTable(session), CommonUpdateRecord.truncateTable(session),
+      AuthSmsCodeRecord.truncateTable(session), PhoneRecord.truncateTable(session),
+      SeqUpdateRecord.truncateTable(session),
       UserPublicKeyRecord.truncateTable(session), GooglePushCredentialsRecord.truncateTable(session),
       UnregisteredContactRecord.truncateTable(session)
     ))

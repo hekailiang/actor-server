@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.struct
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 case class Avatar(
   smallImage: Option[AvatarImage],

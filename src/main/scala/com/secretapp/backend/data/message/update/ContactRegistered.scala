@@ -3,12 +3,12 @@ package com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.struct.User
 
 
-case class ContactRegistered(user: User) extends CommonUpdateMessage {
-  override val commonUpdateType = ContactRegistered.commonUpdateType
+case class ContactRegistered(userId: Int) extends SeqUpdateMessage {
+  val seqUpdateHeader = ContactRegistered.seqUpdateHeader
 
-  override def userIds: Set[Int] = Set(user.uid)
+  def userIds: Set[Int] = Set(userId)
 }
 
-object ContactRegistered extends CommonUpdateMessageObject {
-  override val commonUpdateType = 0x05
+object ContactRegistered extends SeqUpdateMessageObject {
+  val seqUpdateHeader = 0x05
 }

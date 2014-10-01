@@ -8,10 +8,10 @@ import com.secretapp.backend.data.message.rpc.auth.{RequestSignUp, RequestSignIn
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.messaging.{RequestSendMessage, EncryptedMessage}
-import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeForOnline, SubscribeForOnline, RequestSetOnline}
+import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
-import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar}
+import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestEditAvatar}
 import com.secretapp.backend.data.message.struct.{User, Avatar, AvatarImage, UserId}
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.types.{NoSex, Female, Sex, Male}
@@ -40,20 +40,6 @@ class JsonFormatsSpec extends Specification {
         )
       )
       testToAndFromJson[MessageBox](j, v)
-    }
-
-    "(de)serialize InitConnection" in {
-      val v = InitConnection(1, 2, "vendor", "model", "appLanguage", "osLanguage", "countryIso".some)
-      val j = Json.obj(
-        "applicationId"           -> 1,
-        "applicationVersionIndex" -> 2,
-        "deviceVendor"            -> "vendor",
-        "deviceModel"             -> "model",
-        "appLanguage"             -> "appLanguage",
-        "osLanguage"              -> "osLanguage",
-        "countryISO"              -> "countryIso"
-      )
-      testToAndFromJson[InitConnection](j, v)
     }
 
     "(de)serialize UploadConfig" in {
@@ -505,10 +491,10 @@ class JsonFormatsSpec extends Specification {
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
-    "(de)serialize RequestSetAvatar" in {
-      val v = RequestSetAvatar(FileLocation(1, 2))
+    "(de)serialize RequestEditAvatar" in {
+      val v = RequestEditAvatar(FileLocation(1, 2))
       val j = Json.obj(
-        "header" -> RequestSetAvatar.requestType,
+        "header" -> RequestEditAvatar.requestType,
         "body"   -> Json.obj(
           "fileLocation" -> Json.obj(
             "fileId"     -> "1",
@@ -604,10 +590,10 @@ class JsonFormatsSpec extends Specification {
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
-    "(de)serialize SubscribeForOnline" in {
-      val v = SubscribeForOnline(immutable.Seq(UserId(1, 2)))
+    "(de)serialize SubscribeToOnline" in {
+      val v = SubscribeToOnline(immutable.Seq(UserId(1, 2)))
       val j = Json.obj(
-        "header" -> SubscribeForOnline.requestType,
+        "header" -> SubscribeToOnline.requestType,
         "body"   -> Json.obj(
           "users" -> Json.arr(
             Json.obj(
@@ -620,10 +606,10 @@ class JsonFormatsSpec extends Specification {
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
-    "(de)serialize UnsubscribeForOnline" in {
-      val v = UnsubscribeForOnline(immutable.Seq(UserId(1, 2)))
+    "(de)serialize UnsubscribeFromOnline" in {
+      val v = UnsubscribeFromOnline(immutable.Seq(UserId(1, 2)))
       val j = Json.obj(
-        "header" -> UnsubscribeForOnline.requestType,
+        "header" -> UnsubscribeFromOnline.requestType,
         "body"   -> Json.obj(
           "users" -> Json.arr(
             Json.obj(
@@ -637,45 +623,12 @@ class JsonFormatsSpec extends Specification {
     }
 
     "(de)serialize Request" in {
-      val v = Request(UnsubscribeForOnline(immutable.Seq(UserId(1, 2))))
+      val v = Request(UnsubscribeFromOnline(immutable.Seq(UserId(1, 2))))
       val j = Json.obj(
         "header" -> Request.rpcType,
         "body"   -> Json.obj(
           "body" -> Json.obj(
-            "header" -> UnsubscribeForOnline.requestType,
-            "body"   -> Json.obj(
-              "users" -> Json.arr(
-                Json.obj(
-                  "uid"        -> 1,
-                  "accessHash" -> "2"
-                )
-              )
-            )
-          )
-        )
-      )
-      testToAndFromJson[RpcRequest](j, v)
-    }
-
-    "(de)serialize RequestWithInit" in {
-      val v = RequestWithInit(
-        InitConnection(1, 2, "vendor", "model", "appLanguage", "osLanguage", "countryIso".some),
-        UnsubscribeForOnline(immutable.Seq(UserId(1, 2)))
-      )
-      val j = Json.obj(
-        "header" -> RequestWithInit.rpcType,
-        "body"   -> Json.obj(
-          "initConnection" -> Json.obj(
-            "applicationId"           -> 1,
-            "applicationVersionIndex" -> 2,
-            "deviceVendor"            -> "vendor",
-            "deviceModel"             -> "model",
-            "appLanguage"             -> "appLanguage",
-            "osLanguage"              -> "osLanguage",
-            "countryISO"              -> "countryIso"
-          ),
-          "body" -> Json.obj(
-            "header" -> UnsubscribeForOnline.requestType,
+            "header" -> UnsubscribeFromOnline.requestType,
             "body"   -> Json.obj(
               "users" -> Json.arr(
                 Json.obj(

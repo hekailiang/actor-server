@@ -1,30 +1,30 @@
 package com.secretapp.backend.data.message.rpc.update
 
 import scala.language.implicitConversions
-import com.secretapp.backend.protocol.codecs.message.update.CommonUpdateMessageCodec
+import com.secretapp.backend.protocol.codecs.message.update.SeqUpdateMessageCodec
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.protocol.codecs.message.update._
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-case class DifferenceUpdate(body: CommonUpdateMessage)
+case class DifferenceUpdate(body: SeqUpdateMessage) extends RpcResponseMessage
 {
   def toProto: String \/ protobuf.DifferenceUpdate = {
     for {
-      update <- CommonUpdateMessageCodec.encode(body)
-    } yield protobuf.DifferenceUpdate(body.commonUpdateType, update)
+      update <- SeqUpdateMessageCodec.encode(body)
+    } yield protobuf.DifferenceUpdate(body.seqUpdateHeader, update)
   }
 }
 
 object DifferenceUpdate {
   def fromProto(u: protobuf.DifferenceUpdate): String \/ DifferenceUpdate = u match {
-    case protobuf.DifferenceUpdate(updateId, body) =>
+    case protobuf.DifferenceUpdate(header, body) =>
       for {
-        update <- CommonUpdateMessageCodec.decode(updateId, body)
+        update <- SeqUpdateMessageCodec.decode(header, body)
       } yield DifferenceUpdate(update)
   }
 }

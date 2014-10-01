@@ -6,7 +6,7 @@ import akka.testkit._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.rpc.update.{State, RequestGetState}
+import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState}
 import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
 import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct, RpcRequestBox}
 import com.secretapp.backend.data.models._
@@ -296,7 +296,7 @@ class SignServiceSpec extends RpcSpec {
         implicit val scope = registered
 
         UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.authId)).sync()
-        RequestGetState() :~> <~:[State] // Subscribe
+        RequestGetState() :~> <~:[ResponseSeq] // Subscribe
       }
 
       {

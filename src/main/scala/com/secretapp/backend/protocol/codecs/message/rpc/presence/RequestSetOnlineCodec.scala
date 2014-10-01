@@ -1,6 +1,6 @@
 package com.secretapp.backend.protocol.codecs.message.rpc.presence
 
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._

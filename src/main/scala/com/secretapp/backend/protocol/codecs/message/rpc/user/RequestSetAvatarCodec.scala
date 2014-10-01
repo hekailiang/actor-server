@@ -10,18 +10,18 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
-object RequestSetAvatarCodec extends Codec[RequestSetAvatar] with utils.ProtobufCodec {
-  def encode(r: RequestSetAvatar) = {
-    val boxed = protobuf.RequestSetAvatar(r.fileLocation.toProto)
+object RequestEditAvatarCodec extends Codec[RequestEditAvatar] with utils.ProtobufCodec {
+  def encode(r: RequestEditAvatar) = {
+    val boxed = protobuf.RequestEditAvatar(r.fileLocation.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestSetAvatar.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestSetAvatar(fileLocation)) =>
-        RequestSetAvatar(FileLocation.fromProto(fileLocation))
+    decodeProtobuf(protobuf.RequestEditAvatar.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.RequestEditAvatar(fileLocation)) =>
+        RequestEditAvatar(FileLocation.fromProto(fileLocation))
     }
   }
 }

@@ -6,7 +6,7 @@ import com.secretapp.backend.data.message.rpc.update._
 import scodec.bits._
 import scodec.Codec
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object RequestGetStateCodec extends Codec[RequestGetState] with utils.ProtobufCodec {
   def encode(r: RequestGetState) = {

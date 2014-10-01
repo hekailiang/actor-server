@@ -7,7 +7,7 @@ import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec
 import scodec.codecs._
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 import scala.util.Success
 

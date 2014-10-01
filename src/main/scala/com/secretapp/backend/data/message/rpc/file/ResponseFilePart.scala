@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import scodec.bits.BitVector
 
 case class ResponseFilePart(data: BitVector) extends RpcResponseMessage {
-  override val header = ResponseFilePart.responseType
+  val header = ResponseFilePart.responseType
 }
 
 object ResponseFilePart extends RpcResponseMessageObject {

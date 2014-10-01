@@ -5,9 +5,8 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessage, RpcResponse}
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestSetAvatar, ResponseAvatarUploaded}
+import com.secretapp.backend.data.message.rpc.user.{RequestEditAvatar, ResponseAvatarChanged}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
-import com.secretapp.backend.data.message.update.UserChanged
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.{FileRecord, UserRecord}
 import com.sksamuel.scrimage.{AsyncImage, Format, Position}
@@ -48,17 +47,13 @@ trait UserService {
   import context._
 
   def handleRpcUser: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case r: RequestSetAvatar => authorizedRequest {
+    case r: RequestEditAvatar => authorizedRequest {
       // FIXME: don't use Option.get
-      handleSetAvatar(currentUser.get, r)
-    }
-
-    case r: RequestUpdateUser => authorizedRequest {
-      handleUpdateUser(currentUser.get, r)
+      handleEditAvatar(currentUser.get, r)
     }
   }
 
-  private def handleSetAvatar(user: User, r: RequestSetAvatar): Future[RpcResponse] = {
+  private def handleEditAvatar(user: User, r: RequestEditAvatar): Future[RpcResponse] = {
     val fr = new FileRecord
 
     val avatar = for (
@@ -93,20 +88,8 @@ trait UserService {
 
     avatar flatMap { a =>
       UserRecord.updateAvatar(user.uid, a) map { _ =>
-        sendUserChangedUpdates(user)
-        Ok(ResponseAvatarUploaded(a))
+        Ok(ResponseAvatarChanged(a))
       }
     }
-  }
-
-  private def handleUpdateUser(user: User, r: RequestUpdateUser): Future[RpcResponse] = {
-    UserRecord.updateName(user.uid, r.name) map { _ =>
-      sendUserChangedUpdates(user)
-      Ok(ResponseVoid())
-    }
-  }
-
-  private def sendUserChangedUpdates(u: User): Unit = withRelations(u.uid) {
-    _.foreach(pushUpdate(_, UserChanged(u.toStruct(u.authId))))
   }
 }

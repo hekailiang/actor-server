@@ -10,10 +10,12 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageSent, MessageRead }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -30,7 +32,7 @@ import scodec.codecs.uuid
 class RpcMessagingSpec extends RpcSpec {
   import system.dispatcher
 
-  def getState(implicit scope: TestScope): updateProto.State = {
+  def getState(implicit scope: TestScope): updateProto.ResponseSeq = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
 
     val rq = updateProto.RequestGetState()
@@ -44,7 +46,7 @@ class RpcMessagingSpec extends RpcSpec {
     msg
       .body.asInstanceOf[RpcResponseBox]
       .body.asInstanceOf[Ok]
-      .body.asInstanceOf[updateProto.State]
+      .body.asInstanceOf[updateProto.ResponseSeq]
   }
 
   def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
@@ -90,10 +92,17 @@ class RpcMessagingSpec extends RpcSpec {
 
       val rq = RequestSendMessage(
         uid = userId, accessHash = accessHash,
-        randomId = 555L, useAesKey = false,
-        aesMessage = None,
-        messages = immutable.Seq(
-          EncryptedMessage(uid = secondUser.uid, publicKeyHash = secondUser.publicKeyHash, None, Some(BitVector(1, 2, 3)))))
+        randomId = 555L,
+        message = EncryptedMessage(
+          message = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedKey(
+              secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          )
+        ), selfMessage = None
+      )
+
       val messageId = rand.nextLong()
       val rpcRq = RpcRequestBox(Request(rq))
       val packageBlob = pack(0, scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
@@ -104,10 +113,9 @@ class RpcMessagingSpec extends RpcSpec {
         val resp = msg
           .body.asInstanceOf[RpcResponseBox]
           .body.asInstanceOf[Ok]
-          .body.asInstanceOf[ResponseSendMessage]
+          .body.asInstanceOf[updateProto.ResponseSeq]
 
-        val rsp = new ResponseSendMessage(
-          mid = resp.mid,
+        val rsp = new updateProto.ResponseSeq(
           seq = initialState.seq + 1,
           state =
             resp.state)
@@ -139,9 +147,87 @@ class RpcMessagingSpec extends RpcSpec {
       getState.seq must equalTo(initialState.seq + 1)
     }
 
-    "respond to RequestSendMessage with error if messages.length is zero" in {
-      implicit val scope = TestScope()
-      RequestSendMessage(1, User.getAccessHash(mockAuthId, 1, "salt"), 42, false, None, immutable.Seq()) :~> <~:(400, "ZERO_MESSAGES_LENGTH")
+    "send UpdateMessageReceived on RequestMessageReceived" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 555L,
+          message = EncryptedMessage(
+            message = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
+          ), selfMessage = None
+        )
+        rq :~> <~:[updateProto.ResponseSeq]
+
+        // subscribe to updates
+        getState(scope)
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageReceived(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+        val update = updBox.body.asInstanceOf[SeqUpdate]
+        update.body should beAnInstanceOf[MessageReceived]
+      }
+    }
+
+    "send UpdateMessageRead on RequestMessageRead" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 555L,
+          message = EncryptedMessage(
+            message = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
+          ), selfMessage = None
+        )
+        rq :~> <~:[updateProto.ResponseSeq]
+
+        // subscribe to updates
+        getState(scope)
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageRead(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
+        val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
+        val update = updBox.body.asInstanceOf[SeqUpdate]
+        update.body should beAnInstanceOf[MessageRead]
+
+        val diff = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.last.body should beAnInstanceOf[MessageRead]
+      }
     }
   }
 }

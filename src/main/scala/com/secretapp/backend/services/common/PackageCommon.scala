@@ -9,11 +9,6 @@ import scalaz._
 import scalaz.Scalaz._
 
 object PackageCommon {
-  type PackageEither = TransportPackage \/ TransportPackage
-  type MTPackageEither = MTPackage \/ MTPackage
-  type JsonPackageEither = JsonPackage \/ JsonPackage
-
   trait PackageServiceMessage
-  case class PackageToSend(connector: ActorRef, p: PackageEither) extends PackageServiceMessage
   case class UpdateBoxToSend(mb: UpdateBox) extends PackageServiceMessage
 }

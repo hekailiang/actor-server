@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc.{RpcResponseMessageObject, RpcResp
 import scala.collection.immutable
 
 case class ResponsePublicKeys(keys: immutable.Seq[PublicKeyResponse]) extends RpcResponseMessage {
-  override val header = ResponsePublicKeys.responseType
+  val header = ResponsePublicKeys.responseType
 }
 
 object ResponsePublicKeys extends RpcResponseMessageObject {

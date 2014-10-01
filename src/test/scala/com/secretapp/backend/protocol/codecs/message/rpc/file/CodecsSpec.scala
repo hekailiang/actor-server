@@ -69,14 +69,6 @@ class CodecsSpec extends Specification {
       protoTransportMessage.decodeValidValue(encoded) should_== decoded
     }
 
-    "encode and decode ResponseFileUploadStarted" in {
-      val encoded = hex"04000000000000000106010000001500".bits
-      val decoded = RpcResponseBox(1L, Ok(ResponsePartUploaded()))
-
-      protoTransportMessage.encodeValid(decoded) should_== encoded
-      protoTransportMessage.decodeValidValue(encoded) should_== decoded
-    }
-
     "encode and decode FileUploaded" in {
       val encoded = hex"0400000000000000010c0100000017060a0408011002".bits
       val location = FileLocation(1, 2L)

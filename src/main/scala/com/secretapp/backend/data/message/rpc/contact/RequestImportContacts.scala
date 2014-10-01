@@ -4,9 +4,9 @@ import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 
 case class RequestImportContacts(contacts: immutable.Seq[ContactToImport]) extends RpcRequestMessage {
-  override val header = RequestImportContacts.requestType
+  val header = RequestImportContacts.requestType
 }
 
 object RequestImportContacts extends RpcRequestMessageObject {
-  override val requestType = 0x7
+  val requestType = 0x07
 }

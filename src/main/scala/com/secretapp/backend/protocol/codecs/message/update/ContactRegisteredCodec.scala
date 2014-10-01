@@ -10,17 +10,17 @@ import scodec.codecs._
 import scalaz._
 import Scalaz._
 import scala.util.Success
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 object ContactRegisteredCodec extends Codec[ContactRegistered] with utils.ProtobufCodec {
   def encode(n: ContactRegistered) = {
-    val boxed = protobuf.UpdateContactRegistered(n.user.toProto)
+    val boxed = protobuf.UpdateContactRegistered(n.userId)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateContactRegistered.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateContactRegistered(u)) => ContactRegistered(User.fromProto(u))
+      case Success(protobuf.UpdateContactRegistered(userId)) => ContactRegistered(userId)
     }
   }
 }

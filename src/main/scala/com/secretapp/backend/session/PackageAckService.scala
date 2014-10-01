@@ -5,7 +5,7 @@ import akka.event.LoggingAdapter
 import akka.util.{ ByteString, Timeout }
 import akka.pattern.ask
 import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
-import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
+import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.api.frontend._
 import scala.collection.immutable
 import scala.concurrent.duration._

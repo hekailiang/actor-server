@@ -79,15 +79,16 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   context.setReceiveTimeout(15.minutes)
 
   implicit val timeout = Timeout(5.seconds)
+  val maxResponseLength = 1024 * 1024 // if more, register UnsentResponse for resend
 
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
   val splitName = self.path.name.split("_")
-  override val authId = java.lang.Long.parseLong(splitName(0))
-  override val sessionId = java.lang.Long.parseLong(splitName(1))
+  val authId = java.lang.Long.parseLong(splitName(0))
+  val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new CommonPusherActor(context.self, authId)))
+  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.HashSet.empty[ActorRef]
@@ -119,8 +120,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
 
       getUnsentMessages() map { messages =>
         messages foreach { case Tuple2(mid, message) =>
-          // TODO
-          val pe = MTPackage(authId, sessionId, BitVector(message)).right
+          val pe = serializePackage(BitVector(message.toByteBuffer))
           println(s"connector ! pe: $pe")
           connector ! pe
         }
@@ -140,25 +140,34 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
         case _ => handleMessage(connector, handleBox.mb)
       }
     case SendMessageBox(connector, mb) =>
-      log.debug(s"SendMessageBox $connector $mb")
+      log.debug(s"SendMessageBox $authId $sessionId $connector $mb")
 
-      val blob = serializeMessageBox(mb)
+      val origEncoded = serializeMessageBox(mb)
+      val origLength = origEncoded.length
+      val blob = mb.body match {
+        case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
+          val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
+          log.debug(s"Response is too large, generated $unsentResponse")
+          serializeMessageBox(MessageBox(mb.messageId, unsentResponse))
+        case _ => origEncoded
+      }
       registerSentMessage(mb, ByteString(blob.toByteArray))
 
       val pe = serializePackage(blob)
-      println(s"tell.! connector $connector ! pe: ${mb}")
+      println(s"tell.! connector $connector ! pe: $mb")
       connector ! pe
     case UpdateBoxToSend(ub) =>
-      log.debug(s"UpdateBoxToSend($ub)")
-      // FIXME: real message id SA-32
-      val mb = MessageBox(rand.nextLong, ub)
+      log.debug(s"UpdateBoxToSend $authId $sessionId $ub")
+      val mb = MessageBox(getMessageId(UpdateMsgId), ub)
       println(s"tell.! connectors $connectors ! pe: $mb")
       val blob = serializeMessageBox(mb)
       registerSentMessage(mb, ByteString(blob.toByteArray))
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
-    case AuthorizeUser(user) =>
-      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+    case msg @ AuthorizeUser(user) =>
+      persist(msg) { _ =>
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
     case msg @ SubscribeToUpdates =>
       if (!subscribedToUpdates && !subscribingToUpdates) {
         persist(msg) { _ =>
@@ -191,6 +200,11 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       }
 
       subscribeToPresences(subscribedToPresencesUids.toList)
+      currentUser map { user =>
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
+    case AuthorizeUser(user) =>
+      currentUser = Some(user)
     case SubscribeToUpdates =>
       subscribingToUpdates = true
     case SubscribeToPresences(uids) =>

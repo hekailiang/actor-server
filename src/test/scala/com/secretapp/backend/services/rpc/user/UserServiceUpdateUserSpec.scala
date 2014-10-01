@@ -1,9 +1,9 @@
 package com.secretapp.backend.services.rpc.user
-
+/*
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
-import com.secretapp.backend.data.message.rpc.messaging.{EncryptedMessage, ResponseSendMessage, RequestSendMessage}
-import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference}
+import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.user.RequestUpdateUser
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserRecord
@@ -72,15 +72,17 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
       u.uid,
       u.accessHash(scope.user.authId),
       555L,
-      false,
-      None,
-      immutable.Seq(
-        EncryptedMessage(
-          u.uid,
-          u.publicKeyHash,
-          None,
-          Some(BitVector(1, 2, 3)))))
+      message = EncryptedMessage(
+        message = BitVector(1, 2, 3),
+        keys = immutable.Seq(
+          EncryptedKey(
+            u.publicKeyHash, BitVector(1, 0, 1, 0)
+          )
+        )
+      ), selfMessage = None
+    )
 
-    rq :~> <~:[ResponseSendMessage]
+    rq :~> <~:[ResponseSeq]
   }
 }
+ */

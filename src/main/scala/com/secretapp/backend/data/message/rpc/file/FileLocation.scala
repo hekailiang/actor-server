@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.file
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import com.reactive.messenger.{ api => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 case class FileLocation(fileId: Long, accessHash: Long) extends ProtobufMessage
 {
