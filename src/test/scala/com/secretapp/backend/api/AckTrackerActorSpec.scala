@@ -3,7 +3,6 @@ package com.secretapp.backend.api
 import akka.actor.{ ActorSystem, Props }
 import akka.io.Tcp._
 import akka.testkit._
-import akka.util.ByteString
 import akka.util.Timeout
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
@@ -16,6 +15,7 @@ import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.specs2.mutable.ActorSpecification
+import scodec.bits.BitVector
 
 class AckTrackerActorSpec extends ActorSpecification with RandomService {
   import system.dispatcher
@@ -25,7 +25,7 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
 
   val probe = TestProbe()
   val message = MessageBox(messageId = 123L, RequestAuthId())
-  val bytes = ByteString(MessageBoxCodec.encode(message).toOption.get.toByteArray)
+  val bytes = MessageBoxCodec.encode(message).toOption.get
 
   def getTrackerActor() = system.actorOf(Props(new AckTrackerActor(rand.nextLong, rand.nextLong, 19)))
 
@@ -34,7 +34,7 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
       val tracker = getTrackerActor()
       probe.send(tracker, RegisterMessage(message.messageId, bytes))
       probe.send(tracker, GetUnackdMessages)
-      val expected = immutable.Map[Long, ByteString]() + Tuple2(123L, bytes)
+      val expected = immutable.Map[Long, BitVector]() + Tuple2(123L, bytes)
       probe.expectMsg(10.seconds, UnackdMessages(expected))
     }
 
@@ -42,7 +42,7 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
       val tracker = getTrackerActor()
       probe.send(tracker, RegisterMessageAck(123L))
       probe.send(tracker, GetUnackdMessages)
-      val expected = immutable.Map[Long, ByteString]()
+      val expected = immutable.Map[Long, BitVector]()
       probe.expectMsg(5.seconds, UnackdMessages(expected))
     }
 

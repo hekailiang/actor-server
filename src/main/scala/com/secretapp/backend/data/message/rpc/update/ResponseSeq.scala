@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 import java.util.UUID
 
 case class ResponseSeq(seq: Int, state: Option[UUID]) extends RpcResponseMessage {
-  override val header = ResponseSeq.responseType
+  val header = ResponseSeq.responseType
 }
 
 object ResponseSeq extends RpcResponseMessageObject {
-  override val responseType = 0x48
+  val responseType = 0x48
 }

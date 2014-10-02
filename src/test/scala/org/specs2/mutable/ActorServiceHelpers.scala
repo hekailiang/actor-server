@@ -6,6 +6,7 @@ import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
@@ -15,7 +16,7 @@ import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
-import com.secretapp.backend.protocol.transport.{ MTPackageBoxCodec, TcpConnector }
+import com.secretapp.backend.protocol.transport.MTPackageBoxCodec
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.session._
@@ -122,7 +123,7 @@ trait ActorServiceHelpers extends RandomService {
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpConnector(probe.ref, sessionRegion, session) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, sessionRegion, session) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 

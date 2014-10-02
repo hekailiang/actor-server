@@ -9,9 +9,9 @@ case class RequestSendGroupMessage(
   message: EncryptedMessage,
   selfMessage: Option[EncryptedMessage]
 ) extends RpcRequestMessage {
-  override val header = RequestSendGroupMessage.requestType
+  val header = RequestSendGroupMessage.requestType
 }
 
 object RequestSendGroupMessage extends RpcRequestMessageObject {
-  override val requestType = 0x43
+  val requestType = 0x43
 }

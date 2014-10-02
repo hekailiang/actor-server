@@ -7,11 +7,11 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth.{RequestSignUp, RequestSignIn, RequestAuthCode}
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging.{RequestSendMessage, EncryptedMessage}
+import com.secretapp.backend.data.message.rpc.messaging.{EncryptedKey, RequestSendMessage, EncryptedMessage}
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
-import com.secretapp.backend.data.message.rpc.user.{RequestUpdateUser, RequestEditAvatar}
+import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.data.message.struct.{User, Avatar, AvatarImage, UserId}
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.types.{NoSex, Female, Sex, Male}
@@ -79,7 +79,7 @@ class JsonFormatsSpec extends Specification {
     }
 
     "(de)serialize EncryptedKey" in {
-      val v = EncryptedKey(1, BitVector.fromBase64("1234"))
+      val v = EncryptedKey(1, BitVector.fromBase64("1234").get)
       val j = Json.obj(
         "keyHash"         -> "1",
         "aesEncryptedKey" -> "1234"
@@ -88,10 +88,9 @@ class JsonFormatsSpec extends Specification {
     }
 
     "(de)serialize EncryptedMessage" in {
-      val v = EncryptedMessage(1, 2, BitVector.fromBase64("1234"), BitVector.fromBase64("5678"))
+      val key = EncryptedKey(1, BitVector.fromBase64("1234").get)
+      val v = EncryptedMessage(BitVector.fromBase64("1234").get, immutable.Seq(key))
       val j = Json.obj(
-        "uid"             -> 1,
-        "publicKeyHash"   -> "2",
         "aesEncryptedKey" -> "1234",
         "message"         -> "5678"
       )
@@ -478,7 +477,9 @@ class JsonFormatsSpec extends Specification {
     }
 
     "(de)serialize RequestSendMessage" in {
-      val v = RequestSendMessage(1, 2, 3, true, BitVector.fromBase64("1234"), immutable.Seq(EncryptedMessage(4, 5, BitVector.fromBase64("5678"), BitVector.fromBase64("9012"))))
+      val key = EncryptedKey(1, BitVector.fromBase64("1234").get)
+      val m = EncryptedMessage(BitVector.fromBase64("5678").get, immutable.Seq(key))
+      val v = RequestSendMessage(1, 2, 3, m, m.some)
       val j = Json.obj(
         "header" -> RequestSendMessage.requestType,
         "body"   -> Json.obj(
@@ -569,17 +570,6 @@ class JsonFormatsSpec extends Specification {
       val j = Json.obj(
         "header" -> RequestUnregisterPush.requestType,
         "body"   -> Json.obj()
-      )
-      testToAndFromJson[RpcRequestMessage](j, v)
-    }
-
-    "(de)serialize RequestUpdateUser" in {
-      val v = RequestUpdateUser("name")
-      val j = Json.obj(
-        "header" -> RequestUpdateUser.requestType,
-        "body"   -> Json.obj(
-          "name" -> "name"
-        )
       )
       testToAndFromJson[RpcRequestMessage](j, v)
     }

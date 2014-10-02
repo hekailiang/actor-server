@@ -35,7 +35,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong
 
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
 
       val rpcReq = RpcRequestBox(Request(RequestAuthCode(defaultPhoneNumber, rand.nextInt, rand.nextString(10))))
       val messageId = rand.nextLong
@@ -57,7 +57,7 @@ class SignServiceSpec extends RpcSpec {
 
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
@@ -148,7 +148,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
 
@@ -176,7 +176,7 @@ class SignServiceSpec extends RpcSpec {
 
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, "invalid", smsCode, "Timothy Klim", publicKey)))
@@ -196,7 +196,7 @@ class SignServiceSpec extends RpcSpec {
 
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, "invalid", "Timothy Klim", publicKey)))
@@ -215,7 +215,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
 
@@ -235,7 +235,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
       val publicKey = genPublicKey
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
 
@@ -255,7 +255,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
       val publicKey = BitVector.empty
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
 
@@ -275,7 +275,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
       val publicKey = BitVector(hex"ac1d")
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
@@ -305,7 +305,7 @@ class SignServiceSpec extends RpcSpec {
         implicit val authId = rand.nextLong()
         val publicKey = genPublicKey
         val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-        insertAuthAndSessionId(authId)(scope.session)
+        insertAuthId(authId)
         AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
 
         RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey) :~> <~:[ResponseAuth]

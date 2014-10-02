@@ -72,7 +72,7 @@ class SessionActorSpec extends RpcSpec {
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong
 
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
       val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
       val packages = messages.map(pack(0, authId, _))
       val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
@@ -92,7 +92,7 @@ class SessionActorSpec extends RpcSpec {
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong
 
-      insertAuthAndSessionId(authId)
+      insertAuthId(authId)
 
       val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
       val container = MessageBox(rand.nextLong, Container(messages))

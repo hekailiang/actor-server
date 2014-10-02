@@ -49,4 +49,11 @@ object MTPackageBoxCodec extends Codec[MTPackageBox] {
       case l@(-\/(e)) => l
     }
   }
+
+  // TODO
+  def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
+    val mb = MessageBoxCodec.encodeValid(MessageBox(messageId, message))
+    val blob = MTPackageCodec.encodeValid(MTPackage(authId, sessionId, mb))
+    encode(index, blob)
+  }
 }
