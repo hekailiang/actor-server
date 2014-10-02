@@ -21,7 +21,7 @@ object ApiBrokerProtocol {
 }
 
 class ApiBrokerActor(
-  val currentAuthId: Long, val currentSessionId: Long, val clusterProxies: ClusterProxies,
+  val currentAuthId: Long, val currentSessionId: Long, val singletons: Singletons, val clusterProxies: ClusterProxies,
   val subscribedToUpdates: Boolean, val session: CSession) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 
@@ -53,7 +53,7 @@ class ApiBrokerActor(
                   MessageBox(
                     messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
                 self)
-              log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
+              log.error(s"Failed to handle rpc $connector $messageId $body")
               throw error
           }
 
@@ -67,7 +67,7 @@ class ApiBrokerActor(
             SessionProtocol.SendMessageBox(
               connector, MessageBox(messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
             self)
-          log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
+          log.error(s"Failed to handle rpc $connector $messageId $body")
           throw error
       }
   }

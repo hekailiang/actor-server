@@ -126,7 +126,7 @@ trait ActorServiceHelpers extends RandomService {
     override def genUserAccessSalt = userSalt
   }
 
-  val counters = new Singletons
+  implicit val singletons = new Singletons
   implicit val clusterProxies = new ClusterProxies
   val sessionRegion = SessionActor.startRegion()
 
