@@ -5,7 +5,7 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessage, RpcResponse}
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.rpc.user.{RequestEditAvatar, ResponseAvatarChanged}
+import com.secretapp.backend.data.message.rpc.user.{RequestEditName, RequestEditAvatar, ResponseAvatarChanged}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.{FileRecord, UserRecord}
@@ -51,6 +51,9 @@ trait UserService {
       // FIXME: don't use Option.get
       handleEditAvatar(currentUser.get, r)
     }
+    case r: RequestEditName => authorizedRequest {
+      handleEditName(currentUser.get, r)
+    }
   }
 
   private def handleEditAvatar(user: User, r: RequestEditAvatar): Future[RpcResponse] = {
@@ -92,4 +95,9 @@ trait UserService {
       }
     }
   }
+
+  private def handleEditName(user: User, r: RequestEditName): Future[RpcResponse] =
+    UserRecord.updateName(user.uid, r.name) map { _ =>
+      Ok(ResponseVoid())
+    }
 }
