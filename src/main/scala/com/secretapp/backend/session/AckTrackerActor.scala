@@ -4,12 +4,12 @@ import akka.actor._
 import akka.persistence._
 import scala.annotation.tailrec
 import scala.collection.immutable
-import akka.util.ByteString
+import scodec.bits.BitVector
 
 object AckTrackerProtocol {
   sealed trait AckTrackerMessage
 
-  case class RegisterMessage(key: Long, value: ByteString) extends AckTrackerMessage
+  case class RegisterMessage(key: Long, value: BitVector) extends AckTrackerMessage
   case class RegisterMessageAck(key: Long) extends AckTrackerMessage
   case class RegisterMessageAcks(keys: List[Long]) extends AckTrackerMessage
 
@@ -17,7 +17,7 @@ object AckTrackerProtocol {
   case object MessageAlreadyRegistered extends AckTrackerMessage
   case object GetUnackdMessages extends AckTrackerMessage
   case object MessagesSizeOverflow extends AckTrackerMessage
-  case class UnackdMessages(messages: immutable.Map[Long, ByteString]) extends AckTrackerMessage
+  case class UnackdMessages(messages: immutable.Map[Long, BitVector]) extends AckTrackerMessage
 }
 
 /**
@@ -31,12 +31,12 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
 
   override def persistenceId: String = s"ackTracker-$authId-$sessionId"
 
-  case class State(messages: immutable.Map[Long, ByteString], messagesSize: Int) {
+  case class State(messages: immutable.Map[Long, BitVector], messagesSize: Int) {
     /**
      * Add new element
      */
-    def withNew(key: Long, message: ByteString): State = {
-      State(messages + Tuple2(key, message), messagesSize + message.size)
+    def withNew(key: Long, message: BitVector): State = {
+      State(messages + Tuple2(key, message), messagesSize + (message.size / 8).toInt)
     }
 
     /**
@@ -45,7 +45,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
     def without(key: Long): State = {
       messages.get(key) match {
         case Some(message) =>
-          State(messages - key, messagesSize - message.size)
+          State(messages - key, messagesSize - (message.size / 8).toInt)
         case None =>
           log.warning("Trying to remove element which is not present in undelivered things list")
           this
@@ -53,7 +53,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
     }
   }
 
-  var state = State(immutable.Map[Long, ByteString](), 0)
+  var state = State(immutable.Map[Long, BitVector](), 0)
 
   def receiveCommand: Receive = {
     case m: RegisterMessage =>

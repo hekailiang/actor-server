@@ -9,12 +9,11 @@ import akka.persistence._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
-import com.secretapp.backend.protocol.codecs.message.{JsonMessageBoxCodec, MessageBoxCodec}
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
-import akka.util.{ ByteString, Timeout }
+import akka.util.Timeout
 import scala.collection.immutable
-import com.secretapp.backend.data.transport.{TransportPackage, JsonPackage, MessageBox, MTPackage}
+import com.secretapp.backend.data.transport.MessageBox
 import com.datastax.driver.core.{ Session => CSession }
 import scodec.bits._
 import com.secretapp.backend.services.common.PackageCommon
@@ -120,7 +119,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
 
       getUnsentMessages() map { messages =>
         messages foreach { case Tuple2(mid, message) =>
-          val pe = serializePackage(BitVector(message.toByteBuffer))
+          val pe = serializePackage(message)
           println(s"connector ! pe: $pe")
           connector ! pe
         }
@@ -151,7 +150,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
           serializeMessageBox(MessageBox(mb.messageId, unsentResponse))
         case _ => origEncoded
       }
-      registerSentMessage(mb, ByteString(blob.toByteArray))
+      registerSentMessage(mb, blob)
 
       val pe = serializePackage(blob)
       println(s"tell.! connector $connector ! pe: $mb")
@@ -161,7 +160,7 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       val mb = MessageBox(getMessageId(UpdateMsgId), ub)
       println(s"tell.! connectors $connectors ! pe: $mb")
       val blob = serializeMessageBox(mb)
-      registerSentMessage(mb, ByteString(blob.toByteArray))
+      registerSentMessage(mb, blob)
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>

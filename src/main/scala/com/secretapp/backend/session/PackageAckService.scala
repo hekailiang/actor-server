@@ -2,7 +2,7 @@ package com.secretapp.backend.session
 
 import akka.actor._
 import akka.event.LoggingAdapter
-import akka.util.{ ByteString, Timeout }
+import akka.util.Timeout
 import akka.pattern.ask
 import com.secretapp.backend.data.message.{ MessageAck, Pong, Ping }
 import com.secretapp.backend.data.transport.MessageBox
@@ -12,6 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
+import scodec.bits.BitVector
 
 trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
   import AckTrackerProtocol._
@@ -28,7 +29,7 @@ trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
   val unackedSizeLimit = 1024 * 100
   lazy val ackTracker = context.actorOf(Props(classOf[AckTrackerActor], authId, sessionId, unackedSizeLimit))
 
-  def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {
+  def registerSentMessage(mb: MessageBox, b: BitVector): Unit = mb match {
     case MessageBox(mid, m) =>
       m match {
         case _: Ping =>
@@ -54,7 +55,7 @@ trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
       }
   }
 
-  def getUnsentMessages(): Future[immutable.Map[Long, ByteString]] = {
+  def getUnsentMessages(): Future[immutable.Map[Long, BitVector]] = {
     implicit val timeout = Timeout(5.seconds)
     ask(ackTracker, GetUnackdMessages).mapTo[UnackdMessages] map (_.messages)
   }

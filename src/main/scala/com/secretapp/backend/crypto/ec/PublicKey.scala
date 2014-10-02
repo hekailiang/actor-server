@@ -11,18 +11,6 @@ import java.security.{ Security, MessageDigest }
 object PublicKey {
   Security.addProvider(new BouncyCastleProvider())
 
-  val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
-
-  def isPrime192v1(buf: BitVector): Boolean = {
-    val curve: ECCurve = ecSpec.getCurve
-    try {
-      curve.decodePoint(buf.toByteArray)
-      true
-    } catch {
-      case _: Throwable => false
-    }
-  }
-
   def keyHash(pk: BitVector): Long = {
     val digest = MessageDigest.getInstance("SHA-256")
     val buf = BitVector(digest.digest(pk.toByteArray))
