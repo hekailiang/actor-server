@@ -12,16 +12,17 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.update.{ MessageReceived, MessageRead }
-import com.secretapp.backend.data.models.User
-import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord }
+import com.secretapp.backend.data.message.update.{ GroupInvite, MessageReceived, MessageRead }
+import com.secretapp.backend.data.models.{ GroupChat, User }
+import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord, GroupChatRecord }
 import com.secretapp.backend.services.common.PackageCommon._
+import com.secretapp.backend.services.common.RandomService
 import java.util.UUID
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.language.postfixOps
 import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
@@ -47,6 +48,14 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestMessageRead(uid, randomId, accessHash) pipeTo replyTo
 
+    case RpcProtocol.Request(RequestCreateChat(randomId, title, keyHash, publicKey, invites)) =>
+      val replyTo = sender()
+      handleRequestCreateChat(randomId, title, keyHash, publicKey, invites) pipeTo replyTo
+
+    case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
+      val replyTo = sender()
+      handleRequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage) pipeTo replyTo
+
     case RpcProtocol.Request(RequestSendMessage(uid, accessHash, randomId, message, selfMessage)) =>
       val replyTo = sender()
 
@@ -68,7 +77,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
   }
 }
 
-sealed trait MessagingService {
+sealed trait MessagingService extends RandomService {
   self: MessagingServiceActor =>
 
   import context.{ dispatcher, system }
@@ -79,26 +88,101 @@ sealed trait MessagingService {
   val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
 
   // Caches userId -> accessHash associations
-  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[User]]
+  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Map[Long, User]]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
-  protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    val fUsers = Option(usersCache.get(uid)) match {
+  protected def handleRequestCreateChat(
+    randomId: Long,
+    title: String,
+    keyHash: BitVector,
+    publicKey: BitVector,
+    invites: immutable.Seq[InviteUser]
+  ): Future[RpcResponse] = {
+    val id = rand.nextInt
+    val chat = GroupChat(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
+
+    GroupChatRecord.insertEntity(chat) flatMap { _ =>
+      Future.sequence(invites.toVector map createChatUserInvites(chat)) map { ei =>
+        val (errors, invites) = ei.separate
+        if (errors.length > 0) {
+          errors.head
+        } else {
+          invites.flatten map {
+            case (authId, invite) =>
+              updatesBrokerRegion ! NewUpdatePush(authId, invite)
+          }
+          Ok(ResponseCreateChat(chat.id, chat.accessHash, 0, None))
+        }
+      }
+    }
+  }
+
+  protected def createChatUserInvites(chat: GroupChat)(invite: InviteUser): Future[Error \/ Vector[(Long, GroupInvite)]] = {
+    getUsers(invite.uid) map {
+      case users if users.isEmpty =>
+        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left
+      case users =>
+        val (_, checkUser) = users.head
+
+        if (checkUser.accessHash(currentUser.authId) == invite.accessHash) {
+          val jobsOpts = invite.keys flatMap { message =>
+            message.keys map ((message.message, _))
+          } map {
+            case (message, key) =>
+              users.get(key.keyHash) map ((_, message, key))
+          }
+
+          val optInvites: Option[Vector[(Long, GroupInvite)]] = jobsOpts.toVector.sequence map { jobs =>
+            jobs map {
+              case (user, message, key) =>
+                (
+                  user.authId,
+                  GroupInvite(
+                    chatId = chat.id,
+                    accessHash = chat.accessHash,
+                    title = chat.title,
+                    users = immutable.Seq.empty,
+                    keyHash = user.publicKeyHash,
+                    aesEncryptedKey = key.aesEncryptedKey,
+                    message = message
+                  )
+                )
+            }
+          }
+          optInvites map (invites => invites.right) getOrElse (Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left)
+        } else {
+          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left
+        }
+    }
+  }
+
+  protected def handleRequestSendGroupMessage(chatId: Int,
+    accessHash: Long,
+    randomId: Long,
+    message: EncryptedMessage,
+    selfMessage: Option[EncryptedMessage]): Future[RpcResponse] = ???
+
+  protected def getUsers(uid: Int): Future[Map[Long, User]] = {
+    Option(usersCache.get(uid)) match {
       case Some(users) =>
         Future.successful(users)
       case None =>
-        UserRecord.getEntities(uid)
+        UserRecord.getEntities(uid) map (
+          _ map {user => (user.publicKeyHash, user) } toMap
+        )
     }
+  }
 
-    fUsers flatMap {
+  protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
+    getUsers(uid) flatMap {
       case users if users.isEmpty =>
         Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
       case users =>
-        val user = users.head
+        val (authId, user) = users.head
 
         if (user.accessHash(currentUser.authId) == accessHash) {
           users map { u =>
-            updatesBrokerRegion ! NewUpdatePush(u.authId, MessageReceived(currentUser.uid, randomId))
+            updatesBrokerRegion ! NewUpdatePush(authId, MessageReceived(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
@@ -111,22 +195,15 @@ sealed trait MessagingService {
 
   // TODO: DRY
   protected def handleRequestMessageRead(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    val fUsers = Option(usersCache.get(uid)) match {
-      case Some(users) =>
-        Future.successful(users)
-      case None =>
-        UserRecord.getEntities(uid)
-    }
-
-    fUsers flatMap {
+    getUsers(uid) flatMap {
       case users if users.isEmpty =>
         Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
       case users =>
-        val user = users.head
+        val (authId, user) = users.head
 
         if (user.accessHash(currentUser.authId) == accessHash) {
           users map { u =>
-            updatesBrokerRegion ! NewUpdatePush(u.authId, MessageRead(currentUser.uid, randomId))
+            updatesBrokerRegion ! NewUpdatePush(authId, MessageRead(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]

@@ -122,6 +122,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.MessageRead =>
         val body = MessageReadCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageRead.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupInvite =>
+        val body = GroupInviteCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupInvite.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

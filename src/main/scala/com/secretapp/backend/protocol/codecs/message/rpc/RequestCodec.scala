@@ -45,6 +45,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestUnregisterPush.requestType)     { case r: RequestUnregisterPush     => r } (protoPayload(RequestUnregisterPushCodec))
     .\(RequestMessageReceived.requestType)    { case r: RequestMessageReceived    => r } (protoPayload(RequestMessageReceivedCodec))
     .\(RequestMessageRead.requestType)        { case r: RequestMessageRead        => r } (protoPayload(RequestMessageReadCodec))
+    .\(RequestCreateChat.requestType)         { case r: RequestCreateChat         => r } (protoPayload(RequestCreateChatCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)
