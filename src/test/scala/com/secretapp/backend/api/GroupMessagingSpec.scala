@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite }
+import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite, GroupMessage }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
@@ -33,13 +33,13 @@ class GroupMessagingSpec extends RpcSpec {
   import system.dispatcher
 
   "GroupMessaging" should {
-    "send invites on creation" in {
+    "send invites on creation and send/receive messages" in {
       val (scope1, scope2) = TestScope.pair()
 
       {
         implicit val scope = scope1
 
-        val rq = RequestCreateChat(
+        val rqCreateChat = RequestCreateChat(
           randomId = 1L,
           title = "Groupchat 3000",
           keyHash = BitVector(1, 1, 1),
@@ -62,7 +62,25 @@ class GroupMessagingSpec extends RpcSpec {
             )
           )
         )
-        rq :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        val rqSendMessage = RequestSendGroupMessage(
+          chatId = resp.chatId,
+          accessHash = resp.accessHash,
+          randomId = 666L,
+          message = EncryptedMessage(
+            message = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedKey(
+                keyHash = scope2.user.publicKeyHash,
+                aesEncryptedKey = BitVector(2, 0, 2, 0)
+              )
+            )
+          ),
+          selfMessage = None
+        )
+
+        rqSendMessage :~> <~:[updateProto.ResponseSeq]
       }
 
       {
@@ -70,6 +88,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupInvite]
+        diff.updates(1).body.assertInstanceOf[GroupMessage]
       }
     }
   }
