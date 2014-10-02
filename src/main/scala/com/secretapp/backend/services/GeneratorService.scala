@@ -5,7 +5,7 @@ import com.secretapp.backend.services.common.RandomService
 trait GeneratorService extends RandomService {
   def genNewAuthId = rand.nextLong
 
-  def genSmsCode = Math.abs(rand.nextLong()).toString.take(6)
+  def genSmsCode = rand.nextLong().toString.dropWhile(c => c == '0' || c == '-').take(6)
 
   def genSmsHash = rand.nextLong().toString
 
