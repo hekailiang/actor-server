@@ -1,10 +1,10 @@
 package com.secretapp.backend.services.rpc.user
-/*
+
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
-import com.secretapp.backend.data.message.rpc.user.RequestUpdateUser
+import com.secretapp.backend.data.message.rpc.user.RequestEditName
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -12,16 +12,16 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._
 
-class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
+class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
-  "user service on receiving `RequestUpdateUser`" should {
+  "user service on receiving `RequestEditName`" should {
 
     "respond with `ResponseVoid`" in {
-      updateUserShouldBeOk
+      editNameShouldBeOk
     }
 
     "update user name" in {
-      updateUserShouldBeOk
+      editNameShouldBeOk
 
       UserRecord.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
     }
@@ -37,7 +37,7 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
       {
         implicit val scope = scope2
         connectWithUser(scope1.user)
-        updateUserShouldBeOk
+        editNameShouldBeOk
       }
 
       val diff2 = {
@@ -64,8 +64,8 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
 
   private val newName = "John The New"
 
-  private def updateUserShouldBeOk(implicit scope: TestScope) =
-    RequestUpdateUser(newName) :~> <~:[ResponseVoid]
+  private def editNameShouldBeOk(implicit scope: TestScope) =
+    RequestEditName(newName) :~> <~:[ResponseVoid]
 
   private def connectWithUser(u: User)(implicit scope: TestScope) = {
     val rq = RequestSendMessage(
@@ -85,4 +85,3 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
     rq :~> <~:[ResponseSeq]
   }
 }
- */
