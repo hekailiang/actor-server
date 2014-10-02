@@ -78,6 +78,15 @@ class JsonFormatsSpec extends Specification {
       testToAndFromJson[PublicKeyRequest](j, v)
     }
 
+    "(de)serialize EncryptedKey" in {
+      val v = EncryptedKey(1, BitVector.fromBase64("1234"))
+      val j = Json.obj(
+        "keyHash"         -> "1",
+        "aesEncryptedKey" -> "1234"
+      )
+      testToAndFromJson[EncryptedKey](j, v)
+    }
+
     "(de)serialize EncryptedMessage" in {
       val v = EncryptedMessage(1, 2, BitVector.fromBase64("1234"), BitVector.fromBase64("5678"))
       val j = Json.obj(

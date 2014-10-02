@@ -1,15 +1,15 @@
 package com.secretapp.backend.data.message.rpc.messaging
 
-import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
-import scodec.bits.BitVector
 
 case class RequestSendMessage(uid: Int,
                               accessHash: Long,
                               randomId: Long,
                               message: EncryptedMessage,
-                              selfMessage: Option[EncryptedMessage]) extends RpcRequestMessage
+                              selfMessage: Option[EncryptedMessage]) extends RpcRequestMessage {
+  override val header = RequestSendMessage.requestType
+}
 
 object RequestSendMessage extends RpcRequestMessageObject {
-  val requestType = 0x0E
+  override val requestType = 0x0e
 }

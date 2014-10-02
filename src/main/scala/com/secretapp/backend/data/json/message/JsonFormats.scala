@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, ContactToImport, RequestPublicKeys, RequestImportContacts}
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging.{EncryptedMessage, RequestSendMessage}
+import com.secretapp.backend.data.message.rpc.messaging.{EncryptedKey, EncryptedMessage, RequestSendMessage}
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update._
@@ -207,6 +207,7 @@ trait JsonFormats {
   implicit val fileLocationFormat     = Json.format[FileLocation]
   implicit val contactToImportFormat  = Json.format[ContactToImport]
   implicit val publicKeyRequestFormat = Json.format[PublicKeyRequest]
+  implicit val EncryptedKeyFormat     = Json.format[EncryptedKey]
   implicit val encryptedMessageFormat = Json.format[EncryptedMessage]
   implicit val userIdFormat           = Json.format[UserId]
   implicit val avatarImageFormat      = Json.format[AvatarImage]
