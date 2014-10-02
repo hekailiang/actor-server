@@ -96,18 +96,10 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   // we need lazy here because subscribedToUpdates sets during receiveRecover
   lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
-  override def receive = {
-    case handleBox: HandleMessageBox =>
-      transport = handleBox match {
-        case _: HandleJsonMessageBox => JsonConnection.some
-        case _: HandleMTMessageBox => MTConnection.some
-      }
-      context.become(receiveCommand)
-      receiveCommand(handleBox)
-    case p: AuthorizeUser =>
-      receiveCommand(p)
-    case m =>
-      log.error(s"received unmatched message: $m")
+  def queueNewSession(messageId: Long): Unit = {
+    log.info(s"queueNewSession $messageId, $sessionId")
+    val mb = MessageBox(getMessageId(TransportMsgId), NewSession(messageId, sessionId))
+    registerSentMessage(mb, serializeMessageBox(mb))
   }
 
   def checkNewConnection(connector: ActorRef) = {
@@ -125,6 +117,21 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
         }
       }
     }
+  }
+
+  override def receive = {
+    case handleBox: HandleMessageBox =>
+      transport = handleBox match {
+        case _: HandleJsonMessageBox => JsonConnection.some
+        case _: HandleMTMessageBox => MTConnection.some
+      }
+      queueNewSession(handleBox.mb.messageId)
+      context.become(receiveCommand)
+      receiveCommand(handleBox)
+    case p: AuthorizeUser =>
+      receiveCommand(p)
+    case m =>
+      log.error(s"received unmatched message: $m")
   }
 
   val receiveCommand: Receive = {
