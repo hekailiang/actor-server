@@ -127,13 +127,17 @@ sealed trait MessagingService extends RandomService {
             case (authId, uid, invite) =>
               GroupChatUserRecord.addUser(chat.id, uid) map (_ => (authId, invite))
           }
-          Future.sequence(fusersAdded) map { pairs =>
+          Future.sequence(fusersAdded) flatMap { pairs =>
             pairs map {
               case (authId, invite) =>
                 updatesBrokerRegion ! NewUpdatePush(authId, invite)
             }
 
-            Ok(ResponseCreateChat(chat.id, chat.accessHash, 0, None))
+            for {
+              s <- getState(currentUser.authId)
+            } yield {
+              Ok(ResponseCreateChat(chat.id, chat.accessHash, s._1, s._2))
+            }
           }
         }
       }
