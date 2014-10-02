@@ -74,6 +74,9 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
       case rq: RequestCreateChat =>
         handleMessaging(rq)
 
+      case rq: RequestInviteUser =>
+        handleMessaging(rq)
+
       case rq: RequestSendGroupMessage =>
         handleMessaging(rq)
 

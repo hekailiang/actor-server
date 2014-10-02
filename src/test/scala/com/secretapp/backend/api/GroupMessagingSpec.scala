@@ -91,5 +91,53 @@ class GroupMessagingSpec extends RpcSpec {
         diff.updates(1).body.assertInstanceOf[GroupMessage]
       }
     }
+
+    "send invites on RequestInviteUser" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      {
+        implicit val scope = scope1
+
+        val chatKeyHash = BitVector(1, 1, 1)
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = chatKeyHash,
+          publicKey = BitVector(1, 0, 1, 0),
+          invites = immutable.Seq()
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        val rqInviteUser = RequestInviteUser(
+          chatId = resp.chatId,
+          accessHash = resp.accessHash,
+          userId = scope2.user.uid,
+          userAccessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 666L,
+          chatKeyHash = chatKeyHash,
+          invite = immutable.Seq(
+            EncryptedMessage(
+              message = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedKey(
+                  keyHash = scope2.user.publicKeyHash,
+                  aesEncryptedKey = BitVector(2, 0, 2, 0)
+                )
+              )
+            )
+          )
+        )
+
+        rqInviteUser :~> <~:[updateProto.ResponseSeq]
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.head.body.assertInstanceOf[GroupInvite]
+      }
+    }
   }
 }

@@ -52,6 +52,10 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestCreateChat(randomId, title, keyHash, publicKey, invites) pipeTo replyTo
 
+    case RpcProtocol.Request(RequestInviteUser(chatId, accessHash, userId, userAccessHash, randomId, chatKeyHash, invite)) =>
+      val replyTo = sender()
+      handleRequestInviteUser(chatId, accessHash, userId, userAccessHash, randomId, chatKeyHash, invite) pipeTo replyTo
+
     case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
       val replyTo = sender()
 
@@ -107,6 +111,42 @@ sealed trait MessagingService extends RandomService {
   val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Map[Long, User]]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
+  protected def handleRequestInviteUser(
+    chatId: Int, accessHash: Long, userId: Int, userAccessHash: Long, randomId: Long, chatKeyHash: BitVector, invite: immutable.Seq[EncryptedMessage]
+  ): Future[RpcResponse] = {
+    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
+      optChat map { chat =>
+        if (chat.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        } else {
+          Future.sequence(invite.toVector map (inv => createChatUserInvites(chat, userId, userAccessHash, invite))) flatMap { ei =>
+            val (errors, invites) = ei.separate
+            if (errors.length > 0) {
+              Future.successful(errors.head)
+            } else {
+              val fusersAdded = invites.flatten map {
+                case (authId, uid, invite) =>
+                  GroupChatUserRecord.addUser(chat.id, uid) map (_ => (authId, invite))
+              }
+              Future.sequence(fusersAdded) flatMap { pairs =>
+                pairs map {
+                  case (authId, invite) =>
+                    updatesBrokerRegion ! NewUpdatePush(authId, invite)
+                }
+
+                for {
+                  s <- getState(currentUser.authId)
+                } yield {
+                  Ok(updateProto.ResponseSeq(s._1, s._2))
+                }
+              }
+            }
+          }
+        }
+      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+    }
+  }
+
   protected def handleRequestCreateChat(
     randomId: Long,
     title: String,
@@ -118,7 +158,7 @@ sealed trait MessagingService extends RandomService {
     val chat = GroupChat(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
 
     GroupChatRecord.insertEntity(chat) flatMap { _ =>
-      Future.sequence(invites.toVector map createChatUserInvites(chat)) flatMap { ei =>
+      Future.sequence(invites.toVector map (inv => createChatUserInvites(chat, inv.uid, inv.accessHash, inv.keys))) flatMap { ei =>
         val (errors, invites) = ei.separate
         if (errors.length > 0) {
           Future.successful(errors.head)
@@ -144,15 +184,15 @@ sealed trait MessagingService extends RandomService {
     }
   }
 
-  protected def createChatUserInvites(chat: GroupChat)(invite: InviteUser): Future[Error \/ Vector[(Long, Int, GroupInvite)]] = {
-    getUsers(invite.uid) map {
+  protected def createChatUserInvites(chat: GroupChat, userId: Int, userAccessHash: Long, keys: immutable.Seq[EncryptedMessage]): Future[Error \/ Vector[(Long, Int, GroupInvite)]] = {
+    getUsers(userId) map {
       case users if users.isEmpty =>
         Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left
       case users =>
         val (_, checkUser) = users.head
 
-        if (checkUser.accessHash(currentUser.authId) == invite.accessHash) {
-          val jobsOpts = invite.keys flatMap { message =>
+        if (checkUser.accessHash(currentUser.authId) == userAccessHash) {
+          val jobsOpts = keys flatMap { message =>
             message.keys map ((message.message, _))
           } map {
             case (message, key) =>

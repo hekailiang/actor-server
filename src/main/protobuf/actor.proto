@@ -526,9 +526,11 @@ message ResponseCreateChat {
 message RequestInviteUser {
     required int32 chatId = 1;
     required int64 accessHash = 2;
-    required int64 randomId = 3;
-    required bytes chatKeyHash = 4;
-    repeated EncryptedMessage invite = 5;
+    required int32 userId = 3;
+    required int64 userAccessHash = 4;
+    required int64 randomId = 5;
+    required bytes chatKeyHash = 6;
+    repeated EncryptedMessage invite = 7;
 }
 
 // API#0x46
