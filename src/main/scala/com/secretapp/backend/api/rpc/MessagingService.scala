@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.update.{ GroupInvite, GroupMessage, MessageReceived, MessageRead }
+import com.secretapp.backend.data.message.update.{ GroupInvite, GroupMessage, GroupUserAdded, MessageReceived, MessageRead }
 import com.secretapp.backend.data.models.{ GroupChat, User }
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord, GroupChatRecord, GroupChatUserRecord, SeqUpdateRecord }
 import com.secretapp.backend.services.common.PackageCommon._
@@ -119,28 +119,32 @@ sealed trait MessagingService extends RandomService {
         if (chat.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
-          Future.sequence(invite.toVector map (inv => createChatUserInvites(chat, userId, userAccessHash, invite))) flatMap { ei =>
-            val (errors, invites) = ei.separate
-            if (errors.length > 0) {
-              Future.successful(errors.head)
-            } else {
-              val fusersAdded = invites.flatten map {
-                case (authId, uid, invite) =>
-                  GroupChatUserRecord.addUser(chat.id, uid) map (_ => (authId, invite))
+          createChatUserInvites(chat, userId, userAccessHash, invite) flatMap {
+            case -\/(error) =>
+              Future.successful(error)
+            case \/-(invites) =>
+              val fuserAdded = GroupChatUserRecord.addUser(chatId, userId)
+              val fauthIds = GroupChatUserRecord.getUsers(chatId) flatMap { userIds =>
+                Future.sequence(userIds map getAuthIds) map (_.flatten)
               }
-              Future.sequence(fusersAdded) flatMap { pairs =>
-                pairs map {
-                  case (authId, invite) =>
+
+              for {
+                _ <- fuserAdded
+                authIds <- fauthIds
+                s <- getState(currentUser.authId)
+              } yield {
+                invites map {
+                  case (authId, uid, invite) =>
                     updatesBrokerRegion ! NewUpdatePush(authId, invite)
                 }
 
-                for {
-                  s <- getState(currentUser.authId)
-                } yield {
-                  Ok(updateProto.ResponseSeq(s._1, s._2))
+                authIds foreach { authId =>
+                  updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId))
                 }
+
+
+                Ok(updateProto.ResponseSeq(s._1, s._2))
               }
-            }
           }
         }
       } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
@@ -163,10 +167,13 @@ sealed trait MessagingService extends RandomService {
         if (errors.length > 0) {
           Future.successful(errors.head)
         } else {
+          val fselfUserAdded = GroupChatUserRecord.addUser(chat.id, currentUser.uid)
+
           val fusersAdded = invites.flatten map {
             case (authId, uid, invite) =>
               GroupChatUserRecord.addUser(chat.id, uid) map (_ => (authId, invite))
           }
+
           Future.sequence(fusersAdded) flatMap { pairs =>
             pairs map {
               case (authId, invite) =>
@@ -174,6 +181,7 @@ sealed trait MessagingService extends RandomService {
             }
 
             for {
+              _ <- fselfUserAdded
               s <- getState(currentUser.authId)
             } yield {
               Ok(ResponseCreateChat(chat.id, chat.accessHash, s._1, s._2))
@@ -232,6 +240,15 @@ sealed trait MessagingService extends RandomService {
         UserRecord.getEntities(uid) map (
           _ map {user => (user.publicKeyHash, user) } toMap
         )
+    }
+  }
+
+  // FIXME: select from C* authId only for better performance
+  protected def getAuthIds(uid: Int): Future[immutable.Seq[Long]] = {
+    for {
+      users <- getUsers(uid)
+    } yield {
+      users.toList map (_._2.authId)
     }
   }
 

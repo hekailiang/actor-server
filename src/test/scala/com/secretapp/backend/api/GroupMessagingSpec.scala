@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite, GroupMessage }
+import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite, GroupMessage, GroupUserAdded }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
@@ -84,6 +84,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
 
       {
+        Thread.sleep(1000)
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
@@ -93,7 +94,7 @@ class GroupMessagingSpec extends RpcSpec {
     }
 
     "send invites on RequestInviteUser" in {
-      val (scope1, scope2) = TestScope.pair()
+      val (scope1, scope2) = TestScope.pair(3, 4)
 
       {
         implicit val scope = scope1
@@ -130,9 +131,14 @@ class GroupMessagingSpec extends RpcSpec {
         )
 
         rqInviteUser :~> <~:[updateProto.ResponseSeq]
+
+        Thread.sleep(1000)
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.last.body.assertInstanceOf[GroupUserAdded]
       }
 
       {
+        Thread.sleep(3000)
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]

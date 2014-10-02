@@ -70,6 +70,9 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
       case updateProto.GroupMessage.seqUpdateHeader =>
         Entity(uuid(row),
           GroupMessageCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupUserAdded.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupUserAddedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
     }
 
   }
@@ -134,6 +137,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.GroupMessage =>
         val body = GroupMessageCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupMessage.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupUserAdded =>
+        val body = GroupUserAddedCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserAdded.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

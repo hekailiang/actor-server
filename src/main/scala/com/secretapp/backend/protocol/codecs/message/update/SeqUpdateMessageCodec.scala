@@ -19,6 +19,7 @@ object SeqUpdateMessageCodec {
       case u: MessageRead       => MessageReadCodec.encode(u)
       case u: GroupInvite       => GroupInviteCodec.encode(u)
       case u: GroupMessage      => GroupMessageCodec.encode(u)
+      case u: GroupUserAdded    => GroupUserAddedCodec.encode(u)
     }
   }
 
@@ -34,6 +35,7 @@ object SeqUpdateMessageCodec {
       case MessageRead.seqUpdateHeader       => MessageReadCodec.decode(buf)
       case GroupInvite.seqUpdateHeader       => GroupInviteCodec.decode(buf)
       case GroupMessage.seqUpdateHeader      => GroupMessageCodec.decode(buf)
+      case GroupUserAdded.seqUpdateHeader    => GroupUserAddedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {
