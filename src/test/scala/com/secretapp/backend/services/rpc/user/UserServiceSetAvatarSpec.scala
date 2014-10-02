@@ -86,7 +86,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       val diff1 = {
         implicit val scope = scope1
         RequestGetDifference(0, None) :~> <~:[Difference]
-      }
+      }._1
 
       {
         implicit val scope = scope2
@@ -98,7 +98,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         implicit val scope = scope1
         protoReceiveN(1)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
-      }
+      }._1
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
@@ -157,8 +157,10 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
     ffl.sync()
   }
 
-  private def setAvatarShouldBeOk(implicit scope: TestScope) =
-    RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
+  private def setAvatarShouldBeOk(implicit scope: TestScope) = {
+    val (rsp, _) = RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
+    rsp
+  }
 
   private def dbUser =
     UserRecord.getEntity(scope.user.uid, scope.user.authId).sync().get

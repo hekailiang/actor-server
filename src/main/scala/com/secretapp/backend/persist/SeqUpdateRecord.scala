@@ -64,6 +64,9 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
       case updateProto.MessageRead.seqUpdateHeader =>
         Entity(uuid(row),
           MessageReadCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupInvite.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupInviteCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
     }
 
   }

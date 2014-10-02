@@ -5,6 +5,7 @@ import akka.io.Tcp.Received
 import akka.testkit.TestProbe
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MessageBox
@@ -81,10 +82,17 @@ trait RpcSpecHelpers {
     /**
       * Sends message, asserts reply is Ok and returns it
       */
-    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit scope: TestScope): A = {
+    def :~>[A <: RpcResponseMessage : ClassTag]
+      (wp: WrappedReceiveResponseOk[A], updates: Seq[UpdateBox] = Seq.empty)
+      (implicit scope: TestScope): (A, Seq[UpdateBox]) = {
       implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
-      receiveOneWithAck().assertResponseOk[A]
+      val msg = receiveOneWithAck()
+      if (msg.body.isInstanceOf[UpdateBox]) {
+        :~>(wp, updates :+ msg.body.asInstanceOf[UpdateBox])
+      } else {
+        (msg.assertResponseOk[A], Seq.empty)
+      }
     }
   }
 

@@ -225,7 +225,7 @@ class RpcMessagingSpec extends RpcSpec {
         val update = updBox.body.asInstanceOf[SeqUpdate]
         update.body should beAnInstanceOf[MessageRead]
 
-        val diff = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body should beAnInstanceOf[MessageRead]
       }
     }

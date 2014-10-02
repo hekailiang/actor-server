@@ -107,7 +107,7 @@ sealed trait MessagingService extends RandomService {
         if (errors.length > 0) {
           errors.head
         } else {
-          invites.flatten map {
+          invites.flatten foreach {
             case (authId, invite) =>
               updatesBrokerRegion ! NewUpdatePush(authId, invite)
           }

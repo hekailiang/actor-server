@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageSent, MessageRead }
+import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
@@ -63,6 +63,13 @@ class GroupMessagingSpec extends RpcSpec {
           )
         )
         rq :~> <~:[ResponseCreateChat]
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.head.body.assertInstanceOf[GroupInvite]
       }
     }
   }
