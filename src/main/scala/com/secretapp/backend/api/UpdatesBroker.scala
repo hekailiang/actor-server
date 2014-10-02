@@ -32,6 +32,7 @@ object UpdatesBroker {
   case class NewUpdatePush(authId: Long, update: SeqUpdateMessage)
 
   case class GetSeq(authId: Long)
+  case class GetSeqAndState(authId: Long)
 
   case object Stop
 
@@ -45,6 +46,7 @@ object UpdatesBroker {
     case msg @ NewUpdateEvent(authId, _) => (authId.toString, msg)
     case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
     case msg @ GetSeq(authId) => (authId.toString, msg)
+    case msg @ GetSeqAndState(authId) => (authId.toString, msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -53,6 +55,7 @@ object UpdatesBroker {
     case msg @ NewUpdateEvent(authId, _) => (authId % shardCount).toString
     case msg @ NewUpdatePush(authId, _) => (authId % shardCount).toString
     case msg @ GetSeq(authId) => (authId % shardCount).toString
+    case msg @ GetSeqAndState(authId) => (authId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(

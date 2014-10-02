@@ -316,6 +316,7 @@ message UpdateGroupMessage {
     required int64 keyHash = 4; // Might be equals to device public key hash
     required bytes aesKeyHash = 6;
     required bytes message = 7;
+    required bytes aesEncryptedKey = 8;
 }
 
 // API#0x19

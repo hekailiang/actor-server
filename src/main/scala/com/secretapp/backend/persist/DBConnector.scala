@@ -37,7 +37,7 @@ object DBConnector {
       PhoneRecord.createTable(session), SeqUpdateRecord.createTable(session),
       UserPublicKeyRecord.createTable(session), fileRecord.createTable(session),
       GooglePushCredentialsRecord.createTable(session), UnregisteredContactRecord.createTable(session),
-      GroupChatRecord.createTable(session)
+      GroupChatRecord.createTable(session), GroupChatUserRecord.createTable(session)
     ))
   }
 
@@ -47,7 +47,8 @@ object DBConnector {
       SessionIdRecord.truncateTable(session), AuthSmsCodeRecord.truncateTable(session),
       PhoneRecord.truncateTable(session), SeqUpdateRecord.truncateTable(session),
       UserPublicKeyRecord.truncateTable(session), GooglePushCredentialsRecord.truncateTable(session),
-      UnregisteredContactRecord.truncateTable(session), GroupChatRecord.truncateTable(session)
+      UnregisteredContactRecord.truncateTable(session), GroupChatRecord.truncateTable(session),
+      GroupChatUserRecord.truncateTable(session)
     ))
   }
 

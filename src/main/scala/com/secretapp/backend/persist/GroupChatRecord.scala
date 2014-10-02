@@ -53,4 +53,8 @@ object GroupChatRecord extends GroupChatRecord with DBConnector {
       .value(_.publicKey, entity.publicKey.toByteBuffer)
       .future()
   }
+
+  def getEntity(chatId: Int)(implicit session: Session): Future[Option[GroupChat]] = {
+    select.where(_.id eqs chatId).one()
+  }
 }
