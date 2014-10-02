@@ -84,7 +84,6 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def authUser(u: User, phoneNumber: Long)(implicit destActor: ActorRef, s: SessionIdentifier): User = blocking {
-    println(s"adding ${u.authId} ${u.uid}")
     insertAuthAndSessionId(u.authId, u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
     u

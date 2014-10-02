@@ -137,7 +137,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "send UpdateMessageReceived on RequestMessageReceived" in {
-      val (scope1, scope2) = TestScope.pair()
+      val (scope1, scope2) = TestScope.pair(3, 4)
 
       {
         implicit val scope = scope1
@@ -177,7 +177,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "send UpdateMessageRead on RequestMessageRead" in {
-      val (scope1, scope2) = TestScope.pair()
+      val (scope1, scope2) = TestScope.pair(5, 6)
 
       {
         implicit val scope = scope1
