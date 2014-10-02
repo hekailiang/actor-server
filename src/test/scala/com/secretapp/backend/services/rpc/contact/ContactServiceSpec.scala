@@ -32,7 +32,7 @@ class ContactServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
         val contacts = immutable.Seq(ContactToImport(42, scope2.user.phoneNumber))
-        val response = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
+        val (response, _) = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
 
         response should_== ResponseImportedContacts(
           immutable.Seq(scope2.user.toStruct(scope.user.authId)),

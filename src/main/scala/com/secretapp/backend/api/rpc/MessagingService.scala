@@ -178,11 +178,12 @@ sealed trait MessagingService extends RandomService {
       case users if users.isEmpty =>
         Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
       case users =>
-        val (authId, user) = users.head
+        val (_, user) = users.head
 
         if (user.accessHash(currentUser.authId) == accessHash) {
-          users map { u =>
-            updatesBrokerRegion ! NewUpdatePush(authId, MessageReceived(currentUser.uid, randomId))
+          users map {
+            case (_, u) =>
+              updatesBrokerRegion ! NewUpdatePush(u.authId, MessageReceived(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
@@ -199,11 +200,12 @@ sealed trait MessagingService extends RandomService {
       case users if users.isEmpty =>
         Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
       case users =>
-        val (authId, user) = users.head
+        val (_, user) = users.head
 
         if (user.accessHash(currentUser.authId) == accessHash) {
-          users map { u =>
-            updatesBrokerRegion ! NewUpdatePush(authId, MessageRead(currentUser.uid, randomId))
+          users map {
+            case (_, u) =>
+              updatesBrokerRegion ! NewUpdatePush(u.authId, MessageRead(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
