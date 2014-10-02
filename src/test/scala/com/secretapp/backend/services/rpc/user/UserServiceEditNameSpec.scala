@@ -29,7 +29,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
 
-      val diff1 = {
+      val (diff1, _) = {
         implicit val scope = scope1
         RequestGetDifference(0, None) :~> <~:[Difference]
       }
@@ -40,7 +40,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
         editNameShouldBeOk
       }
 
-      val diff2 = {
+      val (diff2, _) = {
         implicit val scope = scope1
         protoReceiveN(1)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
