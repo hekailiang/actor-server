@@ -113,7 +113,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
             }
           }
         case Nil =>
-          if (receivedMsgByPF && (!withNewSession || withNewSession && receivedNewSession)) acks
+          if (receivedMsgByPF && (!withNewSession || (withNewSession && receivedNewSession))) acks
           else f(acks, receivedMsgByPF, receivedNewSession)
       }
 
