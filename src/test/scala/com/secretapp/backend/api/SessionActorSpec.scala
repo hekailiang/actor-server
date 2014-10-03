@@ -88,7 +88,7 @@ class SessionActorSpec extends RpcSpec {
         expectMsgsWhileByPF(withNewSession = true) {
           case Pong(pingVal) =>
             pingValQueue -= pingVal
-            pingValQueue.isEmpty
+            !pingValQueue.isEmpty
         }
       }
     }

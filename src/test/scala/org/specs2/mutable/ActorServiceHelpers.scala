@@ -149,7 +149,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
           Try(pf(m)) match {
-            case Success(res) => g(msgs, acks.toSet, receivedByPF = res, receivedNewSession = receivedNewSession)
+            case Success(res) => g(msgs, acks.toSet, receivedByPF = !res, receivedNewSession = receivedNewSession)
             case Failure(_) => m match {
               case MessageAck(acks) => g(msgs, acks.toSet, receivedByPF, receivedNewSession)
               case NewSession(_, sesId) if withNewSession && !receivedNewSession && sesId == s.id =>
