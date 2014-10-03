@@ -87,6 +87,8 @@ class RpcMessagingSpec extends RpcSpec {
         phoneNumber = defaultPhoneNumber, name = name)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
+      catchNewSession(scope)
+
       // get initial state
       val initialState = getState
 
@@ -149,6 +151,8 @@ class RpcMessagingSpec extends RpcSpec {
 
     "send UpdateMessageReceived on RequestMessageReceived" in {
       val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -189,6 +193,8 @@ class RpcMessagingSpec extends RpcSpec {
 
     "send UpdateMessageRead on RequestMessageRead" in {
       val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1

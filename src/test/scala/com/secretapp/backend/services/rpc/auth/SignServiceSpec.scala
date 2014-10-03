@@ -36,6 +36,7 @@ class SignServiceSpec extends RpcSpec {
       implicit val authId = rand.nextLong
 
       insertAuthId(authId)
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestAuthCode(defaultPhoneNumber, rand.nextInt, rand.nextString(10))))
       val messageId = rand.nextLong
@@ -59,6 +60,7 @@ class SignServiceSpec extends RpcSpec {
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
       val messageId = rand.nextLong
@@ -90,6 +92,7 @@ class SignServiceSpec extends RpcSpec {
         phoneNumber = defaultPhoneNumber, name = name)
       addUser(authId, sessionId.id, user, defaultPhoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, name, newPublicKey)))
       val messageId = rand.nextLong()
@@ -122,6 +125,7 @@ class SignServiceSpec extends RpcSpec {
       val newAuthId = rand.nextLong()
       val newSessionId = rand.nextLong()
       AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
+      catchNewSession()(probe, apiActor, SessionIdentifier(newSessionId), newAuthId)
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, name, newPublicKey)))
       val messageId = rand.nextLong()
       val packageBlob = codecRes2BS(protoPackageBox.build(0, newAuthId, newSessionId, messageId, rpcReq))
@@ -151,6 +155,7 @@ class SignServiceSpec extends RpcSpec {
       insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Тимоти Клим", publicKey)))
       val messageId = rand.nextLong
@@ -178,6 +183,7 @@ class SignServiceSpec extends RpcSpec {
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, "invalid", smsCode, "Timothy Klim", publicKey)))
       val messageId = rand.nextLong
@@ -218,6 +224,7 @@ class SignServiceSpec extends RpcSpec {
       insertAuthId(authId)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
       PhoneRecord.dropEntity(defaultPhoneNumber)
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "   ", publicKey)))
       val messageId = rand.nextLong
@@ -291,6 +298,8 @@ class SignServiceSpec extends RpcSpec {
     "send ContactRegistered notifications" in {
       val unregPhone = 79009009090L
       val (registered, unregistered) = TestScope.pair(1, 2)
+      catchNewSession(registered)
+      catchNewSession(unregistered)
 
       {
         implicit val scope = registered
@@ -334,6 +343,7 @@ class SignServiceSpec extends RpcSpec {
         phoneNumber = defaultPhoneNumber, name = name)
       addUser(authId, sessionId.id, user, defaultPhoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+      catchNewSession()
 
       val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
       val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
@@ -370,6 +380,7 @@ class SignServiceSpec extends RpcSpec {
 
         implicit val (probe, apiActor) = probeAndActor()
         val (authId, sessionId, publicKey, publicKeyHash) = t
+        catchNewSession()(probe, apiActor, SessionIdentifier(sessionId), authId)
         val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
         val messageId = rand.nextLong()
         val packageBlob = codecRes2BS(protoPackageBox.build(0, authId, sessionId, messageId, rpcReq))
@@ -392,6 +403,8 @@ class SignServiceSpec extends RpcSpec {
       val user = User.build(userId, authId, publicKey, defaultPhoneNumber, userSalt, name)
       addUser(authId, sessionId.id, user, defaultPhoneNumber)
       AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+
+      catchNewSession()
 
       val newPublicKey = genPublicKey
       val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, newPublicKey)))

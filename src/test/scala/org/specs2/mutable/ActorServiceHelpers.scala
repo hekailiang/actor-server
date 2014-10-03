@@ -113,11 +113,15 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     }
   }
 
+  def sendMessageAck(msgIds: immutable.Set[Long])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+    sendMsg(MessageAck(msgIds.toVector))
+  }
+
   def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
     expectMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): immutable.Set[Long] = {
+  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
     def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
@@ -141,10 +145,10 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         throw new IllegalArgumentException(s"no messages")
       })(duration)
     }
-    f(Set(), false, false)
+    sendMessageAck(f(Set(), false, false))
   }
 
-  def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Boolean])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): immutable.Set[Long] = {
+  def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Boolean])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
     def f(acks: immutable.Set[Long], receivedByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
@@ -168,7 +172,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         throw new IllegalArgumentException(s"no messages")
       })(duration)
     }
-    f(Set(), false, false)
+    sendMessageAck(f(Set(), false, false))
   }
 
   def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
@@ -200,8 +204,10 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         throw new IllegalArgumentException(s"unreceived messages: $messages")
       })(duration)
     }
-    if (withNewSession) f(msgs ++ Set(NewSession(0, s.id)), Set())
-    else f(msgs, Set())
+    val acks =
+      if (withNewSession) f(msgs ++ Set(NewSession(0, s.id)), Set())
+      else f(msgs, Set())
+    sendMessageAck(acks)
   }
 
   private def deserializePackage(data: ByteString)(implicit s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
@@ -438,12 +444,32 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
           case mb @ MessageBox(_, _) => Seq(mb)
         }
     }
-    val (ackPackages, packages) = mboxes partition {
-      case MessageBox(_, ma @ MessageAck(_)) => true
-      case _ => false
+    mboxes filter {
+      case MessageBox(_, _: MessageAck) => false
+      case _ => true
     }
+  }
 
-    packages
+  // TODO: remove this hack
+  def catchNewSession(scope: TestScope): Unit = {
+    catchNewSession()(scope.probe, scope.apiActor, scope.session, scope.user.authId)
+  }
+
+  def catchNewSession()(implicit probe: TestProbe, apiActor: ActorRef, s: SessionIdentifier, authId: Long): Unit = {
+    val messageId = rand.nextLong()
+    val packageBlob = pack(0, authId, MessageBox(messageId, Ping(0L)))(s)
+    send(packageBlob)(probe, apiActor)
+    val mboxes = protoReceiveN(3)(probe, apiActor) map {
+      case MTPackage(_, _, mboxBytes) => MessageBoxCodec.decodeValue(mboxBytes).toOption.get.body
+    }
+    println(s"mboxes: $mboxes")
+    val score = mboxes.map {
+      case _: NewSession => 1
+      case _: Pong => 3
+      case _: MessageAck => 7
+      case _ => 0
+    }.fold(0) {_ + _}
+    if (score != 11) throw new Exception("something want wrong while catchNewSession...")
   }
 
   def receiveOneWithAck()(implicit probe: TestProbe, destActor: ActorRef): MessageBox = {
