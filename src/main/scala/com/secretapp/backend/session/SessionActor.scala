@@ -1,24 +1,16 @@
 package com.secretapp.backend.session
 
 import akka.actor._
-import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
-import akka.contrib.pattern.ClusterSharding
-import akka.contrib.pattern.ShardRegion
 import akka.persistence._
-import com.secretapp.backend.data.message.Container
-import com.secretapp.backend.data.message.Drop
-import com.secretapp.backend.data.message.ResponseAuthId
-import com.secretapp.backend.data.message.RpcRequestBox
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.UnsentResponse
+import akka.util.{ ByteString, Timeout }
+import com.secretapp.backend.data.message.{ Container, Drop, ResponseAuthId, RpcRequestBox, RpcResponseBox, UnsentResponse }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.SessionManager
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
-import akka.util.{ ByteString, Timeout }
 import scala.collection.immutable
 import com.secretapp.backend.data.transport.MessageBox
 import com.datastax.driver.core.{ Session => CSession }
@@ -95,7 +87,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
   override val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
+  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)(session)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.Set.empty[ActorRef]
