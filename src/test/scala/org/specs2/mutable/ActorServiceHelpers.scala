@@ -1,7 +1,7 @@
 package org.specs2.mutable
 
 import akka.actor._
-import akka.io.Tcp.{ Received, Write }
+import akka.io.Tcp.{Close, Received, Write}
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
@@ -12,7 +12,7 @@ import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage, MTPackageBox}
+import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
@@ -38,6 +38,7 @@ import scala.collection.{ immutable, mutable }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
+import scala.util.{ Try, Success, Failure }
 import scala.language.implicitConversions
 import scala.util.Random
 import scalaz._
@@ -95,31 +96,49 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     }
   }
 
-  def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
-    expectMsgs(Set(msg), withNewSession, duration)
+  def expectOne(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+    expectMany(Set(msg), withNewSession, duration)
   }
 
-  def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
-    @tailrec
+  def expectOnePF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): immutable.Set[Long] = {
+    def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
+      def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
+        case m :: msgs =>
+          Try(pf(m)) match {
+            case Success(_) => g(msgs, acks.toSet, receivedMsgByPF = true, receivedNewSession = receivedNewSession)
+            case Failure(_) => m match {
+              case MessageAck(acks) => g(msgs, acks.toSet, receivedMsgByPF, receivedNewSession)
+              case NewSession(_, sesId) if withNewSession && !receivedNewSession && sesId == s.id =>
+                g(msgs, acks, receivedMsgByPF, receivedNewSession = true)
+            }
+          }
+        case Nil =>
+          if (receivedMsgByPF && (!withNewSession || withNewSession && receivedNewSession)) acks
+          else f(acks, receivedMsgByPF, receivedNewSession)
+      }
+
+      receiveOne({ data =>
+        val msgs = deserializeMsgBoxes(deserializePackage(data)).map(_.body)
+        g(msgs, acks, receivedMsgByPF, receivedNewSession)
+      }, { () =>
+        throw new IllegalArgumentException(s"no messages")
+      })(duration)
+    }
+    f(Set(), false, false)
+  }
+
+  def expectMany(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
     def f(messages: immutable.Set[TransportMessage], acks: immutable.Set[Long]): immutable.Set[Long] = {
       def g(data: ByteString) = {
         val receivedMsgs = mutable.Set[TransportMessage]()
         val receivedAcks = mutable.Set[Long]()
-        val p = transport match {
-          case MTConnection => MTPackageBoxCodec.decodeValidValue(data).p
-          case JsonConnection => JsonPackageCodec.decode(data).toOption.get
-        }
-        val msgBoxes = p.decodeMessageBox.toOption.get match {
-          case MessageBox(_, Container(mboxes)) => mboxes
-          case mb@MessageBox(_, _) => Seq(mb)
-        }
+        val msgBoxes = deserializeMsgBoxes(deserializePackage(data))
         msgBoxes foreach {
           case MessageBox(msgId, msg) => msg match {
-            case null =>
-              throw new IllegalArgumentException(s"unreceived messages: $messages")
             case MessageAck(acks) =>
               receivedAcks ++= acks
-            case m@NewSession(_, sesId) if withNewSession =>
+            case NewSession(_, sesId) if withNewSession && sesId == s.id =>
+              val m = messages.filter { case NewSession(0, s.id) => true }.head
               receivedMsgs += m
             case m =>
               if (messages.contains(m)) receivedMsgs += m
@@ -129,20 +148,44 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         (messages -- receivedMsgs, acks ++ receivedAcks)
       }
 
-      probe.receiveOne(duration) match {
-        case Write(data, _) =>
-          val (remain, acks) = g(data)
-          if (!remain.isEmpty) f(remain, acks)
-          else acks
-        case FrameCommand(frame: TextFrame) =>
-          val (remain, acks) = g(frame.payload)
-          if (!remain.isEmpty) f(remain, acks)
-          else acks
-        case FrameCommand(_: CloseFrame) => f(messages, acks)
-        case msg => throw new Exception(s"Unknown msg: $msg")
-      }
+      receiveOne({ data =>
+        val (remain, acks) = g(data)
+        if (!remain.isEmpty) f(remain, acks)
+        else acks
+      }, { () =>
+        throw new IllegalArgumentException(s"unreceived messages: $messages")
+      })(duration)
     }
-    f(msgs, Set())
+    if (withNewSession) f(msgs ++ Set(NewSession(0, s.id)), Set())
+    else f(msgs, Set())
+  }
+
+  private def deserializePackage(data: ByteString)(implicit s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
+    val p = transport match {
+      case MTConnection => MTPackageBoxCodec.decodeValidValue(data).p
+      case JsonConnection => JsonPackageCodec.decode(data).toOption.get
+    }
+    if (p.authId != authId || p.sessionId != s.id)
+      throw new IllegalArgumentException(s"p.authId(${p.authId}}) != authId($authId) || p.sessionId(${p.sessionId}) != s.id(${s.id})")
+    p
+  }
+
+  private def deserializeMsgBoxes(p: TransportPackage) = {
+    p.decodeMessageBox.toOption.get match {
+      case MessageBox(_, Container(mboxes)) => mboxes
+      case mb@MessageBox(_, _) => Seq(mb)
+    }
+  }
+
+  @tailrec
+  private def receiveOne[A](f: (ByteString) => A, e: () => A)(duration: Duration)(implicit probe: TestProbe): A = {
+    probe.receiveOne(duration) match {
+      case Write(data, _) => f(data)
+      case FrameCommand(frame: TextFrame) => f(frame.payload)
+      case FrameCommand(_: CloseFrame) | Close => receiveOne(f, e)(duration)
+      case null => e()
+      case msg => throw new Exception(s"Unknown msg: $msg")
+    }
   }
 }
 

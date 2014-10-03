@@ -35,17 +35,14 @@ class SessionActorSpec extends RpcSpec {
 
   transportForeach { implicit transport =>
     "actor" should {
-      //    "reply with auth token to auth request" in {
-      //      val (probe, apiActor) = probeAndActor()
-      //      val messageId = rand.nextLong()
-      //      val req = protoPackageBox.build(0, 0L, 0L, messageId, RequestAuthId())
-      //      val res = protoPackageBox.build(0, 0L, 0L, messageId, ResponseAuthId(mockAuthId))
-      //      probe.send(apiActor, Received(codecRes2BS(req)))
-      //      val expectedData = (codecRes2BS(res))
-      //      probe.expectMsgPF() {
-      //        case Write(expectedData, _) => true
-      //      }
-      //    }
+      "reply with auth token to auth request" in {
+        implicit val (probe, apiActor) = getProbeAndActor()
+        implicit val session = SessionIdentifier(0L)
+        implicit val authId = 0L
+
+        writeMsg(RequestAuthId())
+        expectOnePF() { case ResponseAuthId(_) => }
+      }
 
       "reply pong to ping" in {
         implicit val (probe, apiActor) = getProbeAndActor()
@@ -56,7 +53,7 @@ class SessionActorSpec extends RpcSpec {
         insertAuthId(authId)
 
         writeMsg(Ping(pingVal))
-        expectMsgs(Set(Pong(pingVal)), withNewSession = true)
+        expectOne(Pong(pingVal), withNewSession = true)
       }
 
       //    "send drop to package with invalid crc" in {
