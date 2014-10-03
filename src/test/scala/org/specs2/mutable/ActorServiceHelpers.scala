@@ -6,20 +6,23 @@ import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.secretapp.backend.api.frontend.ws.WSFrontend
+import com.secretapp.backend.api.frontend.{JsonConnection, MTConnection, TransportConnection}
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
-import com.secretapp.backend.data.message.UpdateBox
-import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.{ MessageBox, MTPackage, MTPackageBox }
+import com.secretapp.backend.data.transport.{JsonPackage, MessageBox, MTPackage, MTPackageBox}
 import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
-import com.secretapp.backend.protocol.transport.MTPackageBoxCodec
+import com.secretapp.backend.protocol.transport.{JsonPackageCodec, MTPackageBoxCodec}
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.session._
+import spray.can.websocket.frame._
+import spray.can.websocket._
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
 import java.util.concurrent.atomic.AtomicLong
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -29,7 +32,9 @@ import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.scalamock.specs2.MockFactory
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
-import scala.collection.immutable
+import org.specs2.specification.{Fragments, Fragment}
+import scala.annotation.tailrec
+import scala.collection.{ immutable, mutable }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
@@ -39,7 +44,112 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 
-trait ActorServiceHelpers extends RandomService {
+trait ActorServiceImplicits {
+  def codecRes2BS(res: String \/ BitVector): ByteString = ByteString(res.toOption.get.toByteBuffer)
+  implicit def eitherBitVector2ByteString(v: String \/ BitVector): ByteString = codecRes2BS(v)
+
+  implicit def byteVector2ByteString(v: ByteVector): ByteString = ByteString(v.toByteBuffer)
+  implicit def byteString2ByteVector(v: ByteString): ByteVector = ByteVector(v.toByteBuffer)
+  implicit def bitVector2ByteString(v: BitVector): ByteString = ByteString(v.toByteBuffer)
+  implicit def bitString2BitVector(v: ByteString): BitVector = BitVector(v.toByteBuffer)
+}
+
+trait ActorCommon { self: RandomService =>
+  implicit val session: CSession
+
+  case class SessionIdentifier(id: Long)
+  object SessionIdentifier {
+    def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong)
+  }
+}
+
+trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with ActorCommon {
+  this: ActorLikeSpecification =>
+
+  def clientMessageId = rand.nextLong().abs * 4 // TODO: generate valid client messageId
+
+  private var packageIndex = 0
+  private var messageId = 0
+
+  def transportForeach(f: (TransportConnection) => Fragments) = {
+    Seq(MTConnection, JsonConnection) foreach { t =>
+      addFragments(t.toString, f(t), "session")
+    }
+    success
+  }
+
+  def writeMsg(msg: TransportMessage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
+    writeMsgs(Set(msg))
+  }
+
+  def writeMsgs(msgs: immutable.Set[TransportMessage])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
+    msgs foreach { msg =>
+      transport match {
+        case MTConnection =>
+          val p = protoPackageBox.build(packageIndex, authId, s.id, messageId, msg)
+          probe.send(destActor, Received(codecRes2BS(p)))
+        case JsonConnection =>
+          val p = JsonPackage.build(authId, s.id, MessageBox(messageId, msg))
+          println(s"JsonPackage: $p")
+          probe.send(destActor, TextFrame(p.encode))
+      }
+      packageIndex += 1
+      messageId += 1
+    }
+  }
+
+  def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+    expectMsgs(Set(msg), withNewSession, duration)
+  }
+
+  def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+    @tailrec
+    def f(messages: immutable.Set[TransportMessage], acks: immutable.Set[Long]): immutable.Set[Long] = {
+      def g(data: ByteString) = {
+        val receivedMsgs = mutable.Set[TransportMessage]()
+        val receivedAcks = mutable.Set[Long]()
+        val p = transport match {
+          case MTConnection => MTPackageBoxCodec.decodeValidValue(data).p
+          case JsonConnection => JsonPackageCodec.decode(data).toOption.get
+        }
+        val msgBoxes = p.decodeMessageBox.toOption.get match {
+          case MessageBox(_, Container(mboxes)) => mboxes
+          case mb@MessageBox(_, _) => Seq(mb)
+        }
+        msgBoxes foreach {
+          case MessageBox(msgId, msg) => msg match {
+            case null =>
+              throw new IllegalArgumentException(s"unreceived messages: $messages")
+            case MessageAck(acks) =>
+              receivedAcks ++= acks
+            case m@NewSession(_, sesId) if withNewSession =>
+              receivedMsgs += m
+            case m =>
+              if (messages.contains(m)) receivedMsgs += m
+              else throw new IllegalArgumentException(s"unknown message: $m")
+          }
+        }
+        (messages -- receivedMsgs, acks ++ receivedAcks)
+      }
+
+      probe.receiveOne(duration) match {
+        case Write(data, _) =>
+          val (remain, acks) = g(data)
+          if (!remain.isEmpty) f(remain, acks)
+          else acks
+        case FrameCommand(frame: TextFrame) =>
+          val (remain, acks) = g(frame.payload)
+          if (!remain.isEmpty) f(remain, acks)
+          else acks
+        case FrameCommand(_: CloseFrame) => f(messages, acks)
+        case msg => throw new Exception(s"Unknown msg: $msg")
+      }
+    }
+    f(msgs, Set())
+  }
+}
+
+trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with ActorCommon {
   self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers with MockFactory =>
 
   Security.addProvider(new BouncyCastleProvider())
@@ -47,14 +157,11 @@ trait ActorServiceHelpers extends RandomService {
   val mockAuthId = rand.nextLong()
   val defaultPhoneNumber = 79853867016L
 
-  implicit val session: CSession
-
   protected val incMessageId = new AtomicLong(1L)
 
-  def codecRes2BS(res: String \/ BitVector): ByteString = {
-    // TODO: Should we really use `get` here?
-    ByteString(res.toOption.get.toByteBuffer)
-  }
+  val counters = new Singletons
+  implicit val clusterProxies = new ClusterProxies
+  val sessionRegion = SessionActor.startRegion()
 
   def genPublicKey = {
     val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
@@ -89,11 +196,6 @@ trait ActorServiceHelpers extends RandomService {
     authUser(user, phoneNumber)
   }
 
-  case class SessionIdentifier(id: Long)
-  object SessionIdentifier {
-    def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong)
-  }
-
   trait RandomServiceMock extends RandomService { self: Actor =>
     override lazy val rand = mock[Random]
 
@@ -117,13 +219,22 @@ trait ActorServiceHelpers extends RandomService {
     override def genUserAccessSalt = userSalt
   }
 
-  val counters = new Singletons
-  implicit val clusterProxies = new ClusterProxies
-  val sessionRegion = SessionActor.startRegion()
-
   def probeAndActor() = {
     val probe = TestProbe()
     val actor = system.actorOf(Props(new TcpFrontend(probe.ref, sessionRegion, session) with RandomServiceMock with GeneratorServiceMock))
+    (probe, actor)
+  }
+
+  def getProbeAndActor()(implicit transport: TransportConnection) = {
+    val probe = TestProbe()
+    val actor = transport match {
+      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, sessionRegion, session))
+      case JsonConnection =>
+        val props = Props(new WSFrontend(probe.ref, sessionRegion, session) {
+          override def receive = businessLogic orElse closeLogic
+        })
+        system.actorOf(props)
+    }
     (probe, actor)
   }
 
@@ -153,10 +264,6 @@ trait ActorServiceHelpers extends RandomService {
       TestScope(probe, apiActor, session, user)
     }
   }
-
-  implicit def byteVector2ByteString(v: ByteVector): ByteString = ByteString(v.toByteBuffer)
-  implicit def byteString2BitVector(v: ByteString): BitVector = BitVector(v.toByteBuffer)
-  implicit def eitherBitVector2ByteString(v: String \/ BitVector): ByteString = codecRes2BS(v)
 
   case class WrappedReceivePackage(f: (Long) => Unit)
 

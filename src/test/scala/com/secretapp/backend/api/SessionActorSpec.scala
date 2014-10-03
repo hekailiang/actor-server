@@ -33,78 +33,82 @@ import Scalaz._
 class SessionActorSpec extends RpcSpec {
   import system.dispatcher
 
-  "actor" should {
-//    "reply with auth token to auth request" in {
-//      val (probe, apiActor) = probeAndActor()
-//      val messageId = rand.nextLong()
-//      val req = protoPackageBox.build(0, 0L, 0L, messageId, RequestAuthId())
-//      val res = protoPackageBox.build(0, 0L, 0L, messageId, ResponseAuthId(mockAuthId))
-//      probe.send(apiActor, Received(codecRes2BS(req)))
-//      val expectedData = (codecRes2BS(res))
-//      probe.expectMsgPF() {
-//        case Write(expectedData, _) => true
-//      }
-//    }
+  transportForeach { implicit transport =>
+    "actor" should {
+      //    "reply with auth token to auth request" in {
+      //      val (probe, apiActor) = probeAndActor()
+      //      val messageId = rand.nextLong()
+      //      val req = protoPackageBox.build(0, 0L, 0L, messageId, RequestAuthId())
+      //      val res = protoPackageBox.build(0, 0L, 0L, messageId, ResponseAuthId(mockAuthId))
+      //      probe.send(apiActor, Received(codecRes2BS(req)))
+      //      val expectedData = (codecRes2BS(res))
+      //      probe.expectMsgPF() {
+      //        case Write(expectedData, _) => true
+      //      }
+      //    }
 
-    "reply pong to ping" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      implicit val authId = rand.nextLong
+      "reply pong to ping" in {
+        implicit val (probe, apiActor) = getProbeAndActor()
+        implicit val session = SessionIdentifier()
+        implicit val authId = rand.nextLong
 
-      val pingVal = rand.nextLong()
-      insertAuthId(authId)
+        val pingVal = rand.nextLong()
+        insertAuthId(authId)
 
-      Ping(pingVal) :~> @<~:(Pong(pingVal))
+        println(s"transport: $transport")
+        writeMsg(Ping(pingVal))
+        expectMsgs(Set(Pong(pingVal)), withNewSession = true)
+      }
+
+      //    "send drop to package with invalid crc" in {
+      //      implicit val (probe, apiActor) = probeAndActor()
+      //      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411"
+      //      probe.send(apiActor, Received(req))
+      //      val res = protoPackageBox.build(0, 0L, 0L, 0L, Drop(0L, "invalid crc32"))
+      //      probe.expectMsgPF() {
+      //        case Write(res, _) => true
+      //      }
+      //    }
+      //
+      //    "parse packages in single stream" in {
+      //      implicit val (probe, apiActor) = probeAndActor()
+      //      implicit val session = SessionIdentifier()
+      //      implicit val authId = rand.nextLong
+      //
+      //      insertAuthId(authId)
+      //      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
+      //      val packages = messages.map(pack(0, authId, _))
+      //      val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
+      //      req.grouped(7) foreach { buf =>
+      //        probe.send(apiActor, Received(buf))
+      //      }
+      //      val expectedPongs = messages map { m =>
+      //        val messageId = m.messageId
+      //        val pingVal = m.body.asInstanceOf[Ping].randomId
+      //        MessageBox(messageId, Pong(pingVal))
+      //      }
+      //      expectMsgWithAck(expectedPongs :_*)
+      //    }
+      //
+      //    "handle container with Ping's" in {
+      //      implicit val (probe, apiActor) = probeAndActor()
+      //      implicit val session = SessionIdentifier()
+      //      implicit val authId = rand.nextLong
+      //
+      //      insertAuthId(authId)
+      //
+      //      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
+      //      val container = MessageBox(rand.nextLong, Container(messages))
+      //      val packageBlob = pack(0, authId, container)
+      //      send(packageBlob)
+      //
+      //      val expectedPongs = messages map { m =>
+      //        val messageId = m.messageId
+      //        val pingVal = m.body.asInstanceOf[Ping].randomId
+      //        MessageBox(messageId, Pong(pingVal))
+      //      }
+      //      expectMsgWithAck(expectedPongs :_*)
+      //    }
     }
-
-//    "send drop to package with invalid crc" in {
-//      implicit val (probe, apiActor) = probeAndActor()
-//      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411"
-//      probe.send(apiActor, Received(req))
-//      val res = protoPackageBox.build(0, 0L, 0L, 0L, Drop(0L, "invalid crc32"))
-//      probe.expectMsgPF() {
-//        case Write(res, _) => true
-//      }
-//    }
-//
-//    "parse packages in single stream" in {
-//      implicit val (probe, apiActor) = probeAndActor()
-//      implicit val session = SessionIdentifier()
-//      implicit val authId = rand.nextLong
-//
-//      insertAuthId(authId)
-//      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
-//      val packages = messages.map(pack(0, authId, _))
-//      val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
-//      req.grouped(7) foreach { buf =>
-//        probe.send(apiActor, Received(buf))
-//      }
-//      val expectedPongs = messages map { m =>
-//        val messageId = m.messageId
-//        val pingVal = m.body.asInstanceOf[Ping].randomId
-//        MessageBox(messageId, Pong(pingVal))
-//      }
-//      expectMsgWithAck(expectedPongs :_*)
-//    }
-//
-//    "handle container with Ping's" in {
-//      implicit val (probe, apiActor) = probeAndActor()
-//      implicit val session = SessionIdentifier()
-//      implicit val authId = rand.nextLong
-//
-//      insertAuthId(authId)
-//
-//      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
-//      val container = MessageBox(rand.nextLong, Container(messages))
-//      val packageBlob = pack(0, authId, container)
-//      send(packageBlob)
-//
-//      val expectedPongs = messages map { m =>
-//        val messageId = m.messageId
-//        val pingVal = m.body.asInstanceOf[Ping].randomId
-//        MessageBox(messageId, Pong(pingVal))
-//      }
-//      expectMsgWithAck(expectedPongs :_*)
-//    }
   }
 }

@@ -51,7 +51,9 @@ with ActorLogging
       else {
         if (p.sessionId == sessionId) {
           p.decodeMessageBox match {
-            case \/-(mb) => sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
+            case \/-(mb) =>
+              // TODO: validate client messageId
+              sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
             case -\/(e) => silentClose()
           }
         } else silentClose()

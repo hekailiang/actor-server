@@ -4,9 +4,6 @@ import akka.actor._
 import akka.util.ByteString
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.data.transport.{MessageBox, JsonPackage}
-import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.api.frontend._
 import scodec.bits.BitVector
 import spray.can.websocket
@@ -15,9 +12,7 @@ import spray.can.websocket.Send
 import spray.http.HttpRequest
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
-import scala.util.{ Try, Success, Failure }
-import com.secretapp.backend.protocol.transport.Frontend
-import com.secretapp.backend.util.parser.BS._
+import com.secretapp.backend.protocol.transport.{JsonPackageCodec, Frontend}
 import scalaz._
 import Scalaz._
 
@@ -33,7 +28,7 @@ class WSFrontend(val serverConnection: ActorRef, val sessionRegion: ActorRef, va
   def businessLogic: Receive = {
     case frame: TextFrame =>
       log.info(s"Frame: ${new String(frame.payload.toArray)}")
-      parseJsonPackage(frame.payload) match {
+      JsonPackageCodec.decode(frame.payload) match {
         case \/-(p) => handlePackage(p)
         case -\/(e) => sendDrop(e)
       }
@@ -47,24 +42,6 @@ class WSFrontend(val serverConnection: ActorRef, val sessionRegion: ActorRef, va
       silentClose()
     case SilentClose =>
       silentClose()
-  }
-
-  private def parseJsonPackage(data: ByteString): String \/ JsonPackage = {
-    val jsonParser = for {
-      _ <- skipTill(c => c == '[' || isWhiteSpace(c) || c == '"')
-      authId <- parseSigned
-      _ <- skipTill (c => c == ',' || isWhiteSpace(c) || c == '"')
-      sessionId <- parseSigned
-      _ <- skipTill (c => c == ',' || isWhiteSpace(c) || c == '"')
-      _ <- skipRightTill(c => c == ']' || isWhiteSpace(c))
-      message <- slice
-    } yield JsonPackage(authId, sessionId, BitVector(message.toByteBuffer))
-    Try(runParser(jsonParser, data)) match {
-      case Success(jp) => jp.right
-      case Failure(e) =>
-        // TODO: silentClose ???
-        s"""Expected JSON format: ["authId", "sessionId", {/* message box */}]\nDebug: ${e.getMessage}""".left
-    }
   }
 
   def silentClose(): Unit = {

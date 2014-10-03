@@ -2,13 +2,14 @@ package com.secretapp.backend.data.transport
 
 import akka.util.ByteString
 import com.secretapp.backend.data.message.TransportMessage
-import com.secretapp.backend.protocol.codecs.message.{JsonMessageBoxCodec, MessageBoxCodec}
+import com.secretapp.backend.protocol.codecs.message.JsonMessageBoxCodec
+import com.secretapp.backend.protocol.transport.JsonPackageCodec
 import scodec.bits._
 
 case class JsonPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
   def decodeMessageBox = JsonMessageBoxCodec.decode(this.messageBoxBytes)
 
-  def encode = ByteString(s"[${this.authId},${this.sessionId},") ++ ByteString(this.messageBoxBytes.toByteBuffer) ++ ByteString("]")
+  def encode = JsonPackageCodec.encodeValid(this)
 
   def build(authId: Long, sessionId: Long, message: MessageBox) = JsonPackage.build(authId, sessionId, message)
 }
