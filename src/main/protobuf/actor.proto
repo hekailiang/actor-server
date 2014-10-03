@@ -542,7 +542,7 @@ message RequestLeaveChat {
 
 // API#0x47
 // Ответ: ResponseSeq#0x48
-// 400#: NO_PERMISSION - когда невозможно исключить участника из чата из-за настроек приватности
+// 403#: NO_PERMISSION - когда невозможно исключить участника из чата из-за настроек приватности
 message RequestRemoveUser {
     required int32 chatId = 1;
     required int64 chatAccessHash = 2;

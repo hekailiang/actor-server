@@ -60,6 +60,10 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestLeaveChat(chatId, accessHash) pipeTo replyTo
 
+    case RpcProtocol.Request(RequestRemoveUser(chatId, accessHash, userId, userAccessHash)) =>
+      val replyTo = sender()
+      handleRequestRemoveUser(chatId, accessHash, userId, userAccessHash) pipeTo replyTo
+
     case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
       val replyTo = sender()
 
@@ -150,6 +154,59 @@ sealed trait MessagingService extends RandomService {
 
 
                 Ok(updateProto.ResponseSeq(s._1, s._2))
+              }
+          }
+        }
+      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+    }
+  }
+
+  protected def handleRequestRemoveUser(
+    chatId: Int,
+    accessHash: Long,
+    userId: Int,
+    userAccessHash: Long
+  ): Future[RpcResponse] = {
+    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
+      optChat map { chat =>
+        if (chat.creatorUserId != currentUser.uid) {
+          Future.successful(Error(403, "NO_PERMISSION", "You are not creator of this chat.", false))
+        } else if (chat.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid chat access hash.", false))
+        } else {
+          getUsers(userId) flatMap {
+            case users if users.isEmpty =>
+              Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
+            case users =>
+              val (_, checkUser) = users.head
+
+              if (checkUser.accessHash(currentUser.uid) != userAccessHash) {
+                Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false))
+              } else {
+                GroupChatUserRecord.getUsers(chatId) flatMap { chatUserIds =>
+                  if (chatUserIds.contains(userId)) {
+                    for {
+                      _ <- GroupChatUserRecord.removeUser(chatId, userId)
+                      s <- getState(currentUser.authId)
+                    } yield {
+                      chatUserIds foreach { chatUserId =>
+                        for {
+                          authIds <- getAuthIds(chatUserId)
+                        } yield {
+                          authIds map { authId =>
+                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserKick(
+                              chatId, userId, currentUser.uid
+                            ))
+                          }
+                        }
+                      }
+
+                      Ok(updateProto.ResponseSeq(s._1, s._2))
+                    }
+                  } else {
+                    Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "There is no participant with such userId in this chat.", false))
+                  }
+                }
               }
           }
         }

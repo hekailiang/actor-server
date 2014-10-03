@@ -80,6 +80,9 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
       case rq: RequestLeaveChat =>
         handleMessaging(rq)
 
+      case rq: RequestRemoveUser =>
+        handleMessaging(rq)
+
       case rq: RequestSendGroupMessage =>
         handleMessaging(rq)
 
