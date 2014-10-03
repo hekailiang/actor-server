@@ -45,11 +45,6 @@ class TcpFrontend(val connection: ActorRef, val sessionRegion: ActorRef, val ses
   }
 
   def write(payload: ByteString): Unit = {
-    import com.secretapp.backend.protocol.transport._
-    import com.secretapp.backend.protocol.codecs.message._
-    val mtp = MTPackageCodec.decodeValidValue(BitVector(payload.toByteBuffer))
-    val mb = MessageBoxCodec.decodeValidValue(mtp.messageBoxBytes)
-    println(s"write => mtp: $mtp, mb: $mb")
     MTPackageBoxCodec.encode(packageIndex, BitVector(payload.toByteBuffer)) match {
       case \/-(reply) =>
         packageIndex += 1

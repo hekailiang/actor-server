@@ -12,7 +12,7 @@ package object json {
 
     override def reads(json: JsValue): JsResult[Long] = json match {
       case JsNumber(n) => JsSuccess(n.toLong)
-      case JsString(n) if n.forall(_.isDigit) => JsSuccess(n.toLong)
+      case JsString(n) if (n.head.isDigit || n.head == '-') && n.tail.forall(_.isDigit) => JsSuccess(n.toLong)
       case _           => JsError(Seq(JsPath() -> Seq(ValidationError("error.expected.jsstring"))))
     }
   }

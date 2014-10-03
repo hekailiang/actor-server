@@ -66,8 +66,6 @@ trait ActorCommon { self: RandomService =>
 trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with ActorCommon {
   this: ActorLikeSpecification =>
 
-  def clientMessageId = rand.nextLong().abs * 4 // TODO: generate valid client messageId
-
   private var packageIndex = 0
   private var messageId = 0
 
@@ -90,11 +88,10 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
           probe.send(destActor, Received(codecRes2BS(p)))
         case JsonConnection =>
           val p = JsonPackage.build(authId, s.id, MessageBox(messageId, msg))
-          println(s"JsonPackage: $p")
           probe.send(destActor, TextFrame(p.encode))
       }
       packageIndex += 1
-      messageId += 1
+      messageId += 4
     }
   }
 

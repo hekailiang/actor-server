@@ -55,7 +55,6 @@ class SessionActorSpec extends RpcSpec {
         val pingVal = rand.nextLong()
         insertAuthId(authId)
 
-        println(s"transport: $transport")
         writeMsg(Ping(pingVal))
         expectMsgs(Set(Pong(pingVal)), withNewSession = true)
       }
