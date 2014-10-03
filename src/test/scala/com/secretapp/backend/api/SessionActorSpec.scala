@@ -40,8 +40,8 @@ class SessionActorSpec extends RpcSpec {
         implicit val session = SessionIdentifier(0L)
         implicit val authId = 0L
 
-        writeMsg(RequestAuthId())
-        expectOnePF() { case ResponseAuthId(_) => }
+        sendMsg(RequestAuthId())
+        expectMsgByPF() { case ResponseAuthId(_) => }
       }
 
       "reply pong to ping" in {
@@ -52,8 +52,8 @@ class SessionActorSpec extends RpcSpec {
         val pingVal = rand.nextLong()
         insertAuthId(authId)
 
-        writeMsg(Ping(pingVal))
-        expectOne(Pong(pingVal), withNewSession = true)
+        sendMsg(Ping(pingVal))
+        expectMsg(Pong(pingVal), withNewSession = true)
       }
 
       //    "send drop to package with invalid crc" in {

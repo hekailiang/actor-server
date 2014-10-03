@@ -77,11 +77,11 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     success
   }
 
-  def writeMsg(msg: TransportMessage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
-    writeMsgs(Set(msg))
+  def sendMsg(msg: TransportMessage)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
+    sendMsgs(Set(msg))
   }
 
-  def writeMsgs(msgs: immutable.Set[TransportMessage])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
+  def sendMsgs(msgs: immutable.Set[TransportMessage])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long) = {
     msgs foreach { msg =>
       transport match {
         case MTConnection =>
@@ -96,11 +96,11 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     }
   }
 
-  def expectOne(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
-    expectMany(Set(msg), withNewSession, duration)
+  def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+    expectMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectOnePF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): immutable.Set[Long] = {
+  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): immutable.Set[Long] = {
     def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
@@ -127,7 +127,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     f(Set(), false, false)
   }
 
-  def expectMany(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
+  def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, transport: TransportConnection, authId: Long): Unit = {
     def f(messages: immutable.Set[TransportMessage], acks: immutable.Set[Long]): immutable.Set[Long] = {
       def g(data: ByteString) = {
         val receivedMsgs = mutable.Set[TransportMessage]()
