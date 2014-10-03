@@ -45,6 +45,7 @@ class PublicKeysServiceSpec extends RpcSpec {
         phoneNumber = defaultPhoneNumber + 1, name = name)
       val accessHash = User.getAccessHash(authId, secondUser.uid, secondUser.accessSalt)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+      catchNewSession()
 
       val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
       val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))

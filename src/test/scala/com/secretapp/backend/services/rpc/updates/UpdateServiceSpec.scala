@@ -22,6 +22,8 @@ class UpdatesServiceSpec extends RpcSpec {
   "updates service" should {
     "not subscribe to updates twice" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -74,6 +76,8 @@ class UpdatesServiceSpec extends RpcSpec {
 
     "send updates in new connection" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       { // subscribe
         implicit val scope = scope1
@@ -134,6 +138,8 @@ class UpdatesServiceSpec extends RpcSpec {
 
     "get difference" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1

@@ -82,6 +82,8 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
 
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       val diff1 = {
         implicit val scope = scope1
@@ -128,6 +130,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
 
   override def before = {
     scope = TestScope()
+    catchNewSession(scope)
     fl = storeOrigImage
   }
 

@@ -36,7 +36,10 @@ class PushServiceSpec extends RpcSpec with BeforeExample {
 
   private implicit var scope: TestScope = _
 
-  override def before = scope = TestScope()
+  override def before = {
+    scope = TestScope()
+    catchNewSession(scope)
+  }
 
   private def creds(implicit scope: TestScope) = GooglePushCredentials(scope.user.uid, scope.user.authId, 42, "reg id")
 

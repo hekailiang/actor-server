@@ -28,6 +28,8 @@ class ContactServiceSpec extends RpcSpec {
 
     "handle RPC import contacts request" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -42,6 +44,8 @@ class ContactServiceSpec extends RpcSpec {
 
     "filter out self number" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1

@@ -50,6 +50,7 @@ class FilesServiceSpec extends RpcSpec {
   "files service" should {
     "respond to RequestUploadStart" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       {
         val config = requestUploadStart().config
@@ -59,6 +60,7 @@ class FilesServiceSpec extends RpcSpec {
 
     "respond to RequestUploadFile" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       {
         val config = requestUploadStart().config
@@ -69,6 +71,7 @@ class FilesServiceSpec extends RpcSpec {
 
     "respond to RequestCompleteUpload" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       {
         val config = requestUploadStart().config
@@ -84,6 +87,7 @@ class FilesServiceSpec extends RpcSpec {
 
     "upload two files in a row" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       {
         val config = requestUploadStart().config
@@ -102,6 +106,7 @@ class FilesServiceSpec extends RpcSpec {
 
     "respond to RequestGetFile" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       val config = requestUploadStart().config
       uploadFileBlocks(config)

@@ -34,6 +34,8 @@ class PresenceServiceSpec extends RpcSpec {
   "presence service" should {
     "return ResponseVoid for subscribe" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -46,6 +48,8 @@ class PresenceServiceSpec extends RpcSpec {
 
     "return ResponseVoid for unsubscribe" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -55,6 +59,8 @@ class PresenceServiceSpec extends RpcSpec {
 
     "subscribe to updates and receive them" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
       val duration = DurationInt(1).seconds
 
       {
