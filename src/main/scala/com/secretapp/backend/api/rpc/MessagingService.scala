@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.update.{ GroupInvite, GroupMessage, GroupUserAdded, MessageReceived, MessageRead }
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ GroupChat, User }
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord, GroupChatRecord, GroupChatUserRecord, SeqUpdateRecord }
 import com.secretapp.backend.services.common.PackageCommon._
@@ -55,6 +55,10 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
     case RpcProtocol.Request(RequestInviteUser(chatId, accessHash, userId, userAccessHash, randomId, chatKeyHash, invite)) =>
       val replyTo = sender()
       handleRequestInviteUser(chatId, accessHash, userId, userAccessHash, randomId, chatKeyHash, invite) pipeTo replyTo
+
+    case RpcProtocol.Request(RequestLeaveChat(chatId, accessHash)) =>
+      val replyTo = sender()
+      handleRequestLeaveChat(chatId, accessHash) pipeTo replyTo
 
     case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
       val replyTo = sender()
@@ -147,6 +151,38 @@ sealed trait MessagingService extends RandomService {
 
                 Ok(updateProto.ResponseSeq(s._1, s._2))
               }
+          }
+        }
+      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+    }
+  }
+
+  protected def handleRequestLeaveChat(
+    chatId: Int,
+    accessHash: Long
+  ): Future[RpcResponse] = {
+    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
+      optChat map { chat =>
+        if (chat.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        } else {
+          for {
+            _ <- GroupChatUserRecord.removeUser(chatId, currentUser.uid)
+            chatUserIds <- GroupChatUserRecord.getUsers(chatId)
+            s <- getState(currentUser.authId)
+          } yield {
+            chatUserIds foreach { userId =>
+              for {
+                authIds <- getAuthIds(userId)
+              } yield {
+                authIds map { authId =>
+                  updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
+                    chatId, userId
+                  ))
+                }
+              }
+            }
+            Ok(updateProto.ResponseSeq(s._1, s._2))
           }
         }
       } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))

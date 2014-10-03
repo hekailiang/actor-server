@@ -32,6 +32,10 @@ object GroupChatUserRecord extends GroupChatUserRecord with DBConnector {
       .value(_.chatId, chatId).value(_.userId, userId).future()
   }
 
+  def removeUser(chatId: Int, userId: Int)(implicit session: Session): Future[ResultSet] = {
+    delete.where(_.chatId eqs chatId).and(_.userId eqs userId).future()
+  }
+
   def getUsers(chatId: Int)(implicit session: Session): Future[Seq[Int]] = {
     select.where(_.chatId eqs chatId).fetch()
   }

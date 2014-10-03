@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, GroupInvite, GroupMessage, GroupUserAdded }
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.data.types._
@@ -84,7 +84,6 @@ class GroupMessagingSpec extends RpcSpec {
       }
 
       {
-        Thread.sleep(1000)
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
@@ -132,17 +131,61 @@ class GroupMessagingSpec extends RpcSpec {
 
         rqInviteUser :~> <~:[updateProto.ResponseSeq]
 
-        Thread.sleep(1000)
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body.assertInstanceOf[GroupUserAdded]
       }
 
       {
-        Thread.sleep(3000)
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupInvite]
+      }
+    }
+
+    "send GroupUserLeave on user leave" in {
+      val (scope1, scope2) = TestScope.pair(5, 6)
+
+      {
+        implicit val scope = scope1
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = BitVector(1, 1, 1),
+          publicKey = BitVector(1, 0, 1, 0),
+          invites = immutable.Seq(
+            InviteUser(
+              uid = scope2.user.uid,
+              accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+              keys = immutable.Seq(
+                EncryptedMessage(
+                  message = BitVector(1, 2, 3),
+                  keys = immutable.Seq(
+                    EncryptedKey(
+                      keyHash = scope2.user.publicKeyHash,
+                      aesEncryptedKey = BitVector(2, 0, 2, 0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        RequestLeaveChat(
+          chatId = resp.chatId,
+          accessHash = resp.accessHash
+        ) :~> <~:[updateProto.ResponseSeq]
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.head.body.assertInstanceOf[GroupInvite]
+        diff.updates(1).body.assertInstanceOf[GroupUserLeave]
       }
     }
   }
