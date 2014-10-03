@@ -50,10 +50,13 @@ object MTPackageBoxCodec extends Codec[MTPackageBox] {
     }
   }
 
-  // TODO
-  def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage) = {
-    val mb = MessageBoxCodec.encodeValid(MessageBox(messageId, message))
+  def build(index: Int, authId: Long, sessionId: Long, mbox: MessageBox): String \/ BitVector = {
+    val mb = MessageBoxCodec.encodeValid(mbox)
     val blob = MTPackageCodec.encodeValid(MTPackage(authId, sessionId, mb))
     encode(index, blob)
+  }
+
+  def build(index: Int, authId: Long, sessionId: Long, messageId: Long, message: TransportMessage): String \/ BitVector = {
+    build(index: Int, authId: Long, sessionId: Long, MessageBox(messageId, message))
   }
 }

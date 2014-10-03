@@ -31,6 +31,7 @@ object BS {
       -1
     } else 1
     val (_, buf) = parse(isDigit)(p)
+    if (buf.isEmpty) throw new IllegalArgumentException("no digits to parse")
     (p, convertBS2Long(buf) * sign)
   }
 

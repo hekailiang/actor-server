@@ -3,6 +3,7 @@ package com.secretapp.backend.api
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.language.{ postfixOps, higherKinds }
 import scala.concurrent.duration._
+import scala.collection.mutable
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import akka.testkit._
 import akka.actor.{ Props, Actor }
@@ -41,70 +42,55 @@ class SessionActorSpec extends RpcSpec {
         implicit val authId = 0L
 
         sendMsg(RequestAuthId())
-        expectMsgByPF() { case ResponseAuthId(_) => }
+        expectMsgByPF() {
+          case ResponseAuthId(_) =>
+        }
       }
 
       "reply pong to ping" in {
         implicit val (probe, apiActor) = getProbeAndActor()
         implicit val session = SessionIdentifier()
-        implicit val authId = rand.nextLong
+        implicit val authId = rand.nextLong()
+        insertAuthId(authId)
 
         val pingVal = rand.nextLong()
-        insertAuthId(authId)
 
         sendMsg(Ping(pingVal))
         expectMsg(Pong(pingVal), withNewSession = true)
       }
 
-      //    "send drop to package with invalid crc" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      val req = hex"1e00000000000000010000000000000002000000000000000301f013bb3411"
-      //      probe.send(apiActor, Received(req))
-      //      val res = protoPackageBox.build(0, 0L, 0L, 0L, Drop(0L, "invalid crc32"))
-      //      probe.expectMsgPF() {
-      //        case Write(res, _) => true
-      //      }
-      //    }
-      //
-      //    "parse packages in single stream" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val session = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //
-      //      insertAuthId(authId)
-      //      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
-      //      val packages = messages.map(pack(0, authId, _))
-      //      val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
-      //      req.grouped(7) foreach { buf =>
-      //        probe.send(apiActor, Received(buf))
-      //      }
-      //      val expectedPongs = messages map { m =>
-      //        val messageId = m.messageId
-      //        val pingVal = m.body.asInstanceOf[Ping].randomId
-      //        MessageBox(messageId, Pong(pingVal))
-      //      }
-      //      expectMsgWithAck(expectedPongs :_*)
-      //    }
-      //
-      //    "handle container with Ping's" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val session = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //
-      //      insertAuthId(authId)
-      //
-      //      val messages = (1 to 100).map { _ => MessageBox(rand.nextLong, Ping(rand.nextLong)) }
-      //      val container = MessageBox(rand.nextLong, Container(messages))
-      //      val packageBlob = pack(0, authId, container)
-      //      send(packageBlob)
-      //
-      //      val expectedPongs = messages map { m =>
-      //        val messageId = m.messageId
-      //        val pingVal = m.body.asInstanceOf[Ping].randomId
-      //        MessageBox(messageId, Pong(pingVal))
-      //      }
-      //      expectMsgWithAck(expectedPongs :_*)
-      //    }
+      "send drop when invalid package" in {
+        implicit val (probe, apiActor) = getProbeAndActor()
+        implicit val session = SessionIdentifier(0L)
+        implicit val authId = 0L
+
+        sendMsg(ByteString("_____________________________________!@#$%^"))
+        expectMsgByPF() { case Drop(0L, _) => }
+      }
+
+      "handle container with Ping's" in {
+        implicit val (probe, apiActor) = getProbeAndActor()
+        implicit val session = SessionIdentifier()
+        implicit val authId = rand.nextLong()
+        insertAuthId(authId)
+
+        var msgId = 0L
+        val pingValQueue = mutable.Set[Long]()
+        val messages = (1 to 100).map { _ =>
+          val pingVal = rand.nextLong()
+          pingValQueue += pingVal
+          msgId += 4
+          MessageBox(msgId, Ping(pingVal))
+        }
+        val container = MessageBox(0, Container(messages))
+
+        sendMsgBox(container)
+        expectMsgsWhileByPF(withNewSession = true) {
+          case Pong(pingVal) =>
+            pingValQueue -= pingVal
+            pingValQueue.isEmpty
+        }
+      }
     }
   }
 }

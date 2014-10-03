@@ -35,6 +35,7 @@ trait Frontend extends Actor with ActorLogging {
   }
 
   def sendDrop(msg: String): Unit = {
+    log.error(msg)
     // TODO: silentClose() ???
     val reply = transport.buildPackage(0L, 0L, MessageBox(0L, Drop(0L, msg)))
     self ! ResponseToClientWithDrop(reply.encode)

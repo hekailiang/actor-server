@@ -40,9 +40,7 @@ trait MTPackageService {
               }
             case -\/(e) => ParseError(e).left
           }
-        } else {
-          (sp, buf).right
-        }
+        } else (sp, buf).right
       case pp@WrappedPackageParsing(bitsLen) =>
         if (buf.length >= bitsLen) {
           protoPackageBox.decode(buf) match {
@@ -53,9 +51,7 @@ trait MTPackageService {
               parseByteStream(WrappedPackageSizeParsing(), remain)(f)
             case -\/(e) => ParseError(e).left
           }
-        } else {
-          (pp, buf).right
-        }
+        } else (pp, buf).right
       case _ => ParseError("internal error: wrong state").left
     }
 
