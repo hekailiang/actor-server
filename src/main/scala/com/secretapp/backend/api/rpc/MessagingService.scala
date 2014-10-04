@@ -404,6 +404,8 @@ sealed trait MessagingService extends RandomService {
       optChat map { chat =>
         if (chat.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        } else if (chat.keyHash != aesKeyHash) {
+          Future.successful(Error(400, "WRONG_KEY", "Invalid chat key hash.", false))
         } else {
           fchatUserIds flatMap { userIds =>
             val updatesFutures = userIds map { userId =>

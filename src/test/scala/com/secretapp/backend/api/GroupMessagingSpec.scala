@@ -68,7 +68,7 @@ class GroupMessagingSpec extends RpcSpec {
           chatId = resp.chatId,
           accessHash = resp.accessHash,
           randomId = 666L,
-          keyHash = BitVector(2, 0, 2, 0),
+          keyHash = BitVector(1, 1, 1),
           message = BitVector(1, 2, 3)
         )
 
