@@ -15,7 +15,7 @@ object GroupMessageCodec extends Codec[GroupMessage] with utils.ProtobufCodec {
   def encode(u: GroupMessage) = {
     val boxed = protobuf.UpdateGroupMessage(
       u.senderUID, u.chatId, u.keyHash,
-      u.aesKeyHash, u.message, u.aesEncryptedKey
+      u.aesKeyHash, u.message
     )
     encodeToBitVector(boxed)
   }
@@ -24,11 +24,11 @@ object GroupMessageCodec extends Codec[GroupMessage] with utils.ProtobufCodec {
     decodeProtobuf(protobuf.UpdateGroupMessage.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupMessage(
-          senderUID, chatId, keyHash, aesKeyHash, message, aesEncryptedKey
+          senderUID, chatId, keyHash, aesKeyHash, message
         )
       ) =>
         GroupMessage(
-          senderUID, chatId, keyHash, aesKeyHash, message, aesEncryptedKey
+          senderUID, chatId, keyHash, aesKeyHash, message
         )
     }
   }

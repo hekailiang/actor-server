@@ -64,7 +64,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestRemoveUser(chatId, accessHash, userId, userAccessHash) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
+    case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, keyHash, message)) =>
       val replyTo = sender()
 
       Option(randomIds.get(randomId)) match {
@@ -72,7 +72,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
           replyTo ! Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
         case None =>
           randomIds.put(randomId, true)
-          val f = handleRequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage) map { res =>
+          val f = handleRequestSendGroupMessage(chatId, accessHash, randomId, keyHash, message) map { res =>
             replyTo ! res
           }
 
@@ -258,13 +258,13 @@ sealed trait MessagingService extends RandomService {
 
     GroupChatRecord.insertEntity(chat) flatMap { _ =>
       Future.sequence(invites.toVector map (inv => createChatUserInvites(chat, inv.uid, inv.accessHash, inv.keys))) flatMap { ei =>
-        val (errors, invites) = ei.separate
+        val (errors, inviteUpdates) = ei.separate
         if (errors.length > 0) {
           Future.successful(errors.head)
         } else {
           val fselfUserAdded = GroupChatUserRecord.addUser(chat.id, currentUser.uid)
 
-          val fusersAdded = invites.flatten map {
+          val fusersAdded = inviteUpdates.flatten map {
             case (authId, uid, invite) =>
               GroupChatUserRecord.addUser(chat.id, uid) map (_ => (authId, invite))
           }
@@ -277,9 +277,12 @@ sealed trait MessagingService extends RandomService {
 
             for {
               _ <- fselfUserAdded
-              s <- getState(currentUser.authId)
+              s <- updatesBrokerRegion.ask(NewUpdatePush(currentUser.authId, GroupCreated(
+                randomId = randomId, chatId = chat.id, accessHash = chat.accessHash, title = chat.title,
+                keyHash = chat.keyHash, invites = invites
+              ))).mapTo[StrictState]
             } yield {
-              Ok(ResponseCreateChat(chat.id, chat.accessHash, s._1, s._2))
+              Ok(ResponseCreateChat(chat.id, chat.accessHash, s._1, Some(s._2)))
             }
           }
         }
@@ -390,42 +393,11 @@ sealed trait MessagingService extends RandomService {
     }
   }
 
-  def createChatUserGroupMessages(chat: GroupChat, userId: Int, message: EncryptedMessage): Future[Error \/ Vector[(Long, Int, GroupMessage)]]  = {
-    getUsers(userId) map {
-      case users if users.isEmpty =>
-        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left
-      case users =>
-        val jobsOpts = message.keys map ((message.message, _)) map {
-          case (message, key) =>
-            users.get(key.keyHash) map ((_, message, key))
-        }
-
-        val optMessages: Option[Vector[(Long, Int, GroupMessage)]] = jobsOpts.toVector.sequence map { jobs =>
-          jobs map {
-            case (user, message, key) =>
-              (
-                user.authId,
-                user.uid,
-                GroupMessage(
-                  senderUID = currentUser.uid,
-                  chatId = chat.id,
-                  keyHash = user.publicKeyHash,
-                  aesKeyHash = chat.keyHash,
-                  message = message,
-                  aesEncryptedKey = key.aesEncryptedKey
-                )
-              )
-          }
-        }
-        optMessages map (messages => messages.right) getOrElse (Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left)
-      }
-    }
-
   protected def handleRequestSendGroupMessage(chatId: Int,
     accessHash: Long,
     randomId: Long,
-    message: EncryptedMessage,
-    selfMessage: Option[EncryptedMessage]): Future[RpcResponse] = {
+    aesKeyHash: BitVector,
+    message: BitVector): Future[RpcResponse] = {
 
     val fchatUserIds = GroupChatUserRecord.getUsers(chatId)
     GroupChatRecord.getEntity(chatId) flatMap { optChat =>
@@ -434,28 +406,36 @@ sealed trait MessagingService extends RandomService {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
           fchatUserIds flatMap { userIds =>
-            val fgroupMessages: Vector[Future[Error \/ Vector[(Long, Int, GroupMessage)]]] =
-              userIds.toVector map (createChatUserGroupMessages(chat, _, message))
-
-            val fselfMessages: Vector[Future[Error \/ Vector[(Long, Int, GroupMessage)]]] =
-              selfMessage map (message => Vector(createChatUserGroupMessages(chat, currentUser.uid, message))) getOrElse Vector.empty
-
-            Future.sequence(fgroupMessages ++ fselfMessages) flatMap { ei =>
-              val (errors, messages) = ei.separate
-
-              if (errors.length > 0) {
-                Future.successful(errors.head)
-              } else {
-                messages.flatten map {
-                  case (authId, uid, message) =>
-                    updatesBrokerRegion ! NewUpdatePush(authId, message)
-                }
-                for {
-                  s <- getState(currentUser.authId)
-                } yield {
-                  Ok(updateProto.ResponseSeq(s._1, s._2))
-                }
+            val updatesFutures = userIds map { userId =>
+              getUsers(userId) map {
+                case users =>
+                  users.toSeq map {
+                    case (_, user) =>
+                    (
+                      user.authId,
+                      GroupMessage(
+                        senderUID = currentUser.uid,
+                        chatId = chat.id,
+                        keyHash = user.publicKeyHash,
+                        aesKeyHash = aesKeyHash,
+                        message = message
+                      )
+                    )
+                  }
               }
+            }
+            //updatesFutures.q
+            Future.sequence(updatesFutures) map { updates =>
+              updates.toVector.flatten foreach {
+                case (authId, update) =>
+                  updatesBrokerRegion ! NewUpdatePush(authId, update)
+              }
+            }
+
+            for {
+              s <- getState(currentUser.authId)
+            } yield {
+              Ok(updateProto.ResponseSeq(s._1, s._2))
             }
           }
         }

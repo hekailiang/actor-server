@@ -94,7 +94,9 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       log.info(s"NewUpdateEvent for $authId: $update")
       persist(p) { _ =>
         seq += 1
-        pushUpdate(authId, update)
+        pushUpdate(authId, update) map { reply =>
+          replyTo ! reply
+        }
         maybeSnapshot()
       }
     case p @ NewUpdateEvent(authId, NewMessageSent(uid, randomId)) =>

@@ -68,19 +68,14 @@ class GroupMessagingSpec extends RpcSpec {
           chatId = resp.chatId,
           accessHash = resp.accessHash,
           randomId = 666L,
-          message = EncryptedMessage(
-            message = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedKey(
-                keyHash = scope2.user.publicKeyHash,
-                aesEncryptedKey = BitVector(2, 0, 2, 0)
-              )
-            )
-          ),
-          selfMessage = None
+          keyHash = BitVector(2, 0, 2, 0),
+          message = BitVector(1, 2, 3)
         )
 
         rqSendMessage :~> <~:[updateProto.ResponseSeq]
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates.head.body.assertInstanceOf[GroupCreated]
       }
 
       {

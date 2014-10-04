@@ -9,8 +9,7 @@ case class GroupMessage(
   chatId: Int,
   keyHash: Long,
   aesKeyHash: BitVector,
-  message: BitVector,
-  aesEncryptedKey: BitVector
+  message: BitVector
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupMessage.seqUpdateHeader
 
