@@ -47,7 +47,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     }
 
     blocking {
-      dropKeyspaceAsync(spaceName)
+      //dropKeyspaceAsync(spaceName)
       dropKeyspace("test_akka")
       dropKeyspace("test_akka_snapshot")
     }

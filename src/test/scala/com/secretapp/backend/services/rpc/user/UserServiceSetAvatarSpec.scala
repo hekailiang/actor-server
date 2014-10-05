@@ -17,14 +17,15 @@ import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
-
+/*
   "test avatar" should {
     "have proper size" in {
       origBytes must have size 112527
     }
   }
-
+ */
   "user service on receiving `RequestSetAvatar`" should {
+    /*
     "respond with `ResponseAvatarUploaded`" in {
       val r = setAvatarShouldBeOk
 
@@ -79,7 +80,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       dbSmallImage.fileSize      should_== smallBytes.length
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
-
+     */
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
 
@@ -94,15 +95,16 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         setAvatarShouldBeOk
       }
 
-      Thread.sleep(3000)
+      Thread.sleep(1000)
 
-      val diff2 = {
+      val (diff2, updates2) = {
         implicit val scope = scope1
-        protoReceiveN(2)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
-      }._1
+      }
 
-      diff2.updates.last.body should beAnInstanceOf[AvatarChanged]
+      updates2.length should beEqualTo(2)
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[AvatarChanged]
+
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
       a.fullImage.get.width          should_== origDimensions._1

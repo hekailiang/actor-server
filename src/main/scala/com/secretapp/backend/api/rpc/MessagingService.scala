@@ -299,7 +299,7 @@ sealed trait MessagingService extends RandomService {
             message.keys map ((message.message, _))
           } map {
             case (message, key) =>
-              users.get(key.keyHash) map ((_, message, key))
+              users.toMap.get(key.keyHash) map ((_, message, key))
           }
 
           val optInvites: Option[Vector[(Long, Int, GroupInvite)]] = jobsOpts.toVector.sequence map { jobs =>

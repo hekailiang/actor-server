@@ -168,9 +168,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
         throw new Exception("Unknown UpdateMessage")
     }
 
-    val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
+    //val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
 
-    f map (_ => uuid)
+    q.future map (_ => uuid)
   }
 
 }

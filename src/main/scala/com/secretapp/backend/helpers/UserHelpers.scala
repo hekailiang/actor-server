@@ -16,16 +16,16 @@ trait UserHelpers {
   import context.dispatcher
 
   // Caches userId -> accessHash associations
-  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Map[Long, User]]
+  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[(Long, User)]]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
-  def getUsers(uid: Int): Future[Map[Long, User]] = {
+  def getUsers(uid: Int): Future[Seq[(Long, User)]] = {
     Option(usersCache.get(uid)) match {
       case Some(users) =>
         Future.successful(users)
       case None =>
         UserRecord.byUid(uid) map (
-          _ map {user => (user.publicKeyHash, user) } toMap
+          _ map {user => (user.publicKeyHash, user) }
         )
     }
   }

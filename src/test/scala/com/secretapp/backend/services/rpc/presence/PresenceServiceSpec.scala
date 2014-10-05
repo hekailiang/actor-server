@@ -21,7 +21,7 @@ class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
   def assertResponseVoidReceived(implicit scope: TestScope) =
-    receiveNWithAck(2)(scope.probe, scope.apiActor).exists { p =>
+    receiveNWithAck(1)(scope.probe, scope.apiActor).exists { p =>
       p.body match {
         case p: RpcResponseBox => p.body match {
           case p: Ok => p.body.isInstanceOf[ResponseVoid]

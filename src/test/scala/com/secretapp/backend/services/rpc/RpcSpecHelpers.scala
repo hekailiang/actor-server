@@ -87,11 +87,21 @@ trait RpcSpecHelpers {
       (implicit scope: TestScope): (A, Seq[UpdateBox]) = {
       implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
-      val msg = receiveOneWithAck()
-      if (msg.body.isInstanceOf[UpdateBox]) {
-        :~>(wp, updates :+ msg.body.asInstanceOf[UpdateBox])
+      val msgs = receiveNWithAck(1)
+
+      val (resps, newUpdates) = msgs partition {
+        case MessageBox(_, ub: UpdateBox) => false
+        case _ => true
+      }
+
+      val newUpdateBoxes = newUpdates map (_.body.asInstanceOf[UpdateBox])
+
+      if (resps.length == 0) {
+        :~>(wp, updates ++ newUpdateBoxes)
+      } else if (resps.length == 1) {
+        (resps.head.assertResponseOk[A], updates ++ newUpdateBoxes)
       } else {
-        (msg.assertResponseOk[A], Seq.empty)
+        throw new Exception(s"Received more than one response $resps")
       }
     }
   }

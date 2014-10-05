@@ -8,6 +8,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message.UpdateBox
+import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.{ Container, MessageAck, NewSession, TransportMessage }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage, MTPackageBox }
@@ -32,7 +33,7 @@ import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
-import scala.language.implicitConversions
+import scala.language.{ implicitConversions, postfixOps }
 import scala.util.Random
 import scalaz._
 import scalaz.Scalaz._
@@ -245,30 +246,43 @@ trait ActorServiceHelpers extends RandomService {
   }
 
   def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
-    val receivedPackages = protoReceiveN(n)
+    def doReceive(n: Int, packages: Seq[MessageBox] = Seq.empty)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
+      val receivedPackages = protoReceiveN(n)
 
-    val mboxes = receivedPackages flatMap {
-      case MTPackage(authId, sessionId, mboxBytes) =>
-        val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
+      val mboxes = receivedPackages flatMap {
+        case MTPackage(authId, sessionId, mboxBytes) =>
+          val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
 
-        messageBox match {
-          case MessageBox(_, Container(mbox)) => mbox
-          case mb @ MessageBox(_, _) => Seq(mb)
-        }
+          messageBox match {
+            case MessageBox(_, Container(mbox)) => mbox
+            case mb @ MessageBox(_, _) => Seq(mb)
+          }
+      }
+      val (ackPackages, newPackages) = mboxes partition {
+        case MessageBox(_, ma @ MessageAck(_)) => true
+        case _ => false
+      }
+
+      newPackages filter {
+        case MessageBox(_, ma: UpdateBox) =>
+          true
+        case _ => false
+      } length match {
+        case 0 =>
+          packages ++ newPackages
+        case updatesCount =>
+          doReceive(n - updatesCount, packages ++ newPackages)
+      }
     }
-    val (ackPackages, packages) = mboxes partition {
-      case MessageBox(_, ma @ MessageAck(_)) => true
-      case _ => false
-    }
 
-    packages
+    doReceive(n * 2)
   }
 
   def receiveOneWithAck()(implicit probe: TestProbe, destActor: ActorRef): MessageBox = {
-    receiveNWithAck(2) match {
+    receiveNWithAck(1) match {
       case Seq(x) => x
       case Seq() => null
-      case _ => throw new Exception("Received more than one message")
+      case x => throw new Exception(s"Received more than one message ${x}")
     }
   }
 

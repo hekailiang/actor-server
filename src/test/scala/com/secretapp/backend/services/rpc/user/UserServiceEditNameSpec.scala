@@ -16,7 +16,6 @@ import scodec.bits._
 class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
   "user service on receiving `RequestEditName`" should {
-
     "respond with `ResponseVoid`" in {
       editNameShouldBeOk
     }
@@ -28,7 +27,8 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
     }
 
     "append update to chain" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(3, 4)
+      println("Scopes", scope1, scope2)
 
       val (diff1, _) = {
         implicit val scope = scope1
@@ -41,15 +41,17 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
         editNameShouldBeOk
       }
 
-      Thread.sleep(3000)
+      Thread.sleep(1000)
 
-      val (diff2, _) = {
+      val (diff2, updates2) = {
         implicit val scope = scope1
-        protoReceiveN(1)(scope.probe, scope.apiActor)
+
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
 
-      diff2.updates.last.body should beAnInstanceOf[NameChanged]
+      updates2.length should beEqualTo(2)
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[NameChanged]
+
       val n = diff2.users.filter(_.uid == scope2.user.uid)(0).name
 
       n should_== newName
