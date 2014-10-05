@@ -41,7 +41,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
         editNameShouldBeOk
       }
 
-      Thread.sleep(1000)
+      Thread.sleep(3000)
 
       val (diff2, _) = {
         implicit val scope = scope1

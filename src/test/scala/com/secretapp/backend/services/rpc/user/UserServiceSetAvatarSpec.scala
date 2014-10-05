@@ -94,7 +94,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         setAvatarShouldBeOk
       }
 
-      Thread.sleep(1000)
+      Thread.sleep(3000)
 
       val diff2 = {
         implicit val scope = scope1
