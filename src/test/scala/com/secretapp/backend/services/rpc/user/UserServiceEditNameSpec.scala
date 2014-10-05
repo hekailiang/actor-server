@@ -28,7 +28,6 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
-      println("Scopes", scope1, scope2)
 
       val (diff1, _) = {
         implicit val scope = scope1

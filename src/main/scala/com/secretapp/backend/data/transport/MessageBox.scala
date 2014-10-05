@@ -5,7 +5,6 @@ import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 
 case class MessageBox(messageId: Long, body: TransportMessage) {
   def replyWith(authId: Long, sessionId: Long, replyMessageId: Long, message: TransportMessage): MTPackage = {
-    println(s"replying with ${MessageBox(replyMessageId, message)}")
     MTPackage(authId, sessionId, MessageBoxCodec.encodeValid(MessageBox(replyMessageId, message)))
   }
 

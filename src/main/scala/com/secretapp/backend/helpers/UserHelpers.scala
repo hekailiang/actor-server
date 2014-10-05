@@ -36,7 +36,6 @@ trait UserHelpers {
       users <- getUsers(uid)
     } yield {
       val authIds = users.toList map (_._2.authId)
-      println(s"authIds for $uid are $authIds")
       authIds
     }
   }
