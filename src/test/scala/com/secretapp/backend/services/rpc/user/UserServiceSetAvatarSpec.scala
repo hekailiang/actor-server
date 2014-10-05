@@ -4,6 +4,7 @@ import java.nio.file.{Files, Paths}
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.AvatarImage
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
@@ -24,7 +25,6 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   "user service on receiving `RequestSetAvatar`" should {
-
     "respond with `ResponseAvatarUploaded`" in {
       val r = setAvatarShouldBeOk
 
@@ -94,12 +94,15 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         setAvatarShouldBeOk
       }
 
+      Thread.sleep(1000)
+
       val diff2 = {
         implicit val scope = scope1
-        protoReceiveN(1)(scope.probe, scope.apiActor)
+        protoReceiveN(2)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }._1
 
+      diff2.updates.last.body should beAnInstanceOf[AvatarChanged]
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
       a.fullImage.get.width          should_== origDimensions._1

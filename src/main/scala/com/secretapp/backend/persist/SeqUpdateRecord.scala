@@ -55,6 +55,9 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
       case updateProto.AvatarChanged.seqUpdateHeader =>
         Entity(uuid(row),
           AvatarChangedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.NameChanged.seqUpdateHeader =>
+        Entity(uuid(row),
+          NameChangedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
       case updateProto.ContactRegistered.seqUpdateHeader =>
         Entity(uuid(row),
           ContactRegisteredCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
@@ -131,6 +134,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.AvatarChanged =>
         val body = AvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.AvatarChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.NameChanged =>
+        val body = NameChangedCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NameChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.ContactRegistered =>
         val body = ContactRegisteredCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.ContactRegistered.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)

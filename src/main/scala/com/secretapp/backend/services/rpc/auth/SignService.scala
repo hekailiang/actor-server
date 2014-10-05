@@ -5,7 +5,7 @@ import java.util.regex.Pattern
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
-import com.secretapp.backend.api.{SocialProtocol, UpdatesBroker, ApiBrokerService}
+import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
 import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
 import scala.util.{ Success, Failure }
 import scala.concurrent.Future
@@ -15,6 +15,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.persist._
+import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
@@ -22,7 +23,7 @@ import scalaz._
 import Scalaz._
 import Function.tupled
 
-trait SignService {
+trait SignService extends SocialHelpers {
   self: ApiBrokerService =>
   implicit val session: CSession
 
@@ -190,8 +191,6 @@ trait SignService {
   }
 
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
-    import SocialProtocol._
-
     // Push NewYourDevice updates
     UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
       case Success(authIds) =>
@@ -208,7 +207,7 @@ trait SignService {
     }
 
     // Push NewDevice updates
-    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+    getRelations(uid) onComplete {
       case Success(uids) =>
         log.debug(s"Got relations for ${uid} -> ${uids}")
         for (targetUid <- uids) {

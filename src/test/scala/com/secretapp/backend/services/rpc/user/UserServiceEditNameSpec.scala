@@ -5,6 +5,7 @@ import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -40,12 +41,15 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
         editNameShouldBeOk
       }
 
+      Thread.sleep(1000)
+
       val (diff2, _) = {
         implicit val scope = scope1
         protoReceiveN(1)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
 
+      diff2.updates.last.body should beAnInstanceOf[NameChanged]
       val n = diff2.users.filter(_.uid == scope2.user.uid)(0).name
 
       n should_== newName

@@ -91,7 +91,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       sender() ! this.seq
     case p @ NewUpdatePush(authId, update) =>
       val replyTo = sender()
-      log.info(s"NewUpdateEvent for $authId: $update")
+      log.info(s"NewUpdatePush for $authId: $update")
       persist(p) { _ =>
         seq += 1
         pushUpdate(authId, update) map { reply =>

@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ GroupChat, User }
+import com.secretapp.backend.helpers.UserHelpers
 import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord, GroupChatRecord, GroupChatUserRecord, SeqUpdateRecord }
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
@@ -29,7 +30,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
-class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef, val currentUser: User)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef, val currentUser: User)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService with UserHelpers {
   import context.{ system, become, dispatcher }
 
   implicit val timeout = Timeout(5.seconds)
@@ -114,10 +115,6 @@ sealed trait MessagingService extends RandomService {
   // Stores (userId, publicKeyHash) -> authId associations
   // TODO: migrate to ConcurrentLinkedHashMap
   val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
-
-  // Caches userId -> accessHash associations
-  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Map[Long, User]]
-    .initialCapacity(10).maximumWeightedCapacity(100).build
 
   protected def handleRequestInviteUser(
     chatId: Int, accessHash: Long, userId: Int, userAccessHash: Long, randomId: Long, chatKeyHash: BitVector, invite: immutable.Seq[EncryptedMessage]
@@ -330,26 +327,6 @@ sealed trait MessagingService extends RandomService {
     }
   }
 
-  protected def getUsers(uid: Int): Future[Map[Long, User]] = {
-    Option(usersCache.get(uid)) match {
-      case Some(users) =>
-        Future.successful(users)
-      case None =>
-        UserRecord.getEntities(uid) map (
-          _ map {user => (user.publicKeyHash, user) } toMap
-        )
-    }
-  }
-
-  // FIXME: select from C* authId only for better performance
-  protected def getAuthIds(uid: Int): Future[immutable.Seq[Long]] = {
-    for {
-      users <- getUsers(uid)
-    } yield {
-      users.toList map (_._2.authId)
-    }
-  }
-
   protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
     getUsers(uid) flatMap {
       case users if users.isEmpty =>
@@ -503,7 +480,7 @@ sealed trait MessagingService extends RandomService {
         // Record relation between receiver authId and sender uid
         log.debug(s"Recording relation uid=${uid} -> uid=${currentUser.uid}")
         socialBrokerRegion ! SocialProtocol.SocialMessageBox(
-          uid, SocialProtocol.RelationsNoted(Set(currentUser.uid)))
+          currentUser.uid, SocialProtocol.RelationsNoted(Set(uid)))
 
         pushUpdates()
 

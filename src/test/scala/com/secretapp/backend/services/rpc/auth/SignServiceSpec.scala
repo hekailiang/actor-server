@@ -138,7 +138,7 @@ class SignServiceSpec extends RpcSpec {
 
       def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
-      val users = UserRecord.getEntities(userId).map(usrs => sortU(usrs))
+      val users = UserRecord.byUid(userId).map(usrs => sortU(usrs))
       val expectUsers = sortU(immutable.Seq(user, newUser))
       users must be_== (expectUsers).await
     }
