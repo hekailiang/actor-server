@@ -49,6 +49,7 @@ class TcpFrontendSpec extends RpcSpec {
           pingValQueue -= pingVal
           !pingValQueue.isEmpty
       }
+      assert(pingValQueue.isEmpty)
     }
   }
 }

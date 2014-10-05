@@ -33,7 +33,7 @@ class PublicKeysServiceSpec extends RpcSpec {
       implicit val sessionId = SessionIdentifier()
       implicit val authId = rand.nextLong
 
-      val messageId = rand.nextLong()
+      val messageId = getMessageId()
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"

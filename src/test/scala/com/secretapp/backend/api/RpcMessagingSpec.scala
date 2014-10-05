@@ -36,7 +36,7 @@ class RpcMessagingSpec extends RpcSpec {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
 
     val rq = updateProto.RequestGetState()
-    val messageId = rand.nextLong()
+    val messageId = getMessageId()
     val rpcRq = RpcRequestBox(Request(rq))
     val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
@@ -53,7 +53,7 @@ class RpcMessagingSpec extends RpcSpec {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
 
     val rq = updateProto.RequestGetDifference(seq, state)
-    val messageId = rand.nextLong()
+    val messageId = getMessageId()
     val rpcRq = RpcRequestBox(Request(rq))
     val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
     send(packageBlob)
@@ -105,7 +105,7 @@ class RpcMessagingSpec extends RpcSpec {
         ), selfMessage = None
       )
 
-      val messageId = rand.nextLong()
+      val messageId = getMessageId()
       val rpcRq = RpcRequestBox(Request(rq))
       val packageBlob = pack(0, scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
 

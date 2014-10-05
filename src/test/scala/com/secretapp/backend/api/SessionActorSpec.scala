@@ -90,6 +90,7 @@ class SessionActorSpec extends RpcSpec {
             pingValQueue -= pingVal
             !pingValQueue.isEmpty
         }
+        assert(pingValQueue.isEmpty)
       }
     }
   }

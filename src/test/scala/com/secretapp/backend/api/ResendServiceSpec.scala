@@ -20,6 +20,7 @@ class ResendServiceSpec extends RpcSpec {
   "session" should {
     "resend unackd messages" in {
       val scopeOrigin = TestScope()
+      catchNewSession(scopeOrigin)
 
       {
         implicit val scope = scopeOrigin
@@ -45,7 +46,7 @@ class ResendServiceSpec extends RpcSpec {
             MTPackageBoxCodec.encodeValid(
               MTPackageBox(0,
                 MTPackage(scope.user.authId, scope.session.id,
-                  MessageBoxCodec.encodeValid(MessageBox(10L, Ping(1L)))))).toByteArray))
+                  MessageBoxCodec.encodeValid(MessageBox(getMessageId(), Ping(1L)))))).toByteArray))
 
         scope.probe.send(scope.apiActor, received)
 

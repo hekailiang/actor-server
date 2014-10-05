@@ -247,7 +247,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   val mockAuthId = rand.nextLong()
   val defaultPhoneNumber = 79853867016L
 
-  protected val incMessageId = new AtomicLong(1L)
+  protected var incMessageId = 0L
 
   val counters = new Singletons
   implicit val clusterProxies = new ClusterProxies
@@ -378,6 +378,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
           } else {
             acc :+ message
           }
+        case Close => receive(acc)
         case x =>
           println(s"unknown receive ${x}")
           receive(acc)
@@ -395,9 +396,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
         // FIXME: real index
         val mb = MessageBoxCodec.decodeValidValue(p.messageBoxBytes)
         val pb = MTPackageBox(0, MTPackage(p.authId, p.sessionId,
-          MessageBoxCodec.encodeValid(
-            MessageBox(mb.messageId * 10, MessageAck(Vector(mb.messageId)))
-          )
+          MessageBoxCodec.encodeValid(MessageBox(getMessageId(), MessageAck(Vector(mb.messageId))))
         ))
         probe.send(destActor, Received(ByteString(MTPackageBoxCodec.encodeValid(pb).toByteArray)))
         //Thread.sleep(200) // let acktracker handle the ack
@@ -422,7 +421,13 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     pack(index, authId, m.body, m.messageId)
   }
 
-  def pack(index: Int, authId: Long, m: TransportMessage, messageId: Long = incMessageId.incrementAndGet())(implicit s: SessionIdentifier): PackResult = {
+  def getMessageId(): Long = {
+    incMessageId += 4
+    incMessageId
+  }
+
+  def pack(index: Int, authId: Long, m: TransportMessage, messageId: Long = getMessageId())(implicit s: SessionIdentifier): PackResult = {
+    if (messageId % 4 != 0) println(s"pack.messageId: $messageId, pack.messageId % 4 == ${messageId % 4 == 0}")
     val p = protoPackageBox.build(index, authId, s.id, messageId, m)
     PackResult(codecRes2BS(p), messageId)
   }
@@ -456,7 +461,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   }
 
   def catchNewSession()(implicit probe: TestProbe, apiActor: ActorRef, s: SessionIdentifier, authId: Long): Unit = {
-    val messageId = rand.nextLong()
+    val messageId = getMessageId()
     val packageBlob = pack(0, authId, MessageBox(messageId, Ping(0L)))(s)
     send(packageBlob)(probe, apiActor)
     val mboxes = protoReceiveN(3)(probe, apiActor) map {
