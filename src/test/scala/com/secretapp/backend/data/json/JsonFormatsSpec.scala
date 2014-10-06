@@ -24,7 +24,7 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-class JsonFormatsSpec extends Specification {
+class JsonFormatsSpec extends JsonSpec {
 
   "(de)serializer" should {
 
@@ -40,182 +40,6 @@ class JsonFormatsSpec extends Specification {
         )
       )
       testToAndFromJson[MessageBox](j, v)
-    }
-
-    "(de)serialize UploadConfig" in {
-      val v = UploadConfig(BitVector.fromBase64("1234").get)
-      val j = Json.obj(
-        "serverData" -> "1234"
-      )
-      testToAndFromJson[UploadConfig](j, v)
-    }
-
-    "(de)serialize FileLocation" in {
-      val v = FileLocation(1, 2)
-      val j = Json.obj(
-        "fileId"     -> "1",
-        "accessHash" -> "2"
-      )
-      testToAndFromJson[FileLocation](j, v)
-    }
-
-    "(de)serialize ContactToImport" in {
-      val v = ContactToImport(1, 2)
-      val j = Json.obj(
-        "clientPhoneId" -> "1",
-        "phoneNumber"   -> "2"
-      )
-      testToAndFromJson[ContactToImport](j, v)
-    }
-
-    "(de)serialize PublicKeyRequest" in {
-      val v = PublicKeyRequest(1, 2, 3)
-      val j = Json.obj(
-        "uid"        -> 1,
-        "accessHash" -> "2",
-        "keyHash"    -> "3"
-      )
-      testToAndFromJson[PublicKeyRequest](j, v)
-    }
-
-    "(de)serialize EncryptedKey" in {
-      val v = EncryptedKey(1, BitVector.fromBase64("1234").get)
-      val j = Json.obj(
-        "keyHash"         -> "1",
-        "aesEncryptedKey" -> "1234"
-      )
-      testToAndFromJson[EncryptedKey](j, v)
-    }
-
-    "(de)serialize EncryptedMessage" in {
-      val key = EncryptedKey(1, BitVector.fromBase64("1234").get)
-      val v = EncryptedMessage(BitVector.fromBase64("1234").get, immutable.Seq(key))
-      val j = Json.obj(
-        "message" -> "1234",
-        "keys"    -> Json.arr(
-          Json.obj(
-            "keyHash"         -> "1",
-            "aesEncryptedKey" -> "1234"
-          )
-        )
-      )
-      testToAndFromJson[EncryptedMessage](j, v)
-    }
-
-    "(de)serialize UserId" in {
-      val v = UserId(1, 2)
-      val j = Json.obj(
-        "uid"        -> 1,
-        "accessHash" -> "2"
-      )
-      testToAndFromJson[UserId](j, v)
-    }
-
-    "(de)serialize AvatarImage" in {
-      val v = AvatarImage(FileLocation(1, 2), 3, 4, 5)
-      val j = Json.obj(
-        "fileLocation" -> Json.obj(
-          "fileId"     -> "1",
-          "accessHash" -> "2"
-        ),
-        "width"        -> 3,
-        "height"       -> 4,
-        "fileSize"     -> 5
-      )
-      testToAndFromJson[AvatarImage](j, v)
-    }
-
-    "(de)serialize Avatar" in {
-      val v = Avatar(
-        AvatarImage(FileLocation(1, 2), 3, 4, 5).some,
-        AvatarImage(FileLocation(6, 7), 8, 9, 10).some,
-        AvatarImage(FileLocation(11, 12), 13, 14, 15).some)
-      val j = Json.obj(
-        "smallImage" -> Json.obj(
-          "fileLocation" -> Json.obj(
-            "fileId"     -> "1",
-            "accessHash" -> "2"
-          ),
-          "width"        -> 3,
-          "height"       -> 4,
-          "fileSize"     -> 5
-        ),
-        "largeImage" -> Json.obj(
-          "fileLocation" -> Json.obj(
-            "fileId"     -> "6",
-            "accessHash" -> "7"
-          ),
-          "width"        -> 8,
-          "height"       -> 9,
-          "fileSize"     -> 10
-        ),
-        "fullImage" -> Json.obj(
-          "fileLocation" -> Json.obj(
-            "fileId"     -> "11",
-            "accessHash" -> "12"
-          ),
-          "width"        -> 13,
-          "height"       -> 14,
-          "fileSize"     -> 15
-        )
-      )
-      testToAndFromJson[Avatar](j, v)
-    }
-
-    "(de)serialize Sex" in {
-      Json.toJson(Male)                        should be_== (JsString("male"))
-      Json.fromJson[Sex](JsString("male")).get should be_== (Male)
-
-      Json.toJson(Female)                        should be_== (JsString("female"))
-      Json.fromJson[Sex](JsString("female")).get should be_== (Female)
-
-      Json.toJson(NoSex)                        should be_== (JsString("nosex"))
-      Json.fromJson[Sex](JsString("nosex")).get should be_== (NoSex)
-    }
-
-    "(de)serialize User" in {
-      val v = User(16, 17, "name", Male.some, Set(18), 19, Avatar(
-        AvatarImage(FileLocation(1, 2), 3, 4, 5).some,
-        AvatarImage(FileLocation(6, 7), 8, 9, 10).some,
-        AvatarImage(FileLocation(11, 12), 13, 14, 15).some).some)
-      val j = Json.obj(
-        "uid"         -> 16,
-        "accessHash"  -> "17",
-        "name"        -> "name",
-        "sex"         -> "male",
-        "keyHashes"   -> Json.arr("18"),
-        "phoneNumber" -> "19",
-        "avatar"      -> Json.obj(
-          "smallImage" -> Json.obj(
-            "fileLocation" -> Json.obj(
-              "fileId"     -> "1",
-              "accessHash" -> "2"
-            ),
-            "width"        -> 3,
-            "height"       -> 4,
-            "fileSize"     -> 5
-          ),
-          "largeImage" -> Json.obj(
-            "fileLocation" -> Json.obj(
-              "fileId"     -> "6",
-              "accessHash" -> "7"
-            ),
-            "width"        -> 8,
-            "height"       -> 9,
-            "fileSize"     -> 10
-          ),
-          "fullImage" -> Json.obj(
-            "fileLocation" -> Json.obj(
-              "fileId"     -> "11",
-              "accessHash" -> "12"
-            ),
-            "width"        -> 13,
-            "height"       -> 14,
-            "fileSize"     -> 15
-          )
-        )
-      )
-      testToAndFromJson[User](j, v)
     }
 
     "(de)serialize Container" in {
@@ -713,11 +537,5 @@ class JsonFormatsSpec extends Specification {
       )
       testToAndFromJson[RpcResponse](j, v)
     }*/
-  }
-
-  private def testToAndFromJson[A](json: JsValue, value: A)
-                                     (implicit f: Format[A]) = {
-    Json.toJson(value)         should be_== (json)
-    Json.fromJson[A](json).get should be_== (value)
   }
 }
