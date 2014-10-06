@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.user._
+import com.secretapp.backend.data.message.rpc.typing._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.rpc.auth._
 import com.secretapp.backend.protocol.codecs.message.rpc.user._
@@ -18,6 +19,7 @@ import com.secretapp.backend.protocol.codecs.message.rpc.messaging._
 import com.secretapp.backend.protocol.codecs.message.rpc.presence._
 import com.secretapp.backend.protocol.codecs.message.rpc.push._
 import com.secretapp.backend.protocol.codecs.message.rpc.update._
+import com.secretapp.backend.protocol.codecs.message.rpc.typing._
 import scodec.Codec
 import scodec.bits._
 import scodec.codecs._
@@ -50,6 +52,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestInviteUser.requestType)         { case r: RequestInviteUser         => r } (protoPayload(RequestInviteUserCodec))
     .\(RequestLeaveChat.requestType)          { case r: RequestLeaveChat          => r } (protoPayload(RequestLeaveChatCodec))
     .\(RequestRemoveUser.requestType)         { case r: RequestRemoveUser         => r } (protoPayload(RequestRemoveUserCodec))
+    .\(RequestTyping.requestType)             { case r: RequestTyping             => r } (protoPayload(RequestTypingCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)

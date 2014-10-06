@@ -13,9 +13,10 @@ import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.services.rpc.presence.PresenceBroker
-import com.secretapp.backend.services.rpc.presence.PresenceProtocol
+import com.secretapp.backend.services.rpc.presence.{ PresenceBroker, PresenceProtocol }
+import com.secretapp.backend.services.rpc.typing.{ TypingBroker, TypingProtocol }
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
 
@@ -23,6 +24,8 @@ trait SessionService extends UserManagerService {
   self: SessionActor =>
   import AckTrackerProtocol._
   import ApiBrokerProtocol._
+
+  import context.dispatcher
 
   var subscribedToUpdates = false
   var subscribingToUpdates = false
@@ -70,6 +73,23 @@ trait SessionService extends UserManagerService {
     subscribingToUpdates = true
     log.info("Subscribing to updates authId={}", authId)
     mediator ! Subscribe(UpdatesBroker.topicFor(authId), commonUpdatesPusher)
+
+    subscribeToTypings()
+  }
+
+  protected def subscribeToTypings(): Unit = {
+    if (currentUser.isDefined) {
+      mediator ! Subscribe(TypingBroker.topicFor(currentUser.get.uid), weakUpdatesPusher)
+      singletons.typingBrokerRegion ! TypingProtocol.Envelope(
+        currentUser.get.uid,
+        TypingProtocol.TellTypings(weakUpdatesPusher)
+      )
+    } else { // wait for AuthorizeUser message
+      log.debug("Waiting for AuthorizeUser and try to subscribe to typings again")
+      context.system.scheduler.scheduleOnce(500.milliseconds) {
+        subscribeToTypings()
+      }
+    }
   }
 
   protected def handleSubscribeAck(subscribe: Subscribe) = {

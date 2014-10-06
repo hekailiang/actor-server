@@ -1,8 +1,7 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import akka.contrib.pattern.ClusterSharding
-import akka.contrib.pattern.ShardRegion
+import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout

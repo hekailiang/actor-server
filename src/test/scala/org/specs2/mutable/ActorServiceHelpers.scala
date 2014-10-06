@@ -245,37 +245,69 @@ trait ActorServiceHelpers extends RandomService {
     PackResult(codecRes2BS(p), messageId)
   }
 
-  def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
-    def doReceive(n: Int, packages: Seq[MessageBox] = Seq.empty)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
-      val receivedPackages = protoReceiveN(n)
 
-      val mboxes = receivedPackages flatMap {
-        case MTPackage(authId, sessionId, mboxBytes) =>
-          val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
+  /**
+    * Receive message boxes ignoring acks
+    */
+  def receiveNMessageBoxes(n: Int, packages: Seq[MessageBox] = Seq.empty)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
+    val receivedPackages = protoReceiveN(n)
 
-          messageBox match {
-            case MessageBox(_, Container(mbox)) => mbox
-            case mb @ MessageBox(_, _) => Seq(mb)
-          }
-      }
-      val (ackPackages, newPackages) = mboxes partition {
-        case MessageBox(_, ma @ MessageAck(_)) => true
-        case _ => false
-      }
+    val mboxes = receivedPackages flatMap {
+      case MTPackage(authId, sessionId, mboxBytes) =>
+        val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
 
-      newPackages filter {
-        case MessageBox(_, ma: UpdateBox) =>
-          true
-        case _ => false
-      } length match {
-        case 0 =>
-          packages ++ newPackages
-        case updatesCount =>
-          doReceive(n - updatesCount, packages ++ newPackages)
-      }
+        messageBox match {
+          case MessageBox(_, Container(mbox)) => mbox
+          case mb @ MessageBox(_, _) => Seq(mb)
+        }
+    }
+    val (ackPackages, newPackages) = mboxes partition {
+      case MessageBox(_, ma @ MessageAck(_)) => true
+      case _ => false
     }
 
-    doReceive(n * 2)
+    if (newPackages.length + packages.length == n) {
+      packages ++ newPackages
+    } else {
+      receiveNMessageBoxes(n - packages.length - newPackages.length, packages ++ newPackages)
+    }
+  }
+
+  /*
+   * Receive message boxes which should come in response to requests, include updates, ignore acks
+   * If m updates came n + m message boxes returned.
+   */
+  def receiveNResponses(n: Int, packages: Seq[MessageBox] = Seq.empty)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
+    val receivedPackages = protoReceiveN(n)
+
+    val mboxes = receivedPackages flatMap {
+      case MTPackage(authId, sessionId, mboxBytes) =>
+        val messageBox = MessageBoxCodec.decodeValue(mboxBytes).toOption.get
+
+        messageBox match {
+          case MessageBox(_, Container(mbox)) => mbox
+          case mb @ MessageBox(_, _) => Seq(mb)
+        }
+    }
+    val (ackPackages, newPackages) = mboxes partition {
+      case MessageBox(_, ma @ MessageAck(_)) => true
+      case _ => false
+    }
+
+    newPackages filter {
+      case MessageBox(_, ma: UpdateBox) =>
+        true
+      case _ => false
+    } length match {
+      case 0 =>
+        packages ++ newPackages
+      case updatesCount =>
+        receiveNResponses(n - newPackages.length - ackPackages.length, packages ++ newPackages)
+    }
+  }
+
+  def receiveNWithAck(n: Int)(implicit probe: TestProbe, destActor: ActorRef): Seq[MessageBox] = {
+    receiveNResponses(n * 2)
   }
 
   def receiveOneWithAck()(implicit probe: TestProbe, destActor: ActorRef): MessageBox = {

@@ -3,8 +3,8 @@ package com.secretapp.backend.api.rpc
 import akka.actor._
 import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.SocialProtocol
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.rpc.ResponseVoid

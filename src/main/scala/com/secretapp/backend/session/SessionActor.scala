@@ -151,7 +151,9 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       connectors foreach (_ ! pe)
       registerSentMessage(mb, ByteString(encoded.toByteArray))
     case msg @ AuthorizeUser(user) =>
+      log.debug(s"$msg")
       persist(msg) { _ =>
+        currentUser = Some(user)
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
       }
     case msg @ SubscribeToUpdates =>
