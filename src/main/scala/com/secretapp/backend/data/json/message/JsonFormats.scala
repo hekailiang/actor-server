@@ -26,15 +26,8 @@ trait JsonFormats {
       "body"    -> requestFormat.writes(o.asInstanceOf[Request])
     )
 
-    private case class RpcRequestPrepared(rpcType: Int, body: JsObject)
-
-    private implicit val rpcRequestReads: Reads[RpcRequestPrepared] = (
-      (JsPath \ "header").read[Int] ~
-      (JsPath \ "body"  ).read[JsObject]
-    )(RpcRequestPrepared.apply _)
-
-    override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[RpcRequestPrepared](json) flatMap {
-      case RpcRequestPrepared(rpcType, body) => rpcType match {
+    override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(rpcType, body) => rpcType match {
         case Request.rpcType         => requestFormat.reads(body)
       }
     }
@@ -52,15 +45,8 @@ trait JsonFormats {
       })
     )
 
-    private case class RpcResponsePrepared(rpcType: Int, body: JsObject)
-
-    private implicit val rpcResponseReads: Reads[RpcResponsePrepared] = (
-      (JsPath \ "header").read[Int] ~
-      (JsPath \ "body"  ).read[JsObject]
-    )(RpcResponsePrepared.apply _)
-
-    override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[RpcResponsePrepared](json) flatMap {
-      case RpcResponsePrepared(rpcType, body) => rpcType match {
+    override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(rpcType, body) => rpcType match {
         case ConnectionNotInitedError.rpcType => connectionNotInitedErrorFormat.reads(body)
         case Error.rpcType                    => errorFormat.reads(body)
         case FloodWait.rpcType                => floodWaitFormat.reads(body)
@@ -97,15 +83,8 @@ trait JsonFormats {
       })
     )
 
-    private case class RpcRequestMessagePrepared(rpcType: Int, body: JsObject)
-
-    private implicit val rpcRequestMessageReads: Reads[RpcRequestMessagePrepared] = (
-      (JsPath \ "header").read[Int] ~
-      (JsPath \ "body"  ).read[JsObject]
-    )(RpcRequestMessagePrepared.apply _)
-
-    override def reads(json: JsValue): JsResult[RpcRequestMessage] = Json.fromJson[RpcRequestMessagePrepared](json) flatMap {
-      case RpcRequestMessagePrepared(header, body) => header match {
+    override def reads(json: JsValue): JsResult[RpcRequestMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(header, body) => header match {
         case RequestAuthCode.requestType           => requestAuthCodeFormat.reads(body)
         case RequestCompleteUpload.requestType     => requestCompleteUploadFormat.reads(body)
         case RequestGetDifference.requestType      => requestGetDifferenceFormat.reads(body)
@@ -164,15 +143,8 @@ trait JsonFormats {
         })
       )
 
-    private case class TransportMessagePrepared(header: Int, body: JsObject)
-
-    private implicit val transportMessagePreparedReads: Reads[TransportMessagePrepared] = (
-      (JsPath \ "header").read[Int] ~
-      (JsPath \ "body"  ).read[JsObject]
-    )(TransportMessagePrepared.apply _)
-
-    override def reads(json: JsValue): JsResult[TransportMessage] = Json.fromJson[TransportMessagePrepared](json) flatMap {
-      case TransportMessagePrepared(header, body) => header match {
+    override def reads(json: JsValue): JsResult[TransportMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(header, body) => header match {
         case Container.header      => containerFormat.reads(body)
         case Drop.header           => dropFormat.reads(body)
         case MessageAck.header     => messageAckFormat.reads(body)
