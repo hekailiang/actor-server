@@ -23,35 +23,6 @@ import com.secretapp.backend.data.json.message.rpc._
 
 trait JsonFormats {
 
-  implicit object rpcResponseFormat extends Format[RpcResponse] {
-    override def writes(o: RpcResponse): JsValue = Json.obj(
-      "header" -> o.rpcType,
-      "body"   -> (o match {
-        case e: ConnectionNotInitedError => connectionNotInitedErrorFormat.writes(e)
-        case e: Error                    => errorFormat.writes(e)
-        case w: FloodWait                => floodWaitFormat.writes(w)
-        case e: InternalError            => internalErrorFormat.writes(e)
-        case o: Ok                       => okFormat.writes(o)
-      })
-    )
-
-    override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[MessageWithHeader](json) flatMap {
-      case MessageWithHeader(rpcType, body) => rpcType match {
-        case ConnectionNotInitedError.rpcType => connectionNotInitedErrorFormat.reads(body)
-        case Error.rpcType                    => errorFormat.reads(body)
-        case FloodWait.rpcType                => floodWaitFormat.reads(body)
-        case InternalError.rpcType            => internalErrorFormat.reads(body)
-        case Ok.rpcType                       => okFormat.reads(body)
-      }
-    }
-  }
-
-  implicit object rpcResponseMessageFormat extends Format[RpcResponseMessage] {
-    override def writes(o: RpcResponseMessage): JsValue = ???
-
-    override def reads(json: JsValue): JsResult[RpcResponseMessage] = ???
-  }
-
   implicit object updateMessageFormat extends Format[UpdateMessage] {
     override def writes(o: UpdateMessage): JsValue = ???
 
@@ -124,10 +95,4 @@ trait JsonFormats {
   // RpcResponseMessage descendants
   //val differenceFormat                = Json.format[Difference]
 
-  // RpcResponse descendants
-  val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]
-  val errorFormat                    = Json.format[Error]
-  val floodWaitFormat                = Json.format[FloodWait]
-  val internalErrorFormat            = Json.format[InternalError]
-  val okFormat                       = Json.format[Ok]
 }

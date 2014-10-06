@@ -15,27 +15,23 @@ class JsonFormatsSpec extends JsonSpec {
   "(de)serializer" should {
 
     "(de)serialize UserId" in {
-      val v = UserId(1, 2)
-      val j = Json.obj(
-        "uid"        -> 1,
-        "accessHash" -> "2"
-      )
+      val (v, j) = genUserId
       testToAndFromJson[UserId](j, v)
     }
 
     "(de)serialize AvatarImage" in {
-      val (v, j) = avatarImage
+      val (v, j) = genAvatarImage
       testToAndFromJson[AvatarImage](j, v)
     }
 
     "(de)serialize Avatar" in {
-      val (v, j) = avatar
+      val (v, j) = genAvatar
       testToAndFromJson[Avatar](j, v)
     }
 
     "(de)serialize User" in {
-      val (av, avJson) = avatar
-      val v = User(16, 17, "name", Male.some, Set(18), 19, av.some)
+      val (avatar, avatarJson) = genAvatar
+      val v = User(16, 17, "name", Male.some, Set(18), 19, avatar.some)
       val j = Json.obj(
         "uid"         -> 16,
         "accessHash"  -> "17",
@@ -43,7 +39,7 @@ class JsonFormatsSpec extends JsonSpec {
         "sex"         -> "male",
         "keyHashes"   -> Json.arr("18"),
         "phoneNumber" -> "19",
-        "avatar"      -> avJson
+        "avatar"      -> avatarJson
       )
       testToAndFromJson[User](j, v)
     }
@@ -54,16 +50,29 @@ class JsonFormatsSpec extends JsonSpec {
 
 object JsonFormatsSpec {
 
-  def avatarImage = {
-    val (fl, flJson) = fileLocation
+  def genUserId = {
+    val uid = Random.nextInt()
+    val accessHash = Random.nextLong()
+
+    (
+      UserId(1, 2),
+      Json.obj(
+        "uid"        -> 1,
+        "accessHash" -> "2"
+      )
+    )
+  }
+
+  def genAvatarImage = {
+    val (fileLocation, fileLocationJson) = genFileLocation
     val width = Random.nextInt()
     val height = Random.nextInt()
     val fileSize = Random.nextInt()
 
     (
-      AvatarImage(fl, width, height, fileSize),
+      AvatarImage(fileLocation, width, height, fileSize),
       Json.obj(
-        "fileLocation" -> flJson,
+        "fileLocation" -> fileLocationJson,
         "width"        -> width,
         "height"       -> height,
         "fileSize"     -> fileSize
@@ -71,10 +80,10 @@ object JsonFormatsSpec {
     )
   }
 
-  def avatar = {
-    val (smallImage, smallImageJson) = avatarImage
-    val (largeImage, largeImageJson) = avatarImage
-    val (fullImage, fullImageJson) = avatarImage
+  def genAvatar = {
+    val (smallImage, smallImageJson) = genAvatarImage
+    val (largeImage, largeImageJson) = genAvatarImage
+    val (fullImage, fullImageJson) = genAvatarImage
 
     (
       Avatar(

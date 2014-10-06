@@ -17,6 +17,7 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
 trait JsonFormats {
+
   implicit object rpcRequestFormat extends Format[RpcRequest] {
     override def writes(o: RpcRequest): JsValue = Json.obj(
       "header"  -> o.rpcType,
@@ -26,6 +27,29 @@ trait JsonFormats {
     override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(rpcType, body) => rpcType match {
         case Request.rpcType         => requestFormat.reads(body)
+      }
+    }
+  }
+
+  implicit object rpcResponseFormat extends Format[RpcResponse] {
+    override def writes(o: RpcResponse): JsValue = Json.obj(
+      "header" -> o.rpcType,
+      "body"   -> (o match {
+        case e: ConnectionNotInitedError => connectionNotInitedErrorFormat.writes(e)
+        case e: Error                    => errorFormat.writes(e)
+        case w: FloodWait                => floodWaitFormat.writes(w)
+        case e: InternalError            => internalErrorFormat.writes(e)
+        case o: Ok                       => okFormat.writes(o)
+      })
+    )
+
+    override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(rpcType, body) => rpcType match {
+        case ConnectionNotInitedError.rpcType => connectionNotInitedErrorFormat.reads(body)
+        case Error.rpcType                    => errorFormat.reads(body)
+        case FloodWait.rpcType                => floodWaitFormat.reads(body)
+        case InternalError.rpcType            => internalErrorFormat.reads(body)
+        case Ok.rpcType                       => okFormat.reads(body)
       }
     }
   }
@@ -83,26 +107,26 @@ trait JsonFormats {
     }
   }
 
+  implicit object rpcResponseMessageFormat extends Format[RpcResponseMessage] {
+    override def writes(o: RpcResponseMessage): JsValue = ???
+
+    override def reads(json: JsValue): JsResult[RpcResponseMessage] = ???
+  }
+
   val requestFormat = Json.format[Request]
 
-  val requestAuthCodeFormat           = Json.format[RequestAuthCode]
-  val requestCompleteUploadFormat     = Json.format[RequestCompleteUpload]
-  val requestGetDifferenceFormat      = Json.format[RequestGetDifference]
-  val requestGetFileFormat            = Json.format[RequestGetFile]
-  val requestGetStateFormat           = UnitFormat[RequestGetState]
-  val requestImportContactsFormat     = Json.format[RequestImportContacts]
   //val requestMessageReadFormat = Json.format[RequestMessageRead]
   //val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
-  val requestPublicKeysFormat         = Json.format[RequestPublicKeys]
+
   val requestRegisterGooglePushFormat = Json.format[RequestRegisterGooglePush]
-  val requestSendMessageFormat        = Json.format[RequestSendMessage]
+
   val requestSetAvatarFormat          = Json.format[RequestEditAvatar]
-  val requestSetOnlineFormat          = Json.format[RequestSetOnline]
-  val requestSignInFormat             = Json.format[RequestSignIn]
-  val requestSignUpFormat             = Json.format[RequestSignUp]
-  val requestStartUploadFormat        = UnitFormat[RequestStartUpload]
+
   val requestUnregisterPushFormat     = UnitFormat[RequestUnregisterPush]
-  val requestUploadPartFormat         = Json.format[RequestUploadPart]
-  val subscribeForOnlineFormat        = Json.format[SubscribeToOnline]
-  val unsubscribeForOnlineFormat      = Json.format[UnsubscribeFromOnline]
+
+  val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]
+  val errorFormat                    = Json.format[Error]
+  val floodWaitFormat                = Json.format[FloodWait]
+  val internalErrorFormat            = Json.format[InternalError]
+  val okFormat                       = Json.format[Ok]
 }

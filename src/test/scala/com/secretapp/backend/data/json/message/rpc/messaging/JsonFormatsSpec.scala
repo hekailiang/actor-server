@@ -1,34 +1,77 @@
 package com.secretapp.backend.data.json.message.rpc.messaging
 
+import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
+import com.secretapp.backend.data.json.JsonSpec._
+import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.message.rpc.messaging._
 import play.api.libs.json._
-
+import JsonFormatsSpec._
 import scala.collection.immutable
+import scalaz._
+import Scalaz._
 
 class JsonFormatsSpec extends JsonSpec {
 
   "(de)serializer" should {
 
     "(de)serialize EncryptedKey" in {
-      testToAndFromJson[EncryptedKey](encKeyJson, encKey)
+      val (v, j) = genEncryptedKey
+      testToAndFromJson[EncryptedKey](j, v)
     }
 
     "(de)serialize EncryptedMessage" in {
-      val v = EncryptedMessage(bitvector, immutable.Seq(encKey))
-      val j = Json.obj(
-        "message" -> bitvectorJson,
-        "keys"    -> Json.arr(encKeyJson)
-      )
+      val (v, j) = genEncryptedMessage
       testToAndFromJson[EncryptedMessage](j, v)
     }
 
   }
 
-  private def encKey = EncryptedKey(1, bitvector)
-  private def encKeyJson = Json.obj(
-    "keyHash"         -> "1",
-    "aesEncryptedKey" -> bitvectorJson
-  )
+  "RpcRequestMessage (de)serializer" should {
+
+    "(de)serialize RequestSendMessage" in {
+      val (encryptedMessage1, encryptedMessage1Json) = genEncryptedMessage
+      val (encryptedMessage2, encryptedMessage2Json) = genEncryptedMessage
+      val v = RequestSendMessage(1, 2, 3, encryptedMessage1, encryptedMessage2.some)
+      val j = withHeader(RequestSendMessage.requestType)(
+        "uid" -> 1,
+        "accessHash" -> "2",
+        "randomId" -> "3",
+        "message" -> encryptedMessage1Json,
+        "selfMessage" -> encryptedMessage2Json
+      )
+      testToAndFromJson[RpcRequestMessage](j, v)
+    }
+
+  }
+
 }
 
+object JsonFormatsSpec {
+
+  def genEncryptedKey = {
+    val (bitVector, bitVectorJson) = genBitVector
+
+    (
+      EncryptedKey(1, bitVector),
+      Json.obj(
+        "keyHash"         -> "1",
+        "aesEncryptedKey" -> bitVectorJson
+      )
+    )
+  }
+
+  def genEncryptedMessage = {
+    val (bitVector, bitVectorJson) = genBitVector
+    val (encryptedKey, encryptedKeyJson) = genEncryptedKey
+
+    (
+      EncryptedMessage(bitVector, immutable.Seq(encryptedKey)),
+      Json.obj(
+        "message" -> bitVectorJson,
+        "keys"    -> Json.arr(encryptedKeyJson)
+      )
+    )
+  }
+
+}

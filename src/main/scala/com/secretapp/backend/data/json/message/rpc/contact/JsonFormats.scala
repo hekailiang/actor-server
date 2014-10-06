@@ -7,4 +7,6 @@ import play.api.libs.json._
 trait JsonFormats {
   implicit val contactToImportFormat  = Json.format[ContactToImport]
   implicit val publicKeyRequestFormat = Json.format[PublicKeyRequest]
+  implicit val requestImportContactsFormat = Json.format[RequestImportContacts]
+  implicit val requestPublicKeysFormat = Json.format[RequestPublicKeys]
 }

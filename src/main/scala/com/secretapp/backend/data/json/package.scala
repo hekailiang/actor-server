@@ -9,6 +9,7 @@ import Scalaz._
 package object json
   extends message.JsonFormats
   with message.rpc.JsonFormats
+  with message.rpc.auth.JsonFormats
   with message.rpc.contact.JsonFormats
   with message.rpc.file.JsonFormats
   with message.rpc.messaging.JsonFormats

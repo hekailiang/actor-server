@@ -7,4 +7,5 @@ import play.api.libs.json._
 trait JsonFormats {
   implicit val encryptedKeyFormat     = Json.format[EncryptedKey]
   implicit val encryptedMessageFormat = Json.format[EncryptedMessage]
+  implicit val requestSendMessageFormat = Json.format[RequestSendMessage]
 }
