@@ -5,7 +5,6 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.contrib.pattern.ClusterSharding
 import akka.contrib.pattern.ShardRegion
-import akka.persistence._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
@@ -36,7 +35,7 @@ object SessionProtocol {
   case class HandleJsonMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
 
   case class AuthorizeUser(user: User) extends SessionMessage
-  case class SendMessageBox(connector: ActorRef, mb: MessageBox) extends SessionMessage
+  case class SendRpcResponseBox(connector: ActorRef, rpcBox: RpcResponseBox) extends SessionMessage
   case object SubscribeToUpdates extends SessionMessage
   case class SubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
   case class UnsubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
@@ -67,7 +66,7 @@ object SessionActor {
 
 }
 
-class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends TransportSerializers with SessionService with PersistentActor with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
+class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends Actor with TransportSerializers with SessionService with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -79,8 +78,6 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
 
   implicit val timeout = Timeout(5.seconds)
   val maxResponseLength = 1024 * 1024 // if more, register UnsentResponse for resend
-
-  override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
   val splitName = self.path.name.split("_")
   val authId = java.lang.Long.parseLong(splitName(0))
@@ -145,7 +142,8 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
         case c@Container(_) => c.messages foreach (handleMessage(connector, _))
         case _ => handleMessage(connector, handleBox.mb)
       }
-    case SendMessageBox(connector, mb) =>
+    case SendRpcResponseBox(connector, rpcBox) =>
+      val mb = MessageBox(getMessageId(ResponseMsgId), rpcBox)
       log.debug(s"SendMessageBox $authId $sessionId $connector $mb")
 
       val origEncoded = serializeMessageBox(mb)
@@ -171,23 +169,15 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
-      persist(msg) { _ =>
-        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
-      }
+      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
     case msg @ SubscribeToUpdates =>
       if (!subscribedToUpdates && !subscribingToUpdates) {
-        persist(msg) { _ =>
-          subscribeToUpdates()
-        }
+        subscribeToUpdates()
       }
     case msg @ SubscribeToPresences(uids) =>
-      persist(msg) { _ =>
-        subscribeToPresences(uids)
-      }
+      subscribeToPresences(uids)
     case msg @ UnsubscribeToPresences(uids) =>
-      persist(msg) { _ =>
-        unsubscribeToPresences(uids)
-      }
+      unsubscribeToPresences(uids)
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
     case Terminated(connector) =>
@@ -197,26 +187,5 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       context.parent ! Passivate(stopMessage = Stop)
     case Stop =>
       context.stop(self)
-  }
-
-  val receiveRecover: Receive = {
-    case RecoveryCompleted =>
-      if (subscribingToUpdates) {
-        subscribeToUpdates()
-      }
-
-      subscribeToPresences(subscribedToPresencesUids.toList)
-      currentUser map { user =>
-        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
-      }
-    case AuthorizeUser(user) =>
-      currentUser = Some(user)
-    case SubscribeToUpdates =>
-      subscribingToUpdates = true
-    case SubscribeToPresences(uids) =>
-      subscribedToPresencesUids = subscribedToPresencesUids ++ uids
-    case UnsubscribeToPresences(uids) =>
-      subscribedToPresencesUids = subscribedToPresencesUids -- uids
-    case _ =>
   }
 }

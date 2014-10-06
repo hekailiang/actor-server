@@ -42,16 +42,13 @@ class ApiBrokerActor(
           fresp onComplete {
             case Success(resp) =>
               replyTo.tell(
-                SessionProtocol.SendMessageBox(
-                  connector,
-                  MessageBox(messageId, RpcResponseBox(messageId, resp))),
+                SessionProtocol.SendRpcResponseBox(connector, RpcResponseBox(messageId, resp)),
                 self)
             case Failure(error) =>
               replyTo.tell(
-                SessionProtocol.SendMessageBox(
+                SessionProtocol.SendRpcResponseBox(
                   connector,
-                  MessageBox(
-                    messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
+                  RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
                 self)
               log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
               throw error
@@ -59,13 +56,13 @@ class ApiBrokerActor(
 
         case -\/(UserNotAuthenticated) =>
           replyTo.tell(
-            SessionProtocol.SendMessageBox(
-              connector, MessageBox(messageId, RpcResponseBox(messageId, Error(401, "USER_NOT_AUTHORIZED", "", true)))),
+            SessionProtocol.SendRpcResponseBox(
+              connector, RpcResponseBox(messageId, Error(401, "USER_NOT_AUTHORIZED", "", true))),
             self)
         case -\/(error) =>
           replyTo.tell(
-            SessionProtocol.SendMessageBox(
-              connector, MessageBox(messageId, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true)))),
+            SessionProtocol.SendRpcResponseBox(
+              connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
             self)
           log.error(s"Failed to handle rpc ${connector} ${messageId} ${body}")
           throw error

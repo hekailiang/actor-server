@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, ContactToImport, RequestPublicKeys, RequestImportContacts}
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging.{EncryptedKey, EncryptedMessage, RequestSendMessage}
+import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update._
@@ -20,7 +20,6 @@ import play.api.libs.functional.syntax._
 import com.secretapp.backend.data.json._ // Implicit Long <-> String, keep it below `play.api.libs.json._`
 
 trait JsonFormats {
-
   implicit object rpcRequestFormat extends Format[RpcRequest] {
     override def writes(o: RpcRequest): JsValue = Json.obj(
       "header"  -> o.rpcType,
@@ -51,7 +50,7 @@ trait JsonFormats {
         case e: Error                    => errorFormat.writes(e)
         case w: FloodWait                => floodWaitFormat.writes(w)
         case e: InternalError            => internalErrorFormat.writes(e)
-        //case o: Ok                       => okFormat.writes(o)
+        case o: Ok                       => okFormat.writes(o)
       })
     )
 
@@ -68,17 +67,10 @@ trait JsonFormats {
         case Error.rpcType                    => errorFormat.reads(body)
         case FloodWait.rpcType                => floodWaitFormat.reads(body)
         case InternalError.rpcType            => internalErrorFormat.reads(body)
-        //case Ok.rpcType                       => okFormat.reads(body)
+        case Ok.rpcType                       => okFormat.reads(body)
       }
     }
   }
-
-  // Remove me!
-  /*implicit object rpcMessageFormat extends Format[RpcMessage] {
-    override def reads(json: JsValue): JsResult[RpcMessage] = ???
-
-    override def writes(o: RpcMessage): JsValue = ???
-  }*/
 
   implicit object rpcRequestMessageFormat extends Format[RpcRequestMessage] {
     override def writes(o: RpcRequestMessage): JsValue = Json.obj(
@@ -90,8 +82,8 @@ trait JsonFormats {
         case n: RequestGetFile            => requestGetFileFormat.writes(n)
         case p: RequestGetState           => requestGetStateFormat.writes(p)
         case p: RequestImportContacts     => requestImportContactsFormat.writes(p)
-        // case RequestMessageRead => requestMessageRead.reads(json)
-        // case RequestMessageReceived => requestMessageReceived.reads(json)
+        case RequestMessageRead => requestMessageRead.reads(json)
+        case RequestMessageReceived => requestMessageReceived.reads(json)
         case r: RequestPublicKeys         => requestPublicKeysFormat.writes(r)
         case r: RequestRegisterGooglePush => requestRegisterGooglePushFormat.writes(r)
         case r: RequestSendMessage        => requestSendMessageFormat.writes(r)
@@ -122,8 +114,8 @@ trait JsonFormats {
         case RequestGetFile.requestType            => requestGetFileFormat.reads(body)
         case RequestGetState.requestType           => requestGetStateFormat.reads(body)
         case RequestImportContacts.requestType     => requestImportContactsFormat.reads(body)
-        // case RequestMessageRead => requestMessageRead.reads(body)
-        // case RequestMessageReceived => requestMessageReceived.reads(body)
+        case RequestMessageRead => requestMessageRead.reads(body)
+        case RequestMessageReceived => requestMessageReceived.reads(body)
         case RequestPublicKeys.requestType         => requestPublicKeysFormat.reads(body)
         case RequestRegisterGooglePush.requestType => requestRegisterGooglePushFormat.reads(body)
         case RequestSendMessage.requestType        => requestSendMessageFormat.reads(body)
@@ -226,7 +218,7 @@ trait JsonFormats {
     }
   }
   implicit val userFormat             = Json.format[User]
-  //implicit val differenceUpdate: Format[DifferenceUpdate]       = ???
+  implicit val differenceUpdate       = Json.format[DifferenceUpdate]
 
   // TransportMessage descendants
   val containerFormat      = Json.format[Container]
@@ -251,8 +243,8 @@ trait JsonFormats {
   val requestGetFileFormat            = Json.format[RequestGetFile]
   val requestGetStateFormat           = UnitFormat[RequestGetState]
   val requestImportContactsFormat     = Json.format[RequestImportContacts]
-  // val requestMessageReadFormat = Json.format[RequestMessageRead]
-  // val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
+  val requestMessageReadFormat = Json.format[RequestMessageRead]
+  val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
   val requestPublicKeysFormat         = Json.format[RequestPublicKeys]
   val requestRegisterGooglePushFormat = Json.format[RequestRegisterGooglePush]
   val requestSendMessageFormat        = Json.format[RequestSendMessage]
@@ -267,7 +259,7 @@ trait JsonFormats {
   val unsubscribeForOnlineFormat      = Json.format[UnsubscribeFromOnline]
 
   // RpcResponseMessage descendants
-  //val differenceFormat                = Json.format[Difference]
+  val differenceFormat                = Json.format[Difference]
 
   // RpcRequest descendants
   val requestFormat         = Json.format[Request]
@@ -277,5 +269,5 @@ trait JsonFormats {
   val errorFormat                    = Json.format[Error]
   val floodWaitFormat                = Json.format[FloodWait]
   val internalErrorFormat            = Json.format[InternalError]
-  //val okFormat                       = Json.format[Ok]
+  val okFormat                       = Json.format[Ok]
 }

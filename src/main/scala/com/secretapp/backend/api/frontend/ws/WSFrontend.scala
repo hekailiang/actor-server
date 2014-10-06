@@ -27,6 +27,7 @@ class WSFrontend(val serverConnection: ActorRef, val sessionRegion: ActorRef, va
 
   def businessLogic: Receive = {
     case frame: TextFrame =>
+      println(s"TextFrame: $frame")
       log.info(s"Frame: ${new String(frame.payload.toArray)}")
       JsonPackageCodec.decode(frame.payload) match {
         case \/-(p) => handlePackage(p)

@@ -9,6 +9,7 @@ import com.secretapp.backend.data.transport._
 import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
+import scala.collection.mutable
 
 trait Frontend extends Actor with ActorLogging {
   import scala.concurrent.duration._
@@ -18,19 +19,24 @@ trait Frontend extends Actor with ActorLogging {
   val session: CSession
 
   lazy val keyFrontend: ActorRef = context.system.actorOf(KeyFrontend.props(self, transport)(session))
+  val secFrontend = mutable.HashMap[Long, ActorRef]()
 
-  var secFrontend: Option[ActorRef] = None
+  var authId = 0L
 
   implicit val timeout: Timeout = Timeout(5.seconds)
 
   def handlePackage(p: TransportPackage): Unit = {
     if (p.authId == 0L) keyFrontend ! InitDH(p)
-    else secFrontend match {
-      case Some(secRef) => secRef ! RequestPackage(p)
-      case None =>
-        val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, transport)(session))
-        secFrontend = secRef.some
-        secRef ! RequestPackage(p)
+    else {
+      if (authId == 0L) authId = p.authId
+      else if (p.authId != authId) silentClose()
+      else secFrontend.get(p.sessionId) match {
+        case Some(secRef) => secRef ! RequestPackage(p)
+        case None =>
+          val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, transport)(session))
+          secFrontend += Tuple2(p.sessionId, secRef)
+          secRef ! RequestPackage(p)
+      }
     }
   }
 

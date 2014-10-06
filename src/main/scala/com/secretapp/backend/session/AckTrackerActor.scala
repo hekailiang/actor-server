@@ -25,11 +25,9 @@ object AckTrackerProtocol {
  *
  * @param sizeLimit things size limit - when it's reached actor sends dies to prevent too large memory consumption
  */
-class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends PersistentActor with ActorLogging {
+class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Actor with ActorLogging {
   import AckTrackerProtocol._
   import context._
-
-  override def persistenceId: String = s"ackTracker-$authId-$sessionId"
 
   case class State(messages: immutable.Map[Long, BitVector], messagesSize: Int) {
     /**
@@ -55,40 +53,26 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Per
 
   var state = State(immutable.Map[Long, BitVector](), 0)
 
-  def receiveCommand: Receive = {
+  def receive = {
     case m: RegisterMessage =>
-      log.debug(s"RegisterMessage $persistenceId ${m.key} $state")
-      persist(m) { _ =>
-        val newState = state.withNew(m.key, m.value)
+      log.debug(s"RegisterMessage ${m.key} $state")
+      val newState = state.withNew(m.key, m.value)
 
-        if (newState.messagesSize > sizeLimit) {
-          log.warning("Messages size overflow")
-          sender() ! MessagesSizeOverflow
-          context stop self
-        } else {
-          state = newState
-        }
+      if (newState.messagesSize > sizeLimit) {
+        log.warning("Messages size overflow")
+        sender() ! MessagesSizeOverflow
+        context stop self
+      } else {
+        state = newState
       }
-    case m: RegisterMessageAck =>
-      persist(m){ _ =>
-        registerMessageAck(m.key)
-      }
-    case ms: RegisterMessageAcks =>
-      log.debug(s"RegisterMessageAcks $ms")
-      persist(ms)(_.keys.foreach(registerMessageAck))
-    case GetUnackdMessages =>
-      log.debug(s"GetUnackdMessages $state")
-      sender() ! UnackdMessages(state.messages)
-  }
-
-  def receiveRecover: Receive = {
-    case m: RegisterMessage =>
-      log.debug(s"recovering $persistenceId $m")
-      state = state.withNew(m.key, m.value)
     case m: RegisterMessageAck =>
       registerMessageAck(m.key)
     case ms: RegisterMessageAcks =>
+      log.debug(s"RegisterMessageAcks $ms")
       ms.keys.foreach(registerMessageAck)
+    case GetUnackdMessages =>
+      log.debug(s"GetUnackdMessages $state")
+      sender() ! UnackdMessages(state.messages)
   }
 
   /**
