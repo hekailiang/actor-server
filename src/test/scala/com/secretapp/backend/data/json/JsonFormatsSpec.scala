@@ -91,8 +91,13 @@ class JsonFormatsSpec extends Specification {
       val key = EncryptedKey(1, BitVector.fromBase64("1234").get)
       val v = EncryptedMessage(BitVector.fromBase64("1234").get, immutable.Seq(key))
       val j = Json.obj(
-        "aesEncryptedKey" -> "1234",
-        "message"         -> "5678"
+        "message" -> "1234",
+        "keys"    -> Json.arr(
+          Json.obj(
+            "keyHash"         -> "1",
+            "aesEncryptedKey" -> "1234"
+          )
+        )
       )
       testToAndFromJson[EncryptedMessage](j, v)
     }
@@ -486,14 +491,22 @@ class JsonFormatsSpec extends Specification {
           "uid"        -> 1,
           "accessHash" -> "2",
           "randomId"   -> "3",
-          "useAesKey"  -> true,
-          "aesMessage" -> "1234",
-          "messages"   -> Json.arr(
-            Json.obj(
-              "uid"             -> 4,
-              "publicKeyHash"   -> "5",
-              "aesEncryptedKey" -> "5678",
-              "message"         -> "9012"
+          "message"   -> Json.obj(
+            "message"         -> "5678",
+            "keys"            -> Json.arr(
+              Json.obj(
+                "keyHash"         -> "1",
+                "aesEncryptedKey" -> "1234"
+              )
+            )
+          ),
+          "selfMessage" -> Json.obj(
+            "message"         -> "5678",
+            "keys"            -> Json.arr(
+              Json.obj(
+                "keyHash"         -> "1",
+                "aesEncryptedKey" -> "1234"
+              )
             )
           )
         )
@@ -652,14 +665,15 @@ class JsonFormatsSpec extends Specification {
     }
 
     "(de)serialize Error" in {
-      val v = Error(1, "tag", "userMessage", true)
+      val v = Error(1, "tag", "userMessage", true, BitVector.fromBase64("1234").get)
       val j = Json.obj(
         "header" -> Error.rpcType,
         "body"   -> Json.obj(
           "code"        -> 1,
           "tag"         -> "tag",
           "userMessage" -> "userMessage",
-          "canTryAgain" -> true
+          "canTryAgain" -> true,
+          "errorData"   -> "1234"
         )
       )
       testToAndFromJson[RpcResponse](j, v)
