@@ -3,9 +3,9 @@ package com.secretapp.backend.data.json.message.rpc.auth
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
-import com.secretapp.backend.data.message.rpc.RpcRequestMessage
+import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
 import com.secretapp.backend.data.message.rpc.auth._
-import play.api.libs.json.Json
+import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 
 class JsonFormatsSpec extends JsonSpec {
 
@@ -45,6 +45,29 @@ class JsonFormatsSpec extends JsonSpec {
         "publicKey" -> bitVectorJson
       )
       testToAndFromJson[RpcRequestMessage](j, v)
+    }
+
+  }
+
+  "RpcResponseMessage (de)serializer" should {
+
+    "(de)serialize ResponseAuth" in {
+      val (user, userJson) = genUser
+      val v = ResponseAuth(1, user)
+      val j = withHeader(ResponseAuth.responseType)(
+        "publicKeyHash" -> "1",
+        "user" -> userJson
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
+    }
+
+    "(de)serialize ResponseAuthCode" in {
+      val v = ResponseAuthCode("smsHash", true)
+      val j = withHeader(ResponseAuthCode.responseType)(
+        "smsHash" -> "smsHash",
+        "isRegistered" -> true
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
     }
 
   }

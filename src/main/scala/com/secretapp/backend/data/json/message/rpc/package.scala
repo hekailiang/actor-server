@@ -7,6 +7,8 @@ package object rpc
   with file.JsonFormats
   with messaging.JsonFormats
   with presence.JsonFormats
-  with update.JsonFormats {
+  with push.JsonFormats
+  with update.JsonFormats
+  with user.JsonFormats {
 
 }

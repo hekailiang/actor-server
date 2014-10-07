@@ -1,7 +1,6 @@
 package com.secretapp.backend.data.json.message.rpc.update
 
 import java.util.UUID
-
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
@@ -30,8 +29,5 @@ class JsonFormatsSpec extends JsonSpec {
     }
 
   }
-  /*
-  implicit val requestGetDifferenceFormat = Json.format[RequestGetDifference]
-  implicit val requestGetStateFormat = UnitFormat[RequestGetState]
-   */
+
 }

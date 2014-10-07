@@ -5,7 +5,13 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import play.api.libs.json._
 
 trait JsonFormats {
-  implicit val encryptedKeyFormat     = Json.format[EncryptedKey]
+
+  implicit val encryptedKeyFormat = Json.format[EncryptedKey]
   implicit val encryptedMessageFormat = Json.format[EncryptedMessage]
+
   implicit val requestSendMessageFormat = Json.format[RequestSendMessage]
+  implicit val requestMessageReadFormat = Json.format[RequestMessageRead]
+  implicit val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
+  implicit val requestSendGroupMessageFormat = Json.format[RequestSendGroupMessage]
+
 }

@@ -8,7 +8,10 @@ package object message
   with rpc.file.JsonFormats
   with rpc.messaging.JsonFormats
   with rpc.presence.JsonFormats
+  with rpc.push.JsonFormats
   with rpc.update.JsonFormats
-  with struct.JsonFormats {
+  with rpc.user.JsonFormats
+  with struct.JsonFormats
+  with update.JsonFormats {
 
 }

@@ -43,6 +43,39 @@ class JsonFormatsSpec extends JsonSpec {
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
+    "(de)serialize RequestMessageRead" in {
+      val v = RequestMessageRead(1, 2, 3)
+      val j = withHeader(RequestMessageRead.requestType)(
+        "uid" -> 1,
+        "randomId" -> "2",
+        "accessHash" -> "3"
+      )
+      testToAndFromJson[RpcRequestMessage](j, v)
+    }
+
+    "(de)serialize RequestMessageReceived" in {
+      val v = RequestMessageReceived(1, 2, 3)
+      val j = withHeader(RequestMessageReceived.requestType)(
+        "uid" -> 1,
+        "randomId" -> "2",
+        "accessHash" -> "3"
+      )
+      testToAndFromJson[RpcRequestMessage](j, v)
+    }
+
+    "(de)serialize RequestSendGroupMessage" in {
+      val (encryptedMessage1, encryptedMessage1Json) = genEncryptedMessage
+      val (encryptedMessage2, encryptedMessage2Json) = genEncryptedMessage
+      val v = RequestSendGroupMessage(1, 2, 3, encryptedMessage1, encryptedMessage2.some)
+      val j = withHeader(RequestSendGroupMessage.requestType)(
+        "chatId" -> 1,
+        "accessHash" -> "2",
+        "randomId" -> "3",
+        "message" -> encryptedMessage1Json,
+        "selfMessage" -> encryptedMessage2Json
+      )
+      testToAndFromJson[RpcRequestMessage](j, v)
+    }
   }
 
 }

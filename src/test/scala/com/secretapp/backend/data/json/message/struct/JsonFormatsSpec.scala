@@ -30,17 +30,7 @@ class JsonFormatsSpec extends JsonSpec {
     }
 
     "(de)serialize User" in {
-      val (avatar, avatarJson) = genAvatar
-      val v = User(16, 17, "name", Male.some, Set(18), 19, avatar.some)
-      val j = Json.obj(
-        "uid"         -> 16,
-        "accessHash"  -> "17",
-        "name"        -> "name",
-        "sex"         -> "male",
-        "keyHashes"   -> Json.arr("18"),
-        "phoneNumber" -> "19",
-        "avatar"      -> avatarJson
-      )
+      val (v, j) = genUser
       testToAndFromJson[User](j, v)
     }
 
@@ -95,6 +85,27 @@ object JsonFormatsSpec {
         "smallImage" -> smallImageJson,
         "largeImage" -> largeImageJson,
         "fullImage" -> fullImageJson
+      )
+    )
+  }
+
+  def genUser = {
+    val uid = Random.nextInt()
+    val accessHash = Random.nextLong()
+    val keyHash = Random.nextLong()
+    val phoneNumber = Random.nextLong()
+    val (avatar, avatarJson) = genAvatar
+
+    (
+      User(uid, accessHash, "name", Male.some, Set(keyHash), phoneNumber, avatar.some),
+      Json.obj(
+        "uid"         -> uid,
+        "accessHash"  -> accessHash.toString,
+        "name"        -> "name",
+        "sex"         -> "male",
+        "keyHashes"   -> Json.arr(keyHash.toString),
+        "phoneNumber" -> phoneNumber.toString,
+        "avatar"      -> avatarJson
       )
     )
   }

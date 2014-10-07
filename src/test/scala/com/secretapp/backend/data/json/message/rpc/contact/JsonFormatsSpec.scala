@@ -2,13 +2,14 @@ package com.secretapp.backend.data.json.message.rpc.contact
 
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
-import com.secretapp.backend.data.message.rpc.RpcRequestMessage
+import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
 import com.secretapp.backend.data.message.rpc.contact._
 import play.api.libs.json._
 import JsonFormatsSpec._
-
+import com.secretapp.backend.data.json.JsonSpec._
 import scala.collection.immutable
 import scala.util.Random
+import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 
 class JsonFormatsSpec extends JsonSpec {
 
@@ -19,9 +20,19 @@ class JsonFormatsSpec extends JsonSpec {
       testToAndFromJson[ContactToImport](j, v)
     }
 
+    "(de)serialize ImportedContact" in {
+      val (v, j) = genImportedContact
+      testToAndFromJson[ImportedContact](j, v)
+    }
+
     "(de)serialize PublicKeyRequest" in {
       val (v, j) = genPublicKeyRequest
       testToAndFromJson[PublicKeyRequest](j, v)
+    }
+
+    "(de)serialize PublicKeyResponse" in {
+      val (v, j) = genPublicKeyResponse
+      testToAndFromJson[PublicKeyResponse](j, v)
     }
 
   }
@@ -48,6 +59,30 @@ class JsonFormatsSpec extends JsonSpec {
 
   }
 
+  "RpcResponseMessage (de)serializer" should {
+
+    "(de)serialize ResponseImportedContacts" in {
+      val (user, userJson) = genUser
+      val (importedContact, importedContactJson) = genImportedContact
+      val v = ResponseImportedContacts(immutable.Seq(user), immutable.Seq(importedContact))
+      val j = withHeader(ResponseImportedContacts.responseType)(
+        "users" -> Json.arr(userJson),
+        "contacts" -> Json.arr(importedContactJson)
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
+    }
+
+    "(de)serialize ResponsePublicKeys" in {
+      val (publicKeysResponse, publicKeysResponseJson) = genPublicKeyResponse
+      val v = ResponsePublicKeys(immutable.Seq(publicKeysResponse))
+      val j = withHeader(ResponsePublicKeys.responseType)(
+        "keys" -> Json.arr(publicKeysResponseJson)
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
+    }
+
+  }
+
 }
 
 object JsonFormatsSpec {
@@ -61,6 +96,19 @@ object JsonFormatsSpec {
       Json.obj(
         "clientPhoneId" -> clientPhoneId.toString,
         "phoneNumber"   -> phoneNumber.toString
+      )
+    )
+  }
+
+  def genImportedContact = {
+    val clientPhoneId = Random.nextLong()
+    val userId = Random.nextInt()
+
+    (
+      ImportedContact(clientPhoneId, userId),
+      Json.obj(
+        "clientPhoneId" -> clientPhoneId.toString,
+        "userId" -> userId
       )
     )
   }
@@ -79,4 +127,20 @@ object JsonFormatsSpec {
       )
     )
   }
+
+  def genPublicKeyResponse = {
+    val uid = Random.nextInt()
+    val keyHash = Random.nextLong()
+    val (key, keyJson) = genBitVector
+
+    (
+      PublicKeyResponse(uid, keyHash, key),
+      Json.obj(
+        "uid" -> uid,
+        "keyHash" -> keyHash.toString,
+        "key" -> keyJson
+      )
+      )
+  }
+
 }

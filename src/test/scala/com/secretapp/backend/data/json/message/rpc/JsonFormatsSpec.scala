@@ -1,22 +1,14 @@
 package com.secretapp.backend.data.json.message.rpc
 
-import java.util.UUID
-
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.auth.{RequestSignUp, RequestSignIn, RequestAuthCode}
-import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, RequestPublicKeys, ContactToImport, RequestImportContacts}
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging.{RequestSendMessage, EncryptedMessage, EncryptedKey}
-import com.secretapp.backend.data.message.rpc.presence.{SubscribeToOnline, RequestSetOnline, UnsubscribeFromOnline}
+import com.secretapp.backend.data.message.rpc.presence.UnsubscribeFromOnline
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
-import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
-import com.secretapp.backend.data.message.struct.UserId
 import play.api.libs.json.Json
 import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
-import scodec.bits.BitVector
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
@@ -83,33 +75,4 @@ class JsonFormatsSpec extends JsonSpec {
 
   }
 
-  "RpcRequestMessage (de)serializer" should {
-
-    "(de)serialize RequestRegisterGooglePush" in {
-      val v = RequestRegisterGooglePush(1, "token")
-      val j = withHeader(RequestRegisterGooglePush.requestType)(
-        "projectId" -> "1",
-        "token"     -> "token"
-      )
-      testToAndFromJson[RpcRequestMessage](j, v)
-    }
-
-    "(de)serialize RequestEditAvatar" in {
-      val v = RequestEditAvatar(FileLocation(1, 2))
-      val j = withHeader(RequestEditAvatar.requestType)(
-        "fileLocation" -> Json.obj(
-          "fileId"     -> "1",
-          "accessHash" -> "2"
-        )
-      )
-      testToAndFromJson[RpcRequestMessage](j, v)
-    }.pendingUntilFixed
-
-    "(de)serialize RequestUnregisterPush" in {
-      val v = RequestUnregisterPush()
-      val j = withHeader(RequestUnregisterPush.requestType)()
-      testToAndFromJson[RpcRequestMessage](j, v)
-    }
-
-  }
 }

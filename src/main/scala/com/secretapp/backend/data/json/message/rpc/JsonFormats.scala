@@ -2,19 +2,16 @@ package com.secretapp.backend.data.json.message.rpc
 
 import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.{UnitFormat, MessageWithHeader}
-import com.secretapp.backend.data.message.struct._
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.json.message.struct._
-import com.secretapp.backend.data.message.rpc.auth.{RequestSignUp, RequestSignIn, RequestAuthCode}
-import com.secretapp.backend.data.message.rpc.contact.{RequestPublicKeys, RequestImportContacts}
-import com.secretapp.backend.data.message.rpc.file.{RequestUploadPart, RequestStartUpload, RequestGetFile, RequestCompleteUpload}
-import com.secretapp.backend.data.message.rpc.messaging.RequestSendMessage
+import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.rpc.contact.{ResponsePublicKeys, ResponseImportedContacts, RequestPublicKeys, RequestImportContacts}
+import com.secretapp.backend.data.message.rpc.file._
+import com.secretapp.backend.data.message.rpc.messaging.{RequestSendGroupMessage, RequestMessageReceived, RequestMessageRead, RequestSendMessage}
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
 
 trait JsonFormats {
 
@@ -58,26 +55,27 @@ trait JsonFormats {
     override def writes(o: RpcRequestMessage): JsValue = Json.obj(
       "header" -> o.header,
       "body"   -> (o match {
-        case c: RequestAuthCode           => requestAuthCodeFormat.writes(c)
-        case d: RequestCompleteUpload     => requestCompleteUploadFormat.writes(d)
-        case m: RequestGetDifference      => requestGetDifferenceFormat.writes(m)
-        case n: RequestGetFile            => requestGetFileFormat.writes(n)
-        case p: RequestGetState           => requestGetStateFormat.writes(p)
-        case p: RequestImportContacts     => requestImportContactsFormat.writes(p)
-        // case RequestMessageRead           => requestMessageRead.reads(json)
-        // case RequestMessageReceived       => requestMessageReceived.reads(json)
+        case r: RequestAuthCode           => requestAuthCodeFormat.writes(r)
+        case r: RequestCompleteUpload     => requestCompleteUploadFormat.writes(r)
+        case r: RequestGetDifference      => requestGetDifferenceFormat.writes(r)
+        case r: RequestGetFile            => requestGetFileFormat.writes(r)
+        case r: RequestGetState           => requestGetStateFormat.writes(r)
+        case r: RequestImportContacts     => requestImportContactsFormat.writes(r)
+        case r: RequestMessageRead        => requestMessageReadFormat.writes(r)
+        case r: RequestMessageReceived    => requestMessageReceivedFormat.writes(r)
+        case r: RequestSendGroupMessage   => requestSendGroupMessageFormat.writes(r)
         case r: RequestPublicKeys         => requestPublicKeysFormat.writes(r)
         case r: RequestRegisterGooglePush => requestRegisterGooglePushFormat.writes(r)
         case r: RequestSendMessage        => requestSendMessageFormat.writes(r)
         case r: RequestEditAvatar         => requestSetAvatarFormat.writes(r)
         case r: RequestSetOnline          => requestSetOnlineFormat.writes(r)
-        case m: RequestSignIn             => requestSignInFormat.writes(m)
+        case r: RequestSignIn             => requestSignInFormat.writes(r)
         case r: RequestSignUp             => requestSignUpFormat.writes(r)
-        case u: RequestStartUpload        => requestStartUploadFormat.writes(u)
-        case u: RequestUnregisterPush     => requestUnregisterPushFormat.writes(u)
-        case u: RequestUploadPart         => requestUploadPartFormat.writes(u)
-        case u: SubscribeToOnline         => subscribeForOnlineFormat.writes(u)
-        case u: UnsubscribeFromOnline     => unsubscribeForOnlineFormat.writes(u)
+        case r: RequestStartUpload        => requestStartUploadFormat.writes(r)
+        case r: RequestUnregisterPush     => requestUnregisterPushFormat.writes(r)
+        case r: RequestUploadPart         => requestUploadPartFormat.writes(r)
+        case r: SubscribeToOnline         => subscribeForOnlineFormat.writes(r)
+        case r: UnsubscribeFromOnline     => unsubscribeForOnlineFormat.writes(r)
       })
     )
 
@@ -89,8 +87,9 @@ trait JsonFormats {
         case RequestGetFile.requestType            => requestGetFileFormat.reads(body)
         case RequestGetState.requestType           => requestGetStateFormat.reads(body)
         case RequestImportContacts.requestType     => requestImportContactsFormat.reads(body)
-        //case RequestMessageRead                    => requestMessageRead.reads(body)
-        //case RequestMessageReceived                => requestMessageReceived.reads(body)
+        case RequestMessageRead.requestType        => requestMessageReadFormat.reads(body)
+        case RequestMessageReceived.requestType    => requestMessageReceivedFormat.reads(body)
+        case RequestSendGroupMessage.requestType   => requestSendGroupMessageFormat.reads(body)
         case RequestPublicKeys.requestType         => requestPublicKeysFormat.reads(body)
         case RequestRegisterGooglePush.requestType => requestRegisterGooglePushFormat.reads(body)
         case RequestSendMessage.requestType        => requestSendMessageFormat.reads(body)
@@ -108,21 +107,33 @@ trait JsonFormats {
   }
 
   implicit object rpcResponseMessageFormat extends Format[RpcResponseMessage] {
-    override def writes(o: RpcResponseMessage): JsValue = ???
+    override def writes(o: RpcResponseMessage): JsValue = Json.obj(
+      "header" -> o.header,
+      "body"   -> (o match {
+        case r: ResponseAuth             => responseAuthFormat.writes(r)
+        case r: ResponseAuthCode         => responseAuthCodeFormat.writes(r)
+        case r: ResponseImportedContacts => responseImportedContactsFormat.writes(r)
+        case r: ResponsePublicKeys       => responsePublicKeysFormat.writes(r)
+        case r: ResponseFilePart         => responseFilePartFormat.writes(r)
+        case r: ResponseUploadCompleted  => responseUploadCompletedFormat.writes(r)
+        case r: ResponseUploadStarted    => responseUploadStartedFormat.writes(r)
+      })
+    )
 
-    override def reads(json: JsValue): JsResult[RpcResponseMessage] = ???
+    override def reads(json: JsValue): JsResult[RpcResponseMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
+      case MessageWithHeader(header, body)         => header match {
+        case ResponseAuth.responseType             => responseAuthFormat.reads(body)
+        case ResponseAuthCode.responseType         => responseAuthCodeFormat.reads(body)
+        case ResponseImportedContacts.responseType => responseImportedContactsFormat.reads(body)
+        case ResponsePublicKeys.responseType       => responsePublicKeysFormat.reads(body)
+        case ResponseFilePart.responseType         => responseFilePartFormat.reads(body)
+        case ResponseUploadCompleted.responseType  => responseUploadCompletedFormat.reads(body)
+        case ResponseUploadStarted.responseType    => responseUploadStartedFormat.reads(body)
+      }
+    }
   }
 
   val requestFormat = Json.format[Request]
-
-  //val requestMessageReadFormat = Json.format[RequestMessageRead]
-  //val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
-
-  val requestRegisterGooglePushFormat = Json.format[RequestRegisterGooglePush]
-
-  val requestSetAvatarFormat          = Json.format[RequestEditAvatar]
-
-  val requestUnregisterPushFormat     = UnitFormat[RequestUnregisterPush]
 
   val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]
   val errorFormat                    = Json.format[Error]

@@ -3,7 +3,7 @@ package com.secretapp.backend.data.json.message.rpc.file
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
-import com.secretapp.backend.data.message.rpc.RpcRequestMessage
+import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
 import com.secretapp.backend.data.message.rpc.file._
 import play.api.libs.json._
 import JsonFormatsSpec._
@@ -65,6 +65,37 @@ class JsonFormatsSpec extends JsonSpec {
         "data" -> bitVectorJson
       )
       testToAndFromJson[RpcRequestMessage](j, v)
+    }
+
+  }
+
+  "RpcResponseMessage (de)serializer" should {
+
+    "(de)serialize ResponseFilePart" in {
+      val (data, dataJson) = genBitVector
+      val v = ResponseFilePart(data)
+      val j = withHeader(ResponseFilePart.responseType)(
+        "data" -> dataJson
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
+    }
+
+    "(de)serialize ResponseUploadCompleted" in {
+      val (fileLocation, fileLocationJson) = genFileLocation
+      val v = ResponseUploadCompleted(fileLocation)
+      val j = withHeader(ResponseUploadCompleted.responseType)(
+        "location" -> fileLocationJson
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
+    }
+
+    "(de)serialize ResponseUploadStarted" in {
+      val (uploadConfig, uploadConfigJson) = genUploadConfig
+      val v = ResponseUploadStarted(uploadConfig)
+      val j = withHeader(ResponseUploadStarted.responseType)(
+        "config" -> uploadConfigJson
+      )
+      testToAndFromJson[RpcResponseMessage](j, v)
     }
 
   }

@@ -1,11 +1,11 @@
 package com.secretapp.backend.data.json.message.rpc.presence
 
+import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.message.rpc.RpcRequestMessage
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 import play.api.libs.json._
-import com.secretapp.backend.data.json._
 
 import scala.collection.immutable
 
