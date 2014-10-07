@@ -10,6 +10,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
@@ -82,7 +83,15 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-        diff.updates.head.body.assertInstanceOf[GroupInvite]
+
+        val invite = diff.updates.head.body.assertInstanceOf[GroupInvite]
+
+        invite.users.length should beEqualTo(2)
+        invite.users.toSet should beEqualTo(Set(
+          UserId(scope1.user.uid, scope1.user.accessHash(scope.user.authId)),
+          UserId(scope2.user.uid, scope2.user.accessHash(scope.user.authId))
+        ))
+
         diff.updates(1).body.assertInstanceOf[GroupMessage]
       }
     }
@@ -134,7 +143,8 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope2
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-        diff.updates.head.body.assertInstanceOf[GroupInvite]
+        val update = diff.updates.head.body.assertInstanceOf[GroupInvite]
+        update.users should beEqualTo(Seq(UserId(scope1.user.uid, scope1.user.accessHash(scope2.user.authId))))
       }
     }
 

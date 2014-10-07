@@ -12,6 +12,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ GroupChat, User }
 import com.secretapp.backend.helpers.UserHelpers
@@ -24,7 +25,7 @@ import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.Success
+import scala.util.{ Failure, Success }
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
@@ -119,6 +120,7 @@ sealed trait MessagingService extends RandomService {
   protected def handleRequestInviteUser(
     chatId: Int, accessHash: Long, userId: Int, userAccessHash: Long, randomId: Long, chatKeyHash: BitVector, invite: immutable.Seq[EncryptedMessage]
   ): Future[RpcResponse] = {
+    val fchatUserIds = GroupChatUserRecord.getUsers(chatId)
     GroupChatRecord.getEntity(chatId) flatMap { optChat =>
       optChat map { chat =>
         if (chat.accessHash != accessHash) {
@@ -126,32 +128,34 @@ sealed trait MessagingService extends RandomService {
         } else if (chat.keyHash != chatKeyHash) {
           Future.successful(Error(400, "WRONG_KEY", "Invalid chat key hash.", false))
         } else {
-          createChatUserInvites(chat, userId, userAccessHash, invite) flatMap {
-            case -\/(error) =>
-              Future.successful(error)
-            case \/-(invites) =>
-              val fuserAdded = GroupChatUserRecord.addUser(chatId, userId)
-              val fauthIds = GroupChatUserRecord.getUsers(chatId) flatMap { userIds =>
-                Future.sequence(userIds map getAuthIds) map (_.flatten)
-              }
-
-              for {
-                _ <- fuserAdded
-                authIds <- fauthIds
-                s <- getState(currentUser.authId)
-              } yield {
-                invites map {
-                  case (authId, uid, invite) =>
-                    updatesBrokerRegion ! NewUpdatePush(authId, invite)
+          fchatUserIds flatMap { chatUserIds =>
+            createChatUserInvites(chat, chatUserIds.toVector, userId, userAccessHash, invite) flatMap {
+              case -\/(error) =>
+                Future.successful(error)
+              case \/-(invites) =>
+                val fuserAdded = GroupChatUserRecord.addUser(chatId, userId)
+                val fauthIds = GroupChatUserRecord.getUsers(chatId) flatMap { userIds =>
+                  Future.sequence(userIds map getAuthIds) map (_.flatten)
                 }
 
-                authIds foreach { authId =>
-                  updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId))
+                for {
+                  _ <- fuserAdded
+                  authIds <- fauthIds
+                  s <- getState(currentUser.authId)
+                } yield {
+                  invites map {
+                    case (authId, uid, invite) =>
+                      updatesBrokerRegion ! NewUpdatePush(authId, invite)
+                  }
+
+                  authIds foreach { authId =>
+                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId))
+                  }
+
+
+                  Ok(updateProto.ResponseSeq(s._1, s._2))
                 }
-
-
-                Ok(updateProto.ResponseSeq(s._1, s._2))
-              }
+            }
           }
         }
       } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
@@ -254,7 +258,7 @@ sealed trait MessagingService extends RandomService {
     val chat = GroupChat(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
 
     GroupChatRecord.insertEntity(chat) flatMap { _ =>
-      Future.sequence(invites.toVector map (inv => createChatUserInvites(chat, inv.uid, inv.accessHash, inv.keys))) flatMap { ei =>
+      Future.sequence(invites.toVector map (inv => createChatUserInvites(chat, (invites map (_.uid)) :+ currentUser.uid, inv.uid, inv.accessHash, inv.keys))) flatMap { ei =>
         val (errors, inviteUpdates) = ei.separate
         if (errors.length > 0) {
           Future.successful(errors.head)
@@ -287,42 +291,60 @@ sealed trait MessagingService extends RandomService {
     }
   }
 
-  protected def createChatUserInvites(chat: GroupChat, userId: Int, userAccessHash: Long, keys: immutable.Seq[EncryptedMessage]): Future[Error \/ Vector[(Long, Int, GroupInvite)]] = {
-    getUsers(userId) map {
+  // TODO: refactor this shit
+  protected def createChatUserInvites(chat: GroupChat, chatUserIds: immutable.Seq[Int], userId: Int, userAccessHash: Long, keys: immutable.Seq[EncryptedMessage]): Future[Error \/ Vector[(Long, Int, GroupInvite)]] = {
+    getUsers(userId) flatMap {
       case users if users.isEmpty =>
-        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left
+        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left)
       case users =>
         val (_, checkUser) = users.head
 
         if (checkUser.accessHash(currentUser.authId) == userAccessHash) {
-          val jobsOpts = keys flatMap { message =>
+          val jobOpts = keys flatMap { message =>
             message.keys map ((message.message, _))
           } map {
             case (message, key) =>
               users.toMap.get(key.keyHash) map ((_, message, key))
           }
 
-          val optInvites: Option[Vector[(Long, Int, GroupInvite)]] = jobsOpts.toVector.sequence map { jobs =>
-            jobs map {
+          jobOpts.toVector.sequence map { jobs =>
+            val futures: Vector[Future[(Long, Int, GroupInvite)]] = jobs map {
               case (user, message, key) =>
-                (
-                  user.authId,
-                  user.uid,
-                  GroupInvite(
-                    chatId = chat.id,
-                    accessHash = chat.accessHash,
-                    title = chat.title,
-                    users = immutable.Seq.empty,
-                    keyHash = user.publicKeyHash,
-                    aesEncryptedKey = key.aesEncryptedKey,
-                    message = message
+                for {
+                  chatUserIdStructs <- Future.sequence {
+                    chatUserIds map { userId =>
+                      for {
+                        optStruct <- getUserIdStruct(userId, user.authId)
+                      } yield {
+                        optStruct match {
+                          case Some(struct) => struct
+                          case None =>
+                            log.error(s"Cannot get userId struct for $userId")
+                            throw new Exception(s"Cannot get userId struct for $userId")
+                        }
+                      }
+                    }
+                  }
+                } yield {
+                  (
+                    user.authId,
+                    user.uid,
+                    GroupInvite(
+                      chatId = chat.id,
+                      accessHash = chat.accessHash,
+                      title = chat.title,
+                      users = chatUserIdStructs,
+                      keyHash = user.publicKeyHash,
+                      aesEncryptedKey = key.aesEncryptedKey,
+                      message = message
+                    )
                   )
-                )
+                }
             }
-          }
-          optInvites map (invites => invites.right) getOrElse (Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left)
+            Future.sequence(futures) map (_.right)
+          } getOrElse (Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left))
         } else {
-          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left)
         }
     }
   }
