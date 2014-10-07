@@ -113,6 +113,8 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
+        Thread.sleep(500)
+
         val rqInviteUser = RequestInviteUser(
           chatId = resp.chatId,
           accessHash = resp.accessHash,
