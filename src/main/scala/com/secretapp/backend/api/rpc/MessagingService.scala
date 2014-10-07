@@ -231,7 +231,7 @@ sealed trait MessagingService extends RandomService {
               } yield {
                 authIds map { authId =>
                   updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
-                    chatId, userId
+                    chatId, currentUser.uid
                   ))
                 }
               }
