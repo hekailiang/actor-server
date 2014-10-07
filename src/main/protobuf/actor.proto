@@ -339,6 +339,7 @@ message UpdateGroupInvite {
     required int64 keyHash = 5; // Might be equals to device public key hash
     required bytes aesEncryptedKey = 6;
     required bytes message = 7;
+    required int32 chatCreatorUID = 8;
 }
 
 // API#0x15
@@ -346,6 +347,7 @@ message UpdateGroupInvite {
 message UpdateGroupUserAdded {
     required int32 chatId = 1;
     required int32 uid = 2;
+    required int32 inviterUID = 3;
 }
 
 // API#0x17

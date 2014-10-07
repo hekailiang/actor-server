@@ -6,7 +6,8 @@ import scodec.bits.BitVector
 
 case class GroupUserAdded(
   chatId: Int,
-  userId: Int
+  userId: Int,
+  inviterUserId: Int
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupUserAdded.seqUpdateHeader
 

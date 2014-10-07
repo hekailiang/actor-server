@@ -11,7 +11,8 @@ case class GroupInvite(
   users: immutable.Seq[UserId],
   keyHash: Long,
   aesEncryptedKey: BitVector,
-  message: BitVector
+  message: BitVector,
+  chatCreatorUserId: Int
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupInvite.seqUpdateHeader
 

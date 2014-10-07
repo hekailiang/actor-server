@@ -17,7 +17,8 @@ object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
     val boxed = protobuf.UpdateGroupInvite(
       u.chatId, u.accessHash, u.title,
       u.users map (_.toProto),
-      u.keyHash, u.aesEncryptedKey, u.message
+      u.keyHash, u.aesEncryptedKey, u.message,
+      u.chatCreatorUserId
     )
     encodeToBitVector(boxed)
   }
@@ -27,13 +28,15 @@ object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
       case Success(
         protobuf.UpdateGroupInvite(
           chatId, accessHash, title, users,
-          keyHash, aesEncryptedKey, message
+          keyHash, aesEncryptedKey, message,
+          chatCreatorUserId
         )
       ) =>
         GroupInvite(
           chatId, accessHash, title,
           users map UserId.fromProto,
-          keyHash, aesEncryptedKey, message
+          keyHash, aesEncryptedKey, message,
+          chatCreatorUserId
         )
     }
   }

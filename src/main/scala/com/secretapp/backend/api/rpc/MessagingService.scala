@@ -149,7 +149,7 @@ sealed trait MessagingService extends RandomService {
                   }
 
                   authIds foreach { authId =>
-                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId))
+                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId, currentUser.uid))
                   }
 
 
@@ -336,7 +336,8 @@ sealed trait MessagingService extends RandomService {
                       users = chatUserIdStructs,
                       keyHash = user.publicKeyHash,
                       aesEncryptedKey = key.aesEncryptedKey,
-                      message = message
+                      message = message,
+                      chatCreatorUserId = chat.creatorUserId
                     )
                   )
                 }
