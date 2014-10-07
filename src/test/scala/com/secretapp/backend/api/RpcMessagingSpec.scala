@@ -200,6 +200,8 @@ class RpcMessagingSpec extends RpcSpec {
         getState(scope)
       }
 
+      Thread.sleep(500)
+
       {
         implicit val scope = scope2
 
