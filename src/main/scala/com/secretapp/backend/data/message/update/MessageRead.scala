@@ -1,5 +1,6 @@
 package com.secretapp.backend.data.message.update
 
+@SerialVersionUID(1l)
 case class MessageRead(uid: Int, randomId: Long) extends SeqUpdateMessage {
   val seqUpdateHeader = MessageRead.seqUpdateHeader
 

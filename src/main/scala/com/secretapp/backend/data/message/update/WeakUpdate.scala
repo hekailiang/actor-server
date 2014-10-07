@@ -6,6 +6,7 @@ import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scalaz._
 import Scalaz._
 
+@SerialVersionUID(1l)
 case class WeakUpdate(date: Long, body: WeakUpdateMessage) extends UpdateMessage {
   val updateHeader = WeakUpdate.updateHeader
 

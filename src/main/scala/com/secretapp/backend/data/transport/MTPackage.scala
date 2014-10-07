@@ -1,11 +1,11 @@
 package com.secretapp.backend.data.transport
 
 import akka.util.ByteString
-import com.secretapp.backend.data.message.TransportMessage
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.transport.MTPackageCodec
 import scodec.bits._
 
+@SerialVersionUID(1l)
 case class MTPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
   def decodeMessageBox = MessageBoxCodec.decodeValue(this.messageBoxBytes)
 

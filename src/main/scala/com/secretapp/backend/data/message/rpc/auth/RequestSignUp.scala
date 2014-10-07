@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message.rpc.auth
 import com.secretapp.backend.data.message.rpc.{RpcRequestMessage, RpcRequestMessageObject}
 import scodec.bits.BitVector
 
+@SerialVersionUID(1l)
 case class RequestSignUp(phoneNumber: Long,
                          smsHash: String,
                          smsCode: String,

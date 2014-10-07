@@ -11,6 +11,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
+@SerialVersionUID(1l)
 case class SeqUpdate(seq: Int, state: BitVector, body: SeqUpdateMessage) extends UpdateMessage
 {
   val updateHeader = SeqUpdate.updateHeader

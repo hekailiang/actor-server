@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message.rpc.contact
 import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 
+@SerialVersionUID(1l)
 case class RequestImportContacts(contacts: immutable.Seq[ContactToImport]) extends RpcRequestMessage {
   val header = RequestImportContacts.requestType
 }

@@ -1,8 +1,6 @@
 package com.secretapp.backend.data.message.update
 
-import com.secretapp.backend.data.message.struct.User
-
-
+@SerialVersionUID(1l)
 case class ContactRegistered(userId: Int) extends SeqUpdateMessage {
   val seqUpdateHeader = ContactRegistered.seqUpdateHeader
 

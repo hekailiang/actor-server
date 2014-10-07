@@ -1,5 +1,6 @@
 package com.secretapp.backend.data.message
 
+@SerialVersionUID(1l)
 case class RequestResend(messageId: Long) extends TransportMessage {
   val header = RequestResend.header
 }

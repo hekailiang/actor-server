@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message
 import scala.collection.immutable
 import com.secretapp.backend.data.transport.MessageBox
 
+@SerialVersionUID(1l)
 case class Container(messages: immutable.Seq[MessageBox]) extends TransportMessage {
   val header = Container.header
 }

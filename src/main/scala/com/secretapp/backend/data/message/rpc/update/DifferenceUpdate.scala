@@ -11,6 +11,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
+@SerialVersionUID(1l)
 case class DifferenceUpdate(body: SeqUpdateMessage)
 {
   def toProto: String \/ protobuf.DifferenceUpdate = {

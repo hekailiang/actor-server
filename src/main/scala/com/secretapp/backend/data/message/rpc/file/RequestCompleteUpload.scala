@@ -2,6 +2,7 @@ package com.secretapp.backend.data.message.rpc.file
 
 import com.secretapp.backend.data.message.rpc._
 
+@SerialVersionUID(1l)
 case class RequestCompleteUpload(config: UploadConfig, blockCount: Int, crc32: Long) extends RpcRequestMessage {
   val header = RequestCompleteUpload.requestType
 }

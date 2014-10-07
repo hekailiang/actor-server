@@ -2,6 +2,7 @@ package com.secretapp.backend.data.message.update
 
 import scodec.bits.BitVector
 
+@SerialVersionUID(1l)
 case class NewYourDevice(uid: Int, keyHash: Long, key: BitVector) extends SeqUpdateMessage {
   val seqUpdateHeader = NewYourDevice.seqUpdateHeader
 

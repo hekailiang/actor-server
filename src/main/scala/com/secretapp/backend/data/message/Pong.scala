@@ -1,5 +1,6 @@
 package com.secretapp.backend.data.message
 
+@SerialVersionUID(1l)
 case class Pong(randomId: Long) extends TransportMessage {
   val header = Pong.header
 }

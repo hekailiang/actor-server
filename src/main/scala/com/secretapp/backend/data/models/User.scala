@@ -13,6 +13,7 @@ import java.nio.ByteBuffer
 import scalaz._
 import Scalaz._
 
+@SerialVersionUID(1l)
 case class User(uid: Int,
                 authId: Long,
                 publicKeyHash: Long,

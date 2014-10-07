@@ -1,5 +1,6 @@
 package com.secretapp.backend.data.message
 
+@SerialVersionUID(1l)
 case class Drop(messageId: Long, message: String) extends TransportMessage {
   val header = Drop.header
 }

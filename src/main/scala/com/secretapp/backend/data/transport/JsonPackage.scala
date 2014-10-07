@@ -6,6 +6,7 @@ import com.secretapp.backend.protocol.codecs.message.JsonMessageBoxCodec
 import com.secretapp.backend.protocol.transport.JsonPackageCodec
 import scodec.bits._
 
+@SerialVersionUID(1l)
 case class JsonPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
   def decodeMessageBox = JsonMessageBoxCodec.decode(this.messageBoxBytes)
 

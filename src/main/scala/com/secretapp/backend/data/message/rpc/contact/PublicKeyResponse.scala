@@ -5,6 +5,7 @@ import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits.BitVector
 import im.actor.messenger.{ api => protobuf }
 
+@SerialVersionUID(1l)
 case class PublicKeyResponse(uid: Int, keyHash: Long, key: BitVector) extends ProtobufMessage
 {
   def toProto = protobuf.PublicKey(uid, keyHash, key)
