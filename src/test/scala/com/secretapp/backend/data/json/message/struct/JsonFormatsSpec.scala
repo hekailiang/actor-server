@@ -16,22 +16,22 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize UserId" in {
       val (v, j) = genUserId
-      testToAndFromJson[UserId](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize AvatarImage" in {
       val (v, j) = genAvatarImage
-      testToAndFromJson[AvatarImage](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize Avatar" in {
       val (v, j) = genAvatar
-      testToAndFromJson[Avatar](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize User" in {
       val (v, j) = genUser
-      testToAndFromJson[User](j, v)
+      testToAndFromJson(j, v)
     }
 
   }

@@ -118,7 +118,8 @@ trait JsonFormats {
     }
   }
 
-  implicit val messageBoxFormat       = Json.format[MessageBox]
+  // FIXME: Move to `transport` package
+  implicit val messageBoxFormat = Json.format[MessageBox]
 
   // TransportMessage descendants
   val containerFormat      = Json.format[Container]
@@ -130,10 +131,10 @@ trait JsonFormats {
   val requestAuthIdFormat  = UnitFormat[RequestAuthId]
   val requestResendFormat  = Json.format[RequestResend]
   val responseAuthIdFormat = Json.format[ResponseAuthId]
-  val rpcRequestBoxFormat  = Json.format[RpcRequestBox]
-  val rpcResponseBoxFormat = Json.format[RpcResponseBox]
+  implicit val rpcRequestBoxFormat  = Json.format[RpcRequestBox]
+  implicit val rpcResponseBoxFormat = Json.format[RpcResponseBox]
   val unsentMessageFormat  = Json.format[UnsentMessage]
   val unsentResponseFormat = Json.format[UnsentResponse]
-  val updateBoxFormat      = Json.format[UpdateBox]
+  implicit val updateBoxFormat      = Json.format[UpdateBox]
 
 }

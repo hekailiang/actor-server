@@ -15,12 +15,12 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize UploadConfig" in {
       val (v, j) = genUploadConfig
-      testToAndFromJson[UploadConfig](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize FileLocation" in {
       val (v, j) = genFileLocation
-      testToAndFromJson[FileLocation](j, v)
+      testToAndFromJson(j, v)
     }
 
   }

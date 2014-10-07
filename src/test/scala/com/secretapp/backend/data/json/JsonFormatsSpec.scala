@@ -32,11 +32,8 @@ class JsonFormatsSpec extends JsonSpec {
       val v = MessageBox(1, Ping(2))
       val j = Json.obj(
         "messageId" -> "1",
-        "body"      -> Json.obj(
-          "header" -> Ping.header,
-          "body"   -> Json.obj(
-            "randomId" -> "2"
-          )
+        "body"      -> withHeader(Ping.header)(
+          "randomId" -> "2"
         )
       )
       testToAndFromJson[MessageBox](j, v)
@@ -47,27 +44,18 @@ class JsonFormatsSpec extends JsonSpec {
         MessageBox(1, Ping(2)),
         MessageBox(3, Pong(4))
       ))
-      val j = Json.obj(
-        "header" -> Container.header,
-        "body"   -> Json.obj(
-          "messages" -> Json.arr(
-            Json.obj(
-              "messageId" -> "1",
-              "body"      -> Json.obj(
-                "header" -> Ping.header,
-                "body"   -> Json.obj(
-                  "randomId" -> "2"
-                )
-              )
-            ),
-            Json.obj(
-              "messageId" -> "3",
-              "body"      -> Json.obj(
-                "header"   -> Pong.header,
-                "body"     -> Json.obj(
-                  "randomId" -> "4"
-                )
-              )
+      val j = withHeader(Container.header)(
+        "messages" -> Json.arr(
+          Json.obj(
+            "messageId" -> "1",
+            "body"      -> withHeader(Ping.header)(
+              "randomId" -> "2"
+            )
+          ),
+          Json.obj(
+            "messageId" -> "3",
+            "body"      -> withHeader(Pong.header)(
+              "randomId" -> "4"
             )
           )
         )
@@ -77,122 +65,86 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize Drop" in {
       val v = Drop(42, "Body")
-      val j = Json.obj(
-        "header" -> Drop.header,
-        "body"   -> Json.obj(
-          "messageId" -> "42",
-          "message"   -> "Body"
-        )
+      val j = withHeader(Drop.header)(
+        "messageId" -> "42",
+        "message"   -> "Body"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize MessageAck" in {
       val v = MessageAck(Vector(1, 2, 3))
-      val j = Json.obj(
-        "header" -> MessageAck.header,
-        "body"   -> Json.obj(
-          "messageIds" -> Json.arr("1", "2", "3")
-        )
+      val j = withHeader(MessageAck.header)(
+        "messageIds" -> Json.arr("1", "2", "3")
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize NewSession" in {
       val v = NewSession(1, 2)
-      val j = Json.obj(
-        "header" -> NewSession.header,
-        "body"   -> Json.obj(
-          "sessionId" -> "1",
-          "messageId" -> "2"
-        )
+      val j = withHeader(NewSession.header)(
+        "sessionId" -> "1",
+        "messageId" -> "2"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize Ping" in {
       val v = Ping(1)
-      val j = Json.obj(
-        "header" -> Ping.header,
-        "body"   -> Json.obj(
-          "randomId" -> "1"
-        )
+      val j = withHeader(Ping.header)(
+        "randomId" -> "1"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize Pong" in {
       val v = Pong(1)
-      val j = Json.obj(
-        "header"   -> Pong.header,
-        "body"     -> Json.obj(
-          "randomId" -> "1"
-        )
+      val j = withHeader(Pong.header)(
+        "randomId" -> "1"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize RequestAuthId" in {
       val v = RequestAuthId()
-      val j = Json.obj(
-        "header" -> RequestAuthId.header,
-        "body"   -> Json.obj()
-      )
+      val j = withHeader(RequestAuthId.header)()
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize RequestResend" in {
       val v = RequestResend(1)
-      val j = Json.obj(
-        "header" -> RequestResend.header,
-        "body"   -> Json.obj(
-          "messageId" -> "1"
-        )
+      val j = withHeader(RequestResend.header)(
+        "messageId" -> "1"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize ResponseAuthId" in {
       val v = ResponseAuthId(1)
-      val j = Json.obj(
-        "header" -> ResponseAuthId.header,
-        "body"   -> Json.obj(
-          "authId" -> "1"
-        )
+      val j = withHeader(ResponseAuthId.header)(
+        "authId" -> "1"
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
-    // "(de)serialize RpcRequestBox" in {}
-
-    // "(de)serialize RpcResponseBox" in {}
-
     "(de)serialize UnsentMessage" in {
       val v = UnsentMessage(1, 2)
-      val j = Json.obj(
-        "header" -> UnsentMessage.header,
-        "body"   -> Json.obj(
-          "messageId" -> "1",
-          "length"    -> 2
-        )
+      val j = withHeader(UnsentMessage.header)(
+        "messageId" -> "1",
+        "length"    -> 2
       )
       testToAndFromJson[TransportMessage](j, v)
     }
 
     "(de)serialize UnsentResponse" in {
       val v = UnsentResponse(1, 2, 3)
-      val j = Json.obj(
-        "header" -> UnsentResponse.header,
-        "body"   -> Json.obj(
-          "messageId"        -> "1",
-          "requestMessageId" -> "2",
-          "length"           -> 3
-        )
+      val j = withHeader(UnsentResponse.header)(
+        "messageId"        -> "1",
+        "requestMessageId" -> "2",
+        "length"           -> 3
       )
       testToAndFromJson[TransportMessage](j, v)
     }
-
-    // "(de)serialize UpdateBox" in {}
 
   }
 }

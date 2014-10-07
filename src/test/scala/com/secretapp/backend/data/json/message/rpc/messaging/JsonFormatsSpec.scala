@@ -17,12 +17,12 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize EncryptedKey" in {
       val (v, j) = genEncryptedKey
-      testToAndFromJson[EncryptedKey](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize EncryptedMessage" in {
       val (v, j) = genEncryptedMessage
-      testToAndFromJson[EncryptedMessage](j, v)
+      testToAndFromJson(j, v)
     }
 
   }

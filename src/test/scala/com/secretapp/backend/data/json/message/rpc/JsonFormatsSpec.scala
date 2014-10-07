@@ -3,10 +3,9 @@ package com.secretapp.backend.data.json.message.rpc
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
 import com.secretapp.backend.data.message.rpc._
+import com.secretapp.backend.data.message.rpc.auth.ResponseAuthCode
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.presence.UnsubscribeFromOnline
-import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
-import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import play.api.libs.json.Json
 import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 import scala.collection.immutable
@@ -70,8 +69,15 @@ class JsonFormatsSpec extends JsonSpec {
     }
 
     "(de)serialize Ok" in {
-      true should_== false
-    }.pendingUntilFixed("Not implemented yet")
+      val v = Ok(ResponseAuthCode("smsHash", true))
+      val j = withHeader(Ok.rpcType)(
+        "body" -> withHeader(ResponseAuthCode.responseType)(
+          "smsHash"      -> "smsHash",
+          "isRegistered" -> true
+        )
+      )
+      testToAndFromJson[RpcResponse](j, v)
+    }
 
   }
 

@@ -9,8 +9,8 @@ import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.messaging.{RequestSendGroupMessage, RequestMessageReceived, RequestMessageRead, RequestSendMessage}
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
-import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
-import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
+import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState, RequestGetDifference}
+import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, RequestEditAvatar}
 import play.api.libs.json._
 
 trait JsonFormats {
@@ -117,6 +117,8 @@ trait JsonFormats {
         case r: ResponseFilePart         => responseFilePartFormat.writes(r)
         case r: ResponseUploadCompleted  => responseUploadCompletedFormat.writes(r)
         case r: ResponseUploadStarted    => responseUploadStartedFormat.writes(r)
+        case r: ResponseSeq              => responseSeqFormat.writes(r)
+        case r: ResponseAvatarChanged    => responseAvatarChanged.writes(r)
       })
     )
 
@@ -129,6 +131,8 @@ trait JsonFormats {
         case ResponseFilePart.responseType         => responseFilePartFormat.reads(body)
         case ResponseUploadCompleted.responseType  => responseUploadCompletedFormat.reads(body)
         case ResponseUploadStarted.responseType    => responseUploadStartedFormat.reads(body)
+        case ResponseSeq.responseType              => responseSeqFormat.reads(body)
+        case ResponseAvatarChanged.responseType    => responseAvatarChanged.reads(body)
       }
     }
   }

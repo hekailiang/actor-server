@@ -17,22 +17,22 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize ContactToImport" in {
       val (v, j) = genContactToImport
-      testToAndFromJson[ContactToImport](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize ImportedContact" in {
       val (v, j) = genImportedContact
-      testToAndFromJson[ImportedContact](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize PublicKeyRequest" in {
       val (v, j) = genPublicKeyRequest
-      testToAndFromJson[PublicKeyRequest](j, v)
+      testToAndFromJson(j, v)
     }
 
     "(de)serialize PublicKeyResponse" in {
       val (v, j) = genPublicKeyResponse
-      testToAndFromJson[PublicKeyResponse](j, v)
+      testToAndFromJson(j, v)
     }
 
   }
