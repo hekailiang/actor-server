@@ -6,7 +6,7 @@ import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.models.User
 
-class Handler(val sessionActor: ActorRef, val currentUser: User, val presenceBrokerProxy: ActorRef) extends Actor with ActorLogging
+class Handler(val sessionActor: ActorRef, val currentUser: User, val presenceBrokerRegion: ActorRef) extends Actor with ActorLogging
     with HandlerService {
   import context.dispatcher
 

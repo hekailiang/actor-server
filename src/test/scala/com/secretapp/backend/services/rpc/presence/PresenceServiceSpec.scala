@@ -20,27 +20,15 @@ import scala.concurrent.duration._
 class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
-  def assertResponseVoidReceived(implicit scope: TestScope) =
-    receiveNWithAck(1)(scope.probe, scope.apiActor).exists { p =>
-      p.body match {
-        case p: RpcResponseBox => p.body match {
-          case p: Ok => p.body.isInstanceOf[ResponseVoid]
-          case _ => false
-        }
-        case _ => false
-      }
-    } should beTrue
-
   "presence service" should {
+    /*
     "return ResponseVoid for subscribe" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
 
       {
         implicit val scope = scope1
 
-        SubscribeToOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~>! scope
-
-        assertResponseVoidReceived
+        SubscribeToOnline(immutable.Seq(UserId(scope2.user.uid, 0))) :~> <~:[ResponseVoid]
       }
     }
 
@@ -83,6 +71,31 @@ class PresenceServiceSpec extends RpcSpec {
         val offlineUpdate = update.body.asInstanceOf[UserOnline]
         offlineUpdate.uid should equalTo(6)
         scope.probe.expectNoMsg(duration)
+      }
+    }
+*/
+    "tell presences on subscription" in {
+      val (scope1, scope2) = TestScope.pair(7, 8)
+      val duration = DurationInt(1).seconds
+
+      {
+        implicit val scope = scope1
+
+        SubscribeToOnline(immutable.Seq(UserId(8, 0))) :~> <~:[ResponseVoid]
+
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+        mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOffline]
+
+        RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        SubscribeToOnline(immutable.Seq(UserId(7, 0))) :~> <~:[ResponseVoid]
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+
+        mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOnline]
       }
     }
   }

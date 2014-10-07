@@ -48,18 +48,21 @@ trait SessionService extends UserManagerService {
     }
   }
 
-  protected def subscribeToPresences(uids: immutable.Seq[Int]) = {
-    uids foreach { uid =>
-      if (!subscribedToPresencesUids.contains(uid)) {
-        log.info(s"Subscribing $uid")
-        subscribedToPresencesUids = subscribedToPresencesUids + uid
-        mediator ! Subscribe(PresenceBroker.topicFor(uid), weakUpdatesPusher)
+  protected def subscribeToPresences(userIds: immutable.Seq[Int]) = {
+    userIds foreach { userId =>
+      if (!subscribedToPresencesUids.contains(userId)) {
+        log.info(s"Subscribing $userId")
+        subscribedToPresencesUids = subscribedToPresencesUids + userId
+        mediator ! Subscribe(PresenceBroker.topicFor(userId), weakUpdatesPusher)
       } else {
-        log.error(s"Already subscribed to $uid")
+        log.error(s"Already subscribed to $userId")
       }
-    }
 
-    clusterProxies.presenceBroker ! PresenceProtocol.TellPresences(uids, weakUpdatesPusher)
+      singletons.presenceBrokerRegion ! PresenceProtocol.Envelope(
+        userId,
+        PresenceProtocol.TellPresence(weakUpdatesPusher)
+      )
+    }
   }
 
   protected def unsubscribeToPresences(uids: immutable.Seq[Int]) = {

@@ -20,30 +20,29 @@ trait HandlerService {
   import context.system
   import context.dispatcher
   import PresenceProtocol._
-  import SessionProtocol._
 
   // TODO: check accessHash
   protected def handleSubscribeToOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
     log.info(s"handling SubscribeToOnline $users")
-    sessionActor ! SubscribeToPresences(users map (_.uid))
+    sessionActor ! SessionProtocol.SubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleUnsubscribeFromOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
     log.info(s"handling UnsubscribeFromOnline $users")
-    sessionActor ! UnsubscribeToPresences(users map (_.uid))
+    sessionActor ! SessionProtocol.UnsubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleRequestSetOnline(isOnline: Boolean, timeout: Long): Future[RpcResponse] = {
     log.info(s"Handling RequestSetOnline ${isOnline} ${timeout}")
     val message = if (isOnline) {
-      UserOnline(currentUser.uid, timeout)
+      UserOnline(timeout)
     } else {
-      UserOffline(currentUser.uid)
+      UserOffline
     }
 
-    presenceBrokerProxy ! message
+    presenceBrokerRegion ! Envelope(currentUser.uid, message)
 
     Future.successful(Ok(ResponseVoid()))
   }

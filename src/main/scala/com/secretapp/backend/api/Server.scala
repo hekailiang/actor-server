@@ -12,14 +12,13 @@ import com.secretapp.backend.sms.ClickatellSmsEngineActor
 
 final class Singletons(implicit val system: ActorSystem) {
   val filesCounter = FilesCounter.start(system)
-  val presenceBroker = PresenceBroker.start(system)
   val smsEngine = ClickatellSmsEngineActor()
   val typingBrokerRegion = TypingBroker.startRegion()
+  val presenceBrokerRegion = PresenceBroker.startRegion()
 }
 
 final class ClusterProxies(implicit val system: ActorSystem) {
   val filesCounter = FilesCounter.startProxy(system)
-  val presenceBroker = PresenceBroker.startProxy(system)
 }
 
 class Server(implicit session: CSession) extends Actor with ActorLogging {

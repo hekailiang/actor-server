@@ -22,8 +22,6 @@ object TypingProtocol {
   case class UserNotTyping(userId: Int, typingType: Int) extends TypingMessage
   case class TellTypings(target: ActorRef) extends TypingMessage
 
-  case object Stop
-
   case class Envelope(userId: Int, payload: TypingMessage)
 }
 
