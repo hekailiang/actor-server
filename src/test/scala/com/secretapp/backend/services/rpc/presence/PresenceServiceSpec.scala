@@ -49,7 +49,8 @@ class PresenceServiceSpec extends RpcSpec {
 
         SubscribeToOnline(immutable.Seq(UserId(6, 0))) :~> <~:[ResponseVoid]
 
-        scope.probe.expectNoMsg(duration)
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+        mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOffline]
       }
 
       {
@@ -58,7 +59,8 @@ class PresenceServiceSpec extends RpcSpec {
         RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
         SubscribeToOnline(immutable.Seq(UserId(5, 0))) :~> <~:[ResponseVoid]
 
-        scope.probe.expectNoMsg(duration)
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+        mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOffline]
       }
 
       {
@@ -92,8 +94,8 @@ class PresenceServiceSpec extends RpcSpec {
         implicit val scope = scope1
 
         SubscribeToOnline(immutable.Seq(UserId(7, 0))) :~> <~:[ResponseVoid]
-        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
 
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
         mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOnline]
       }
     }
