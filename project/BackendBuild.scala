@@ -55,7 +55,7 @@ object BackendBuild extends Build {
       "-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation",
       "-unchecked", "-feature", "-language:higherKinds"), //, "-Xprint:typer"
     javaOptions ++= Seq(
-      "-Dfile.encoding=UTF-8"
+      "-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"
     ),
     javacOptions ++= Seq(
       "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"
