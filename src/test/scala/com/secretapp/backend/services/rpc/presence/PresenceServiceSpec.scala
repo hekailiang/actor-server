@@ -21,7 +21,6 @@ class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "presence service" should {
-    /*
     "return ResponseVoid for subscribe" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
 
@@ -73,7 +72,7 @@ class PresenceServiceSpec extends RpcSpec {
         scope.probe.expectNoMsg(duration)
       }
     }
-*/
+
     "tell presences on subscription" in {
       val (scope1, scope2) = TestScope.pair(7, 8)
       val duration = DurationInt(1).seconds
