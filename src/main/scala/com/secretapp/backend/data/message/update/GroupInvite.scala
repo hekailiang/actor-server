@@ -4,6 +4,7 @@ import com.secretapp.backend.data.message.struct.UserId
 import scala.collection.immutable
 import scodec.bits.BitVector
 
+@SerialVersionUID(1L)
 case class GroupInvite(
   chatId: Int,
   accessHash: Long,
