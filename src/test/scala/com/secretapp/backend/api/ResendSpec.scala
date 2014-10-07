@@ -70,22 +70,32 @@ class ResendServiceSpec extends RpcSpec {
           mb.body
         }
 
-        if (m1.isInstanceOf[MessageAck]) {
-          m2 should beAnInstanceOf[RpcResponseBox]
-        } else {
-          m1 should beAnInstanceOf[RpcResponseBox]
-          m2 should beAnInstanceOf[MessageAck]
-        }
-
-        {
+        val m3 = {
           val write = scope.probe.receiveOne(duration).asInstanceOf[Write]
           scope.apiActor.tell(write.ack, scope.probe.ref)
 
           val p = MTPackageBoxCodec.decodeValidValue(write.data).p
           val mb = MessageBoxCodec.decodeValidValue(p.messageBoxBytes)
 
-          mb.body should beAnInstanceOf[Pong]
+          mb.body
         }
+
+        val messages = List(m1, m2, m3)
+
+        (messages.filter {
+          case m: MessageAck => true
+          case _ => false
+        } length) should beEqualTo(1)
+
+        (messages.filter {
+          case m: RpcResponseBox => true
+          case _ => false
+        } length) should beEqualTo(1)
+
+        (messages.filter {
+          case m: Pong => true
+          case _ => false
+        } length) should beEqualTo(1)
 
         scope.probe.expectNoMsg(duration)
       }
