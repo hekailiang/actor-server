@@ -43,7 +43,9 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit
             case _ =>
               dropClient(message.messageId, "unknown message type in authorize mode")
           }
-        case _ => silentClose()
+        case -\/(e) =>
+          log.error(e)
+          silentClose()
       }
   }
 

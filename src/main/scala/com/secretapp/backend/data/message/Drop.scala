@@ -6,5 +6,5 @@ case class Drop(messageId: Long, message: String) extends TransportMessage {
 }
 
 object Drop extends TransportMessageMessageObject {
-  val header = 0xd
+  val header = 0x0D
 }

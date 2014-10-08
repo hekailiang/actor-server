@@ -9,5 +9,5 @@ case class Container(messages: immutable.Seq[MessageBox]) extends TransportMessa
 }
 
 object Container extends TransportMessageMessageObject {
-  val header = 0xa
+  val header = 0x0A
 }

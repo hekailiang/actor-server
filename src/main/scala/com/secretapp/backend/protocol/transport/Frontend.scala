@@ -29,7 +29,7 @@ trait Frontend extends Actor with ActorLogging {
     if (p.authId == 0L) keyFrontend ! InitDH(p)
     else {
       if (authId == 0L) authId = p.authId
-      else if (p.authId != authId) silentClose()
+      if (p.authId != authId) silentClose()
       else secFrontend.get(p.sessionId) match {
         case Some(secRef) => secRef ! RequestPackage(p)
         case None =>
