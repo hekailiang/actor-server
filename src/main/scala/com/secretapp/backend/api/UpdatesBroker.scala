@@ -83,9 +83,6 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   var lastSnapshottedAtSeq: Int = 0
   val minSnapshotStep: Int = 200
 
-  trait Event
-  case object SeqUpdate extends Event
-
   val receiveCommand: Receive = LoggingReceive {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
     case UpdatesBroker.Stop => context.stop(self)
@@ -94,7 +91,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case p @ NewUpdatePush(authId, update) =>
       val replyTo = sender()
       log.info(s"NewUpdatePush for $authId: $update")
-      persist(SeqUpdate) { _ =>
+      persist(p) { _ =>
         seq += 1
         pushUpdate(authId, update) map { reply =>
           replyTo ! reply
@@ -104,7 +101,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case p @ NewUpdateEvent(authId, NewMessageSent(uid, randomId)) =>
       val replyTo = sender()
       log.info(s"NewMessageSent $p from ${replyTo.path}")
-      persist(SeqUpdate) { _ =>
+      persist(p) { _ =>
         seq += 1
         val update = updateProto.MessageSent(uid, randomId)
         pushUpdate(authId, update) map { reply =>
@@ -115,7 +112,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, keyHash, aesEncryptedKey, message)) =>
       val replyTo = sender()
       log.info(s"NewMessage $p from ${replyTo.path}")
-      persist(SeqUpdate) { _ =>
+      persist(p) { _ =>
         seq += 1
         val update = updateProto.Message(
           senderUID = senderUID,
@@ -148,12 +145,6 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       this.seq += 1
     case msg @ NewUpdateEvent(_, NewMessageSent(_, _)) =>
       log.debug(s"Recovering NewMessageSent ${msg}")
-      this.seq += 1
-    case msg @ SeqUpdate =>
-      log.debug("Recovering SeqUpdate")
-      this.seq += 1
-    case msg: RecoveryFailure =>
-      log.warning(s"$msg")
       this.seq += 1
   }
 
