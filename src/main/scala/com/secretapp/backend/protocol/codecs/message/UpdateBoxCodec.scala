@@ -12,6 +12,7 @@ import scodec.codecs._
 object UpdateBoxCodec extends Codec[UpdateBox] {
   private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
     .\(SeqUpdate.updateHeader) { case c: SeqUpdate => c } (protoPayload(SeqUpdateCodec))
+    .\(FatSeqUpdate.updateHeader) { case c: FatSeqUpdate => c } (protoPayload(FatSeqUpdateCodec))
     .\(SeqUpdateTooLong.updateHeader) { case c: SeqUpdateTooLong => c } (protoPayload(SeqUpdateTooLongCodec))
     .\(WeakUpdate.updateHeader) { case c: WeakUpdate => c } (protoPayload(WeakUpdateCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("UpdateBox"))

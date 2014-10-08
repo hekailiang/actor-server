@@ -4,6 +4,7 @@ import java.nio.file.{Files, Paths}
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.AvatarImage
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
@@ -16,15 +17,15 @@ import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
-
+/*
   "test avatar" should {
     "have proper size" in {
       origBytes must have size 112527
     }
   }
-
-  "user service on receiving `RequestEditAvatar`" should {
-
+ */
+  "user service on receiving `RequestSetAvatar`" should {
+    /*
     "respond with `ResponseAvatarUploaded`" in {
       val r = setAvatarShouldBeOk
 
@@ -79,7 +80,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       dbSmallImage.fileSize      should_== smallBytes.length
       dbImageBytes(dbSmallImage) should_== smallBytes
     }
-
+     */
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
@@ -88,7 +89,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       val diff1 = {
         implicit val scope = scope1
         RequestGetDifference(0, None) :~> <~:[Difference]
-      }
+      }._1
 
       {
         implicit val scope = scope2
@@ -96,11 +97,15 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         setAvatarShouldBeOk
       }
 
-      val diff2 = {
+      Thread.sleep(1000)
+
+      val (diff2, updates2) = {
         implicit val scope = scope1
-        protoReceiveN(1)(scope.probe, scope.apiActor)
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
+
+      updates2.length should beEqualTo(2)
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[AvatarChanged]
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
@@ -160,8 +165,10 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
     ffl.sync()
   }
 
-  private def setAvatarShouldBeOk(implicit scope: TestScope) =
-    RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
+  private def setAvatarShouldBeOk(implicit scope: TestScope) = {
+    val (rsp, _) = RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
+    rsp
+  }
 
   private def dbUser =
     UserRecord.getEntity(scope.user.uid, scope.user.authId).sync().get

@@ -10,9 +10,11 @@ import Scalaz._
 object WeakUpdateMessageCodec {
   def encode(body: WeakUpdateMessage): String \/ BitVector = {
     body match {
-      case m: UserOnline => UserOnlineCodec.encode(m)
-      case m: UserOffline => UserOfflineCodec.encode(m)
+      case m: UserOnline   => UserOnlineCodec.encode(m)
+      case m: UserOffline  => UserOfflineCodec.encode(m)
       case m: UserLastSeen => UserLastSeenCodec.encode(m)
+      case m: Typing       => TypingCodec.encode(m)
+      case m: TypingGroup  => TypingGroupCodec.encode(m)
     }
   }
 
@@ -21,6 +23,8 @@ object WeakUpdateMessageCodec {
       case UserOnline.weakUpdateHeader => UserOnlineCodec.decode(buf)
       case UserOffline.weakUpdateHeader => UserOfflineCodec.decode(buf)
       case UserLastSeen.weakUpdateHeader => UserLastSeenCodec.decode(buf)
+      case Typing.weakUpdateHeader => TypingCodec.decode(buf)
+      case TypingGroup.weakUpdateHeader => TypingGroupCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

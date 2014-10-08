@@ -1,10 +1,11 @@
 package com.secretapp.backend.services.rpc.user
-/*
+
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
-import com.secretapp.backend.data.message.rpc.user.RequestUpdateUser
+import com.secretapp.backend.data.message.rpc.user.RequestEditName
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -12,24 +13,23 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._
 
-class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
+class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
-  "user service on receiving `RequestUpdateUser`" should {
-
+  "user service on receiving `RequestEditName`" should {
     "respond with `ResponseVoid`" in {
-      updateUserShouldBeOk
+      editNameShouldBeOk
     }
 
     "update user name" in {
-      updateUserShouldBeOk
+      editNameShouldBeOk
 
       UserRecord.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
     }
 
     "append update to chain" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(3, 4)
 
-      val diff1 = {
+      val (diff1, _) = {
         implicit val scope = scope1
         RequestGetDifference(0, None) :~> <~:[Difference]
       }
@@ -37,14 +37,19 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
       {
         implicit val scope = scope2
         connectWithUser(scope1.user)
-        updateUserShouldBeOk
+        editNameShouldBeOk
       }
 
-      val diff2 = {
+      Thread.sleep(1000)
+
+      val (diff2, updates2) = {
         implicit val scope = scope1
-        protoReceiveN(1)(scope.probe, scope.apiActor)
+
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
+
+      updates2.length should beEqualTo(2)
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[NameChanged]
 
       val n = diff2.users.filter(_.uid == scope2.user.uid)(0).name
 
@@ -64,8 +69,8 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
 
   private val newName = "John The New"
 
-  private def updateUserShouldBeOk(implicit scope: TestScope) =
-    RequestUpdateUser(newName) :~> <~:[ResponseVoid]
+  private def editNameShouldBeOk(implicit scope: TestScope) =
+    RequestEditName(newName) :~> <~:[ResponseVoid]
 
   private def connectWithUser(u: User)(implicit scope: TestScope) = {
     val rq = RequestSendMessage(
@@ -85,4 +90,3 @@ class UserServiceUpdateUserSpec extends RpcSpec with BeforeExample  {
     rq :~> <~:[ResponseSeq]
   }
 }
- */

@@ -5,43 +5,30 @@ import java.util.regex.Pattern
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
-import com.secretapp.backend.api.SocialProtocol
-import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.Implicits._
+import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
 import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
-import com.secretapp.backend.api.ApiBrokerService
-import scala.util.Success
-import scala.util.{ Random, Try, Success, Failure }
+import scala.util.{ Success, Failure }
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import com.typesafe.config.ConfigFactory
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.data.message.struct.{ User => StructUser }
-import com.secretapp.backend.data.message.{ TransportMessage, RpcResponseBox }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
-import com.secretapp.backend.sms.ClickatellSMSEngine
-import com.secretapp.backend.data.transport._
+import com.secretapp.backend.helpers.SocialHelpers
+import com.secretapp.backend.sms.ClickatellSmsEngineActor
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 import Function.tupled
 
-trait SignService {
+trait SignService extends SocialHelpers {
   self: ApiBrokerService =>
   implicit val session: CSession
 
   import context._
   import UpdatesBroker._
-
-  val serverConfig = ConfigFactory.load()
-  val clickatell = new ClickatellSMSEngine(serverConfig) // TODO: use singleton for share config env
 
   def handleRpcAuth: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestAuthCode =>
@@ -76,7 +63,8 @@ trait SignService {
           AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
-      clickatell.send(phoneNumber.toString, s"Your secret app activation code: $smsCode") // TODO: move it to actor with persistence
+
+      singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
       Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
     }
   }
@@ -202,8 +190,6 @@ trait SignService {
   }
 
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
-    import SocialProtocol._
-
     // Push NewYourDevice updates
     UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
       case Success(authIds) =>
@@ -220,7 +206,7 @@ trait SignService {
     }
 
     // Push NewDevice updates
-    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+    getRelations(uid) onComplete {
       case Success(uids) =>
         log.debug(s"Got relations for ${uid} -> ${uids}")
         for (targetUid <- uids) {

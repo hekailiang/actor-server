@@ -1,13 +1,15 @@
 package com.secretapp.backend.services.rpc.user
 
 import akka.pattern.ask
-import com.secretapp.backend.api.ApiBrokerService
+import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessage, RpcResponse}
 import com.secretapp.backend.data.message.rpc.file.FileLocation
-import com.secretapp.backend.data.message.rpc.user.{RequestEditAvatar, ResponseAvatarChanged}
+import com.secretapp.backend.data.message.rpc.user.{RequestEditName, RequestEditAvatar, ResponseAvatarChanged}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.helpers.{SocialHelpers, UserHelpers}
 import com.secretapp.backend.persist.{FileRecord, UserRecord}
 import com.sksamuel.scrimage.{AsyncImage, Format, Position}
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,7 +43,7 @@ object AvatarUtils {
 
 }
 
-trait UserService {
+trait UserService extends SocialHelpers with UserHelpers {
   self: ApiBrokerService =>
 
   import context._
@@ -50,6 +52,9 @@ trait UserService {
     case r: RequestEditAvatar => authorizedRequest {
       // FIXME: don't use Option.get
       handleEditAvatar(currentUser.get, r)
+    }
+    case r: RequestEditName => authorizedRequest {
+      handleEditName(currentUser.get, r)
     }
   }
 
@@ -88,8 +93,24 @@ trait UserService {
 
     avatar flatMap { a =>
       UserRecord.updateAvatar(user.uid, a) map { _ =>
+        withRelatedAuthIds(user.uid) { authIds =>
+          authIds foreach { authId =>
+            updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
+          }
+        }
         Ok(ResponseAvatarChanged(a))
       }
     }
   }
+
+  private def handleEditName(user: User, r: RequestEditName): Future[RpcResponse] =
+    UserRecord.updateName(user.uid, r.name) map { _ =>
+      withRelatedAuthIds(user.uid) { authIds =>
+        authIds foreach { authId =>
+          updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, NameChanged(user.uid, Some(r.name)))
+        }
+      }
+
+      Ok(ResponseVoid())
+    }
 }

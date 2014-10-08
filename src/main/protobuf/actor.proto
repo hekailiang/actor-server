@@ -308,6 +308,17 @@ message UpdateMessage {
     required bytes message = 5;
 }
 
+// API#0x24
+// Событие о созданном чате созданном чате
+message UpdateGroupCreated {
+    required int64 randomId = 1;
+    required int32 chatId = 2;
+    required int64 accessHash = 3;
+    required string title = 4;
+    required bytes keyHash = 5;
+    repeated InviteUser invites = 6;
+}
+
 // API#0x14
 // Событие о новом групповом сообщении
 message UpdateGroupMessage {
@@ -328,6 +339,7 @@ message UpdateGroupInvite {
     required int64 keyHash = 5; // Might be equals to device public key hash
     required bytes aesEncryptedKey = 6;
     required bytes message = 7;
+    required int32 chatCreatorUID = 8;
 }
 
 // API#0x15
@@ -335,6 +347,7 @@ message UpdateGroupInvite {
 message UpdateGroupUserAdded {
     required int32 chatId = 1;
     required int32 uid = 2;
+    required int32 inviterUID = 3;
 }
 
 // API#0x17
@@ -473,8 +486,8 @@ message RequestSendGroupMessage {
     required int32 chatId = 1;
     required int64 accessHash = 2;
     required int64 randomId = 3;
-    required EncryptedMessage message = 4;
-    optional EncryptedMessage selfMessage = 5;
+    required bytes keyHash = 4;
+    required bytes message = 5;
 }
 
 // API#0x37
@@ -525,9 +538,11 @@ message ResponseCreateChat {
 message RequestInviteUser {
     required int32 chatId = 1;
     required int64 accessHash = 2;
-    required int64 randomId = 3;
-    required bytes chatKeyHash = 4;
-    repeated EncryptedMessage invite = 5;
+    required int32 userId = 3;
+    required int64 userAccessHash = 4;
+    required int64 randomId = 5;
+    required bytes chatKeyHash = 6;
+    repeated EncryptedMessage invite = 7;
 }
 
 // API#0x46
@@ -539,7 +554,7 @@ message RequestLeaveChat {
 
 // API#0x47
 // Ответ: ResponseSeq#0x48
-// 400#: NO_PERMISSION - когда невозможно исключить участника из чата из-за настроек приватности
+// 403#: NO_PERMISSION - когда невозможно исключить участника из чата из-за настроек приватности
 message RequestRemoveUser {
     required int32 chatId = 1;
     required int64 chatAccessHash = 2;

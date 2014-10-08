@@ -5,6 +5,7 @@ import akka.io.Tcp.Received
 import akka.testkit.TestProbe
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MessageBox
@@ -81,10 +82,27 @@ trait RpcSpecHelpers {
     /**
       * Sends message, asserts reply is Ok and returns it
       */
-    def :~>[A <: RpcResponseMessage : ClassTag](wp: WrappedReceiveResponseOk[A])(implicit scope: TestScope): A = {
+    def :~>[A <: RpcResponseMessage : ClassTag]
+      (wp: WrappedReceiveResponseOk[A], updates: Seq[UpdateBox] = Seq.empty)
+      (implicit scope: TestScope): (A, Seq[UpdateBox]) = {
       implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
-      receiveOneWithAck().assertResponseOk[A]
+      val msgs = receiveNWithAck(1)
+
+      val (resps, newUpdates) = msgs partition {
+        case MessageBox(_, ub: UpdateBox) => false
+        case _ => true
+      }
+
+      val newUpdateBoxes = newUpdates map (_.body.asInstanceOf[UpdateBox])
+
+      if (resps.length == 0) {
+        :~>(wp, updates ++ newUpdateBoxes)
+      } else if (resps.length == 1) {
+        (resps.head.assertResponseOk[A], updates ++ newUpdateBoxes)
+      } else {
+        throw new Exception(s"Received more than one response $resps")
+      }
     }
   }
 

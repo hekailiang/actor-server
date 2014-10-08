@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestSendGroupMessageCodec extends Codec[RequestSendGroupMessage] with utils.ProtobufCodec {
   def encode(r: RequestSendGroupMessage) = {
-    val boxed = protobuf.RequestSendGroupMessage(r.chatId, r.accessHash, r.randomId, r.message.toProto, r.selfMessage map (_.toProto))
+    val boxed = protobuf.RequestSendGroupMessage(r.chatId, r.accessHash, r.randomId, r.keyHash, r.message)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestSendGroupMessage.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestSendGroupMessage(chatId, accessHash, randomId, message, selfMessage)) =>
-        RequestSendGroupMessage(chatId, accessHash, randomId, EncryptedMessage.fromProto(message), selfMessage map EncryptedMessage.fromProto)
+      case Success(protobuf.RequestSendGroupMessage(chatId, accessHash, randomId, keyHash, message)) =>
+        RequestSendGroupMessage(chatId, accessHash, randomId, keyHash, message)
     }
   }
 }

@@ -55,6 +55,9 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
       case updateProto.AvatarChanged.seqUpdateHeader =>
         Entity(uuid(row),
           AvatarChangedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.NameChanged.seqUpdateHeader =>
+        Entity(uuid(row),
+          NameChangedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
       case updateProto.ContactRegistered.seqUpdateHeader =>
         Entity(uuid(row),
           ContactRegisteredCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
@@ -64,6 +67,24 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
       case updateProto.MessageRead.seqUpdateHeader =>
         Entity(uuid(row),
           MessageReadCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupInvite.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupInviteCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupMessage.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupMessageCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupUserAdded.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupUserAddedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupUserLeave.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupUserLeaveCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupUserKick.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupUserKickCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
+      case updateProto.GroupCreated.seqUpdateHeader =>
+        Entity(uuid(row),
+          GroupCreatedCodec.decode(BitVector(protobufBody(row))).toOption.get._2)
     }
 
   }
@@ -113,6 +134,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.AvatarChanged =>
         val body = AvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.AvatarChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.NameChanged =>
+        val body = NameChangedCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NameChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.ContactRegistered =>
         val body = ContactRegisteredCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.ContactRegistered.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
@@ -122,13 +146,31 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.MessageRead =>
         val body = MessageReadCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageRead.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupInvite =>
+        val body = GroupInviteCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupInvite.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupMessage =>
+        val body = GroupMessageCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupMessage.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupUserAdded =>
+        val body = GroupUserAddedCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserAdded.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupUserLeave =>
+        val body = GroupUserLeaveCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserLeave.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupUserKick =>
+        val body = GroupUserKickCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserKick.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.GroupCreated =>
+        val body = GroupCreatedCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupCreated.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }
 
-    val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
+    //val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
 
-    f map (_ => uuid)
+    q.future map (_ => uuid)
   }
 
 }

@@ -13,6 +13,7 @@ import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
+import com.secretapp.backend.services.rpc.typing.TypingService
 import com.secretapp.backend.services.rpc.auth.SignService
 import com.secretapp.backend.services.rpc.push.PushService
 import com.secretapp.backend.services.rpc.user.UserService
@@ -31,13 +32,14 @@ trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
 trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
-with PublicKeysService with PresenceService with UserService with ActorLogging with PushService {
+with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
 
   val clusterProxies: ClusterProxies
   val sessionActor: ActorRef
   val currentAuthId: Long
+  val singletons: Singletons
 
   val subscribedToUpdates: Boolean
 
@@ -70,6 +72,18 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
       case rq: RequestSendMessage =>
         handleMessaging(rq)
 
+      case rq: RequestCreateChat =>
+        handleMessaging(rq)
+
+      case rq: RequestInviteUser =>
+        handleMessaging(rq)
+
+      case rq: RequestLeaveChat =>
+        handleMessaging(rq)
+
+      case rq: RequestRemoveUser =>
+        handleMessaging(rq)
+
       case rq: RequestSendGroupMessage =>
         handleMessaging(rq)
 
@@ -90,6 +104,7 @@ with PublicKeysService with PresenceService with UserService with ActorLogging w
           orElse(handleRpcFiles).
           orElse(handleRpcContact).
           orElse(handleRpcPresence).
+          orElse(handleRpcTyping).
           orElse(handleRpcPublicKeys).
           orElse(handleRpcUser).
           orElse(handleRpcPush)(body)

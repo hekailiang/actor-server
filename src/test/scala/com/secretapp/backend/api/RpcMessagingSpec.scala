@@ -32,21 +32,10 @@ import scodec.codecs.uuid
 class RpcMessagingSpec extends RpcSpec {
   import system.dispatcher
 
-  def getState(implicit scope: TestScope): updateProto.ResponseSeq = {
+  def getState(implicit scope: TestScope): (updateProto.ResponseSeq, Seq[UpdateBox]) = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
 
-    val rq = updateProto.RequestGetState()
-    val messageId = getMessageId()
-    val rpcRq = RpcRequestBox(Request(rq))
-    val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
-    send(packageBlob)
-
-    val msg = receiveOneWithAck
-
-    msg
-      .body.asInstanceOf[RpcResponseBox]
-      .body.asInstanceOf[Ok]
-      .body.asInstanceOf[updateProto.ResponseSeq]
+    updateProto.RequestGetState() :~> <~:[updateProto.ResponseSeq]
   }
 
   def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
@@ -90,7 +79,7 @@ class RpcMessagingSpec extends RpcSpec {
       catchNewSession(scope)
 
       // get initial state
-      val initialState = getState
+      val (initialState, _) = getState
 
       val rq = RequestSendMessage(
         uid = userId, accessHash = accessHash,
@@ -128,7 +117,7 @@ class RpcMessagingSpec extends RpcSpec {
       }
 
       {
-        val state = getState
+        val (state, _) = getState
         state.seq must equalTo(initialState.seq + 1)
         getDifference(initialState.seq, initialState.state).updates.length must equalTo(1)
       }
@@ -146,11 +135,11 @@ class RpcMessagingSpec extends RpcSpec {
         msg must equalTo(expectMsg)
       }
 
-      getState.seq must equalTo(initialState.seq + 1)
+      getState._1.seq must equalTo(initialState.seq + 1)
     }
 
     "send UpdateMessageReceived on RequestMessageReceived" in {
-      val (scope1, scope2) = TestScope.pair()
+      val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -192,7 +181,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "send UpdateMessageRead on RequestMessageRead" in {
-      val (scope1, scope2) = TestScope.pair()
+      val (scope1, scope2) = TestScope.pair(5, 6)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -217,6 +206,8 @@ class RpcMessagingSpec extends RpcSpec {
         getState(scope)
       }
 
+      Thread.sleep(500)
+
       {
         implicit val scope = scope2
 
@@ -231,7 +222,7 @@ class RpcMessagingSpec extends RpcSpec {
         val update = updBox.body.asInstanceOf[SeqUpdate]
         update.body should beAnInstanceOf[MessageRead]
 
-        val diff = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body should beAnInstanceOf[MessageRead]
       }
     }

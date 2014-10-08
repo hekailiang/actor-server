@@ -1,16 +1,14 @@
 package com.secretapp.backend.session
 
 import akka.actor._
-import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
-import akka.contrib.pattern.ClusterSharding
-import akka.contrib.pattern.ShardRegion
-import com.secretapp.backend.api.frontend._
-import com.secretapp.backend.data.message._
+import akka.persistence._
+import akka.util.{ ByteString, Timeout }
+import com.secretapp.backend.data.message.{ Container, Drop, ResponseAuthId, RpcRequestBox, RpcResponseBox, UnsentResponse }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
-import akka.util.Timeout
 import scala.collection.immutable
 import com.secretapp.backend.data.transport.MessageBox
 import com.datastax.driver.core.{ Session => CSession }
@@ -57,16 +55,17 @@ object SessionActor {
     case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
   }
 
-  def startRegion()(implicit system: ActorSystem, clusterProxies: ClusterProxies, session: CSession) = ClusterSharding(system).start(
-    typeName = "Session",
-    entryProps = Some(Props(new SessionActor(clusterProxies, session))),
-    idExtractor = idExtractor,
-    shardResolver = shardResolver
-  )
+  def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) =
+    ClusterSharding(system).start(
+      typeName = "Session",
+      entryProps = Some(Props(new SessionActor(singletons, clusterProxies, session))),
+      idExtractor = idExtractor,
+      shardResolver = shardResolver
+    )
 
 }
 
-class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extends Actor with TransportSerializers with SessionService with PackageAckService with RandomService with ActorLogging with MessageIdGenerator {
+class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends Actor with SessionService with PackageAckService with RandomService with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -84,14 +83,14 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
   val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
+  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)(session)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.HashSet.empty[ActorRef]
   var lastConnector: Option[ActorRef] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, clusterProxies, subscribedToUpdates, session)), "api-broker")
+  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
   def queueNewSession(messageId: Long): Unit = {
     log.info(s"queueNewSession $messageId, $sessionId")
@@ -169,6 +168,8 @@ class SessionActor(val clusterProxies: ClusterProxies, session: CSession) extend
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
+      log.debug(s"$msg")
+      currentUser = Some(user)
       apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
     case msg @ SubscribeToUpdates =>
       if (!subscribedToUpdates && !subscribingToUpdates) {

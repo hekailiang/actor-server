@@ -2,7 +2,7 @@ package com.secretapp.backend.session
 
 import akka.actor._
 import com.secretapp.backend.data.message.{ struct, update => updateProto, RpcResponseBox, UpdateBox }
-import com.secretapp.backend.data.message.update.WeakUpdate
+import com.secretapp.backend.data.message.update.{ WeakUpdate, WeakUpdateMessage }
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.rpc.presence._
 
@@ -10,18 +10,8 @@ class WeakPusherActor(sessionActor: ActorRef, authId: Long) extends Actor with A
   import PresenceProtocol._
 
   def receive = {
-    case u: updateProto.UserOnline =>
-      log.info(s"Pushing presence to session authId=${authId} ${u}")
-      val upd = WeakUpdate(System.currentTimeMillis / 1000, u)
-      val ub = UpdateBox(upd)
-      sessionActor ! UpdateBoxToSend(ub)
-    case u: updateProto.UserOffline =>
-      log.info(s"Pushing presence to session authId=${authId} ${u}")
-      val upd = WeakUpdate(System.currentTimeMillis / 1000, u)
-      val ub = UpdateBox(upd)
-      sessionActor ! UpdateBoxToSend(ub)
-    case u: updateProto.UserLastSeen =>
-      log.info(s"Pushing presence to session authId=${authId} ${u}")
+    case u: WeakUpdateMessage =>
+      log.info(s"Pushing weak update to session authId=${authId} ${u}")
       val upd = WeakUpdate(System.currentTimeMillis / 1000, u)
       val ub = UpdateBox(upd)
       sessionActor ! UpdateBoxToSend(ub)

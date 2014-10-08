@@ -1,8 +1,7 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import akka.contrib.pattern.ClusterSharding
-import akka.contrib.pattern.ShardRegion
+import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout
@@ -32,6 +31,7 @@ object UpdatesBroker {
   case class NewUpdatePush(authId: Long, update: SeqUpdateMessage)
 
   case class GetSeq(authId: Long)
+  case class GetSeqAndState(authId: Long)
 
   case object Stop
 
@@ -45,6 +45,7 @@ object UpdatesBroker {
     case msg @ NewUpdateEvent(authId, _) => (authId.toString, msg)
     case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
     case msg @ GetSeq(authId) => (authId.toString, msg)
+    case msg @ GetSeqAndState(authId) => (authId.toString, msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -53,6 +54,7 @@ object UpdatesBroker {
     case msg @ NewUpdateEvent(authId, _) => (authId % shardCount).toString
     case msg @ NewUpdatePush(authId, _) => (authId % shardCount).toString
     case msg @ GetSeq(authId) => (authId % shardCount).toString
+    case msg @ GetSeqAndState(authId) => (authId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
@@ -81,6 +83,9 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
   var lastSnapshottedAtSeq: Int = 0
   val minSnapshotStep: Int = 200
 
+  trait Event
+  case object SeqUpdate extends Event
+
   val receiveCommand: Receive = LoggingReceive {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
     case UpdatesBroker.Stop => context.stop(self)
@@ -88,16 +93,18 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       sender() ! this.seq
     case p @ NewUpdatePush(authId, update) =>
       val replyTo = sender()
-      log.info(s"NewUpdateEvent for $authId: $update")
-      persist(p) { _ =>
+      log.info(s"NewUpdatePush for $authId: $update")
+      persist(SeqUpdate) { _ =>
         seq += 1
-        pushUpdate(authId, update)
+        pushUpdate(authId, update) map { reply =>
+          replyTo ! reply
+        }
         maybeSnapshot()
       }
     case p @ NewUpdateEvent(authId, NewMessageSent(uid, randomId)) =>
       val replyTo = sender()
       log.info(s"NewMessageSent $p from ${replyTo.path}")
-      persist(p) { _ =>
+      persist(SeqUpdate) { _ =>
         seq += 1
         val update = updateProto.MessageSent(uid, randomId)
         pushUpdate(authId, update) map { reply =>
@@ -108,7 +115,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, keyHash, aesEncryptedKey, message)) =>
       val replyTo = sender()
       log.info(s"NewMessage $p from ${replyTo.path}")
-      persist(p) { _ =>
+      persist(SeqUpdate) { _ =>
         seq += 1
         val update = updateProto.Message(
           senderUID = senderUID,
@@ -141,6 +148,12 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
       this.seq += 1
     case msg @ NewUpdateEvent(_, NewMessageSent(_, _)) =>
       log.debug(s"Recovering NewMessageSent ${msg}")
+      this.seq += 1
+    case msg @ SeqUpdate =>
+      log.debug("Recovering SeqUpdate")
+      this.seq += 1
+    case msg: RecoveryFailure =>
+      log.warning(s"$msg")
       this.seq += 1
   }
 

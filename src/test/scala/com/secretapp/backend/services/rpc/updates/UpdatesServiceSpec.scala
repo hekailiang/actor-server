@@ -28,14 +28,14 @@ class UpdatesServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
         RequestGetState() :~> <~:[ResponseSeq]
       }
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
 
         val rq = RequestSendMessage(
@@ -69,7 +69,7 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(1)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo None
       }
     }
@@ -82,7 +82,7 @@ class UpdatesServiceSpec extends RpcSpec {
       { // subscribe
         implicit val scope = scope1
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
         RequestGetState() :~> <~:[ResponseSeq]
       }
@@ -98,7 +98,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.seq must equalTo(0)
 
         val rq = RequestSendMessage(
@@ -123,7 +123,7 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(1)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo None
       }
 
@@ -146,14 +146,14 @@ class UpdatesServiceSpec extends RpcSpec {
 
         RequestGetState() :~> <~:[ResponseSeq]
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must equalTo(None)
       }
 
 
       {
         implicit val scope = scope2
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
 
         for (i <- (1 to 330)) {
           val rq = RequestSendMessage(
@@ -178,13 +178,13 @@ class UpdatesServiceSpec extends RpcSpec {
         // Update
         protoReceiveN(330, DurationInt(180).seconds)(scope.probe, scope.apiActor)
 
-        val state = RequestGetState() :~> <~:[ResponseSeq]
+        val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo (None)
 
-        val diff1 = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff1, _) = RequestGetDifference(0, None) :~> <~:[Difference]
         diff1.updates.length must equalTo(300)
 
-        val diff2 = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        val (diff2, _) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
         diff2.updates.length must equalTo(30)
 
         val updates = diff1.updates ++ diff2.updates
@@ -193,7 +193,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
         updates.map(_.body.asInstanceOf[update.Message].message).toSet must equalTo(expectedMessages)
 
-        val diff3 = RequestGetDifference(diff2.seq, diff2.state) :~> <~:[Difference]
+        val (diff3, _) = RequestGetDifference(diff2.seq, diff2.state) :~> <~:[Difference]
         diff3.updates.length must equalTo(0)
         diff3.state must not equalTo(None)
       }

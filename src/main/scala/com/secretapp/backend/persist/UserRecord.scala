@@ -102,7 +102,6 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 object UserRecord extends UserRecord with DBConnector {
 
   def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
-
     val phone = Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
@@ -203,10 +202,6 @@ object UserRecord extends UserRecord with DBConnector {
     update.where(_.uid eqs uid)
       .modify(_.name setTo name)
       .future
-
-  def getEntities(uid: Int)(implicit session: Session): Future[Seq[User]] = {
-    select.where(_.uid eqs uid).limit(100).fetch()
-  }
 
   def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {
     select.where(_.uid eqs uid).one()

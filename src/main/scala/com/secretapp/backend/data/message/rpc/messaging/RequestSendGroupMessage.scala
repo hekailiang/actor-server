@@ -7,8 +7,8 @@ case class RequestSendGroupMessage(
   chatId: Int,
   accessHash: Long,
   randomId: Long,
-  message: EncryptedMessage,
-  selfMessage: Option[EncryptedMessage]
+  keyHash: BitVector,
+  message: BitVector
 ) extends RpcRequestMessage {
   val header = RequestSendGroupMessage.requestType
 }
