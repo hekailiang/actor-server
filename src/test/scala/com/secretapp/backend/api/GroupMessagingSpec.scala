@@ -125,7 +125,7 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
-        Thread.sleep(500)
+        Thread.sleep(1000)
 
         val rqInviteUser = RequestInviteUser(
           chatId = resp.chatId,
@@ -205,6 +205,39 @@ class GroupMessagingSpec extends RpcSpec {
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupInvite]
         diff.updates(1).body.assertInstanceOf[GroupUserLeave]
+      }
+    }
+
+    "not allow to send messages to group if user is not a member of this group" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      val chat = {
+        implicit val scope = scope1
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = BitVector(1, 1, 1),
+          publicKey = BitVector(1, 0, 1, 0),
+          invites = immutable.Seq()
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        resp
+      }
+
+      {
+        implicit val scope = scope2
+
+        val rqSendMessage = RequestSendGroupMessage(
+          chatId = chat.chatId,
+          accessHash = chat.accessHash,
+          randomId = 666L,
+          keyHash = BitVector(1, 1, 1),
+          message = BitVector(1, 2, 3)
+        )
+
+        rqSendMessage :~> <~:(403, "NO_PERMISSION")
       }
     }
   }
