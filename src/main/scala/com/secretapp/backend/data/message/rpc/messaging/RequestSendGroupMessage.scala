@@ -1,6 +1,7 @@
 package com.secretapp.backend.data.message.rpc.messaging
 
 import com.secretapp.backend.data.message.rpc._
+import scodec.bits.BitVector
 
 @SerialVersionUID(1l)
 case class RequestSendGroupMessage(

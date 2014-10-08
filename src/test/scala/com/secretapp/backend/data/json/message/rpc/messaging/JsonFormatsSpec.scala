@@ -10,6 +10,7 @@ import JsonFormatsSpec._
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
+import scodec.bits._
 
 class JsonFormatsSpec extends JsonSpec {
 
@@ -64,15 +65,15 @@ class JsonFormatsSpec extends JsonSpec {
     }
 
     "(de)serialize RequestSendGroupMessage" in {
-      val (encryptedMessage1, encryptedMessage1Json) = genEncryptedMessage
-      val (encryptedMessage2, encryptedMessage2Json) = genEncryptedMessage
-      val v = RequestSendGroupMessage(1, 2, 3, encryptedMessage1, encryptedMessage2.some)
+      val keyHash = hex"ac1d".bits
+      val message = hex"123456abcdf".bits
+      val v = RequestSendGroupMessage(1, 2, 3, keyHash, message)
       val j = withHeader(RequestSendGroupMessage.requestType)(
         "chatId" -> 1,
         "accessHash" -> "2",
         "randomId" -> "3",
-        "message" -> encryptedMessage1Json,
-        "selfMessage" -> encryptedMessage2Json
+        "keyHash" -> keyHash.toBase64,
+        "message" -> message.toBase64
       )
       testToAndFromJson[RpcRequestMessage](j, v)
     }

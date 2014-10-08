@@ -3,9 +3,9 @@ package com.secretapp.backend.session
 import akka.actor._
 import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
-import akka.persistence._
-import akka.util.{ ByteString, Timeout }
-import com.secretapp.backend.data.message.{ Container, Drop, ResponseAuthId, RpcRequestBox, RpcResponseBox, UnsentResponse }
+import akka.util.Timeout
+import com.secretapp.backend.api.frontend._
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
@@ -65,7 +65,7 @@ object SessionActor {
 
 }
 
-class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends Actor with SessionService with PackageAckService with RandomService with ActorLogging {
+class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends Actor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._

@@ -249,7 +249,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   protected var incMessageId = 0L
 
-  val counters = new Singletons
+  implicit val counters = new Singletons
   implicit val clusterProxies = new ClusterProxies
   val sessionRegion = SessionActor.startRegion()
 

@@ -34,7 +34,7 @@ class ApiKernel extends Bootable {
     // Session bootstrap
     val clusterProxies = new ClusterProxies
     val singletons = new Singletons
-    val sessionRegion = SessionActor.startRegion()(system, clusterProxies, session)
+    val sessionRegion = SessionActor.startRegion()(system, singletons, clusterProxies, session)
 
     // TCP transport bootstrap
     val tcpPort = Try(serverConfig.getInt("tcp-port")).getOrElse(8080)
