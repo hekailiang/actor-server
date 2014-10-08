@@ -229,14 +229,16 @@ sealed trait MessagingService extends RandomService {
             chatUserIds <- GroupChatUserRecord.getUsers(chatId)
             s <- getState(currentUser.authId)
           } yield {
-            chatUserIds foreach { userId =>
+            (chatUserIds :+ currentUser.uid) foreach { userId =>
               for {
                 authIds <- getAuthIds(userId)
               } yield {
-                authIds map { authId =>
-                  updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
-                    chatId, currentUser.uid
-                  ))
+                authIds foreach {
+                  case currentUser.authId =>
+                  case authId =>
+                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
+                      chatId, currentUser.uid
+                    ))
                 }
               }
             }
@@ -274,6 +276,18 @@ sealed trait MessagingService extends RandomService {
             pairs map {
               case (authId, invite) =>
                 updatesBrokerRegion ! NewUpdatePush(authId, invite)
+            }
+
+            getAuthIds(currentUser.uid) map { authIds =>
+              authIds.withFilter {
+                case currentUser.authId => false
+                case _ => true
+              } map { authId =>
+                updatesBrokerRegion ! NewUpdatePush(authId, GroupCreated(
+                  randomId = randomId, chatId = chat.id, accessHash = chat.accessHash, title = chat.title,
+                  keyHash = chat.keyHash, invites = invites
+                ))
+              }
             }
 
             for {
@@ -408,36 +422,40 @@ sealed trait MessagingService extends RandomService {
           Future.successful(Error(400, "WRONG_KEY", "Invalid chat key hash.", false))
         } else {
           fchatUserIds flatMap { userIds =>
-            val updatesFutures = userIds map { userId =>
-              getUsers(userId) map {
-                case users =>
-                  users.toSeq map {
-                    case (_, user) =>
-                    (
-                      user.authId,
-                      GroupMessage(
-                        senderUID = currentUser.uid,
-                        chatId = chat.id,
-                        keyHash = user.publicKeyHash,
-                        aesKeyHash = aesKeyHash,
-                        message = message
-                      )
-                    )
-                  }
+            if (userIds.contains(currentUser.uid)) {
+              val updatesFutures = userIds map { userId =>
+                getUsers(userId) map {
+                  case users =>
+                    users.toSeq map {
+                      case (_, user) =>
+                        (
+                          user.authId,
+                          GroupMessage(
+                            senderUID = currentUser.uid,
+                            chatId = chat.id,
+                            keyHash = user.publicKeyHash,
+                            aesKeyHash = aesKeyHash,
+                            message = message
+                          )
+                        )
+                    }
+                }
               }
-            }
-            //updatesFutures.q
-            Future.sequence(updatesFutures) map { updates =>
-              updates.toVector.flatten foreach {
-                case (authId, update) =>
-                  updatesBrokerRegion ! NewUpdatePush(authId, update)
-              }
-            }
 
-            for {
-              s <- getState(currentUser.authId)
-            } yield {
-              Ok(updateProto.ResponseSeq(s._1, s._2))
+              Future.sequence(updatesFutures) map { updates =>
+                updates.toVector.flatten foreach {
+                  case (authId, update) =>
+                    updatesBrokerRegion ! NewUpdatePush(authId, update)
+                }
+              }
+
+              for {
+                s <- getState(currentUser.authId)
+              } yield {
+                Ok(updateProto.ResponseSeq(s._1, s._2))
+              }
+            } else {
+              Future.successful(Error(403, "NO_PERMISSION", "You are not a member of this group.", true))
             }
           }
         }

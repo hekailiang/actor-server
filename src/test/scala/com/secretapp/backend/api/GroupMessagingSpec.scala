@@ -36,6 +36,7 @@ class GroupMessagingSpec extends RpcSpec {
   "GroupMessaging" should {
     "send invites on creation and send/receive messages" in {
       val (scope1, scope2) = TestScope.pair()
+      val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
 
       {
         implicit val scope = scope1
@@ -65,6 +66,8 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
+        Thread.sleep(500)
+
         val rqSendMessage = RequestSendGroupMessage(
           chatId = resp.chatId,
           accessHash = resp.accessHash,
@@ -77,6 +80,15 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupCreated]
+      }
+
+      {
+        implicit val scope = scope11
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
+        diff.updates(0).body.assertInstanceOf[GroupCreated]
       }
 
       {
@@ -113,7 +125,7 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
-        Thread.sleep(500)
+        Thread.sleep(1000)
 
         val rqInviteUser = RequestInviteUser(
           chatId = resp.chatId,
@@ -152,6 +164,7 @@ class GroupMessagingSpec extends RpcSpec {
 
     "send GroupUserLeave on user leave" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
+      val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
 
       {
         implicit val scope = scope1
@@ -181,10 +194,19 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
+        Thread.sleep(1000)
+
         RequestLeaveChat(
           chatId = resp.chatId,
           accessHash = resp.accessHash
         ) :~> <~:[updateProto.ResponseSeq]
+      }
+
+      {
+        implicit val scope = scope11
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates(1).body.assertInstanceOf[GroupUserLeave]
       }
 
       {
@@ -193,6 +215,39 @@ class GroupMessagingSpec extends RpcSpec {
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupInvite]
         diff.updates(1).body.assertInstanceOf[GroupUserLeave]
+      }
+    }
+
+    "not allow to send messages to group if user is not a member of this group" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      val chat = {
+        implicit val scope = scope1
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = BitVector(1, 1, 1),
+          publicKey = BitVector(1, 0, 1, 0),
+          invites = immutable.Seq()
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        resp
+      }
+
+      {
+        implicit val scope = scope2
+
+        val rqSendMessage = RequestSendGroupMessage(
+          chatId = chat.chatId,
+          accessHash = chat.accessHash,
+          randomId = 666L,
+          keyHash = BitVector(1, 1, 1),
+          message = BitVector(1, 2, 3)
+        )
+
+        rqSendMessage :~> <~:(403, "NO_PERMISSION")
       }
     }
   }
