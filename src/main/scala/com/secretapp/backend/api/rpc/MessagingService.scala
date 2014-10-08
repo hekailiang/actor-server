@@ -229,14 +229,16 @@ sealed trait MessagingService extends RandomService {
             chatUserIds <- GroupChatUserRecord.getUsers(chatId)
             s <- getState(currentUser.authId)
           } yield {
-            chatUserIds foreach { userId =>
+            (chatUserIds :+ currentUser.uid) foreach { userId =>
               for {
                 authIds <- getAuthIds(userId)
               } yield {
-                authIds map { authId =>
-                  updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
-                    chatId, currentUser.uid
-                  ))
+                authIds foreach {
+                  case currentUser.authId =>
+                  case authId =>
+                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
+                      chatId, currentUser.uid
+                    ))
                 }
               }
             }

@@ -164,6 +164,7 @@ class GroupMessagingSpec extends RpcSpec {
 
     "send GroupUserLeave on user leave" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
+      val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
 
       {
         implicit val scope = scope1
@@ -193,10 +194,19 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
+        Thread.sleep(1000)
+
         RequestLeaveChat(
           chatId = resp.chatId,
           accessHash = resp.accessHash
         ) :~> <~:[updateProto.ResponseSeq]
+      }
+
+      {
+        implicit val scope = scope11
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff.updates(1).body.assertInstanceOf[GroupUserLeave]
       }
 
       {
