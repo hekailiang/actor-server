@@ -36,6 +36,7 @@ class GroupMessagingSpec extends RpcSpec {
   "GroupMessaging" should {
     "send invites on creation and send/receive messages" in {
       val (scope1, scope2) = TestScope.pair()
+      val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
 
       {
         implicit val scope = scope1
@@ -65,6 +66,8 @@ class GroupMessagingSpec extends RpcSpec {
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
+        Thread.sleep(500)
+
         val rqSendMessage = RequestSendGroupMessage(
           chatId = resp.chatId,
           accessHash = resp.accessHash,
@@ -77,6 +80,15 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.head.body.assertInstanceOf[GroupCreated]
+      }
+
+      {
+        implicit val scope = scope11
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
+        diff.updates(0).body.assertInstanceOf[GroupCreated]
       }
 
       {

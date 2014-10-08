@@ -276,6 +276,18 @@ sealed trait MessagingService extends RandomService {
                 updatesBrokerRegion ! NewUpdatePush(authId, invite)
             }
 
+            getAuthIds(currentUser.uid) map { authIds =>
+              authIds.withFilter {
+                case currentUser.authId => false
+                case _ => true
+              } map { authId =>
+                updatesBrokerRegion ! NewUpdatePush(authId, GroupCreated(
+                  randomId = randomId, chatId = chat.id, accessHash = chat.accessHash, title = chat.title,
+                  keyHash = chat.keyHash, invites = invites
+                ))
+              }
+            }
+
             for {
               _ <- fselfUserAdded
               s <- updatesBrokerRegion.ask(NewUpdatePush(currentUser.authId, GroupCreated(
