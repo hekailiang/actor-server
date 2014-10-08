@@ -5,7 +5,7 @@ import scala.concurrent.Future
 import com.datastax.driver.core.Session
 import com.secretapp.backend.persist._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class AuthId(authId: Long, userId: Option[Int]) extends KeyedEntity[Long] {
   val key = authId
 

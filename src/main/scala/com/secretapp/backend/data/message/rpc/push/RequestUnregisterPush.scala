@@ -2,7 +2,7 @@ package com.secretapp.backend.data.message.rpc.push
 
 import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcRequestMessage}
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class RequestUnregisterPush() extends RpcRequestMessage {
   val header = RequestUnregisterPush.requestType
 }

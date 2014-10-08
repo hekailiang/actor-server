@@ -3,7 +3,7 @@ package com.secretapp.backend.data.message.rpc.contact
 import com.secretapp.backend.data.message.ProtobufMessage
 import im.actor.messenger.{ api => protobuf }
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class PublicKeyRequest(uid: Int, accessHash: Long, keyHash: Long) extends ProtobufMessage
 {
   def toProto = protobuf.PublicKeyRequest(uid, accessHash, keyHash)

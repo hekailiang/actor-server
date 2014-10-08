@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.ProtobufMessage
 import im.actor.messenger.{ api => protobuf }
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class AvatarImage(fileLocation: FileLocation, width: Int, height: Int, fileSize: Int) extends ProtobufMessage {
   def toProto = protobuf.AvatarImage(fileLocation.toProto, width, height, fileSize)
 }

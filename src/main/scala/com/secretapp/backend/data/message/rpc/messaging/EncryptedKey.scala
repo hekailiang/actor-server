@@ -9,7 +9,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class EncryptedKey(keyHash: Long, aesEncryptedKey: BitVector) extends ProtobufMessage {
   def toProto = protobuf.EncryptedKey(keyHash, aesEncryptedKey)
 }

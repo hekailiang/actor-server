@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.rpc
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class Ok(body: RpcResponseMessage) extends RpcResponse {
   val rpcType = Ok.rpcType
 }

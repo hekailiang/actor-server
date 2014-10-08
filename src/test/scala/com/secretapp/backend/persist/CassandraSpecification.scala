@@ -4,7 +4,7 @@ import org.specs2.matcher.ThrownExpectations
 import scala.concurrent.blocking
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.JavaConversions._
-import com.datastax.driver.core.{ Cluster, Session }
+import com.datastax.driver.core.{ Cluster, Session => CSession }
 import com.typesafe.config._
 import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.typesafe.scalalogging.slf4j._
@@ -24,11 +24,11 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     .withoutMetrics()
     .build()
 
-  implicit val session: Session = blocking {
+  implicit val csession: CSession = blocking {
     cluster.connect()
   }
 
-  private def createAndUseKeySpace(spaceName: String)(implicit session: Session) = {
+  private def createAndUseKeySpace(spaceName: String)(implicit session: CSession) = {
     blocking {
       cassandraSpecLog.info(s"Creating keyspace $spaceName")
       session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
@@ -36,7 +36,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     }
   }
 
-  private def dropKeySpaces(spaceName: String)(implicit session: Session) = {
+  private def dropKeySpaces(spaceName: String)(implicit session: CSession) = {
     def dropKeyspace(spaceName: String) = {
       cassandraSpecLog.info(s"Dropping keyspace $spaceName")
       session.execute(s"DROP KEYSPACE IF EXISTS $spaceName;")
@@ -55,7 +55,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
 
   private def createDB() {
     createAndUseKeySpace(keySpace)
-    DBConnector.createTables(session).sync()
+    DBConnector.createTables(csession).sync()
   }
 
   private def cleanDB() {

@@ -1,4 +1,4 @@
 package com.secretapp.backend.data.models
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class UnregisteredContact(phoneNumber: Long, authId: Long)

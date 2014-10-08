@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class UnsentResponse(messageId: Long, requestMessageId: Long, length: Int) extends TransportMessage {
   val header = UnsentResponse.header
 }

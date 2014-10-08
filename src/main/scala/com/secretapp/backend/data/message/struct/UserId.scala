@@ -3,7 +3,7 @@ package com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.ProtobufMessage
 import im.actor.messenger.{ api => protobuf }
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class UserId(uid: Int, accessHash: Long) extends ProtobufMessage {
   def toProto = protobuf.UserId(uid, accessHash)
 }

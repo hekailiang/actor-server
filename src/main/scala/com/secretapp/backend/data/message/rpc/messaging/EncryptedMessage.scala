@@ -10,7 +10,7 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class EncryptedMessage(message: BitVector, keys: immutable.Seq[EncryptedKey]) extends ProtobufMessage
 {
   def toProto = protobuf.EncryptedMessage(message, keys map (_.toProto))

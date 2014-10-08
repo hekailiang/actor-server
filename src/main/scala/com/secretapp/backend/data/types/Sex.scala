@@ -10,19 +10,19 @@ sealed trait Sex {
   def toOption: Option[Sex]
 }
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case object NoSex extends Sex {
   def toProto = protobuf.Sex.UNKNOWN
   def toOption = None
 }
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case object Male extends Sex {
   def toProto = protobuf.Sex.MALE
   def toOption = Male.some
 }
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case object Female extends Sex {
   def toProto = protobuf.Sex.FEMALE
   def toOption = Female.some

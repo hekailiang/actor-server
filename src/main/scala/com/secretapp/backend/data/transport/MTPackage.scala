@@ -5,7 +5,7 @@ import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.transport.MTPackageCodec
 import scodec.bits._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class MTPackage(authId: Long, sessionId: Long, messageBoxBytes: BitVector) extends TransportPackage {
   def decodeMessageBox = MessageBoxCodec.decodeValue(this.messageBoxBytes)
 

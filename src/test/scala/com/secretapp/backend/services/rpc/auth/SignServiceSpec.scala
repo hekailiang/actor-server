@@ -29,10 +29,10 @@ class SignServiceSpec extends RpcSpec {
         implicit val (probe, apiActor) = getProbeAndActor()
         implicit val session = SessionIdentifier()
         implicit val authId = rand.nextLong()
-
+        val phoneNumber = 79853867016L + rand.nextInt(10000000)
         insertAuthId(authId)
 
-        sendMsg(RpcRequestBox(Request(RequestAuthCode(defaultPhoneNumber, rand.nextInt(), rand.nextString(10)))))
+        sendMsg(RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt(), rand.nextString(10)))))
 
         expectMsgByPF(withNewSession = true) {
           case RpcResponseBox(_, Ok(ResponseAuthCode(_, false))) =>

@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.rpc
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class InternalError(canTryAgain: Boolean, tryAgainDelay: Int) extends RpcResponse {
   val rpcType = InternalError.rpcType
 }

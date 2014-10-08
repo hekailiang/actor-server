@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.rpc
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class ConnectionNotInitedError() extends RpcResponse {
   val rpcType = ConnectionNotInitedError.rpcType
 }

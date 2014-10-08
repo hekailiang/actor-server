@@ -7,7 +7,7 @@ import im.actor.messenger.{ api => protobuf }
 import scalaz._
 import Scalaz._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class User(uid: Int,
                 accessHash: Long,
                 name: String,

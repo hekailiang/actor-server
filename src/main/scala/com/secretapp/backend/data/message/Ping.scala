@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class Ping(randomId: Long) extends TransportMessage {
   val header = Ping.header
 }

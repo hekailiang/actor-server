@@ -2,7 +2,7 @@ package com.secretapp.backend.data.message.update
 
 import com.secretapp.backend.data.message.rpc._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class SeqUpdateTooLong() extends UpdateMessage {
   val updateHeader = 0x19
 }

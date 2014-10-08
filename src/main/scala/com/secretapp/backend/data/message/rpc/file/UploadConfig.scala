@@ -5,7 +5,7 @@ import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import im.actor.messenger.{ api => protobuf }
 import scodec.bits.BitVector
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class UploadConfig(serverData: BitVector) extends ProtobufMessage
 {
   def toProto = protobuf.UploadConfig(serverData)

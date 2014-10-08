@@ -2,7 +2,7 @@ package com.secretapp.backend.data.message
 
 import com.secretapp.backend.data.message.rpc.RpcResponse
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class RpcResponseBox(messageId: Long, body: RpcResponse) extends TransportMessage {
   val header = RpcResponseBox.header
 }

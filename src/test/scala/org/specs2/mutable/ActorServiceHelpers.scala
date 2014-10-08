@@ -56,7 +56,7 @@ trait ActorServiceImplicits {
 }
 
 trait ActorCommon { self: RandomService =>
-  implicit val session: CSession
+  implicit val csession: CSession
 
   case class SessionIdentifier(id: Long)
   object SessionIdentifier {
@@ -249,9 +249,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   protected var incMessageId = 0L
 
-  implicit val counters = new Singletons
-  implicit val clusterProxies = new ClusterProxies
-  val sessionRegion = SessionActor.startRegion()
+  val counters = new Singletons
+  val clusterProxies = new ClusterProxies
+  val sessionRegion = SessionActor.startRegion()(system, counters, clusterProxies, csession)
 
   def genPublicKey = {
     val ecSpec: ECNamedCurveParameterSpec = ECNamedCurveTable.getParameterSpec("prime192v1")
@@ -311,16 +311,16 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, sessionRegion, session) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, sessionRegion, csession) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 
   def getProbeAndActor()(implicit transport: TransportConnection) = {
     val probe = TestProbe()
     val actor = transport match {
-      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, sessionRegion, session))
+      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, sessionRegion, csession))
       case JsonConnection =>
-        val props = Props(new WSFrontend(probe.ref, sessionRegion, session) {
+        val props = Props(new WSFrontend(probe.ref, sessionRegion, csession) {
           override def receive = businessLogic orElse closeLogic
         })
         system.actorOf(props)

@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.update
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class UserOffline(uid: Int) extends WeakUpdateMessage {
   val weakUpdateHeader = UserOffline.weakUpdateHeader
 }

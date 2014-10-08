@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import java.util.UUID
 import scodec.bits._
 
-@SerialVersionUID(1l)
+@SerialVersionUID(1L)
 case class ResponseCreateChat(
   chatId: Int, accessHash: Long, seq: Int, state: Option[UUID]
 ) extends RpcResponseMessage {
