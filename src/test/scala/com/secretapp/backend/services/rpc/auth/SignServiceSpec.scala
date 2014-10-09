@@ -26,13 +26,11 @@ class SignServiceSpec extends RpcSpec {
   transportForeach { implicit transport =>
     "auth code" should {
       "send sms code" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val session = SessionIdentifier()
-        implicit val authId = rand.nextLong()
-        val phoneNumber = 79853867016L + rand.nextInt(10000000)
-        insertAuthId(authId)
+        implicit val scope = genTestScope()
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
 
-        sendMsg(RpcRequestBox(Request(RequestAuthCode(phoneNumber, rand.nextInt(), rand.nextString(10)))))
+        sendRpcMsg(RequestAuthCode(phoneNumber, rand.nextInt(), rand.nextString(10)))
 
         expectMsgByPF(withNewSession = true) {
           case RpcResponseBox(_, Ok(ResponseAuthCode(_, false))) =>
@@ -41,440 +39,294 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign up" should {
-      //    "succeed" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      /*
-      //      val accessHash = User.getAccessHash(authId, userId, userSalt)
-      //      val user = struct.User(userId, accessHash, "Timothy Klim", None, Set(publicKeyHash), defaultPhoneNumber)
-      //      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //       */
-      //      // FIXME: use dsl, check package contents, not only types
-      //      val msg = receiveOneWithAck
-      //      msg.body.asInstanceOf[RpcResponseBox].body.asInstanceOf[Ok].body should beAnInstanceOf[ResponseAuth]
-      //    }
-
-      "succeed with new public key and same authId" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val sessionId = SessionIdentifier()
-        implicit val authId = rand.nextLong()
-
+      "succeed" in {
+        implicit val scope = genTestScope()
         val publicKey = genPublicKey
-        val newPublicKey = genPublicKey
-        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+        val pkHash = ec.PublicKey.keyHash(publicKey)
+        val pkHashes = Set(pkHash)
+        val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
-        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-          phoneNumber = defaultPhoneNumber, name = name)
-        addUser(authId, sessionId.id, user, defaultPhoneNumber)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
-        sendMsg(RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, name, newPublicKey))))
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey))
 
-        val accessHash = User.getAccessHash(authId, userId, userSalt)
-        val newUser = struct.User(userId, accessHash, "Timothy Klim", None, Set(newPublicKeyHash), defaultPhoneNumber)
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, `newUser`))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
         }
       }
 
-      //    "succeed with new public key and new authId" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val userId = 333
-      //
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      val name = "Timothy Klim"
-      //      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-      //        phoneNumber = defaultPhoneNumber, name = name)
-      //      addUser(authId, sessionId.id, user, defaultPhoneNumber)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //
-      //      val newPublicKey = genPublicKey
-      //      val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
-      //      val newAuthId = rand.nextLong()
-      //      val newSessionId = rand.nextLong()
-      //      AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
-      //      catchNewSession()(probe, apiActor, SessionIdentifier(newSessionId), newAuthId)
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, name, newPublicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = codecRes2BS(protoPackageBox.build(0, newAuthId, newSessionId, messageId, rpcReq))
-      //      probe.send(apiActor, Received(packageBlob))
-      //
-      //      val accessHash = User.getAccessHash(newAuthId, userId, userSalt)
-      //      val keyHashes = Set(publicKeyHash, newPublicKeyHash)
-      //      val newUser = user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
-      //        keyHashes = keyHashes)
-      //      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(newAuthId))))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //
-      //      def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
-      //
-      //      val users = UserRecord.byUid(userId).map(usrs => sortU(usrs))
-      //      val expectUsers = sortU(immutable.Seq(user, newUser))
-      //      users must be_== (expectUsers).await
-      //    }
-      //
-      //    "succeed if name contains cyrillic characters" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      PhoneRecord.dropEntity(defaultPhoneNumber)
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Тимоти Клим", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      /*
-      //      val accessHash = User.getAccessHash(authId, userId, userSalt)
-      //      val user = struct.User(userId, accessHash, "Тимоти Клим", None, Set(publicKeyHash), defaultPhoneNumber)
-      //      val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user)))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //       */
-      //      // FIXME: use dsl, check package contents, not only types
-      //      val msg = receiveOneWithAck
-      //      msg.body.asInstanceOf[RpcResponseBox].body.asInstanceOf[Ok].body should beAnInstanceOf[ResponseAuth]
-      //    }
-      //
-      //    "fail with invalid sms code" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, "invalid", smsCode, "Timothy Klim", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }
-      //
-      //    "fail with invalid sms hash" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, "invalid", "Timothy Klim", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }
-      //
-      //    "fail with invalid first name if it is empty" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      PhoneRecord.dropEntity(defaultPhoneNumber)
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "   ", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "NAME_INVALID", "Should be nonempty", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }
-      //
-      //    "fail with invalid first name if it contains non printable characters" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val publicKey = genPublicKey
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      PhoneRecord.dropEntity(defaultPhoneNumber)
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "NAME_INVALID", "Should contain printable characters only", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }
-      //
-      //    "fail with invalid public key if public key is empty" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val publicKey = BitVector.empty
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      PhoneRecord.dropEntity(defaultPhoneNumber)
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }
-      //
-      //    "fail with invalid public key if public key is invalid" in {
-      //      implicit val (probe, apiActor) = probeAndActor()
-      //      implicit val sessionId = SessionIdentifier()
-      //      implicit val authId = rand.nextLong
-      //      val publicKey = BitVector(hex"ac1d")
-      //      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //      insertAuthId(authId)
-      //      AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-      //      catchNewSession()
-      //
-      //      val rpcReq = RpcRequestBox(Request(RequestSignUp(defaultPhoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
-      //      val messageId = getMessageId()
-      //      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      //      send(packageBlob)
-      //
-      //      val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
-      //      val expectMsg = MessageBox(messageId, rpcRes)
-      //      expectMsgWithAck(expectMsg)
-      //    }.pendingUntilFixed("bring pubkey check back")
-      //
-      //    "send ContactRegistered notifications" in {
-      //      val unregPhone = 79009009090L
-      //      val (registered, unregistered) = TestScope.pair(1, 2)
-      //      catchNewSession(registered)
-      //      catchNewSession(unregistered)
-      //
-      //      {
-      //        implicit val scope = registered
-      //
-      //        UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.authId)).sync()
-      //        RequestGetState() :~> <~:[ResponseSeq] // Subscribe
-      //      }
-      //
-      //      {
-      //        implicit val scope = unregistered
-      //
-      //        implicit val authId = rand.nextLong()
-      //        val publicKey = genPublicKey
-      //        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      //        insertAuthId(authId)
-      //        AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
-      //
-      //        RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey) :~> <~:[ResponseAuth]
-      //      }
-      //
-      //      {
-      //        implicit val scope = registered
-      //
-      //        val p = protoReceiveN(1)(scope.probe, scope.apiActor)
-      //        MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.assertInstanceOf[UpdateBox]
-      //      }
-      //    }
+      "succeed with new public key and same authId" in {
+        implicit val scope = genTestScopeWithUser()
+        val newPublicKey = genPublicKey
+        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey))
+
+        val accessHash = User.getAccessHash(scope.authId, scope.user.uid, scope.user.accessSalt)
+        val newUser = struct.User(scope.user.uid, accessHash, scope.user.name, None, Set(newPublicKeyHash), scope.user.phoneNumber)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser)), withNewSession = true)
+      }
+
+      "succeed with new public key and new authId" in {
+        val scope = genTestScopeWithUser()
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+
+        val newPublicKey = genPublicKey
+        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+        val newAuthId = rand.nextLong()
+        val newSessionId = SessionIdentifier()
+        implicit val newScope = scope.copy(authId = newAuthId, session = newSessionId)
+        AuthIdRecord.insertEntity(AuthId(newAuthId, scope.user.uid.some)).sync()
+        sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey))
+
+        val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
+        val newUser = scope.user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
+          keyHashes = keyHashes)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(newAuthId))), withNewSession = true)
+
+        def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
+
+        val users = UserRecord.byUid(scope.user.uid).map(usrs => sortU(usrs))
+        val expectUsers = sortU(immutable.Seq(scope.user, newUser))
+        users must be_== (expectUsers).await
+      }
+
+      "succeed if name contains cyrillic characters" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+        val pkHashes = Set(publicKeyHash)
+        val phoneNumber = genPhoneNumber()
+        val userId = rand.nextInt()
+        val name = "Тимоти Клим"
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        PhoneRecord.dropEntity(phoneNumber)
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey))
+
+        expectMsgByPF(withNewSession = true) {
+          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+        }
+      }
+
+      "fail with invalid sms code" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignUp(phoneNumber, "invalid", smsCode, "Timothy Klim", publicKey))
+
+        expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
+      }
+
+      "fail with invalid sms hash" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, "invalid", "Timothy Klim", publicKey))
+
+        expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
+      }
+
+      "fail with invalid first name if it is empty" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        PhoneRecord.dropEntity(phoneNumber)
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "   ", publicKey))
+
+        expectRpcMsg(Error(400, "NAME_INVALID", "Should be nonempty", false), withNewSession = true)
+      }
+
+      "fail with invalid first name if it contains non printable characters" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        PhoneRecord.dropEntity(phoneNumber)
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey))
+
+        expectRpcMsg(Error(400, "NAME_INVALID", "Should contain printable characters only", false), withNewSession = true)
+      }
+
+      "fail with invalid public key if public key is empty" in {
+        implicit val scope = genTestScope()
+        val publicKey = BitVector.empty
+        val phoneNumber = genPhoneNumber()
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        PhoneRecord.dropEntity(phoneNumber)
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy Klim", publicKey))
+
+        expectRpcMsg(Error(400, "INVALID_KEY", "", false), withNewSession = true)
+      }
+
+//      "fail with invalid public key if public key is invalid" in {
+//        implicit val scope = genTestScope()
+//        val publicKey = BitVector(hex"ac1d")
+//        val phoneNumber = genPhoneNumber()
+//        insertAuthId(scope.authId)
+//        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+//
+//        val rpcReq = RpcRequestBox(Request(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy Klim", publicKey)))
+//        val messageId = getMessageId()
+//        val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
+//        send(packageBlob)
+//
+//        val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
+//        val expectMsg = MessageBox(messageId, rpcRes)
+//        expectMsgWithAck(expectMsg)
+//      }
+
+      "send ContactRegistered notifications" in {
+        val unregPhone = genPhoneNumber()
+        val registered = genTestScopeWithUser()
+        val unregistered = genTestScope()
+
+        {
+          implicit val scope = registered
+          UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.authId)).sync()
+
+          sendRpcMsg(RequestGetState())
+
+          expectMsgByPF(withNewSession = true) {
+            case RpcResponseBox(_, Ok(ResponseSeq(0, None))) =>
+          }
+        }
+
+        {
+          val authId = rand.nextLong()
+          implicit val scope = unregistered.copy(authId = authId)
+          val publicKey = genPublicKey
+          insertAuthId(authId)
+          AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
+
+          sendRpcMsg(RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey))
+
+          expectMsgByPF(withNewSession = true) {
+            case RpcResponseBox(_, Ok(ResponseAuth(_, _))) =>
+          }
+        }
+
+        {
+          implicit val scope = registered
+
+          expectMsgByPF() {
+            case _: UpdateBox =>
+          }
+        }
+      }
     }
 
-//      "sign in" should {
-//        "success" in {
-//          implicit val (probe, apiActor) = probeAndActor()
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
+    "sign in" should {
+      "success" in {
+        implicit val scope = genTestScopeWithUser()
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, scope.user.publicKey))
+
+        expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, scope.user.toStruct(scope.authId))), withNewSession = true)
+      }
+
+      "success with second public key and authId" in {
+        val session = SessionIdentifier()
+        val authId = rand.nextLong()
+        val publicKey = genPublicKey
+        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+        val phoneNumber = genPhoneNumber()
+        val name = "Timothy Klim"
+        val userId = rand.nextInt()
+        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
+          phoneNumber = phoneNumber, name = name)
+        addUser(authId, session.id, user, phoneNumber)
+
+        val newPublicKey = genPublicKey
+        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+        val newAuthId = rand.nextLong()
+        val newSessionId = rand.nextLong()
+        AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
+        UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
+
+        val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
+        val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
+        s foreach { t =>
+          val (probe, apiActor) = getProbeAndActor()
+          val (authId, sessionId, publicKey, publicKeyHash) = t
+          implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(sessionId), authId = authId)
+          AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+          sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey))
+
+          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, newUser.toStruct(authId))), withNewSession = true)
+        }
+      }
+
+      "success with new public key and valid authId" in {
+        implicit val scope = genTestScopeWithUser()
+        val newPublicKey = genPublicKey
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, newPublicKey))
+
+        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+        val keyHashes = Set(newPublicKeyHash)
+        expectMsgByPF(withNewSession = true) {
+          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, struct.User(_, _, _, _, `keyHashes`, _, _) ))) =>
+        }
+      }
+
+      "failed with invalid sms hash" in {
+        implicit val scope = genTestScopeWithUser()
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignIn(scope.user.phoneNumber, "invlid", smsCode, scope.user.publicKey))
+
+        expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
+      }
+
+      "failed with invalid sms code" in {
+        implicit val scope = genTestScopeWithUser()
+        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, "invalid", scope.user.publicKey))
+
+        expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
+      }
+
+//      "failed with invalid public key" in {
+//        implicit val (probe, apiActor) = probeAndActor()
+//        implicit val sessionId = SessionIdentifier()
+//        implicit val authId = rand.nextLong()
 //
-//          val messageId = getMessageId()
-//          val publicKey = genPublicKey
-//          val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-//          val name = "Timothy Klim"
-//          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-//            phoneNumber = defaultPhoneNumber, name = name)
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//          AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//          catchNewSession()
+//        val messageId = getMessageId()
+//        val publicKey = genPublicKey
+//        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
+//          phoneNumber = defaultPhoneNumber, name = "Timothy Klim")
+//        addUser(authId, sessionId.id, user, defaultPhoneNumber)
+//        AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
+//        catchNewSession()
 //
-//          val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
-//          val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-//          send(packageBlob)
+//        val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, hex"ac1d".bits)))
+//        val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
+//        send(packageBlob)
 //
-//          val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, user.toStruct(authId))))
-//          val expectMsg = MessageBox(messageId, rpcRes)
-//          expectMsgWithAck(expectMsg)
-//        }
-//
-//        "success with second public key and authId" in {
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
-//
-//          val publicKey = genPublicKey
-//          val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-//          val name = "Timothy Klim"
-//          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-//            phoneNumber = defaultPhoneNumber, name = name)
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//
-//          val newPublicKey = genPublicKey
-//          val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
-//          val newAuthId = rand.nextLong()
-//          val newSessionId = rand.nextLong()
-//          AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
-//          UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, defaultPhoneNumber).sync()
-//
-//          val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
-//          val s = Seq((authId, sessionId.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
-//          s foreach { (t) =>
-//            println(s"INSERT ${t} ${AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)}")
-//            AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//
-//            implicit val (probe, apiActor) = probeAndActor()
-//            val (authId, sessionId, publicKey, publicKeyHash) = t
-//            catchNewSession()(probe, apiActor, SessionIdentifier(sessionId), authId)
-//            val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, publicKey)))
-//            val messageId = getMessageId()
-//            val packageBlob = codecRes2BS(protoPackageBox.build(0, authId, sessionId, messageId, rpcReq))
-//            probe.send(apiActor, Received(packageBlob))
-//
-//            val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(publicKeyHash, newUser.toStruct(authId))))
-//            val expectMsg = MessageBox(messageId, rpcRes)
-//            expectMsgWithAck(expectMsg)
-//          }
-//        }
-//
-//        "success with new public key and valid authId" in {
-//          implicit val (probe, apiActor) = probeAndActor()
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
-//
-//          val messageId = getMessageId()
-//          val publicKey = genPublicKey
-//          val name = "Timothy Klim"
-//          val user = User.build(userId, authId, publicKey, defaultPhoneNumber, userSalt, name)
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//          AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//
-//          catchNewSession()
-//
-//          val newPublicKey = genPublicKey
-//          val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, newPublicKey)))
-//          val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-//          send(packageBlob)
-//
-//          val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
-//          val newUser = user.copy(keyHashes = Set(newPublicKeyHash))
-//          val rpcRes = RpcResponseBox(messageId, Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(authId))))
-//          val expectMsg = MessageBox(messageId, rpcRes)
-//          expectMsgWithAck(expectMsg)
-//        }
-//
-//        "failed with invalid sms code" in {
-//          implicit val (probe, apiActor) = probeAndActor()
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
-//
-//          val messageId = getMessageId()
-//          val publicKey = genPublicKey
-//          val name = "Timothy Klim"
-//          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-//            phoneNumber = defaultPhoneNumber, name = name)
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//          AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//          catchNewSession()
-//
-//          val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, "invlid", smsCode, publicKey)))
-//          val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-//          send(packageBlob)
-//
-//          val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_EXPIRED", "", false))
-//          val expectMsg = MessageBox(messageId, rpcRes)
-//          expectMsgWithAck(expectMsg)
-//        }
-//
-//        "failed with invalid sms hash" in {
-//          implicit val (probe, apiActor) = probeAndActor()
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
-//
-//          val messageId = getMessageId()
-//          val publicKey = genPublicKey
-//          val name = "Timothy Klim"
-//          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-//            phoneNumber = defaultPhoneNumber, name = name)
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//          AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//          catchNewSession()
-//
-//          val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, "invlid", publicKey)))
-//          val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-//          send(packageBlob)
-//
-//          val rpcRes = RpcResponseBox(messageId, Error(400, "PHONE_CODE_INVALID", "", false))
-//          val expectMsg = MessageBox(messageId, rpcRes)
-//          expectMsgWithAck(expectMsg)
-//        }
-//
-//        "failed with invalid public key" in {
-//          implicit val (probe, apiActor) = probeAndActor()
-//          implicit val sessionId = SessionIdentifier()
-//          implicit val authId = rand.nextLong()
-//
-//          val messageId = getMessageId()
-//          val publicKey = genPublicKey
-//          val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-//            phoneNumber = defaultPhoneNumber, name = "Timothy Klim")
-//          addUser(authId, sessionId.id, user, defaultPhoneNumber)
-//          AuthSmsCodeRecord.insertEntity(AuthSmsCode(defaultPhoneNumber, smsHash, smsCode)).sync()
-//          catchNewSession()
-//
-//          val rpcReq = RpcRequestBox(Request(RequestSignIn(defaultPhoneNumber, smsHash, smsCode, hex"ac1d".bits)))
-//          val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-//          send(packageBlob)
-//
-//          val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
-//          val expectMsg = MessageBox(messageId, rpcRes)
-//          expectMsgWithAck(expectMsg)
-//        }.pendingUntilFixed("bring pubkey check back")
+//        val rpcRes = RpcResponseBox(messageId, Error(400, "INVALID_KEY", "", false))
+//        val expectMsg = MessageBox(messageId, rpcRes)
+//        expectMsgWithAck(expectMsg)
 //      }
+    }
   }
 }

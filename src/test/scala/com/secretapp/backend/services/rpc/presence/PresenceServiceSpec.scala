@@ -83,6 +83,8 @@ class PresenceServiceSpec extends RpcSpec {
 
     "tell presences on subscription" in {
       val (scope1, scope2) = TestScope.pair(7, 8)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
       val duration = DurationInt(1).seconds
 
       {

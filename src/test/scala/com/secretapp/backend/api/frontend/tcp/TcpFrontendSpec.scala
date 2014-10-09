@@ -25,24 +25,21 @@ class TcpFrontendSpec extends RpcSpec {
     }
 
     "parse packages in single stream" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val session = SessionIdentifier()
-      implicit val authId = rand.nextLong()
       implicit val transport = MTConnection
+      implicit val scope = genTestScope()
 
-      insertAuthId(authId)
+      insertAuthId(scope.authId)
       var msgId = 0L
       val pingValQueue = mutable.Set[Long]()
       val messages = (1 to 100).map { _ =>
         val pingVal = rand.nextLong()
         pingValQueue += pingVal
-        msgId += 4
-        MessageBox(msgId, Ping(pingVal))
+        Ping(pingVal)
       }
-      val packages = messages.map(pack(0, authId, _))
-      val req = packages.map(_.blob).foldLeft(ByteString.empty)(_ ++ _)
+      val packages = messages.map(serializeMsg)
+      val req = packages.foldLeft(ByteString.empty)(_ ++ _)
       req.grouped(7) foreach { buf =>
-        probe.send(apiActor, Received(buf))
+        scope.probe.send(scope.apiActor, Received(buf))
       }
       expectMsgsWhileByPF(withNewSession = true) {
         case Pong(pingVal) =>

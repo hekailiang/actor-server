@@ -17,6 +17,7 @@ trait JsonFormats {
         case u: SeqUpdate        => seqUpdateFormat.writes(u)
         case u: SeqUpdateTooLong => seqUpdateTooLongFormat.writes(u)
         case u: WeakUpdate       => weakUpdateFormat.writes(u)
+        case u: FatSeqUpdate     => fatSeqUpdate.writes(u)
       })
     )
 
@@ -25,6 +26,7 @@ trait JsonFormats {
         case SeqUpdate.updateHeader        => seqUpdateFormat.reads(body)
         case SeqUpdateTooLong.updateHeader => seqUpdateTooLongFormat.reads(body)
         case WeakUpdate.updateHeader       => weakUpdateFormat.reads(body)
+        case FatSeqUpdate.updateHeader     => fatSeqUpdate.reads(body)
       }
     }
   }

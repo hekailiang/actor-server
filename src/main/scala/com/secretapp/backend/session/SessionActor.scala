@@ -1,6 +1,7 @@
 package com.secretapp.backend.session
 
 import akka.actor._
+import akka.persistence._
 import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.util.Timeout
@@ -65,7 +66,7 @@ object SessionActor {
 
 }
 
-class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends Actor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
+class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -77,6 +78,8 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
 
   implicit val timeout = Timeout(5.seconds)
   val maxResponseLength = 1024 * 1024 // if more, register UnsentResponse for resend
+
+  override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
   val splitName = self.path.name.split("_")
   val authId = java.lang.Long.parseLong(splitName(0))
@@ -115,22 +118,22 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     }
   }
 
-  override def receive = {
+  val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
       transport = handleBox match {
         case _: HandleJsonMessageBox => JsonConnection.some
         case _: HandleMTMessageBox => MTConnection.some
       }
       queueNewSession(handleBox.mb.messageId)
-      context.become(receiveCommand)
-      receiveCommand(handleBox)
+      context.become(receiveBusinessLogic)
+      receiveBusinessLogic(handleBox)
     case p: AuthorizeUser =>
-      receiveCommand(p)
+      receiveBusinessLogic(p)
     case m =>
       log.error(s"received unmatched message: $m")
   }
 
-  val receiveCommand: Receive = {
+  val receiveBusinessLogic: Receive = {
     case handleBox: HandleMessageBox =>
       val connector = sender()
       checkNewConnection(connector)
@@ -169,16 +172,24 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
       log.debug(s"$msg")
-      currentUser = Some(user)
-      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      persist(msg) { _ =>
+        currentUser = Some(user)
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
     case msg @ SubscribeToUpdates =>
-      if (!subscribedToUpdates && !subscribingToUpdates) {
-        subscribeToUpdates()
+      persist(msg) { _ =>
+        if (!subscribedToUpdates && !subscribingToUpdates) {
+          subscribeToUpdates()
+        }
       }
     case msg @ SubscribeToPresences(uids) =>
-      subscribeToPresences(uids)
+      persist(msg) { _ =>
+        subscribeToPresences(uids)
+      }
     case msg @ UnsubscribeToPresences(uids) =>
-      unsubscribeToPresences(uids)
+      persist(msg) { _ =>
+        unsubscribeToPresences(uids)
+      }
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
     case Terminated(connector) =>
@@ -188,5 +199,27 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       context.parent ! Passivate(stopMessage = Stop)
     case Stop =>
       context.stop(self)
+  }
+
+  val receiveRecover: Receive = {
+    case RecoveryCompleted =>
+      if (subscribingToUpdates) {
+        subscribeToUpdates()
+      }
+
+      subscribeToPresences(subscribedToPresencesUids.toList)
+      currentUser map { user =>
+        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      }
+    case AuthorizeUser(user) =>
+      currentUser = Some(user)
+      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+    case SubscribeToUpdates =>
+      subscribingToUpdates = true
+    case SubscribeToPresences(uids) =>
+      subscribedToPresencesUids = subscribedToPresencesUids ++ uids
+    case UnsubscribeToPresences(uids) =>
+      subscribedToPresencesUids = subscribedToPresencesUids -- uids
+    case _ =>
   }
 }

@@ -28,6 +28,8 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       val (diff1, _) = {
         implicit val scope = scope1
@@ -65,6 +67,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
   override def before = {
     scope = TestScope()
+    catchNewSession(scope)
   }
 
   private val newName = "John The New"

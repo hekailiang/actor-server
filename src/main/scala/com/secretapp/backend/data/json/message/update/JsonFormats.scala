@@ -14,6 +14,7 @@ trait JsonFormats {
   implicit val seqUpdateFormat = Json.format[SeqUpdate]
   implicit val seqUpdateTooLongFormat = UnitFormat[SeqUpdateTooLong]
   implicit val weakUpdateFormat = Json.format[WeakUpdate]
+  implicit val fatSeqUpdate = Json.format[FatSeqUpdate]
 
   // SeqUpdateMessage descendants
   implicit val avatarChangedFormat = Json.format[AvatarChanged]

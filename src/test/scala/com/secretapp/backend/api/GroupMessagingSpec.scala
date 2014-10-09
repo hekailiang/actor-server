@@ -36,7 +36,10 @@ class GroupMessagingSpec extends RpcSpec {
   "GroupMessaging" should {
     "send invites on creation and send/receive messages" in {
       val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
       val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
+      catchNewSession(scope11)
 
       {
         implicit val scope = scope1
@@ -110,6 +113,8 @@ class GroupMessagingSpec extends RpcSpec {
 
     "send invites on RequestInviteUser" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -164,7 +169,10 @@ class GroupMessagingSpec extends RpcSpec {
 
     "send GroupUserLeave on user leave" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
       val scope11 = TestScope(scope1.user.uid, scope1.user.phoneNumber)
+      catchNewSession(scope11)
 
       {
         implicit val scope = scope1
@@ -220,6 +228,8 @@ class GroupMessagingSpec extends RpcSpec {
 
     "not allow to send messages to group if user is not a member of this group" in {
       val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       val chat = {
         implicit val scope = scope1

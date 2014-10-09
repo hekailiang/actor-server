@@ -37,9 +37,8 @@ class SessionActorSpec extends RpcSpec {
   transportForeach { implicit transport =>
     "actor" should {
       "reply with auth token to auth request" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val session = SessionIdentifier(0L)
-        implicit val authId = 0L
+        val (probe, apiActor) = getProbeAndActor()
+        implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(0L), authId = 0L)
 
         sendMsg(RequestAuthId())
         expectMsgByPF() {
@@ -48,11 +47,8 @@ class SessionActorSpec extends RpcSpec {
       }
 
       "reply pong to ping" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val session = SessionIdentifier()
-        implicit val authId = rand.nextLong()
-        insertAuthId(authId)
-
+        implicit val scope = genTestScope()
+        insertAuthId(scope.authId)
         val pingVal = rand.nextLong()
 
         sendMsg(Ping(pingVal))
@@ -60,19 +56,16 @@ class SessionActorSpec extends RpcSpec {
       }
 
       "send drop when invalid package" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val session = SessionIdentifier(0L)
-        implicit val authId = 0L
+        val (probe, apiActor) = getProbeAndActor()
+        implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(0L), authId = 0L)
 
         sendMsg(ByteString("_____________________________________!@#$%^"))
         expectMsgByPF() { case Drop(0L, _) => }
       }
 
       "handle container with Ping's" in {
-        implicit val (probe, apiActor) = getProbeAndActor()
-        implicit val session = SessionIdentifier()
-        implicit val authId = rand.nextLong()
-        insertAuthId(authId)
+        implicit val scope = genTestScope()
+        insertAuthId(scope.authId)
 
         var msgId = 0L
         val pingValQueue = mutable.Set[Long]()

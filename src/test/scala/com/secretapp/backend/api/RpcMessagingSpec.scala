@@ -67,7 +67,7 @@ class RpcMessagingSpec extends RpcSpec {
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       val accessHash = User.getAccessHash(mockAuthId, userId, userSalt)
-      authUser(user, defaultPhoneNumber)(scope.apiActor, scope.session)
+      authUser(user, defaultPhoneNumber)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
@@ -111,7 +111,7 @@ class RpcMessagingSpec extends RpcSpec {
           state =
             resp.state)
         val rpcRes = RpcResponseBox(messageId, Ok(rsp))
-        val expectMsg = MessageBox(messageId, rpcRes)
+        val expectMsg = MessageBox(msg.messageId, rpcRes)
 
         msg must equalTo(expectMsg)
       }
@@ -130,7 +130,7 @@ class RpcMessagingSpec extends RpcSpec {
         val msg = receiveOneWithAck()(scope.probe, scope.apiActor)
 
         val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
-        val expectMsg = MessageBox(messageId, rpcRes)
+        val expectMsg = MessageBox(msg.messageId, rpcRes)
 
         msg must equalTo(expectMsg)
       }

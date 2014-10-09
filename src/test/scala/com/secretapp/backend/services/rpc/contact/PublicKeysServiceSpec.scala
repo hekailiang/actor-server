@@ -27,36 +27,32 @@ import scala.util.Random
 class PublicKeysServiceSpec extends RpcSpec {
   import system.dispatcher
 
-  "PublicKeysService" should {
-    "return public keys" in {
-      implicit val (probe, apiActor) = probeAndActor()
-      implicit val sessionId = SessionIdentifier()
-      implicit val authId = rand.nextLong
+  transportForeach { implicit transport =>
+    "PublicKeysService" should {
+      "return public keys" in {
+        implicit val scope = genTestScope()
 
-      val messageId = getMessageId()
-      val publicKey = hex"ac1d".bits
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      val name = "Timothy Klim"
-      val clientPhoneId = rand.nextLong()
-      val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, name = name)
-      authUser(user, defaultPhoneNumber)
-      val secondUser = User.build(uid = userId + 1, authId = authId + 1, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber + 1, name = name)
-      val accessHash = User.getAccessHash(authId, secondUser.uid, secondUser.accessSalt)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
-      catchNewSession()
+        val messageId = getMessageId()
+        val publicKey = hex"ac1d".bits
+        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+        val name = "Timothy Klim"
+        val clientPhoneId = rand.nextLong()
+        val phoneNumber = genPhoneNumber()
+        val user = User.build(uid = userId, authId = scope.authId, publicKey = publicKey, accessSalt = userSalt,
+          phoneNumber = phoneNumber, name = name)
+        authUser(user, phoneNumber)
+        val secondUser = User.build(uid = userId + 1, authId = scope.authId + 1, publicKey = publicKey, accessSalt = userSalt,
+          phoneNumber = phoneNumber + 1, name = name)
+        val accessHash = User.getAccessHash(scope.authId, secondUser.uid, secondUser.accessSalt)
+        UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
-      val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
-      val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
-      val packageBlob = pack(0, authId, MessageBox(messageId, rpcReq))
-      send(packageBlob)
+        val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
+        val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
+        sendMsg(rpcReq)
 
-      val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))
-      val resBody = ResponsePublicKeys(resKeys)
-      val rpcRes = RpcResponseBox(messageId, Ok(resBody))
-      val expectMsg = MessageBox(messageId, rpcRes)
-      expectMsgWithAck(expectMsg)
+        val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))
+        expectRpcMsg(Ok(ResponsePublicKeys(resKeys)), withNewSession = true)
+      }
     }
   }
 }

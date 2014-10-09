@@ -23,6 +23,8 @@ class TypingServiceSpec extends RpcSpec {
   "presence service" should {
     "send typings on subscribtion and receive typing weak updates" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
@@ -47,6 +49,8 @@ class TypingServiceSpec extends RpcSpec {
 
     "send typings weak updates" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       {
         implicit val scope = scope1
