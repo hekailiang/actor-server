@@ -170,7 +170,8 @@ object UserRecord extends UserRecord with DBConnector {
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
       flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some)))
+      flatMap(_ => AuthIdRecord.insertEntity(AuthId(authId, uid.some))).
+      flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
   }
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {

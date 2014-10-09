@@ -181,7 +181,7 @@ sealed trait MessagingService extends RandomService {
             case users =>
               val (_, checkUser) = users.head
 
-              if (checkUser.accessHash(currentUser.uid) != userAccessHash) {
+              if (checkUser.accessHash(currentUser.authId) != userAccessHash) {
                 Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false))
               } else {
                 GroupChatUserRecord.getUsers(chatId) flatMap { chatUserIds =>
