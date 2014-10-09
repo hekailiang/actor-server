@@ -52,9 +52,10 @@ with ActorLogging
         if (p.sessionId == sessionId) {
           p.decodeMessageBox match {
             case \/-(mb) =>
-              if (mb.messageId % 4 == 0)
+//              TODO
+//              if (mb.messageId % 4 == 0)
                 sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
-              else silentClose()
+//              else silentClose()
             case -\/(e) =>
               log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${new String(p.messageBoxBytes.toByteArray)}")
               silentClose()
