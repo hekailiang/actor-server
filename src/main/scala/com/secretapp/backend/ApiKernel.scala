@@ -44,14 +44,15 @@ class ApiKernel extends Bootable {
     IO(Tcp) ! Bind(tcpService, address)
 
     // Heating TCP actors
-    system.actorOf(Props(new HeatingUpActor(address)), "heat-service")
+    system.actorOf(Props(new MTHeatingUpActor(address)), "mt-heat-service")
 
     // WS transport bootstrap
     val wsPort = Try(serverConfig.getInt("ws-port")).getOrElse(8082)
     val wsService = system.actorOf(WSServer.WebSocketServer.props(sessionRegion), "ws-service")
     IO(UHttp) ! Http.Bind(wsService, hostname, wsPort)
 
-    // TODO: Heating WS actors
+    // Heating WS actors
+    system.actorOf(Props(new WSHeatingUpActor(hostname, wsPort)), "ws-heat-service")
   }
 
   def shutdown = {
