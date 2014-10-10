@@ -36,8 +36,14 @@ object GroupChatUserRecord extends GroupChatUserRecord with DBConnector {
   }
 
   def addUser(chatId: Int, userId: Int, keyHashes: Set[Long])(implicit session: Session): Future[ResultSet] = {
-    insert
-      .value(_.chatId, chatId).value(_.userId, userId).value(_.keyHashes, keyHashes).future()
+    select(_.userId).where(_.chatId eqs chatId).and(_.userId eqs userId).one() flatMap {
+      case Some(_) =>
+        update
+          .where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes addAll keyHashes).future()
+      case None =>
+        insert
+          .value(_.chatId, chatId).value(_.userId, userId).value(_.keyHashes, keyHashes).future()
+    }
   }
 
   def removeUser(chatId: Int, userId: Int)(implicit session: Session): Future[ResultSet] = {
