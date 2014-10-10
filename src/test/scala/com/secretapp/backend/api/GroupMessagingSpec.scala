@@ -87,6 +87,8 @@ class GroupMessagingSpec extends RpcSpec {
 
         rqSendMessage :~> <~:[updateProto.ResponseSeq]
 
+        Thread.sleep(500)
+
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
 
         diff.updates.length should beEqualTo(2)
