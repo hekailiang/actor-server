@@ -183,7 +183,7 @@ trait MessagingService extends RandomService with UserHelpers {
                       case authId =>
                         newUserIds foreach {
                           case (userId, _) =>
-                            updatesBrokerRegion ! NewUpdatePush(currentUser.authId, GroupUserAdded(chatId, userId, currentUser.uid))
+                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId, currentUser.uid))
                         }
                     }
 
