@@ -195,5 +195,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
     )
 
     rq :~> <~:[ResponseSeq]
+
+    Thread.sleep(1000)
   }
 }
