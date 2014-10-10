@@ -22,7 +22,7 @@ trait PresenceService {
 
   def handleRpcPresence: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r @ (_: RequestSetOnline    |
-              _: SubscribeToOnline  |
+              _: SubscribeToOnline   |
               _: UnsubscribeFromOnline) => authorizedRequest {
       (presenceHandler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
     }

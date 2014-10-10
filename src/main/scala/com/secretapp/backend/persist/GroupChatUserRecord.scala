@@ -54,6 +54,10 @@ object GroupChatUserRecord extends GroupChatUserRecord with DBConnector {
     select.where(_.chatId eqs chatId).fetch()
   }
 
+  def getUsersWithKeyHashes(chatId: Int)(implicit session: Session): Future[Seq[(Int, Set[Long])]] = {
+    select(_.userId, _.keyHashes).where(_.chatId eqs chatId).fetch()
+  }
+
   def addUserKeyHash(chatId: Int, userId: Int, keyHash: Long)(implicit session: Session): Future[ResultSet] = {
     update.where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes add keyHash).future()
   }

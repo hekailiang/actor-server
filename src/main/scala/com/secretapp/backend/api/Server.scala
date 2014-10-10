@@ -10,7 +10,7 @@ import com.secretapp.backend.session._
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
 
-final class Singletons(implicit val system: ActorSystem) {
+final class Singletons(implicit val system: ActorSystem, session: CSession) {
   val filesCounter = FilesCounter.start(system)
   val smsEngine = ClickatellSmsEngineActor()
   val typingBrokerRegion = TypingBroker.startRegion()

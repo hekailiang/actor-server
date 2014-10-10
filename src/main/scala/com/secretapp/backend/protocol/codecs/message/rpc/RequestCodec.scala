@@ -53,6 +53,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestLeaveChat.requestType)          { case r: RequestLeaveChat          => r } (protoPayload(RequestLeaveChatCodec))
     .\(RequestRemoveUser.requestType)         { case r: RequestRemoveUser         => r } (protoPayload(RequestRemoveUserCodec))
     .\(RequestTyping.requestType)             { case r: RequestTyping             => r } (protoPayload(RequestTypingCodec))
+    .\(RequestGroupTyping.requestType)        { case r: RequestGroupTyping        => r } (protoPayload(RequestGroupTypingCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("Request"))
 
   private val codec = rpcRequestMessageCodec.pxmap[Request](Request.apply, Request.unapply)

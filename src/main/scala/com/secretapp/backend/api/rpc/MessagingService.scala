@@ -224,7 +224,6 @@ trait MessagingService extends RandomService with UserHelpers {
 
     val newUserIds = broadcast.keys map (key => (key.userId, key.keys map (_.keyHash) toSet))
 
-
     GroupChatRecord.insertEntity(chat) flatMap { _ =>
       Future.sequence(broadcast.keys map (mkInvites(chat, _, broadcast.encryptedMessage, (newUserIds map (_._1)) :+ currentUser.uid))) map (_.flatten) flatMap { einvites =>
         einvites.toVector.sequenceU match {

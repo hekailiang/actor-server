@@ -83,6 +83,8 @@ trait SessionService extends UserManagerService {
   protected def subscribeToTypings(): Unit = {
     if (currentUser.isDefined) {
       mediator ! Subscribe(TypingBroker.topicFor(currentUser.get.uid), weakUpdatesPusher)
+      mediator ! Subscribe(TypingBroker.topicFor(currentUser.get.uid, currentUser.get.authId), weakUpdatesPusher)
+
       singletons.typingBrokerRegion ! TypingProtocol.Envelope(
         currentUser.get.uid,
         TypingProtocol.TellTypings(weakUpdatesPusher)
