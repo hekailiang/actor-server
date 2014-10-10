@@ -172,30 +172,38 @@ trait MessagingService extends RandomService with UserHelpers {
 
                   Future.sequence(newUserIds map {
                     case (userId, keyHashes) =>
-                      GroupChatUserRecord.addUser(chatId, userId, keyHashes)
-                  }) flatMap { _ =>
-                    updates foreach { update =>
-                      updatesBrokerRegion ! update
-                    }
+                      GroupChatUserRecord.addUser(chatId, userId, keyHashes) map {
+                        case -\/(_) => userId.left
+                        case \/-(_) => userId.right
+                      }
+                  }) map (_.toVector.separate) flatMap {
+                    case (_, addedUsers) =>
+                      updates foreach { update =>
+                        updatesBrokerRegion ! update
+                      }
 
-                    chatAuthIds foreach {
-                      case currentUser.authId =>
-                      case authId =>
-                        newUserIds foreach {
-                          case (userId, _) =>
+                      chatAuthIds foreach {
+                        case currentUser.authId =>
+                        case authId =>
+                          addedUsers foreach { userId =>
                             updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId, currentUser.uid))
-                        }
-                    }
+                          }
+                      }
 
-                    for {
-                      xs <- Future.sequence(newUserIds map {
-                        case (userId, _) =>
-                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, GroupUserAdded(chatId, userId, currentUser.uid))).mapTo[StrictState]
-                      })
-                    } yield {
-                      val s = xs.maxBy(_._1)
-                      Ok(updateProto.ResponseSeq(s._1, Some(s._2)))
-                    }
+                      for {
+                        xs <- Future.sequence(addedUsers map { userId =>
+                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, GroupUserAdded(chatId, userId, currentUser.uid))).mapTo[StrictState] map {
+                            case (seq, state) => (seq, Some(state))
+                          }
+                        }) flatMap {
+                          case xs if xs.isEmpty =>
+                            getState(currentUser.authId) map (Seq(_))
+                          case xs => Future.successful(xs)
+                        }
+                      } yield {
+                        val s = xs.maxBy(_._1)
+                        Ok(updateProto.ResponseSeq(s._1, s._2))
+                      }
                   }
               }
           }

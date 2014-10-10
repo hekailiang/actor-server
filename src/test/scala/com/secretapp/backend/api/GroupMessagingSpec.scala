@@ -274,5 +274,93 @@ class GroupMessagingSpec extends RpcSpec {
         rqSendMessage :~> <~:(403, "NO_PERMISSION")
       }
     }
+
+    "not send GroupUserAdded after inviting user who is already a chat member" in {
+      val (scope1, scope2) = TestScope.pair(5, 6)
+      val scope22 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
+
+      {
+        implicit val scope = scope1
+
+        val chatKeyHash = BitVector(1, 1, 1)
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = chatKeyHash,
+          publicKey = BitVector(1, 0, 1, 0),
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq.empty,
+            ownKeys = immutable.Seq.empty
+          )
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        Thread.sleep(1000)
+
+        {
+          val rqInviteUser = RequestInviteUsers(
+            chatId = resp.chatId,
+            accessHash = resp.accessHash,
+            randomId = 666L,
+            chatKeyHash = chatKeyHash,
+            broadcast = EncryptedRSABroadcast(
+              encryptedMessage = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedUserAESKeys(
+                  userId = scope2.user.uid,
+                  accessHash = scope2.user.accessHash(scope.user.authId),
+                  keys = immutable.Seq(
+                    EncryptedAESKey(
+                      keyHash = scope2.user.publicKeyHash,
+                      aesEncryptedKey = BitVector(2, 0, 2, 0)
+                    )
+                  )
+                )
+              ),
+              ownKeys = immutable.Seq.empty
+            )
+          )
+
+          rqInviteUser :~> <~:[updateProto.ResponseSeq]
+        }
+
+        val (diff1, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff1.updates.length should beEqualTo(1)
+        diff1.updates.last.body.assertInstanceOf[GroupUserAdded]
+
+        {
+          val rqInviteUser = RequestInviteUsers(
+            chatId = resp.chatId,
+            accessHash = resp.accessHash,
+            randomId = 666L,
+            chatKeyHash = chatKeyHash,
+            broadcast = EncryptedRSABroadcast(
+              encryptedMessage = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedUserAESKeys(
+                  userId = scope22.user.uid,
+                  accessHash = scope22.user.accessHash(scope.user.authId),
+                  keys = immutable.Seq(
+                    EncryptedAESKey(
+                      keyHash = scope22.user.publicKeyHash,
+                      aesEncryptedKey = BitVector(2, 0, 2, 0)
+                    )
+                  )
+                )
+              ),
+              ownKeys = immutable.Seq.empty
+            )
+          )
+
+          rqInviteUser :~> <~:[updateProto.ResponseSeq]
+        }
+
+        val (diff2, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff1.updates.length should beEqualTo(1)
+        diff2.updates.last.body.assertInstanceOf[GroupUserAdded]
+      }
+    }
   }
 }
