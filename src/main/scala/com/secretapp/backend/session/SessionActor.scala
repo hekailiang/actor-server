@@ -189,7 +189,8 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
         subscribeToUpdates()
       }
 
-      subscribeToPresences(subscribedToPresencesUids.toList)
+      recoverSubscribeToPresences(subscribedToPresencesUids.toList)
+
       currentUser map { user =>
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
       }
