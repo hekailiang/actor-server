@@ -106,27 +106,29 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case Some(scheduled) =>
           scheduled.cancel()
         case None =>
-          selfType match {
-            case BrokerType.User =>
-              log.debug(s"Publishing UserTyping ${userId}")
-              mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
-            case BrokerType.Group =>
-              log.debug(s"Publishing UserTypingGroup ${userId}")
-              GroupChatUserRecord.getUsersWithKeyHashes(selfId) map { xs =>
-                xs foreach {
-                  case (userId, keyHashes) =>
-                    keyHashes foreach { keyHash =>
-                      for {
-                        optAuthId <- authIdFor(userId, keyHash)
 
-                      } yield {
-                        optAuthId map { authId =>
-                          mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
-                        }
-                      }
+      }
+
+      selfType match {
+        case BrokerType.User =>
+          log.debug(s"Publishing UserTyping ${userId}")
+          mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
+        case BrokerType.Group =>
+          log.debug(s"Publishing UserTypingGroup ${userId}")
+          GroupChatUserRecord.getUsersWithKeyHashes(selfId) map { xs =>
+            xs foreach {
+              case (userId, keyHashes) =>
+                keyHashes foreach { keyHash =>
+                  for {
+                    optAuthId <- authIdFor(userId, keyHash)
+
+                  } yield {
+                    optAuthId map { authId =>
+                      mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
                     }
+                  }
                 }
-              }
+            }
           }
       }
 
