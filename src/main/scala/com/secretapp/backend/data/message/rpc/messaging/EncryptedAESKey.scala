@@ -10,17 +10,16 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-case class InviteUser (
-  uid: Int,
-  accessHash: Long,
-  keys: immutable.Seq[EncryptedMessage]
+@SerialVersionUID(1L)
+case class EncryptedAESKey(
+  keyHash: Long, aesEncryptedKey: BitVector
 ) extends ProtobufMessage {
-  def toProto = protobuf.InviteUser(uid, accessHash, keys map (_.toProto))
+  def toProto = protobuf.EncryptedAESKey(keyHash, aesEncryptedKey)
 }
 
-object InviteUser {
-  def fromProto(m: protobuf.InviteUser): InviteUser = m match {
-    case protobuf.InviteUser(uid, accessHash, keys) =>
-      InviteUser(uid, accessHash, keys map EncryptedMessage.fromProto)
+object EncryptedAESKey {
+  def fromProto(u: protobuf.EncryptedAESKey): EncryptedAESKey = u match {
+    case protobuf.EncryptedAESKey(keyHash, aesEncryptedKey) =>
+      EncryptedAESKey(keyHash, aesEncryptedKey)
   }
 }

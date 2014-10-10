@@ -67,16 +67,50 @@ message User {
     optional Avatar avatar = 8;
 }
 
-// Зашифрованный ключ для устройства
-message EncryptedKey {
+// Зашифрованный AES-ключ для устройства
+message EncryptedAESKey {
     required int64 keyHash = 1;
     required bytes aesEncryptedKey = 2;
 }
 
-// Зашифрованные данные для пользователя
-message EncryptedMessage {
+// Зашифрованные RSA+AES данные
+message EncryptedRSAMessage {
+    required bytes encryptedMessage = 1;
+    repeated EncryptedAESKey keys = 2;
+    repeated EncryptedAESKey ownKeys = 3;
+}
+
+// Зашифрованные AES-данные
+message EncryptedAESMessage {
+    required bytes keyHash = 1;
+    required bytes encryptedMessage = 2;
+}
+
+// Зашифрованные ключи для пользователя
+message EncryptedUserAESKeys {
+    required int32 uid = 1;
+    required int64 accessHash = 2;
+    repeated EncryptedAESKey keys = 3;
+}
+
+// Зашифрованное сообщение для нескольких пользователей
+message EncryptedRSABroadcast {
     required bytes encryptedMessage = 3;
-    repeated EncryptedKey keys = 4;
+    repeated EncryptedUserAESKeys keys = 4;
+    repeated EncryptedAESKey ownKeys = 5;
+}
+
+// Зашифрованные RSA-сообщения
+message EncryptedRSAPackage {
+    required int64 keyHash = 1;
+    required bytes aesEncryptedKey = 2;
+    required bytes message = 3;
+}
+
+// Зашифрованные AES-сообщения 
+message EncryptedAESPackage {
+    required bytes keyHash = 1;
+    required bytes message = 2;
 }
 
 // API#0x32
@@ -303,20 +337,16 @@ message UnsubscribeFromGroupOnline {
 message UpdateMessage {
     required int32 senderUID = 1;
     required int32 destUID = 2;
-    required int64 keyHash = 3; // Might be equals to device public key hash
-    required bytes aesEncryptedKey = 4;
-    required bytes message = 5;
+    required EncryptedRSAPackage message = 3;
 }
 
 // API#0x24
 // Событие о созданном чате созданном чате
 message UpdateGroupCreated {
-    required int64 randomId = 1;
-    required int32 chatId = 2;
-    required int64 accessHash = 3;
-    required string title = 4;
-    required bytes keyHash = 5;
-    repeated InviteUser invites = 6;
+    required int32 chatId = 1;
+    required int64 accessHash = 2;
+    required string title = 3;
+    required EncryptedRSAPackage invite = 4;
 }
 
 // API#0x14
@@ -324,9 +354,7 @@ message UpdateGroupCreated {
 message UpdateGroupMessage {
     required int32 senderUID = 1;
     required int32 chatId = 2;
-    required int64 keyHash = 4; // Might be equals to device public key hash
-    required bytes aesKeyHash = 6;
-    required bytes message = 7;
+    required EncryptedAESPackage message = 3;
 }
 
 // API#0x19
@@ -334,12 +362,10 @@ message UpdateGroupMessage {
 message UpdateGroupInvite {
     required int32 chatId = 1;
     required int64 accessHash = 2;
+    required int32 chatCreatorUID = 8;
     required string title = 3;
     repeated UserId users = 4;
-    required int64 keyHash = 5; // Might be equals to device public key hash
-    required bytes aesEncryptedKey = 6;
-    required bytes message = 7;
-    required int32 chatCreatorUID = 8;
+    required EncryptedRSAPackage invite = 5;
 }
 
 // API#0x15
@@ -475,8 +501,7 @@ message RequestSendMessage {
     required int32 uid = 1;
     required int64 accessHash = 2;
     required int64 randomId = 3;
-    required EncryptedMessage message = 4;
-    optional EncryptedMessage selfMessage = 5;
+    required EncryptedRSAMessage message = 4;
 }
 
 // API#0x43
@@ -486,8 +511,7 @@ message RequestSendGroupMessage {
     required int32 chatId = 1;
     required int64 accessHash = 2;
     required int64 randomId = 3;
-    required bytes keyHash = 4;
-    required bytes message = 5;
+    required EncryptedAESMessage message = 4;
 }
 
 // API#0x37
@@ -509,19 +533,14 @@ message RequestMessageRead {
 // ************************************************************************
 //                               Group chats
 // ************************************************************************
-message InviteUser {
-    required int32 uid = 1;
-    required int64 accessHash = 2;
-    repeated EncryptedMessage keys = 3;
-}
 
 // API#0x41
 message RequestCreateChat {
     required int64 randomId = 1;
     required string title = 2;
     required bytes keyHash = 3;
-    required bytes publicKey = 5;
-    repeated InviteUser invites = 6;
+    required bytes publicKey = 4;
+    required EncryptedRSABroadcast invites = 5;
 }
 
 // API#0x42
@@ -535,14 +554,12 @@ message ResponseCreateChat {
 // API#0x45
 // Ответ: ResponseSeq#0x48
 // 400#: WRONG_KEY - когда aesKeyHash не совпадает с текущим ключом чата
-message RequestInviteUser {
+message RequestInviteUsers {
     required int32 chatId = 1;
     required int64 accessHash = 2;
-    required int32 userId = 3;
-    required int64 userAccessHash = 4;
     required int64 randomId = 5;
     required bytes chatKeyHash = 6;
-    repeated EncryptedMessage invite = 7;
+    required EncryptedRSABroadcast invite = 7;
 }
 
 // API#0x46
@@ -581,7 +598,7 @@ message RequestGetFile {
 }
 // API#0x11
 message ResponseFilePart {
-    required bytes data = 1;
+    required bytes payload = 1;
 }
 // File Upload
 // API#0x12
@@ -602,7 +619,7 @@ message UploadConfig {
 message RequestUploadPart {
     required UploadConfig config = 1;
     required int32 blockIndex = 2;
-    required bytes data = 3;
+    required bytes payload = 3;
 }
 
 // API#0x16

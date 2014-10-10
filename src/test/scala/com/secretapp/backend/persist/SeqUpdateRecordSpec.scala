@@ -4,6 +4,7 @@ import akka.util.Timeout
 import com.datastax.driver.core.ConsistencyLevel
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
+import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.protocol.codecs.common.StringCodec
 import scala.concurrent.{ Await }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,7 +27,10 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
       val pubkeyHash = 1L
       val mid = 1
       val updateMessage = updateProto.Message(
-        senderUID, destUID, pubkeyHash, BitVector(1, 0, 1, 0), BitVector(1, 2, 3))
+        senderUID, destUID, EncryptedRSAPackage(
+          pubkeyHash, BitVector(1, 0, 1, 0), BitVector(1, 2, 3)
+        )
+      )
       val updateMessageSent = updateProto.MessageSent(destUID, randomId = 5L)
 
       val efs = for {
@@ -39,7 +43,11 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
 
       val mf = efs map {
         case Seq(Entity(key, first), _) =>
-          first.asInstanceOf[updateProto.Message].message must equalTo(BitVector(1, 2, 3))
+          first.asInstanceOf[updateProto.Message].message must equalTo(
+            EncryptedRSAPackage(
+              pubkeyHash, BitVector(1, 0, 1, 0), BitVector(1, 2, 3)
+            )
+          )
         case x => throw new Exception(s"Unexpected updates count $x")
       }
 
@@ -57,8 +65,11 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
 
       val initialSeq = 0L
       val updateMessage = updateProto.Message(
-        senderUID, destUID, destPublicKeyHash,
-        BitVector(1, 0, 1, 0), BitVector(1, 2, 3)
+        senderUID, destUID,
+        EncryptedRSAPackage(
+          destPublicKeyHash,
+          BitVector(1, 0, 1, 0), BitVector(1, 2, 3)
+        )
       )
 
       1 to 1003 foreach { i =>

@@ -8,8 +8,7 @@ case class RequestSendGroupMessage(
   chatId: Int,
   accessHash: Long,
   randomId: Long,
-  keyHash: BitVector,
-  message: BitVector
+  message: EncryptedAESMessage
 ) extends RpcRequestMessage
 
 object RequestSendGroupMessage extends RpcRequestMessageObject {

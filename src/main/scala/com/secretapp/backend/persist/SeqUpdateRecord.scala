@@ -91,6 +91,29 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, Entity[UUID
 }
 
 object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
+  /*
+  def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: PersistenceMessage => Any)(implicit session: Session) = {
+    def process(sequenceNr: Long): Unit = {
+      val baseQuery = select
+        .where(_.processorId eqs processorId).and(_.partitionNr eqs partitionNr)
+        .and(_.sequenceNr eqs sequenceNr)
+      val query = optMarker match {
+        case Some(marker) =>
+          baseQuery.and(_.marker eqs marker)
+        case None => baseQuery
+      }
+      println(query.queryString)
+      query.one() map {
+        case Some(message) =>
+          f(message)
+          process(sequenceNr + 1)
+        case None =>
+          println(s"stopped at $sequenceNr")
+      }
+    }
+
+    process(1)
+  }*/
 
   // TODO: limit by size, not rows count
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]] = {
@@ -168,9 +191,9 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
         throw new Exception("Unknown UpdateMessage")
     }
 
-    //val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
+    val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
 
-    q.future map (_ => uuid)
+    f map (_ => uuid)
   }
 
 }

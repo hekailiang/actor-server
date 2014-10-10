@@ -49,7 +49,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestMessageReceived.requestType)    { case r: RequestMessageReceived    => r } (protoPayload(RequestMessageReceivedCodec))
     .\(RequestMessageRead.requestType)        { case r: RequestMessageRead        => r } (protoPayload(RequestMessageReadCodec))
     .\(RequestCreateChat.requestType)         { case r: RequestCreateChat         => r } (protoPayload(RequestCreateChatCodec))
-    .\(RequestInviteUser.requestType)         { case r: RequestInviteUser         => r } (protoPayload(RequestInviteUserCodec))
+    .\(RequestInviteUsers.requestType)        { case r: RequestInviteUsers        => r } (protoPayload(RequestInviteUsersCodec))
     .\(RequestLeaveChat.requestType)          { case r: RequestLeaveChat          => r } (protoPayload(RequestLeaveChatCodec))
     .\(RequestRemoveUser.requestType)         { case r: RequestRemoveUser         => r } (protoPayload(RequestRemoveUserCodec))
     .\(RequestTyping.requestType)             { case r: RequestTyping             => r } (protoPayload(RequestTypingCodec))

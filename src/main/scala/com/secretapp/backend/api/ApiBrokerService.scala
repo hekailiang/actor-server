@@ -75,7 +75,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
       case rq: RequestCreateChat =>
         handleMessaging(rq)
 
-      case rq: RequestInviteUser =>
+      case rq: RequestInviteUsers =>
         handleMessaging(rq)
 
       case rq: RequestLeaveChat =>

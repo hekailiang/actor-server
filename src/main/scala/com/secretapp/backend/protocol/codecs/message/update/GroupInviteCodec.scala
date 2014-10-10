@@ -3,6 +3,7 @@ package com.secretapp.backend.protocol.codecs.message.update
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec
@@ -15,10 +16,9 @@ import im.actor.messenger.{ api => protobuf }
 object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
   def encode(u: GroupInvite) = {
     val boxed = protobuf.UpdateGroupInvite(
-      u.chatId, u.accessHash, u.title,
-      u.users map (_.toProto),
-      u.keyHash, u.aesEncryptedKey, u.message,
-      u.chatCreatorUserId
+      u.chatId, u.accessHash, u.chatCreatorUserId,
+      u.title, u.users map (_.toProto),
+      u.invite.toProto
     )
     encodeToBitVector(boxed)
   }
@@ -27,16 +27,13 @@ object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
     decodeProtobuf(protobuf.UpdateGroupInvite.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupInvite(
-          chatId, accessHash, title, users,
-          keyHash, aesEncryptedKey, message,
-          chatCreatorUserId
+          chatId, accessHash, chatCreatorUserId,
+          title, users, invite
         )
       ) =>
         GroupInvite(
-          chatId, accessHash, title,
-          users map UserId.fromProto,
-          keyHash, aesEncryptedKey, message,
-          chatCreatorUserId
+          chatId, accessHash, chatCreatorUserId,
+          title, users map UserId.fromProto, EncryptedRSAPackage.fromProto(invite)
         )
     }
   }

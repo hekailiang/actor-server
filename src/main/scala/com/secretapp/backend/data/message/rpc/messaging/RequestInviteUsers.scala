@@ -4,16 +4,14 @@ import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 import scodec.bits.BitVector
 
-case class RequestInviteUser(
+case class RequestInviteUsers(
   chatId: Int,
   accessHash: Long,
-  userId: Int,
-  userAccessHash: Long,
   randomId: Long,
   chatKeyHash: BitVector,
-  invite: immutable.Seq[EncryptedMessage]
+  broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage
 
-object RequestInviteUser extends RpcRequestMessage {
+object RequestInviteUsers extends RpcRequestMessage {
   val requestType = 0x45
 }

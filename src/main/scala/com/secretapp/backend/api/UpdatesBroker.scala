@@ -1,22 +1,22 @@
 package com.secretapp.backend.api
 
 import akka.actor._
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout
-import com.gilt.timeuuid.TimeUuid
-import com.secretapp.backend.data.message.rpc.messaging.EncryptedMessage
-import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import java.util.UUID
-import scala.concurrent.duration._
 import com.datastax.driver.core.{Session => CSession}
+import com.gilt.timeuuid.TimeUuid
+import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
+import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.SeqUpdateRecord
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
+import java.util.UUID
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scodec.bits._
 
 object UpdatesBroker {
@@ -25,7 +25,7 @@ object UpdatesBroker {
   // for events which should be processed by some internal logic inside UpdatesBroker
   case class NewUpdateEvent(authId: Long, event: UpdateEvent)
   case class NewMessageSent(uid: Int, randomId: Long) extends UpdateEvent
-  case class NewMessage(senderUID: Int, destUID: Int, keyHash: Long, aesEncryptedKey: BitVector, message: BitVector) extends UpdateEvent
+  case class NewMessage(senderUID: Int, destUID: Int, message: EncryptedRSAPackage) extends UpdateEvent
 
   // for events which should be just pushed to the sequence
   case class NewUpdatePush(authId: Long, update: SeqUpdateMessage)
@@ -112,7 +112,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         }
         maybeSnapshot()
       }
-    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, keyHash, aesEncryptedKey, message)) =>
+    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message)) =>
       val replyTo = sender()
       log.info(s"NewMessage $p from ${replyTo.path}")
       persist(SeqUpdate) { _ =>
@@ -120,8 +120,6 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
         val update = updateProto.Message(
           senderUID = senderUID,
           destUID = destUID,
-          keyHash = keyHash,
-          aesEncryptedKey = aesEncryptedKey,
           message = message
         )
         pushUpdate(authId, update)
@@ -143,7 +141,7 @@ class UpdatesBroker(implicit session: CSession) extends PersistentActor with Act
     case msg @ NewUpdatePush(_, update) =>
       log.debug(s"Recovering NewUpdatePush ${msg}")
       this.seq += 1
-    case msg @ NewUpdateEvent(_, NewMessage(_, _, _, _, _)) =>
+    case msg @ NewUpdateEvent(_, NewMessage(_, _, _)) =>
       log.debug(s"Recovering NewMessage ${msg}")
       this.seq += 1
     case msg @ NewUpdateEvent(_, NewMessageSent(_, _)) =>
