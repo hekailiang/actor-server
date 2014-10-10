@@ -108,7 +108,7 @@ trait SignService extends SocialHelpers {
             auth(newUser)
           case Some(userAuth) =>
             if (userAuth.publicKey != publicKey) {
-              UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
+              //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
               updateUserRecord() onSuccess {
                 case _ =>
                   pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
