@@ -349,66 +349,7 @@ trait MessagingService extends RandomService with UserHelpers {
       } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
     }
   }
-/*
-  // TODO: refactor this shit
-  protected def createChatUserInvites(chat: GroupChat, chatUserIds: immutable.Seq[Int], userId: Int, userAccessHash: Long, keys: immutable.Seq[EncryptedMessage]): Future[Error \/ Vector[(Long, Int, GroupInvite)]] = {
-    getUsers(userId) flatMap {
-      case users if users.isEmpty =>
-        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left)
-      case users =>
-        val (_, checkUser) = users.head
 
-        if (checkUser.accessHash(currentUser.authId) == userAccessHash) {
-          val jobOpts = keys flatMap { message =>
-            message.keys map ((message.message, _))
-          } map {
-            case (message, key) =>
-              users.toMap.get(key.keyHash) map ((_, message, key))
-          }
-
-          jobOpts.toVector.sequence map { jobs =>
-            val futures: Vector[Future[(Long, Int, GroupInvite)]] = jobs map {
-              case (user, message, key) =>
-                for {
-                  chatUserIdStructs <- Future.sequence {
-                    chatUserIds map { userId =>
-                      for {
-                        optStruct <- getUserIdStruct(userId, user.authId)
-                      } yield {
-                        optStruct match {
-                          case Some(struct) => struct
-                          case None =>
-                            log.error(s"Cannot get userId struct for $userId")
-                            throw new Exception(s"Cannot get userId struct for $userId")
-                        }
-                      }
-                    }
-                  }
-                } yield {
-                  (
-                    user.authId,
-                    user.uid,
-                    GroupInvite(
-                      chatId = chat.id,
-                      accessHash = chat.accessHash,
-                      title = chat.title,
-                      users = chatUserIdStructs,
-                      keyHash = user.publicKeyHash,
-                      aesEncryptedKey = key.aesEncryptedKey,
-                      message = message,
-                      chatCreatorUserId = chat.creatorUserId
-                    )
-                  )
-                }
-            }
-            Future.sequence(futures) map (_.right)
-          } getOrElse (Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true).left))
-        } else {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left)
-        }
-    }
-  }
- */
   protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
     getUsers(uid) flatMap {
       case users if users.isEmpty =>
