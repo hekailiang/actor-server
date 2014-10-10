@@ -557,9 +557,9 @@ message ResponseCreateChat {
 message RequestInviteUsers {
     required int32 chatId = 1;
     required int64 accessHash = 2;
-    required int64 randomId = 5;
-    required bytes chatKeyHash = 6;
-    required EncryptedRSABroadcast invite = 7;
+    required int64 randomId = 3;
+    required bytes chatKeyHash = 4;
+    required EncryptedRSABroadcast invite = 5;
 }
 
 // API#0x46

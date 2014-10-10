@@ -144,8 +144,6 @@ class GroupMessagingSpec extends RpcSpec {
         val rqInviteUser = RequestInviteUsers(
           chatId = resp.chatId,
           accessHash = resp.accessHash,
-          //userId = scope2.user.uid,
-          //userAccessHash = scope2.user.accessHash(scope.user.authId),
           randomId = 666L,
           chatKeyHash = chatKeyHash,
           broadcast = EncryptedRSABroadcast(
