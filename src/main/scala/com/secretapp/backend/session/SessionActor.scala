@@ -8,6 +8,7 @@ import akka.util.{ ByteString, Timeout }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.secretapp.backend.protocol.transport.StopConnector
 import com.secretapp.backend.services.SessionManager
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
@@ -181,8 +182,8 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
         rand.nextLong, NewSession(rand.nextLong, messageId)
       )
       val encoded = MessageBoxCodec.encodeValid(mb)
-      val pe = MTPackage(authId, sessionId, encoded).right
-      connectors foreach (_ ! pe)
+      val p = MTPackage(authId, sessionId, encoded)
+      connectors foreach (_ ! StopConnector(p))
     case ReceiveTimeout ⇒
       context.parent ! Passivate(stopMessage = Stop)
     case Stop =>

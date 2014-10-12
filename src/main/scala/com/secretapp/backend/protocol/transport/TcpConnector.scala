@@ -77,6 +77,14 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
 
     case PackageAck(index) =>
       throw new Exception("Received ack in writing mode")
+
+    case StopConnector(p) =>
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+        write(index, data)
+      }
+
+      connection ! Close
   }
 
   def buffering: Receive = {
@@ -106,6 +114,14 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
     case PackageAck(index) =>
       blog(s"Ack ${index}")
       acknowledge()
+
+    case StopConnector(p) =>
+      nextPackage(p) { (index, data) =>
+        buffer(index, data)
+        write(index, data)
+      }
+
+      connection ! Close
   }
 
   private def write(index: Int, data: ByteString, becomeBuffering: Boolean = true): Unit = {
