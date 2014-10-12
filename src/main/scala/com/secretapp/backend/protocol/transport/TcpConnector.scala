@@ -118,10 +118,9 @@ class TcpConnector(val connection: ActorRef, val sessionRegion: ActorRef, val se
     case StopConnector(p) =>
       nextPackage(p) { (index, data) =>
         buffer(index, data)
-        write(index, data)
       }
 
-      connection ! Close
+      closing = true
   }
 
   private def write(index: Int, data: ByteString, becomeBuffering: Boolean = true): Unit = {
