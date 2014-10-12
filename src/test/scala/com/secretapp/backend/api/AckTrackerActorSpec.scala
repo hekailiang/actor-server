@@ -50,7 +50,9 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
       val tracker = getTrackerActor()
       probe.send(tracker, RegisterMessage(message.messageId, bytes))
       probe.send(tracker, RegisterMessage(124L, bytes))
-      probe.expectMsg(5.seconds, MessagesSizeOverflow)
+      probe.expectMsgPF() {
+        case MessagesSizeOverflow(_) => true
+      }
     }
   }
 }

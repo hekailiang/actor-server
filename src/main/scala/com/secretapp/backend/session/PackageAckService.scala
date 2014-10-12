@@ -25,7 +25,7 @@ trait PackageAckService {
   import context.dispatcher
 
   // TODO: configurable
-  val unackedSizeLimit = 1024 * 100
+  val unackedSizeLimit = 1024 * 1024 * 16 // 16 MB
   lazy val ackTracker = context.actorOf(Props(classOf[AckTrackerActor], authId, sessionId, unackedSizeLimit))
 
   def registerSentMessage(mb: MessageBox, b: ByteString): Unit = mb match {

@@ -5,7 +5,7 @@ import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, Shard
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.persistence._
 import akka.util.{ ByteString, Timeout }
-import com.secretapp.backend.data.message.{ Container, Drop, ResponseAuthId, RpcRequestBox, RpcResponseBox, UnsentResponse }
+import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.SessionManager
@@ -175,6 +175,14 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     case Terminated(connector) =>
       log.debug(s"removing connector $connector")
       connectors = connectors - connector
+    case MessagesSizeOverflow(messageId) =>
+      log.debug(s"Messages size overflow, creating new session")
+      val mb = MessageBox(
+        rand.nextLong, NewSession(rand.nextLong, messageId)
+      )
+      val encoded = MessageBoxCodec.encodeValid(mb)
+      val pe = MTPackage(authId, sessionId, encoded).right
+      connectors foreach (_ ! pe)
     case ReceiveTimeout ⇒
       context.parent ! Passivate(stopMessage = Stop)
     case Stop =>
