@@ -11,5 +11,5 @@ case class Error(
 }
 
 object Error extends RpcResponseObject {
-  val rpcType = 0x2
+  val rpcType = 0x02
 }

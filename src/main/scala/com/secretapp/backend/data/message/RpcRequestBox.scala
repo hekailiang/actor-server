@@ -8,5 +8,5 @@ case class RpcRequestBox(body: RpcRequest) extends TransportMessage {
 }
 
 object RpcRequestBox extends TransportMessageMessageObject {
-  val header = 0x3
+  val header = 0x03
 }
