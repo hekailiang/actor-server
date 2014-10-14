@@ -44,17 +44,20 @@ trait HandlerService extends GeneratorService {
   }
 
   protected def handleRequestUploadFile(config: UploadConfig, offset: Int, data: BitVector): Future[RpcResponse] = {
-    // TODO: handle failures
-    val fileId = int32codec.decodeValidValue(config.serverData)
-
-    try {
-      fileRecord.write(fileId, offset, data.toByteArray) map { _ =>
-        val rsp = ResponseVoid()
-        Ok(rsp)
-      }
-    } catch {
-      case e: FileRecordError =>
-        Future.successful(Error(400, e.tag, "", e.canTryAgain))
+    int32codec.decodeValue(config.serverData) match {
+      case -\/(e) =>
+        log.warning(s"Cannot parse serverData $e")
+        Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
+      case \/-(fileId) =>
+        try {
+          fileRecord.write(fileId, offset, data.toByteArray) map { _ =>
+            val rsp = ResponseVoid()
+            Ok(rsp)
+          }
+        } catch {
+          case e: FileRecordError =>
+            Future.successful(Error(400, e.tag, "", e.canTryAgain))
+        }
     }
   }
 
@@ -73,43 +76,48 @@ trait HandlerService extends GeneratorService {
   }
 
   protected def handleRequestCompleteUpload(config: UploadConfig, blocksCount: Int, crc32: Long): Future[RpcResponse] = {
-    val fileId = int32codec.decodeValidValue(config.serverData)
-    val faccessHash = fileRecord.getAccessHash(fileId)
+    int32codec.decodeValue(config.serverData) match {
+      case -\/(e) =>
+        log.warning(s"Cannot parse serverData $e")
+        Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
+      case \/-(fileId) =>
+        val faccessHash = fileRecord.getAccessHash(fileId)
 
-    val f = fileRecord.countSourceBlocks(fileId) flatMap { sourceBlocksCount =>
-      if (blocksCount == sourceBlocksCount) {
-        val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
-          if (crc32 == realcrc32) {
-            val f = faccessHash map { accessHash =>
-                val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
-                Ok(rsp)
+        val f = fileRecord.countSourceBlocks(fileId) flatMap { sourceBlocksCount =>
+          if (blocksCount == sourceBlocksCount) {
+            val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
+              if (crc32 == realcrc32) {
+                val f = faccessHash map { accessHash =>
+                  val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
+                  Ok(rsp)
+                }
+                f onFailure {
+                  case e: Throwable =>
+                    log.error("Failed to get file accessHash")
+                    throw e
+                }
+                f
+              } else {
+                Future.successful(Error(400, "WRONG_CRC", "", true))
+              }
             }
             f onFailure {
               case e: Throwable =>
-                log.error("Failed to get file accessHash")
+                log.error("Failed to calculate file crc32")
                 throw e
             }
             f
           } else {
-            Future.successful(Error(400, "WRONG_CRC", "", true))
+            Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
           }
         }
         f onFailure {
           case e: Throwable =>
-            log.error("Failed to calculate file crc32")
+            log.error("Failed to get source blocks count")
             throw e
         }
         f
-      } else {
-        Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
-      }
     }
-    f onFailure {
-      case e: Throwable =>
-        log.error("Failed to get source blocks count")
-        throw e
-    }
-    f
   }
 
   protected def handleRequestGetFile(location: FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
