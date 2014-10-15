@@ -287,6 +287,8 @@ class GroupMessagingSpec extends RpcSpec {
 
     "not send GroupUserAdded after inviting user who is already a chat member" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
       val scope22 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
 
       {

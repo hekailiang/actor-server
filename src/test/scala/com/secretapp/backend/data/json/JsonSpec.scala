@@ -8,6 +8,8 @@ import scala.util.Random
 
 trait JsonSpec extends Specification {
 
+  val rand = new Random()
+
   protected def testToAndFromJson[A](json: JsValue, value: A)
                           (implicit f: Format[A]) = {
     Json.toJson(value)         should be_== (json)

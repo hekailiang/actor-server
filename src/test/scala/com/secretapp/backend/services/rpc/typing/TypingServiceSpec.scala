@@ -77,6 +77,8 @@ class TypingServiceSpec extends RpcSpec {
 
     "send group typings weak updates" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
 
       val respChat = {
         implicit val scope = scope1
