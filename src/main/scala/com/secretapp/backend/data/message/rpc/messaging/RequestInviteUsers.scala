@@ -16,6 +16,6 @@ case class RequestInviteUsers(
 }
 
 
-object RequestInviteUsers extends RpcRequestMessage {
+object RequestInviteUsers extends RpcRequestMessageObject {
   val requestType = 0x45
 }

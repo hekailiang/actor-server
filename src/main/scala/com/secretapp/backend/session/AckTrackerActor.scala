@@ -1,7 +1,6 @@
 package com.secretapp.backend.session
 
 import akka.actor._
-import akka.persistence._
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scodec.bits.BitVector
@@ -55,17 +54,15 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
 
   def receive = {
     case m: RegisterMessage =>
-      log.debug(s"RegisterMessage $persistenceId ${m.key} size=${state.messagesSize}")
-      persist(m) { _ =>
-        val newState = state.withNew(m.key, m.value)
+      log.debug(s"RegisterMessage ${m.key} size=${state.messagesSize}")
+      val newState = state.withNew(m.key, m.value)
 
-        if (newState.messagesSize > sizeLimit) {
-          log.warning("Messages size overflow")
-          sender() ! MessagesSizeOverflow(m.key)
-          context stop self
-        } else {
-          state = newState
-        }
+      if (newState.messagesSize > sizeLimit) {
+        log.warning("Messages size overflow")
+        sender() ! MessagesSizeOverflow(m.key)
+        context stop self
+      } else {
+        state = newState
       }
     case m: RegisterMessageAck =>
       registerMessageAck(m.key)

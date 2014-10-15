@@ -67,7 +67,7 @@ class RpcMessagingSpec extends RpcSpec {
       val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       val accessHash = User.getAccessHash(scope.user.authId, userId, userSalt)
-      authUser(user, defaultPhoneNumber)(scope.apiActor, scope.session)
+      authUser(user, defaultPhoneNumber)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits

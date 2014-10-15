@@ -87,7 +87,7 @@ object JsonFormatsSpec {
     val (bitVector, bitVectorJson) = genBitVector
 
     (
-      EncryptedKey(1, bitVector),
+      EncryptedAESKey(1, bitVector),
       Json.obj(
         "keyHash"         -> "1",
         "aesEncryptedKey" -> bitVectorJson
@@ -100,7 +100,7 @@ object JsonFormatsSpec {
     val (encryptedKey, encryptedKeyJson) = genEncryptedKey
 
     (
-      EncryptedMessage(bitVector, immutable.Seq(encryptedKey)),
+      EncryptedAESMessage(bitVector, immutable.Seq(encryptedKey)),
       Json.obj(
         "message" -> bitVectorJson,
         "keys"    -> Json.arr(encryptedKeyJson)
