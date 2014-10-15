@@ -2,13 +2,13 @@ package com.secretapp.backend.services.rpc.typing
 
 import akka.actor._
 import akka.testkit._
-import com.secretapp.backend.data.message.UpdateBox
+import com.secretapp.backend.data.message.{ UpdateBox, RpcResponseBox }
 import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
+import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.typing._
 import com.secretapp.backend.data.message.struct.UserId
-import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update
-import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.update.WeakUpdate
 import com.secretapp.backend.data.models.User
@@ -16,6 +16,7 @@ import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scodec.bits._
 
 class TypingServiceSpec extends RpcSpec {
   import system.dispatcher
@@ -74,5 +75,47 @@ class TypingServiceSpec extends RpcSpec {
       }
     }
 
+    "send group typings weak updates" in {
+      val (scope1, scope2) = TestScope.pair(3, 4)
+
+      val respChat = {
+        implicit val scope = scope1
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = BitVector(1, 2, 3),
+          publicKey = BitVector(1, 0, 1, 0),
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq.empty,
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                keyHash = scope.user.publicKeyHash,
+                aesEncryptedKey = BitVector(2, 0, 2, 0)
+              )
+            )
+          )
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        RequestGetState() :~> <~:[ResponseSeq]
+
+        resp
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestGroupTyping(respChat.chatId, respChat.accessHash, 1) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val update = receiveNMessageBoxes(1)(scope.probe, scope.apiActor).head.body
+        update.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[TypingGroup]
+      }
+    }
   }
 }

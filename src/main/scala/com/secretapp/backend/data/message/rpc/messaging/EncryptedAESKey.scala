@@ -11,14 +11,15 @@ import scalaz._
 import Scalaz._
 
 @SerialVersionUID(1L)
-case class EncryptedMessage(message: BitVector, keys: immutable.Seq[EncryptedKey]) extends ProtobufMessage
-{
-  def toProto = protobuf.EncryptedMessage(message, keys map (_.toProto))
+case class EncryptedAESKey(
+  keyHash: Long, aesEncryptedKey: BitVector
+) extends ProtobufMessage {
+  def toProto = protobuf.EncryptedAESKey(keyHash, aesEncryptedKey)
 }
 
-object EncryptedMessage {
-  def fromProto(u: protobuf.EncryptedMessage): EncryptedMessage = u match {
-    case protobuf.EncryptedMessage(message, keys) =>
-      EncryptedMessage(message, keys map EncryptedKey.fromProto)
+object EncryptedAESKey {
+  def fromProto(u: protobuf.EncryptedAESKey): EncryptedAESKey = u match {
+    case protobuf.EncryptedAESKey(keyHash, aesEncryptedKey) =>
+      EncryptedAESKey(keyHash, aesEncryptedKey)
   }
 }

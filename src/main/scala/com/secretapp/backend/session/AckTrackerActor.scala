@@ -16,7 +16,7 @@ object AckTrackerProtocol {
   // perhaps in future we will need it to be case class with key or key and value
   case object MessageAlreadyRegistered extends AckTrackerMessage
   case object GetUnackdMessages extends AckTrackerMessage
-  case object MessagesSizeOverflow extends AckTrackerMessage
+  case class MessagesSizeOverflow(key: Long) extends AckTrackerMessage
   case class UnackdMessages(messages: immutable.Map[Long, BitVector]) extends AckTrackerMessage
 }
 
@@ -55,15 +55,17 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
 
   def receive = {
     case m: RegisterMessage =>
-      log.debug(s"RegisterMessage ${m.key} $state")
-      val newState = state.withNew(m.key, m.value)
+      log.debug(s"RegisterMessage $persistenceId ${m.key} size=${state.messagesSize}")
+      persist(m) { _ =>
+        val newState = state.withNew(m.key, m.value)
 
-      if (newState.messagesSize > sizeLimit) {
-        log.warning("Messages size overflow")
-        sender() ! MessagesSizeOverflow
-        context stop self
-      } else {
-        state = newState
+        if (newState.messagesSize > sizeLimit) {
+          log.warning("Messages size overflow")
+          sender() ! MessagesSizeOverflow(m.key)
+          context stop self
+        } else {
+          state = newState
+        }
       }
     case m: RegisterMessageAck =>
       registerMessageAck(m.key)

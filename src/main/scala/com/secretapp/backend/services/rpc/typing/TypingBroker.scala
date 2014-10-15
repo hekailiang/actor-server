@@ -4,7 +4,10 @@ import akka.actor._
 import akka.contrib.pattern.{ ClusterSharding, DistributedPubSubExtension, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.persist.GroupChatUserRecord
+import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
 
@@ -23,6 +26,12 @@ object TypingProtocol {
   case class TellTypings(target: ActorRef) extends TypingMessage
 
   case class Envelope(userId: Int, payload: TypingMessage)
+  case class GroupEnvelope(userId: Int, payload: TypingMessage)
+
+  case object BrokerType extends Enumeration {
+    val User = Value(0)
+    val Group = Value(1)
+  }
 }
 
 // TODO: rename to WeakUpdatesBroker
@@ -30,7 +39,14 @@ object TypingBroker {
   import TypingProtocol._
   import TypingType._
 
-  def topicFor(userId: Int): String = s"typing-${userId}"
+  def topicFor(userId: Int): String = s"typing-u${userId}"
+  def topicFor(userId: Int, authId: Long): String = s"typing-u${userId}-a${authId}"
+
+  def topicFor(typ: BrokerType.Value, userId: Int): String = typ match {
+    case BrokerType.User  => s"typing-u${userId}"
+    case BrokerType.Group => s"typing-g${userId}"
+  }
+
   def timeoutFor(typingType: Int) = typingType match {
     case Text     => 7.seconds
     case Photo    => 15.seconds
@@ -40,7 +56,8 @@ object TypingBroker {
   }
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case Envelope(userId, msg) => (s"${userId}", msg)
+    case Envelope(userId, msg) => (s"u${userId}", msg)
+    case GroupEnvelope(chatId, msg) => (s"g${chatId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -48,26 +65,34 @@ object TypingBroker {
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
     case Envelope(userId, msg) => (userId % shardCount).toString
+    case GroupEnvelope(chatId, msg) => (chatId % shardCount).toString
   }
 
-  def startRegion()(implicit system: ActorSystem) =
+  def startRegion()(implicit system: ActorSystem, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Typing",
-      entryProps = Some(Props(classOf[TypingBroker])),
+      entryProps = Some(Props(classOf[TypingBroker], session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class TypingBroker extends Actor with ActorLogging {
+class TypingBroker(implicit val session: CSession) extends Actor with ActorLogging with UserHelpers {
   import TypingProtocol._
   import context.dispatcher
   import context.system
 
   val mediator = DistributedPubSubExtension(context.system).mediator
 
-  val selfUserId = Integer.parseInt(self.path.name)
-  val topic = TypingBroker.topicFor(selfUserId)
+  val selfType = if (self.path.name.startsWith("u")) {
+    BrokerType.User
+  } else if (self.path.name.startsWith("g")) {
+    BrokerType.Group
+  } else {
+    throw new Exception(s"Unknown typing broker type ${self.path.name}")
+  }
+
+  val selfId = Integer.parseInt(self.path.name.drop(1))
 
   var typingUsers = immutable.Map.empty[(Int, Int), Cancellable]
 
@@ -81,8 +106,30 @@ class TypingBroker extends Actor with ActorLogging {
         case Some(scheduled) =>
           scheduled.cancel()
         case None =>
+
+      }
+
+      selfType match {
+        case BrokerType.User =>
           log.debug(s"Publishing UserTyping ${userId}")
-          mediator ! Publish(topic, updateProto.Typing(userId, typingType))
+          mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
+        case BrokerType.Group =>
+          log.debug(s"Publishing UserTypingGroup ${userId}")
+          GroupChatUserRecord.getUsersWithKeyHashes(selfId) map { xs =>
+            xs foreach {
+              case (userId, keyHashes) =>
+                keyHashes foreach { keyHash =>
+                  for {
+                    optAuthId <- authIdFor(userId, keyHash)
+
+                  } yield {
+                    optAuthId map { authId =>
+                      mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
+                    }
+                  }
+                }
+            }
+          }
       }
 
       typingUsers += Tuple2((userId, typingType), system.scheduler.scheduleOnce(TypingBroker.timeoutFor(typingType), self, UserNotTyping(userId, typingType)))
@@ -94,7 +141,12 @@ class TypingBroker extends Actor with ActorLogging {
     case m @ TellTypings(target) =>
       typingUsers foreach {
         case ((userId, typingType), _) =>
-          target ! updateProto.Typing(userId, typingType)
+          selfType match {
+            case BrokerType.User =>
+              target ! updateProto.Typing(userId, typingType)
+            case BrokerType.Group =>
+              target ! updateProto.TypingGroup(selfId, userId, typingType)
+          }
       }
 
     case ReceiveTimeout => context.parent ! ShardRegion.Passivate(stopMessage = Stop)

@@ -65,6 +65,19 @@ trait SessionService extends UserManagerService {
     }
   }
 
+  protected def recoverSubscribeToPresences(userIds: immutable.Seq[Int]) = {
+    userIds foreach { userId =>
+      log.info(s"Subscribing $userId")
+      subscribedToPresencesUids = subscribedToPresencesUids + userId
+      mediator ! Subscribe(PresenceBroker.topicFor(userId), weakUpdatesPusher)
+
+      singletons.presenceBrokerRegion ! PresenceProtocol.Envelope(
+        userId,
+        PresenceProtocol.TellPresence(weakUpdatesPusher)
+      )
+    }
+  }
+
   protected def unsubscribeToPresences(uids: immutable.Seq[Int]) = {
     uids foreach { uid =>
       subscribedToPresencesUids = subscribedToPresencesUids - uid
@@ -83,6 +96,8 @@ trait SessionService extends UserManagerService {
   protected def subscribeToTypings(): Unit = {
     if (currentUser.isDefined) {
       mediator ! Subscribe(TypingBroker.topicFor(currentUser.get.uid), weakUpdatesPusher)
+      mediator ! Subscribe(TypingBroker.topicFor(currentUser.get.uid, currentUser.get.authId), weakUpdatesPusher)
+
       singletons.typingBrokerRegion ! TypingProtocol.Envelope(
         currentUser.get.uid,
         TypingProtocol.TellTypings(weakUpdatesPusher)

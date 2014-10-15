@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestSendMessageCodec extends Codec[RequestSendMessage] with utils.ProtobufCodec {
   def encode(r: RequestSendMessage) = {
-    val boxed = protobuf.RequestSendMessage(r.uid, r.accessHash, r.randomId, r.message.toProto, r.selfMessage map (_.toProto))
+    val boxed = protobuf.RequestSendMessage(r.uid, r.accessHash, r.randomId, r.message.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestSendMessage.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestSendMessage(uid, accessHash, randomId, message, selfMessage)) =>
-        RequestSendMessage(uid, accessHash, randomId, EncryptedMessage.fromProto(message), selfMessage map EncryptedMessage.fromProto)
+      case Success(protobuf.RequestSendMessage(uid, accessHash, randomId, message)) =>
+        RequestSendMessage(uid, accessHash, randomId, EncryptedRSAMessage.fromProto(message))
     }
   }
 }

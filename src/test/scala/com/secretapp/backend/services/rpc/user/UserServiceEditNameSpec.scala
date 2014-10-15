@@ -80,14 +80,15 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
       u.uid,
       u.accessHash(scope.user.authId),
       555L,
-      message = EncryptedMessage(
-        message = BitVector(1, 2, 3),
+      message = EncryptedRSAMessage(
+        encryptedMessage = BitVector(1, 2, 3),
         keys = immutable.Seq(
-          EncryptedKey(
+          EncryptedAESKey(
             u.publicKeyHash, BitVector(1, 0, 1, 0)
           )
-        )
-      ), selfMessage = None
+        ),
+        ownKeys = immutable.Seq.empty
+      )
     )
 
     rq :~> <~:[ResponseSeq]

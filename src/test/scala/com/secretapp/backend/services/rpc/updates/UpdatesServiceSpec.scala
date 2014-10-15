@@ -41,20 +41,16 @@ class UpdatesServiceSpec extends RpcSpec {
         val rq = RequestSendMessage(
           uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
           randomId = 555L,
-          message = EncryptedMessage(
-            message = BitVector(1, 2, 3),
+          message = EncryptedRSAMessage(
+            encryptedMessage = BitVector(1, 2, 3),
             keys = immutable.Seq(
-              EncryptedKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              EncryptedAESKey(
+                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
-            )
-          ), selfMessage = Some(
-            EncryptedMessage(
-              message = BitVector(1, 2, 3),
-              keys = immutable.Seq(
-                EncryptedKey(
-                  scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-                )
+            ),
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
             )
           )
@@ -104,14 +100,15 @@ class UpdatesServiceSpec extends RpcSpec {
         val rq = RequestSendMessage(
           uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
           randomId = 555L,
-          message = EncryptedMessage(
-            message = BitVector(1, 2, 3),
+          message = EncryptedRSAMessage(
+            encryptedMessage = BitVector(1, 2, 3),
             keys = immutable.Seq(
-              EncryptedKey(
+              EncryptedAESKey(
                 scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
-            )
-          ), selfMessage = None
+            ),
+            ownKeys = immutable.Seq.empty
+          )
         )
 
         rq :~> <~:[ResponseSeq]
@@ -159,14 +156,15 @@ class UpdatesServiceSpec extends RpcSpec {
           val rq = RequestSendMessage(
             uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
             randomId = i,
-            message = EncryptedMessage(
-              message = BitVector(i),
+            message = EncryptedRSAMessage(
+              encryptedMessage = BitVector(i),
               keys = immutable.Seq(
-                EncryptedKey(
+                EncryptedAESKey(
                   scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
                 )
-              )
-            ), selfMessage = None
+              ),
+              ownKeys = immutable.Seq.empty
+            )
           )
           rq :~>!
         }
@@ -189,7 +187,12 @@ class UpdatesServiceSpec extends RpcSpec {
 
         val updates = diff1.updates ++ diff2.updates
 
-        val expectedMessages = (1 to 330) map (BitVector(_)) toSet
+        val expectedMessages = (1 to 330) map { i =>
+          EncryptedRSAPackage(
+            scope1.user.publicKeyHash, BitVector(1, 0, 1, 0),
+            BitVector(i)
+          )
+        } toSet
 
         updates.map(_.body.asInstanceOf[update.Message].message).toSet must equalTo(expectedMessages)
 

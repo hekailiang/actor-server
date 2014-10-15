@@ -10,7 +10,7 @@ case class RequestCreateChat(
   title: String,
   keyHash: BitVector,
   publicKey: BitVector,
-  invites: immutable.Seq[InviteUser]
+  broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
   val header = RequestCreateChat.requestType
 }

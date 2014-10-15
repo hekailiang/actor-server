@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestCreateChatCodec extends Codec[RequestCreateChat] with utils.ProtobufCodec {
   def encode(r: RequestCreateChat) = {
-    val boxed = protobuf.RequestCreateChat(r.randomId, r.title, r.keyHash, r.publicKey, r.invites map (_.toProto))
+    val boxed = protobuf.RequestCreateChat(r.randomId, r.title, r.keyHash, r.publicKey, r.broadcast.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestCreateChat.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestCreateChat(randomId, title, keyHash, publicKey, invites)) =>
-        RequestCreateChat(randomId, title, keyHash, publicKey, invites map InviteUser.fromProto)
+      case Success(protobuf.RequestCreateChat(randomId, title, keyHash, publicKey, broadcast)) =>
+        RequestCreateChat(randomId, title, keyHash, publicKey, EncryptedRSABroadcast.fromProto(broadcast))
     }
   }
 }

@@ -8,11 +8,11 @@ case class RequestSendGroupMessage(
   chatId: Int,
   accessHash: Long,
   randomId: Long,
-  keyHash: BitVector,
-  message: BitVector
+  message: EncryptedAESMessage
 ) extends RpcRequestMessage {
   val header = RequestSendGroupMessage.requestType
 }
+
 
 object RequestSendGroupMessage extends RpcRequestMessageObject {
   val requestType = 0x43

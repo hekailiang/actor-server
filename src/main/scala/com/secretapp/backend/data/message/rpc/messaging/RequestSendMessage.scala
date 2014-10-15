@@ -6,8 +6,7 @@ import com.secretapp.backend.data.message.rpc._
 case class RequestSendMessage(uid: Int,
                               accessHash: Long,
                               randomId: Long,
-                              message: EncryptedMessage,
-                              selfMessage: Option[EncryptedMessage]) extends RpcRequestMessage {
+                              message: EncryptedRSAMessage) extends RpcRequestMessage {
   val header = RequestSendMessage.requestType
 }
 

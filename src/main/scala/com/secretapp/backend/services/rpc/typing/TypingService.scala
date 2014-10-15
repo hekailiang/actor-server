@@ -20,7 +20,8 @@ trait TypingService {
   private lazy val typingHandler = context.actorOf(Props(classOf[Handler], sessionActor, getUser.get, singletons.typingBrokerRegion, session), "typing")
 
   def handleRpcTyping: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case r @ (_: RequestTyping ) => authorizedRequest {
+    case r @ (_: RequestTyping    |
+              _: RequestGroupTyping) => authorizedRequest {
       (typingHandler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
     }
   }

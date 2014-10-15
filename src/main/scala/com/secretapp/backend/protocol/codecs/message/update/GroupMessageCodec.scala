@@ -2,6 +2,7 @@ package com.secretapp.backend.protocol.codecs.message.update
 
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESPackage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec
@@ -14,8 +15,7 @@ import im.actor.messenger.{ api => protobuf }
 object GroupMessageCodec extends Codec[GroupMessage] with utils.ProtobufCodec {
   def encode(u: GroupMessage) = {
     val boxed = protobuf.UpdateGroupMessage(
-      u.senderUID, u.chatId, u.keyHash,
-      u.aesKeyHash, u.message
+      u.senderUID, u.chatId, u.message.toProto
     )
     encodeToBitVector(boxed)
   }
@@ -24,11 +24,11 @@ object GroupMessageCodec extends Codec[GroupMessage] with utils.ProtobufCodec {
     decodeProtobuf(protobuf.UpdateGroupMessage.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupMessage(
-          senderUID, chatId, keyHash, aesKeyHash, message
+          senderUID, chatId, message
         )
       ) =>
         GroupMessage(
-          senderUID, chatId, keyHash, aesKeyHash, message
+          senderUID, chatId, EncryptedAESPackage.fromProto(message)
         )
     }
   }

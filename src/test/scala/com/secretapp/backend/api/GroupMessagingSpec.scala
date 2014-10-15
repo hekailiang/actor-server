@@ -43,26 +43,33 @@ class GroupMessagingSpec extends RpcSpec {
 
       {
         implicit val scope = scope1
-
         val rqCreateChat = RequestCreateChat(
           randomId = 1L,
           title = "Groupchat 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
-          invites = immutable.Seq(
-            InviteUser(
-              uid = scope2.user.uid,
-              accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
-              keys = immutable.Seq(
-                EncryptedMessage(
-                  message = BitVector(1, 2, 3),
-                  keys = immutable.Seq(
-                    EncryptedKey(
-                      keyHash = scope2.user.publicKeyHash,
-                      aesEncryptedKey = BitVector(2, 0, 2, 0)
-                    )
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedUserAESKeys(
+                userId = scope2.user.uid,
+                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                keys = immutable.Seq(
+                  EncryptedAESKey(
+                    keyHash = scope2.user.publicKeyHash,
+                    aesEncryptedKey = BitVector(2, 0, 2, 0)
                   )
                 )
+              )
+            ),
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                keyHash = scope.user.publicKeyHash,
+                aesEncryptedKey = BitVector(2, 0, 2, 0)
+              ),
+              EncryptedAESKey(
+                keyHash = scope11.user.publicKeyHash,
+                aesEncryptedKey = BitVector(2, 0, 2, 0)
               )
             )
           )
@@ -75,13 +82,19 @@ class GroupMessagingSpec extends RpcSpec {
           chatId = resp.chatId,
           accessHash = resp.accessHash,
           randomId = 666L,
-          keyHash = BitVector(1, 1, 1),
-          message = BitVector(1, 2, 3)
+          message = EncryptedAESMessage(
+            keyHash = BitVector(1, 1, 1),
+            encryptedMessage = BitVector(1, 2, 3)
+          )
         )
 
         rqSendMessage :~> <~:[updateProto.ResponseSeq]
 
+        Thread.sleep(500)
+
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
         diff.updates.head.body.assertInstanceOf[GroupCreated]
       }
 
@@ -101,7 +114,6 @@ class GroupMessagingSpec extends RpcSpec {
 
         val invite = diff.updates.head.body.assertInstanceOf[GroupInvite]
 
-        invite.users.length should beEqualTo(2)
         invite.users.toSet should beEqualTo(Set(
           UserId(scope1.user.uid, scope1.user.accessHash(scope.user.authId)),
           UserId(scope2.user.uid, scope2.user.accessHash(scope.user.authId))
@@ -126,29 +138,36 @@ class GroupMessagingSpec extends RpcSpec {
           title = "Groupchat 3000",
           keyHash = chatKeyHash,
           publicKey = BitVector(1, 0, 1, 0),
-          invites = immutable.Seq()
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq.empty,
+            ownKeys = immutable.Seq.empty
+          )
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
         Thread.sleep(1000)
 
-        val rqInviteUser = RequestInviteUser(
+        val rqInviteUser = RequestInviteUsers(
           chatId = resp.chatId,
           accessHash = resp.accessHash,
-          userId = scope2.user.uid,
-          userAccessHash = scope2.user.accessHash(scope.user.authId),
           randomId = 666L,
           chatKeyHash = chatKeyHash,
-          invite = immutable.Seq(
-            EncryptedMessage(
-              message = BitVector(1, 2, 3),
-              keys = immutable.Seq(
-                EncryptedKey(
-                  keyHash = scope2.user.publicKeyHash,
-                  aesEncryptedKey = BitVector(2, 0, 2, 0)
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedUserAESKeys(
+                userId = scope2.user.uid,
+                accessHash = scope2.user.accessHash(scope.user.authId),
+                keys = immutable.Seq(
+                  EncryptedAESKey(
+                    keyHash = scope2.user.publicKeyHash,
+                    aesEncryptedKey = BitVector(2, 0, 2, 0)
+                  )
                 )
               )
-            )
+            ),
+            ownKeys = immutable.Seq.empty
           )
         )
 
@@ -182,22 +201,21 @@ class GroupMessagingSpec extends RpcSpec {
           title = "Groupchat 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
-          invites = immutable.Seq(
-            InviteUser(
-              uid = scope2.user.uid,
-              accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
-              keys = immutable.Seq(
-                EncryptedMessage(
-                  message = BitVector(1, 2, 3),
-                  keys = immutable.Seq(
-                    EncryptedKey(
-                      keyHash = scope2.user.publicKeyHash,
-                      aesEncryptedKey = BitVector(2, 0, 2, 0)
-                    )
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedUserAESKeys(
+                userId = scope2.user.uid,
+                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                keys = immutable.Seq(
+                  EncryptedAESKey(
+                    keyHash = scope2.user.publicKeyHash,
+                    aesEncryptedKey = BitVector(2, 0, 2, 0)
                   )
                 )
               )
-            )
+            ),
+            ownKeys = immutable.Seq.empty
           )
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
@@ -214,7 +232,7 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope11
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-        diff.updates(1).body.assertInstanceOf[GroupUserLeave]
+        diff.updates.last.body.assertInstanceOf[GroupUserLeave]
       }
 
       {
@@ -239,7 +257,11 @@ class GroupMessagingSpec extends RpcSpec {
           title = "Groupchat 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
-          invites = immutable.Seq()
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq.empty,
+            ownKeys = immutable.Seq.empty
+          )
         )
         val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
 
@@ -253,11 +275,101 @@ class GroupMessagingSpec extends RpcSpec {
           chatId = chat.chatId,
           accessHash = chat.accessHash,
           randomId = 666L,
-          keyHash = BitVector(1, 1, 1),
-          message = BitVector(1, 2, 3)
+          EncryptedAESMessage(
+            keyHash = BitVector(1, 1, 1),
+            encryptedMessage = BitVector(1, 2, 3)
+          )
         )
 
         rqSendMessage :~> <~:(403, "NO_PERMISSION")
+      }
+    }
+
+    "not send GroupUserAdded after inviting user who is already a chat member" in {
+      val (scope1, scope2) = TestScope.pair(5, 6)
+      val scope22 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
+
+      {
+        implicit val scope = scope1
+
+        val chatKeyHash = BitVector(1, 1, 1)
+
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = chatKeyHash,
+          publicKey = BitVector(1, 0, 1, 0),
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq.empty,
+            ownKeys = immutable.Seq.empty
+          )
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        Thread.sleep(1000)
+
+        {
+          val rqInviteUser = RequestInviteUsers(
+            chatId = resp.chatId,
+            accessHash = resp.accessHash,
+            randomId = 666L,
+            chatKeyHash = chatKeyHash,
+            broadcast = EncryptedRSABroadcast(
+              encryptedMessage = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedUserAESKeys(
+                  userId = scope2.user.uid,
+                  accessHash = scope2.user.accessHash(scope.user.authId),
+                  keys = immutable.Seq(
+                    EncryptedAESKey(
+                      keyHash = scope2.user.publicKeyHash,
+                      aesEncryptedKey = BitVector(2, 0, 2, 0)
+                    )
+                  )
+                )
+              ),
+              ownKeys = immutable.Seq.empty
+            )
+          )
+
+          rqInviteUser :~> <~:[updateProto.ResponseSeq]
+        }
+
+        val (diff1, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff1.updates.length should beEqualTo(1)
+        diff1.updates.last.body.assertInstanceOf[GroupUserAdded]
+
+        {
+          val rqInviteUser = RequestInviteUsers(
+            chatId = resp.chatId,
+            accessHash = resp.accessHash,
+            randomId = 666L,
+            chatKeyHash = chatKeyHash,
+            broadcast = EncryptedRSABroadcast(
+              encryptedMessage = BitVector(1, 2, 3),
+              keys = immutable.Seq(
+                EncryptedUserAESKeys(
+                  userId = scope22.user.uid,
+                  accessHash = scope22.user.accessHash(scope.user.authId),
+                  keys = immutable.Seq(
+                    EncryptedAESKey(
+                      keyHash = scope22.user.publicKeyHash,
+                      aesEncryptedKey = BitVector(2, 0, 2, 0)
+                    )
+                  )
+                )
+              ),
+              ownKeys = immutable.Seq.empty
+            )
+          )
+
+          rqInviteUser :~> <~:[updateProto.ResponseSeq]
+        }
+
+        val (diff2, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        diff1.updates.length should beEqualTo(1)
+        diff2.updates.last.body.assertInstanceOf[GroupUserAdded]
       }
     }
   }

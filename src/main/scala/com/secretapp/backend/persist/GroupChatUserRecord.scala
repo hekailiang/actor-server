@@ -20,6 +20,9 @@ sealed class GroupChatUserRecord extends CassandraTable[GroupChatUserRecord, Int
   object userId extends IntColumn(this) with PrimaryKey[Int] {
     override lazy val name = "user_id"
   }
+  object keyHashes extends SetColumn[GroupChatUserRecord, Int, Long](this) {
+    override lazy val name = "key_hashes"
+  }
 
   override def fromRow(row: Row): Int = {
     userId(row)
@@ -32,11 +35,30 @@ object GroupChatUserRecord extends GroupChatUserRecord with DBConnector {
       .value(_.chatId, chatId).value(_.userId, userId).future()
   }
 
+  def addUser(chatId: Int, userId: Int, keyHashes: Set[Long])(implicit session: Session): Future[ResultSet \/ ResultSet] = {
+    select(_.userId).where(_.chatId eqs chatId).and(_.userId eqs userId).one() flatMap {
+      case Some(_) =>
+        update
+          .where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes addAll keyHashes).future() map (_.left)
+      case None =>
+        insert
+          .value(_.chatId, chatId).value(_.userId, userId).value(_.keyHashes, keyHashes).future() map (_.right)
+    }
+  }
+
   def removeUser(chatId: Int, userId: Int)(implicit session: Session): Future[ResultSet] = {
     delete.where(_.chatId eqs chatId).and(_.userId eqs userId).future()
   }
 
   def getUsers(chatId: Int)(implicit session: Session): Future[Seq[Int]] = {
     select.where(_.chatId eqs chatId).fetch()
+  }
+
+  def getUsersWithKeyHashes(chatId: Int)(implicit session: Session): Future[Seq[(Int, Set[Long])]] = {
+    select(_.userId, _.keyHashes).where(_.chatId eqs chatId).fetch()
+  }
+
+  def addUserKeyHash(chatId: Int, userId: Int, keyHash: Long)(implicit session: Session): Future[ResultSet] = {
+    update.where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes add keyHash).future()
   }
 }

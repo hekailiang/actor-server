@@ -1,18 +1,18 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.websudos.phantom.Implicits._
+import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.crypto.ec.PublicKey
+import com.websudos.phantom.Implicits._
 import java.util.{ Date, UUID }
-import scodec.bits.BitVector
+import scala.collection.immutable
 import scala.concurrent.Future
 import scala.math.BigInt
-import scala.collection.immutable
 import scalaz._
 import Scalaz._
+import scodec.bits.BitVector
 
 sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, UserPublicKey] {
   override lazy val tableName = "user_public_keys"
@@ -74,5 +74,9 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
 
   def fetchAuthIdsByUid(uid: Int)(implicit session: Session): Future[Seq[Long]] = {
     select(_.authId).where(_.uid eqs uid).fetch()
+  }
+
+  def getAuthIdAndSalt(userId: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[(Long, String)]] = {
+    select(_.authId, _.userAccessSalt).where(_.uid eqs userId).and(_.publicKeyHash eqs publicKeyHash).one()
   }
 }

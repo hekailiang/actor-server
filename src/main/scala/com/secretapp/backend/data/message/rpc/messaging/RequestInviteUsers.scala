@@ -5,18 +5,17 @@ import com.secretapp.backend.data.message.rpc._
 import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
-case class RequestInviteUser(
+case class RequestInviteUsers(
   chatId: Int,
   accessHash: Long,
-  userId: Int,
-  userAccessHash: Long,
   randomId: Long,
   chatKeyHash: BitVector,
-  invite: immutable.Seq[EncryptedMessage]
+  broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
-  val header = RequestInviteUser.requestType
+  val header = RequestInviteUsers.requestType
 }
 
-object RequestInviteUser extends RpcRequestMessageObject {
+
+object RequestInviteUsers extends RpcRequestMessage {
   val requestType = 0x45
 }
