@@ -43,9 +43,9 @@ trait MTPackageService {
         } else (sp, buf).right
       case pp@WrappedPackageParsing(bitsLen) =>
         if (buf.length >= bitsLen) {
+          log.info(s"buf: ${buf.toHex}")
           protoPackageBox.decode(buf) match {
             case \/-((remain, wp)) =>
-              // handlePackageAuthentication(wp.p)(f)
               f(wp.p)
               log.info(s"remain: $remain, buf: $buf")
               parseByteStream(WrappedPackageSizeParsing(), remain)(f)

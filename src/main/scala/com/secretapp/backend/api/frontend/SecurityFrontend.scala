@@ -57,7 +57,7 @@ with ActorLogging
                 sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
 //              else silentClose()
             case -\/(e) =>
-              log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${new String(p.messageBoxBytes.toByteArray)}")
+              log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${p.messageBoxBytes.toHex}")
               silentClose()
           }
         } else silentClose()

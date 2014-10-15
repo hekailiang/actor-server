@@ -45,6 +45,7 @@ class TcpFrontend(val connection: ActorRef, val sessionRegion: ActorRef, val ses
   }
 
   def write(payload: ByteString): Unit = {
+    log.debug(s"packageIndex: $packageIndex, $payload")
     MTPackageBoxCodec.encode(packageIndex, BitVector(payload.toByteBuffer)) match {
       case \/-(reply) =>
         packageIndex += 1

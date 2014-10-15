@@ -1,9 +1,6 @@
 package com.secretapp.backend.crypto.ec
 
 import com.secretapp.backend.protocol.codecs.ByteConstants._
-import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
-import org.bouncycastle.math.ec.ECCurve
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import scodec.bits.BitVector
 import java.security.{ Security, MessageDigest }
