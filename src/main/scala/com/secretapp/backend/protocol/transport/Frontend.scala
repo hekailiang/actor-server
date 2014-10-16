@@ -21,7 +21,7 @@ trait Frontend extends Actor with ActorLogging {
   val session: CSession
   val remote: InetSocketAddress
 
-  lazy val keyFrontend: ActorRef = context.system.actorOf(KeyFrontend.props(self, transport)(session))
+  val keyFrontend: Option[ActorRef] = None
   val secFrontend = mutable.HashMap[Long, ActorRef]()
 
   var authId = 0L
@@ -31,8 +31,16 @@ trait Frontend extends Actor with ActorLogging {
   context.watch(connection)
 
   def handlePackage(p: TransportPackage): Unit = {
-    if (p.authId == 0L) keyFrontend ! InitDH(p)
-    else {
+    if (p.authId == 0L) {
+      val keyFrontRef = keyFrontend match {
+        case Some(keyRef) => keyRef
+        case None =>
+          val keyRef = context.system.actorOf(KeyFrontend.props(self, transport)(session))
+          context.watch(keyRef)
+          keyRef
+      }
+      keyFrontRef ! InitDH(p)
+    } else {
       if (authId == 0L) authId = p.authId
       if (p.authId != authId) silentClose()
       else secFrontend.get(p.sessionId) match {
@@ -40,6 +48,7 @@ trait Frontend extends Actor with ActorLogging {
         case None =>
           val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, transport)(session))
           secFrontend += Tuple2(p.sessionId, secRef)
+          context.watch(secRef)
           secRef ! RequestPackage(p)
       }
     }
