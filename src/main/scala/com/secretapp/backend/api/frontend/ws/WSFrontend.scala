@@ -15,15 +15,17 @@ import spray.routing.HttpServiceActor
 import com.secretapp.backend.protocol.transport.{JsonPackageCodec, Frontend}
 import scalaz._
 import Scalaz._
+import java.net.InetSocketAddress
 
 object WSFrontend {
-  def props(connection: ActorRef, sessionRegion: ActorRef, session: CSession) = {
-    Props(new WSFrontend(connection, sessionRegion, session))
+  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef, session: CSession) = {
+    Props(new WSFrontend(connection, remote, sessionRegion, session))
   }
 }
 
-class WSFrontend(val serverConnection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker {
+class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker {
   val transport = JsonConnection
+  val serverConnection = connection
 
   def businessLogic: Receive = {
     case frame: TextFrame =>

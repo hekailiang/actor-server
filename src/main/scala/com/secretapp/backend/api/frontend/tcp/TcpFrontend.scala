@@ -9,47 +9,41 @@ import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
 import com.datastax.driver.core.{ Session => CSession }
+import java.net.InetSocketAddress
 
 object TcpFrontend {
-  def props(connection: ActorRef, sessionRegion: ActorRef, session: CSession) = {
-    Props(new TcpFrontend(connection, sessionRegion, session))
+  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef, session: CSession) = {
+    Props(new TcpFrontend(connection, remote, sessionRegion, session))
   }
 }
 
-class TcpFrontend(val connection: ActorRef, val sessionRegion: ActorRef, val session: CSession) extends Frontend with ActorLogging with MTPackageService {
+class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService {
   import akka.io.Tcp._
 
   val transport = MTConnection
 
   var packageIndex = 0
 
-  context.watch(connection)
   context.setReceiveTimeout(15.minutes) // TODO
 
-  def receive = {
+  def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
       handleByteStream(BitVector(data.toArray))(handlePackage, e => sendDrop(e.msg))
     case ResponseToClient(payload) =>
-      log.info(s"Send to client: $payload")
-      write(payload)
+      serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
-      write(payload)
+      serialize2MTPackageBox(payload, writing)
       silentClose()
     case SilentClose =>
       silentClose()
-    case PeerClosed | ErrorClosed | Closed =>
-      log.info(s"Connection closed")
-      context stop self
-    case CommandFailed(Write(data, _)) =>
-      connection ! Write(data)
   }
 
-  def write(payload: ByteString): Unit = {
+  def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {
     log.debug(s"packageIndex: $packageIndex, $payload")
     MTPackageBoxCodec.encode(packageIndex, BitVector(payload.toByteBuffer)) match {
       case \/-(reply) =>
         packageIndex += 1
-        connection ! Write(ByteString(reply.toByteBuffer))
+        send(ByteString(reply.toByteBuffer), writing)
       case _ => silentClose()
     }
   }

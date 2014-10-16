@@ -10,13 +10,16 @@ import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
 import scala.collection.mutable
+import java.net.InetSocketAddress
 
 trait Frontend extends Actor with ActorLogging {
   import scala.concurrent.duration._
 
+  val connection: ActorRef
   val sessionRegion: ActorRef
   val transport: TransportConnection
   val session: CSession
+  val remote: InetSocketAddress
 
   lazy val keyFrontend: ActorRef = context.system.actorOf(KeyFrontend.props(self, transport)(session))
   val secFrontend = mutable.HashMap[Long, ActorRef]()
@@ -24,6 +27,8 @@ trait Frontend extends Actor with ActorLogging {
   var authId = 0L
 
   implicit val timeout: Timeout = Timeout(5.seconds)
+
+  context.watch(connection)
 
   def handlePackage(p: TransportPackage): Unit = {
     if (p.authId == 0L) keyFrontend ! InitDH(p)

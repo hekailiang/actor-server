@@ -7,7 +7,7 @@ object Dependencies {
     val phantom       = "1.2.8"
     val scalaz        = "7.1.0"
     val scalazContrib = "0.1.5"
-    val spray         = "1.3.2-20140909"
+    val spray         = "1.3.2"
   }
 
   val compileDependencies = Seq(

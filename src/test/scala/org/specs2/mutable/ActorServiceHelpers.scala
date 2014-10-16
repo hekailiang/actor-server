@@ -45,6 +45,7 @@ import scala.util.Random
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
+import java.net.InetSocketAddress
 
 trait ActorServiceImplicits {
   def codecRes2BS(res: String \/ BitVector): ByteString = ByteString(res.toOption.get.toByteBuffer)
@@ -373,6 +374,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   val userId = 101
   val userSalt = "user_salt"
 
+  private def inetAddr = new InetSocketAddress("localhost", 0)
+
   trait GeneratorServiceMock extends GeneratorService {
     override def genNewAuthId = mockAuthId
     override def genSmsCode = smsCode
@@ -383,7 +386,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, sessionRegion, csession) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion, csession) with RandomServiceMock with GeneratorServiceMock))
     (probe, actor)
   }
 
@@ -408,9 +411,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   def getProbeAndActor()(implicit transport: TransportConnection) = {
     val probe = TestProbe()
     val actor = transport match {
-      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, sessionRegion, csession))
+      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion, csession))
       case JsonConnection =>
-        val props = Props(new WSFrontend(probe.ref, sessionRegion, csession) {
+        val props = Props(new WSFrontend(probe.ref, inetAddr, sessionRegion, csession) {
           override def receive = businessLogic orElse closeLogic
         })
         system.actorOf(props)
