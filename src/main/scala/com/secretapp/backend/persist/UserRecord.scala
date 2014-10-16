@@ -7,8 +7,9 @@ import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.types._
+import java.util.concurrent.Executor
 import scodec.bits.BitVector
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
@@ -214,4 +215,41 @@ object UserRecord extends UserRecord with DBConnector {
 
   def byUid(uid: Int)(implicit session: Session): Future[Seq[User]] =
     select.where(_.uid eqs uid).fetch()
+
+  def fixAvatars()(implicit session: Session, context: ExecutionContext with Executor) = {
+    val fileRecord = new FileRecord
+
+    for {
+      users <- select.fetch()
+    } yield {
+      users map { user =>
+        user.smallAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.smallAvatarFileHash.get != hash) {
+              println(s"fixing small ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.smallAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+
+        user.largeAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.largeAvatarFileHash.get != hash) {
+              println(s"fixing large ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.largeAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+
+        user.fullAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.fullAvatarFileHash.get != hash) {
+              println(s"fixing full ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.fullAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+      }
+    }
+  }
 }
