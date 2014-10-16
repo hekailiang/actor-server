@@ -88,7 +88,7 @@ trait NackActor { this: Actor with ActorLogging =>
   private var stored = 0L
   private var transferred = 0L
 
-  val maxStored = 100000000L
+  val maxStored = 1024 * 1024 // 1 MB
   val highWatermark = maxStored * 5 / 10
   val lowWatermark = maxStored * 3 / 10
   private var suspended = false
