@@ -126,7 +126,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       val origEncoded = MessageBoxCodec.encodeValid(mb)
       val origLength = origEncoded.length / 8
 
-      val encoded = mb.body match {
+      val registerEncoded = mb.body match {
         case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
           val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
           log.debug(s"Response is too large, generated $unsentResponse")
@@ -139,9 +139,9 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
         case _ => origEncoded
       }
 
-      registerSentMessage(mb, ByteString(encoded.toByteArray))
-      val pe = MTPackage(authId, sessionId, encoded).right
+      registerSentMessage(mb, ByteString(registerEncoded.toByteArray))
 
+      val pe = MTPackage(authId, sessionId, origEncoded).right
       connector ! pe
     case UpdateBoxToSend(ub) =>
       log.debug(s"UpdateBoxToSend $authId $sessionId $ub")
