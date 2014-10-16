@@ -228,6 +228,8 @@ class GroupMessagingSpec extends RpcSpec {
         ) :~> <~:[updateProto.ResponseSeq]
       }
 
+      Thread.sleep(1000)
+
       {
         implicit val scope = scope11
 

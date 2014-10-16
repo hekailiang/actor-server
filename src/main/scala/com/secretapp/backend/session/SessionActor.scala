@@ -77,7 +77,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
   context.setReceiveTimeout(15.minutes)
 
   implicit val timeout = Timeout(5.seconds)
-  val maxResponseLength = 1024 * 1024 // if more, register UnsentResponse for resend
+  val maxResponseLength = 1024 // if more, register UnsentResponse for resend
 
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
@@ -149,7 +149,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       log.debug(s"SendMessageBox $authId $sessionId $connector $mb")
 
       val origEncoded = serializeMessageBox(mb)
-      val origLength = origEncoded.length
+      val origLength = origEncoded.length / 8
       val blob = mb.body match {
         case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
           val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
@@ -159,7 +159,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       }
       registerSentMessage(mb, blob)
 
-      val pe = serializePackage(blob)
+      val pe = serializePackage(origEncoded)
       println(s"tell.! connector $connector ! pe: $mb")
       connector ! pe
     case UpdateBoxToSend(ub) =>
