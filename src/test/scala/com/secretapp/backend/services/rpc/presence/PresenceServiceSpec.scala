@@ -5,17 +5,19 @@ import akka.testkit._
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.presence._
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.struct.{ ChatId, UserId }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.update.{ UserLastSeen, UserOffline, UserOnline }
-import com.secretapp.backend.data.message.update.WeakUpdate
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scodec.bits._
 
 class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
@@ -97,6 +99,52 @@ class PresenceServiceSpec extends RpcSpec {
 
         val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
         mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOnline]
+      }
+    }
+
+    "count group presences" in {
+      implicit val scope = TestScope()
+
+      val rqCreateChat = RequestCreateChat(
+        randomId = 1L,
+        title = "Groupchat 3000",
+        keyHash = BitVector(1, 1, 1),
+        publicKey = BitVector(1, 0, 1, 0),
+        broadcast = EncryptedRSABroadcast(
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq.empty,
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              keyHash = scope.user.publicKeyHash,
+              aesEncryptedKey = BitVector(2, 0, 2, 0)
+            )
+          )
+        )
+      )
+      val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+      Thread.sleep(500)
+
+      val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+      diff.updates.length should beEqualTo(1)
+      diff.updates.head.body.assertInstanceOf[GroupCreated]
+
+      RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
+      SubscribeToGroupOnline(immutable.Seq(ChatId(resp.chatId, 0))) :~> <~:[ResponseVoid]
+
+      {
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+        val go = mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[GroupOnline]
+        go.count should beEqualTo(1)
+      }
+
+      Thread.sleep(3000)
+
+      {
+        val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
+        val go = mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[GroupOnline]
+        go.count should beEqualTo(0)
       }
     }
   }

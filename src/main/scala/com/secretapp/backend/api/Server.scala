@@ -5,7 +5,7 @@ import akka.io.Tcp._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.FilesCounter
 import com.secretapp.backend.services.rpc.typing.TypingBroker
-import com.secretapp.backend.services.rpc.presence.PresenceBroker
+import com.secretapp.backend.services.rpc.presence.{ GroupPresenceBroker, PresenceBroker }
 import com.secretapp.backend.session._
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
@@ -15,6 +15,7 @@ final class Singletons(implicit val system: ActorSystem, session: CSession) {
   val smsEngine = ClickatellSmsEngineActor()
   val typingBrokerRegion = TypingBroker.startRegion()
   val presenceBrokerRegion = PresenceBroker.startRegion()
+  val groupPresenceBrokerRegion = GroupPresenceBroker.startRegion()
 }
 
 final class ClusterProxies(implicit val system: ActorSystem) {

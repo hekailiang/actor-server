@@ -22,21 +22,20 @@ object PresenceProtocol {
   case class Envelope(userId: Int, payload: PresenceMessage)
 }
 
-// TODO: rename to WeakUpdatesBroker
 object PresenceBroker {
   import PresenceProtocol._
 
-  def topicFor(userId: Int): String = s"presences-${userId}"
+  def topicFor(userId: Int): String = s"presences-u${userId}"
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case Envelope(userId, msg) => (s"u${userId}", msg) // TODO: group
+    case Envelope(userId, msg) => (s"u${userId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(userId, msg) => (userId % shardCount).toString
+    case Envelope(id, msg) => (id % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem) =

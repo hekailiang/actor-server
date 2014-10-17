@@ -39,7 +39,17 @@ object SessionProtocol {
   case class SendMessageBox(connector: ActorRef, mb: MessageBox) extends SessionMessage
   case object SubscribeToUpdates extends SessionMessage
   case class SubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
+
+  // TODO: remove in preference to UnsubscribeFromPresences
   case class UnsubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
+
+  @SerialVersionUID(1L)
+  case class UnsubscribeFromPresences(uids: immutable.Seq[Int]) extends SessionMessage
+
+  @SerialVersionUID(1L)
+  case class SubscribeToGroupPresences(chatIds: immutable.Seq[Int]) extends SessionMessage
+  @SerialVersionUID(1L)
+  case class UnsubscribeFromGroupPresences(chatIds: immutable.Seq[Int]) extends SessionMessage
 
   case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
 }
@@ -167,9 +177,22 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       persist(msg) { _ =>
         subscribeToPresences(uids)
       }
+    // TODO: remove, deprecated case class
     case msg @ UnsubscribeToPresences(uids) =>
       persist(msg) { _ =>
         unsubscribeToPresences(uids)
+      }
+    case msg @ UnsubscribeFromPresences(uids) =>
+      persist(msg) { _ =>
+        unsubscribeToPresences(uids)
+      }
+    case msg @ SubscribeToGroupPresences(chatIds) =>
+      persist(msg) { _ =>
+        subscribeToGroupPresences(chatIds)
+      }
+    case msg @ UnsubscribeFromGroupPresences(chatIds) =>
+      persist(msg) { _ =>
+        unsubscribeFromGroupPresences(chatIds)
       }
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
@@ -199,6 +222,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       }
 
       recoverSubscribeToPresences(subscribedToPresencesUids.toList)
+      recoverSubscribeToGroupPresences(subscribedToPresencesChatIds.toList)
 
       currentUser map { user =>
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
@@ -209,8 +233,15 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       subscribingToUpdates = true
     case SubscribeToPresences(uids) =>
       subscribedToPresencesUids = subscribedToPresencesUids ++ uids
+    // TODO: remove
     case UnsubscribeToPresences(uids) =>
       subscribedToPresencesUids = subscribedToPresencesUids -- uids
+    case UnsubscribeFromPresences(uids) =>
+      subscribedToPresencesUids = subscribedToPresencesUids -- uids
+    case SubscribeToGroupPresences(chatIds) =>
+      subscribedToPresencesChatIds = subscribedToPresencesChatIds ++ chatIds
+    case UnsubscribeFromGroupPresences(chatIds) =>
+      subscribedToPresencesChatIds = subscribedToPresencesChatIds -- chatIds
     case _ =>
   }
 }

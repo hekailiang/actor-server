@@ -12,7 +12,7 @@ import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ GroupChat, User }
 import com.secretapp.backend.helpers.UserHelpers
-import com.secretapp.backend.persist.{ UserPublicKeyRecord, UserRecord, GroupChatRecord, GroupChatUserRecord, SeqUpdateRecord }
+import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
 import java.util.UUID
@@ -231,8 +231,16 @@ trait MessagingService extends RandomService with UserHelpers {
           case \/-(updates) =>
             Future.sequence(newUserIds map {
               case (userId, keyHashes) =>
-                GroupChatUserRecord.addUser(chat.id, userId, keyHashes)
-            }) flatMap (_ => GroupChatUserRecord.addUser(chat.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet)) flatMap { _ =>
+                Future.sequence(immutable.Seq(
+                  GroupChatUserRecord.addUser(chat.id, userId, keyHashes),
+                  UserGroupChatsRecord.addChat(userId, chat.id)
+                ))
+            }) flatMap { _ =>
+              Future.sequence(immutable.Seq(
+                GroupChatUserRecord.addUser(chat.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
+                UserGroupChatsRecord.addChat(currentUser.uid, chat.id)
+              ))
+            } flatMap { _ =>
               Future.sequence(broadcast.ownKeys map { key =>
                 authIdFor(currentUser.uid, key.keyHash) map {
                   case Some(authId) =>
@@ -295,7 +303,10 @@ trait MessagingService extends RandomService with UserHelpers {
                 GroupChatUserRecord.getUsers(chatId) flatMap { chatUserIds =>
                   if (chatUserIds.contains(userId)) {
                     for {
-                      _ <- GroupChatUserRecord.removeUser(chatId, userId)
+                      _ <- Future.sequence(immutable.Seq(
+                        GroupChatUserRecord.removeUser(chatId, userId),
+                        UserGroupChatsRecord.removeChat(userId, chatId)
+                      ))
                       s <- getState(currentUser.authId)
                     } yield {
                       chatUserIds foreach { chatUserId =>
@@ -333,7 +344,10 @@ trait MessagingService extends RandomService with UserHelpers {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
           for {
-            _ <- GroupChatUserRecord.removeUser(chatId, currentUser.uid)
+            _ <- Future.sequence(immutable.Seq(
+              GroupChatUserRecord.removeUser(chatId, currentUser.uid),
+              UserGroupChatsRecord.removeChat(currentUser.uid, chatId)
+            ))
             chatUserIds <- GroupChatUserRecord.getUsers(chatId)
             s <- getState(currentUser.authId)
           } yield {

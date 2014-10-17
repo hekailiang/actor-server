@@ -13,7 +13,7 @@ import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.services.rpc.presence.{ PresenceBroker, PresenceProtocol }
+import com.secretapp.backend.services.rpc.presence.{ GroupPresenceBroker, GroupPresenceProtocol, PresenceBroker, PresenceProtocol }
 import com.secretapp.backend.services.rpc.typing.{ TypingBroker, TypingProtocol }
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -31,6 +31,7 @@ trait SessionService extends UserManagerService {
   var subscribingToUpdates = false
 
   var subscribedToPresencesUids = immutable.Set.empty[Int]
+  var subscribedToPresencesChatIds = immutable.Set.empty[Int]
 
   protected def handleMessage(connector: ActorRef, mb: MessageBox): Unit = {
     acknowledgeReceivedPackage(connector, mb)
@@ -53,7 +54,10 @@ trait SessionService extends UserManagerService {
       if (!subscribedToPresencesUids.contains(userId)) {
         log.info(s"Subscribing $userId")
         subscribedToPresencesUids = subscribedToPresencesUids + userId
-        mediator ! Subscribe(PresenceBroker.topicFor(userId), weakUpdatesPusher)
+        mediator ! Subscribe(
+          PresenceBroker.topicFor(userId),
+          weakUpdatesPusher
+        )
       } else {
         log.error(s"Already subscribed to $userId")
       }
@@ -69,7 +73,10 @@ trait SessionService extends UserManagerService {
     userIds foreach { userId =>
       log.info(s"Subscribing $userId")
       subscribedToPresencesUids = subscribedToPresencesUids + userId
-      mediator ! Subscribe(PresenceBroker.topicFor(userId), weakUpdatesPusher)
+      mediator ! Subscribe(
+        PresenceBroker.topicFor(userId),
+        weakUpdatesPusher
+      )
 
       singletons.presenceBrokerRegion ! PresenceProtocol.Envelope(
         userId,
@@ -79,9 +86,58 @@ trait SessionService extends UserManagerService {
   }
 
   protected def unsubscribeToPresences(uids: immutable.Seq[Int]) = {
-    uids foreach { uid =>
-      subscribedToPresencesUids = subscribedToPresencesUids - uid
-      mediator ! Unsubscribe(PresenceBroker.topicFor(uid), weakUpdatesPusher)
+    uids foreach { userId =>
+      subscribedToPresencesUids = subscribedToPresencesUids - userId
+      mediator ! Unsubscribe(
+        PresenceBroker.topicFor(userId),
+        weakUpdatesPusher
+      )
+    }
+  }
+
+  protected def subscribeToGroupPresences(chatIds: immutable.Seq[Int]) = {
+    chatIds foreach { chatId =>
+      if (!subscribedToPresencesChatIds.contains(chatId)) {
+        log.info(s"Subscribing to chat presences chatId=$chatId")
+        subscribedToPresencesChatIds = subscribedToPresencesChatIds + chatId
+        mediator ! Subscribe(
+          GroupPresenceBroker.topicFor(chatId),
+          weakUpdatesPusher
+        )
+      } else {
+        log.error(s"Already subscribed to $chatId")
+      }
+
+      singletons.groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(
+        chatId,
+        GroupPresenceProtocol.TellPresences(weakUpdatesPusher)
+      )
+    }
+  }
+
+  protected def recoverSubscribeToGroupPresences(chatIds: immutable.Seq[Int]) = {
+    chatIds foreach { chatId =>
+      log.info(s"Subscribing to chat presences chatId=$chatId")
+      subscribedToPresencesChatIds = subscribedToPresencesChatIds + chatId
+      mediator ! Subscribe(
+        GroupPresenceBroker.topicFor(chatId),
+        weakUpdatesPusher
+      )
+
+      singletons.groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(
+        chatId,
+        GroupPresenceProtocol.TellPresences(weakUpdatesPusher)
+      )
+    }
+  }
+
+  protected def unsubscribeFromGroupPresences(chatIds: immutable.Seq[Int]) = {
+    chatIds foreach { chatId =>
+      subscribedToPresencesChatIds = subscribedToPresencesChatIds - chatId
+      mediator ! Unsubscribe(
+        GroupPresenceBroker.topicFor(chatId),
+        weakUpdatesPusher
+      )
     }
   }
 
