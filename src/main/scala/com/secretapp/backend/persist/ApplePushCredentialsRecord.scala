@@ -23,7 +23,7 @@ sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredenti
   }
 
   object token extends StringColumn(this) {
-    override lazy val name = "token"
+    override lazy val name = "tok"
   }
 
   override def fromRow(r: Row): ApplePushCredentials =
