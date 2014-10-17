@@ -41,12 +41,13 @@ class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val se
       send(TextFrame(bs))
     case ResponseToClientWithDrop(bs) =>
       send(TextFrame(bs))
-      silentClose()
+      silentClose("ResponseToClientWithDrop")
     case SilentClose =>
-      silentClose()
+      silentClose("SilentClose")
   }
 
-  def silentClose(): Unit = {
+  def silentClose(reason: String): Unit = {
+    log.error(s"WSFrontend.silentClose: $reason")
     send(CloseFrame())
     context.stop(self)
   }

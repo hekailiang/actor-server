@@ -23,7 +23,8 @@ object KeyFrontend {
 class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit csession: CSession) extends Actor with ActorLogging with RandomService {
   import KeyFrontend._
 
-  def silentClose(): Unit = {
+  def silentClose(reason: String): Unit = {
+    log.error(s"KeyFrontend.silentClose: $reason")
     connection ! SilentClose
     context stop self
   }
@@ -45,7 +46,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit
           }
         case -\/(e) =>
           log.error(e)
-          silentClose()
+          silentClose(e)
       }
   }
 

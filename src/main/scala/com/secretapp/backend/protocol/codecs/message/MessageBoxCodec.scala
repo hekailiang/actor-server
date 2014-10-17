@@ -13,7 +13,7 @@ object MessageBoxCodec extends Codec[MessageBox] {
   def encode(mb: MessageBox) = {
     for {
       body <- protoPayload(protoTransportMessage).encode(mb.body)
-    } yield (BitVector.fromLong(mb.messageId) ++ body)
+    } yield BitVector.fromLong(mb.messageId) ++ body
   }
 
   def decode(buf: BitVector) = {

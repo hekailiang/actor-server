@@ -35,11 +35,12 @@ with ActorLogging
         context.become(receivePF)
         receiveBuffer.foreach(self ! _)
         receiveBuffer.clear()
-      case _ => silentClose()
+      case e => silentClose(s"preStart: $e")
     }
   }
 
-  def silentClose(): Unit = {
+  def silentClose(reason: String): Unit = {
+    log.error(s"SecurityFrontend.silentClose: $reason")
     connection ! SilentClose
     context stop self
   }
@@ -47,7 +48,7 @@ with ActorLogging
   def receivePF: Receive = {
     case RequestPackage(p) =>
       log.info(s"RequestPackage: $p")
-      if (p.sessionId == 0L) silentClose()
+      if (p.sessionId == 0L) silentClose("p.sessionId == 0L")
       else {
         if (p.sessionId == sessionId) {
           p.decodeMessageBox match {
@@ -58,11 +59,11 @@ with ActorLogging
 //              else silentClose()
             case -\/(e) =>
               log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${p.messageBoxBytes.toHex}")
-              silentClose()
+              silentClose(e)
           }
-        } else silentClose()
+        } else silentClose("p.sessionId == sessionId")
       }
-    case SilentClose => silentClose()
+    case SilentClose => silentClose("SilentClose")
   }
 
   def receive = {

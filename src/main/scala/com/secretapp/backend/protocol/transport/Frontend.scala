@@ -42,7 +42,7 @@ trait Frontend extends Actor with ActorLogging {
       keyFrontRef ! InitDH(p)
     } else {
       if (authId == 0L) authId = p.authId
-      if (p.authId != authId) silentClose()
+      if (p.authId != authId) silentClose("p.authId != authId")
       else secFrontend.get(p.sessionId) match {
         case Some(secRef) => secRef ! RequestPackage(p)
         case None =>
@@ -61,5 +61,5 @@ trait Frontend extends Actor with ActorLogging {
     self ! ResponseToClientWithDrop(reply.encode)
   }
 
-  def silentClose(): Unit
+  def silentClose(reason: String): Unit
 }

@@ -33,9 +33,9 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
       serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
       serialize2MTPackageBox(payload, writing)
-      silentClose()
+      silentClose("ResponseToClientWithDrop")
     case SilentClose =>
-      silentClose()
+      silentClose("SilentClose")
   }
 
   def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {
@@ -44,11 +44,12 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
       case \/-(reply) =>
         packageIndex += 1
         send(ByteString(reply.toByteBuffer), writing)
-      case _ => silentClose()
+      case -\/(e) => silentClose(e)
     }
   }
 
-  def silentClose(): Unit = {
+  def silentClose(reason: String): Unit = {
+    log.error(s"TcpFrontend.silentClose: $reason")
     connection ! Close
     context.stop(self)
   }
