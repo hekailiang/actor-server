@@ -45,6 +45,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestEditAvatar.requestType)         { case r: RequestEditAvatar         => r } (protoPayload(RequestEditAvatarCodec))
     .\(RequestEditName.requestType)           { case r: RequestEditName           => r } (protoPayload(RequestEditNameCodec))
     .\(RequestRegisterGooglePush.requestType) { case r: RequestRegisterGooglePush => r } (protoPayload(RequestRegisterGooglePushCodec))
+    .\(RequestRegisterApplePush.requestType)  { case r: RequestRegisterApplePush  => r } (protoPayload(RequestRegisterApplePushCodec))
     .\(RequestUnregisterPush.requestType)     { case r: RequestUnregisterPush     => r } (protoPayload(RequestUnregisterPushCodec))
     .\(RequestMessageReceived.requestType)    { case r: RequestMessageReceived    => r } (protoPayload(RequestMessageReceivedCodec))
     .\(RequestMessageRead.requestType)        { case r: RequestMessageRead        => r } (protoPayload(RequestMessageReadCodec))
