@@ -1,8 +1,8 @@
 package com.secretapp.backend.protocol.codecs
 
+import java.util.zip.CRC32
 import scala.util.{ Try, Success, Failure }
 import scodec.bits.BitVector
-import java.util.zip.CRC32
 import scalaz._
 import Scalaz._
 

@@ -18,7 +18,7 @@ object MessageCodec extends Codec[Message] with utils.ProtobufCodec {
     encodeToBitVector(boxed)
   }
 
-  def decode(buf: BitVector) = {
+  def decode(buf: BitVector): String \/ (BitVector, Message) = {
     decodeProtobuf(protobuf.UpdateMessage.parseFrom(buf.toByteArray)) {
       case Success(protobuf.UpdateMessage(senderUID, destUID, message)) =>
         Message(senderUID, destUID, EncryptedRSAPackage.fromProto(message))

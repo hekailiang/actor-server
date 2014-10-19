@@ -42,7 +42,7 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
       }
 
       val mf = efs map {
-        case Seq(Entity(key, first), _) =>
+        case Seq((Entity(key, first), _), _) =>
           first.asInstanceOf[updateProto.Message].message must equalTo(
             EncryptedRSAPackage(
               pubkeyHash, BitVector(1, 0, 1, 0), BitVector(1, 2, 3)
@@ -77,7 +77,7 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
       }
 
       val fDiffOne = for {
-        first <- SeqUpdateRecord.select.where(_.authId eqs authId).orderBy(_.uuid asc).one.map(_.get); firstState = first.key
+        first <- SeqUpdateRecord.select.where(_.authId eqs authId).orderBy(_.uuid asc).one.map(_.get); firstState = first._1.key
         diff1 <- SeqUpdateRecord.getDifference(authId, Some(firstState), 1); secondState = diff1(0).key
         diff500 <- SeqUpdateRecord.getDifference(authId, Some(secondState), 500)
       } yield {
