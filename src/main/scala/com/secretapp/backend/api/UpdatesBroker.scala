@@ -9,6 +9,7 @@ import akka.persistence._
 import akka.util.Timeout
 import com.datastax.driver.core.{Session => CSession}
 import com.gilt.timeuuid.TimeUuid
+import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
@@ -60,16 +61,16 @@ object UpdatesBroker {
     case msg @ GetSeqAndState(authId) => (authId % shardCount).toString
   }
 
-  def startRegion()(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
+  def startRegion(apnsService: ApnsService)(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
     typeName = "UpdatesBroker",
-    entryProps = Some(Props(new UpdatesBroker)),
+    entryProps = Some(Props(classOf[UpdatesBroker], apnsService, session)),
     idExtractor = idExtractor,
     shardResolver = shardResolver
   )
 }
 
 // TODO: rename to SeqUpdatesBroker
-class UpdatesBroker(implicit session: CSession) extends PersistentActor with ActorLogging with GooglePush {
+class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) extends PersistentActor with ActorLogging with GooglePush with ApplePush {
   import context.dispatcher
   import ShardRegion.Passivate
   import UpdatesBroker._

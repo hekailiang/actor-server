@@ -18,6 +18,7 @@ object Dependencies {
     "com.github.nscala-time"     %% "nscala-time"                   % "1.2.0",
     "com.logentries"              % "logentries-appender"           % "1.1.25",
     "com.newzly"                 %% "util-testing"                  % V.newzlyUtil % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
+    "com.notnoop.apns"           %  "apns"                          % "1.0.0.Beta4",
     "com.sksamuel.scrimage"      %% "scrimage-core"                 % "1.4.1",
     "com.typesafe.akka"          %% "akka-actor"                    % V.akka,
     "com.typesafe.akka"          %% "akka-agent"                    % V.akka,

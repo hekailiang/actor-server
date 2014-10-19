@@ -10,3 +10,12 @@ gcm {
   token = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
   dry-run = false
 }
+
+secret {
+  apns {
+    cert {
+      path = "apns/apns-dev.pfx"
+      password = "private"
+    }
+  }
+}

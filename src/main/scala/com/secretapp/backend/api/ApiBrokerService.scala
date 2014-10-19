@@ -49,7 +49,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   implicit val timeout = Timeout(5.seconds)
 
   // FIXME: move to service init. Now it creates regions on each session creation
-  val updatesBrokerRegion = UpdatesBroker.startRegion()(context.system, session)
+  val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)(context.system, session)
   val socialBrokerRegion = SocialBroker.startRegion()
 
   def handleRpc(messageId: Long): PartialFunction[RpcRequest, \/[Throwable, Future[RpcResponse]]] = {
