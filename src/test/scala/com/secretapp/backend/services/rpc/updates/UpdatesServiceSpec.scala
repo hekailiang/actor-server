@@ -170,6 +170,8 @@ class UpdatesServiceSpec extends RpcSpec {
         }
       }
 
+      Thread.sleep(10000)
+
       {
         implicit val scope = scope1
 

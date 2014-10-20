@@ -22,21 +22,20 @@ object PresenceProtocol {
   case class Envelope(userId: Int, payload: PresenceMessage)
 }
 
-// TODO: rename to WeakUpdatesBroker
 object PresenceBroker {
   import PresenceProtocol._
 
-  def topicFor(userId: Int): String = s"presences-${userId}"
+  def topicFor(userId: Int): String = s"presences-u${userId}"
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case Envelope(userId, msg) => (s"u${userId}", msg) // TODO: group
+    case Envelope(userId, msg) => (s"u${userId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(userId, msg) => (userId % shardCount).toString
+    case Envelope(id, msg) => (id % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem) =
@@ -76,18 +75,19 @@ class PresenceBroker extends PersistentActor with ActorLogging {
       scheduledOffline = Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline))
 
       if (presence != PresenceType.Online) {
-        mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
+        publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
       }
 
       presence = PresenceType.Online
     case UserOffline =>
       presence = PresenceType.Offline
-      lastSeen match {
+      val update = lastSeen match {
         case Some(time) =>
-          mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserLastSeen(selfUserId, time))
+          updateProto.UserLastSeen(selfUserId, time)
         case None => // should never happen but shit happens
-          mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOffline(selfUserId))
+          updateProto.UserOffline(selfUserId)
       }
+      publish(PresenceBroker.topicFor(selfUserId), update)
     case TellPresence(target) =>
       val update = presence match {
         case PresenceType.Online =>
@@ -109,5 +109,10 @@ class PresenceBroker extends PersistentActor with ActorLogging {
 
   def setState(state: State) = {
     lastSeen = state
+  }
+
+  def publish(topic: String, update: updateProto.WeakUpdateMessage) = {
+    log.debug(s"Publishing to $topic $update")
+    mediator ! Publish(topic, update)
   }
 }

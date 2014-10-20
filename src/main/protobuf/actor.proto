@@ -676,6 +676,15 @@ message RequestRegisterGooglePush {
     required int64 projectId = 1;
     required string token = 2;
 }
+
+// Запрос на регистрацию эппловых пушей для ключа
+// Ответ: VoidResponse#0x32
+// API#0x4C
+message RequestRegisterApplePush {
+    required int32 apnsKey = 1; // Генерируется сервером для каждого приложения и при сборке вшивается в приложение
+    required string token = 2;
+}
+
 // API#0x34
 // Ответ: ResponseVoid#0x32
 message RequestUnregisterPush {

@@ -13,6 +13,7 @@ object WeakUpdateMessageCodec {
       case m: UserOnline   => UserOnlineCodec.encode(m)
       case m: UserOffline  => UserOfflineCodec.encode(m)
       case m: UserLastSeen => UserLastSeenCodec.encode(m)
+      case m: GroupOnline  => GroupOnlineCodec.encode(m)
       case m: Typing       => TypingCodec.encode(m)
       case m: TypingGroup  => TypingGroupCodec.encode(m)
     }
@@ -23,6 +24,7 @@ object WeakUpdateMessageCodec {
       case UserOnline.weakUpdateHeader => UserOnlineCodec.decode(buf)
       case UserOffline.weakUpdateHeader => UserOfflineCodec.decode(buf)
       case UserLastSeen.weakUpdateHeader => UserLastSeenCodec.decode(buf)
+      case GroupOnline.weakUpdateHeader => GroupOnlineCodec.decode(buf)
       case Typing.weakUpdateHeader => TypingCodec.decode(buf)
       case TypingGroup.weakUpdateHeader => TypingGroupCodec.decode(buf)
     })

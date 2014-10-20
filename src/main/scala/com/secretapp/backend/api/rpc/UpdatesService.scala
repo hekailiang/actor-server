@@ -108,9 +108,11 @@ sealed trait UpdatesService {
 
   @inline
   protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
+    val fseq = getSeq(authId)
+    val fstate = SeqUpdateRecord.getState(authId)
     for {
-      seq <- getSeq(authId)
-      muuid <- SeqUpdateRecord.getState(authId)
+      seq <- fseq
+      muuid <- fstate
     } yield (seq, muuid)
   }
 

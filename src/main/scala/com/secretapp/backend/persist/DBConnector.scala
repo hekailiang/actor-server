@@ -32,23 +32,36 @@ object DBConnector {
     val fileRecord = new FileRecord()(session, context)
 
     Future.sequence(List(
-      UserRecord.createTable(session), AuthIdRecord.createTable(session),
-      AuthSmsCodeRecord.createTable(session), PhoneRecord.createTable(session),
+      ApplePushCredentialsRecord.createTable(session),
+      AuthIdRecord.createTable(session),
+      AuthSmsCodeRecord.createTable(session),
+      GooglePushCredentialsRecord.createTable(session),
+      GroupChatRecord.createTable(session),
+      GroupChatUserRecord.createTable(session),
+      PhoneRecord.createTable(session),
       SeqUpdateRecord.createTable(session),
-      UserPublicKeyRecord.createTable(session), fileRecord.createTable(session),
-      GooglePushCredentialsRecord.createTable(session), UnregisteredContactRecord.createTable(session),
-      GroupChatRecord.createTable(session), GroupChatUserRecord.createTable(session)
+      UnregisteredContactRecord.createTable(session),
+      UserGroupChatsRecord.createTable(session),
+      UserPublicKeyRecord.createTable(session),
+      UserRecord.createTable(session),
+      fileRecord.createTable(session)
     ))
   }
 
   def truncateTables(session: Session) = blocking {
     Future.sequence(List(
-      UserRecord.truncateTable(session), AuthIdRecord.truncateTable(session),
-      AuthSmsCodeRecord.truncateTable(session), PhoneRecord.truncateTable(session),
+      ApplePushCredentialsRecord.truncateTable(session),
+      AuthIdRecord.truncateTable(session),
+      AuthSmsCodeRecord.truncateTable(session),
+      GooglePushCredentialsRecord.truncateTable(session),
+      GroupChatRecord.truncateTable(session),
+      GroupChatUserRecord.truncateTable(session),
+      PhoneRecord.truncateTable(session),
       SeqUpdateRecord.truncateTable(session),
-      UserPublicKeyRecord.truncateTable(session), GooglePushCredentialsRecord.truncateTable(session),
-      UnregisteredContactRecord.truncateTable(session), GroupChatRecord.truncateTable(session),
-      GroupChatUserRecord.truncateTable(session)
+      UnregisteredContactRecord.truncateTable(session),
+      UserGroupChatsRecord.truncateTable(session),
+      UserPublicKeyRecord.truncateTable(session),
+      UserRecord.truncateTable(session)
     ))
   }
 

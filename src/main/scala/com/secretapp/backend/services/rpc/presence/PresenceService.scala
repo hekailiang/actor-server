@@ -18,11 +18,18 @@ trait PresenceService {
   import context.dispatcher
   import context.system
 
-  private lazy val presenceHandler = context.actorOf(Props(new Handler(sessionActor, getUser.get, singletons.presenceBrokerRegion)), "presence")
+  private lazy val presenceHandler = context.actorOf(Props(
+    new Handler(
+      sessionActor, getUser.get,
+      singletons.presenceBrokerRegion,
+      singletons.groupPresenceBrokerRegion
+    )), "presence")
 
   def handleRpcPresence: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case r @ (_: RequestSetOnline    |
-              _: SubscribeToOnline   |
+    case r @ (_: RequestSetOnline           |
+              _: SubscribeToOnline          |
+              _: SubscribeToGroupOnline     |
+              _: UnsubscribeFromGroupOnline |
               _: UnsubscribeFromOnline) => authorizedRequest {
       (presenceHandler ? RpcProtocol.Request(r)).mapTo[RpcResponse]
     }
