@@ -47,7 +47,7 @@ with ActorLogging
 
   def receivePF: Receive = {
     case RequestPackage(p) =>
-      log.info(s"$authId#RequestPackage: $p")
+      log.info(s"$authId#RequestPackage: $p, name: ${self.path.name}")
       if (p.sessionId == 0L) silentClose("p.sessionId == 0L")
       else {
         if (p.sessionId == sessionId) {
@@ -55,7 +55,7 @@ with ActorLogging
             case \/-(mb) =>
 //              TODO
 //              if (mb.messageId % 4 == 0)
-                log.debug(s"$authId#Envelope: ${Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}")
+                log.debug(s"$authId#Envelope: ${Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}, name: ${self.path.name}")
                 sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
 //              else silentClose()
             case -\/(e) =>

@@ -106,14 +106,14 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
   lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, clusterProxies, subscribedToUpdates, session)), "api-broker")
 
   def queueNewSession(messageId: Long): Unit = {
-    log.info(s"queueNewSession $messageId, $sessionId")
+    log.info(s"$authId, $sessionId#queueNewSession $messageId, $sessionId")
     val mb = MessageBox(getMessageId(TransportMsgId), NewSession(messageId, sessionId))
     registerSentMessage(mb, serializeMessageBox(mb))
   }
 
   def checkNewConnection(connector: ActorRef) = {
     if (!connectors.contains(connector)) {
-      log.debug(s"NewConnection $connector")
+      log.debug(s"$authId, $sessionId#NewConnection $connector")
       connectors = connectors + connector
       lastConnector = connector.some
       context.watch(connector)
@@ -130,7 +130,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
 
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
-      log.debug(s"$authId#HandleMessageBox($handleBox)")
+      log.debug(s"$authId, $sessionId#$authId#HandleMessageBox($handleBox)")
       transport = handleBox match {
         case _: HandleJsonMessageBox => JsonConnection.some
         case _: HandleMTMessageBox => MTConnection.some
@@ -148,7 +148,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     case handleBox: HandleMessageBox =>
       val connector = sender()
       checkNewConnection(connector)
-      log.debug(s"$authId#HandleMessageBox ${handleBox.mb} $connector")
+      log.debug(s"$authId, $sessionId#$authId#HandleMessageBox ${handleBox.mb} $connector")
       lastConnector = connector.some
 
       handleBox.mb.body match {
@@ -157,14 +157,14 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       }
     case SendRpcResponseBox(connector, rpcBox) =>
       val mb = MessageBox(getMessageId(ResponseMsgId), rpcBox)
-      log.debug(s"SendMessageBox $authId $sessionId $connector $mb")
+      log.debug(s"$authId, $sessionId#SendMessageBox $authId $sessionId $connector $mb")
 
       val origEncoded = serializeMessageBox(mb)
       val origLength = origEncoded.length / 8
       val blob = mb.body match {
         case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
           val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
-          log.debug(s"Response is too large, generated $unsentResponse")
+          log.debug(s"$authId, $sessionId#Response is too large, generated $unsentResponse")
           serializeMessageBox(MessageBox(mb.messageId, unsentResponse))
         case _ => origEncoded
       }
@@ -174,7 +174,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       println(s"tell.! connector $connector ! pe: $mb")
       connector ! pe
     case UpdateBoxToSend(ub) =>
-      log.debug(s"UpdateBoxToSend $authId $sessionId $ub")
+      log.debug(s"$authId, $sessionId#UpdateBoxToSend $authId $sessionId $ub")
       val mb = MessageBox(getMessageId(UpdateMsgId), ub)
       println(s"tell.! connectors $connectors ! pe: $mb")
       val blob = serializeMessageBox(mb)
@@ -182,7 +182,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
-      log.debug(s"$authId#$msg")
+      log.debug(s"$authId, $sessionId#$authId#$msg")
       persist(msg) { _ =>
         currentUser = Some(user)
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
@@ -217,7 +217,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
     case Terminated(connector) =>
-      log.debug(s"removing connector $connector")
+      log.debug(s"$authId, $sessionId#removing connector $connector")
       connectors = connectors - connector
     case ReceiveTimeout ⇒
       context.parent ! Passivate(stopMessage = Stop)
