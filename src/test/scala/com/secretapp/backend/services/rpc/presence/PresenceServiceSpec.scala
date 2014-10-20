@@ -112,6 +112,7 @@ class PresenceServiceSpec extends RpcSpec {
 
     "count group presences" in {
       implicit val scope = TestScope()
+      catchNewSession(scope)
 
       val rqCreateChat = RequestCreateChat(
         randomId = 1L,
