@@ -38,7 +38,7 @@ with ActorLogging
       case e => silentClose(s"preStart: $e")
     }
   }
-
+  
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#SecurityFrontend.silentClose: $reason")
     connection ! SilentClose
