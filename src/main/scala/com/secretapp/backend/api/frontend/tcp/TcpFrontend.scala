@@ -30,6 +30,7 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
     case Received(data) =>
       handleByteStream(BitVector(data.toArray))(handlePackage, e => sendDrop(e.msg))
     case ResponseToClient(payload) =>
+      log.debug(s"ResponseToClient($payload)")
       serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
       serialize2MTPackageBox(payload, writing)
@@ -39,13 +40,18 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
   }
 
   def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {
-    log.debug(s"packageIndex: $packageIndex, $payload")
-    MTPackageBoxCodec.encode(packageIndex, BitVector(payload.toByteBuffer)) match {
+    MTPackageBoxCodec.encode(getPackageIndex, BitVector(payload.toByteBuffer)) match {
       case \/-(reply) =>
-        packageIndex += 1
         send(ByteString(reply.toByteBuffer), writing)
       case -\/(e) => silentClose(e)
     }
+  }
+
+  private def getPackageIndex: Int = {
+    val res = packageIndex
+    log.debug(s"packageIndex: $res, ${self.path.name}")
+    packageIndex += 1
+    res
   }
 
   def silentClose(reason: String): Unit = {
