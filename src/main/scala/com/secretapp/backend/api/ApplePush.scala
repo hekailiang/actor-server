@@ -22,13 +22,15 @@ trait ApplePush {
   }
 
   private def sendApplePush(token: String, seq: Int): Future[Unit] = {
-    apnsService.push(token, payload(seq))
+    val notification = apnsService.push(token, payload(seq))
+    log.debug(s"Apple notification $notification")
     Future.successful()
   }
 
   private def deliverApplePush(uid: Int, authId: Long, seq: Int, optCreds: Option[ApplePushCredentials])
                                (implicit s: CSession): Future[Unit] =
     optCreds some { c =>
+      log.debug(s"Sending apple push creds=$c, seq=$seq")
       sendApplePush(c.token, seq)
     } none Future.successful()
 
