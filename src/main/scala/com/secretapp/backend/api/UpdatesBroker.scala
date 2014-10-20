@@ -159,18 +159,19 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
     val updSeq = seq
     val uuid = TimeUuid()
 
-    update match {
-      case _: updateProto.MessageSent =>
-        log.debug("Not pushing update MessageSent to session")
-      case _ =>
-        mediator ! Publish(topic, (updSeq, uuid, update))
-        log.info(
-          s"Published update authId=$authId seq=${this.seq} state=${uuid} update=${update}"
-        )
-    }
-
     SeqUpdateRecord.push(uuid, authId, update)(session) map { _ =>
       log.debug(s"Wrote update authId=${authId} seq=${this.seq} state=${uuid} update=${update}")
+
+      update match {
+        case _: updateProto.MessageSent =>
+          log.debug("Not pushing update MessageSent to session")
+        case _ =>
+          mediator ! Publish(topic, (updSeq, uuid, update))
+          log.info(
+            s"Published update authId=$authId seq=${this.seq} state=${uuid} update=${update}"
+          )
+      }
+
       (seq, uuid)
     }
   }
