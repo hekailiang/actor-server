@@ -52,14 +52,15 @@ trait SessionService extends UserManagerService {
   protected def subscribeToPresences(userIds: immutable.Seq[Int]) = {
     userIds foreach { userId =>
       if (!subscribedToPresencesUids.contains(userId)) {
-        log.info(s"Subscribing $userId")
+        val topic = PresenceBroker.topicFor(userId)
+        log.debug(s"Subscribing $userId $topic")
         subscribedToPresencesUids = subscribedToPresencesUids + userId
         mediator ! Subscribe(
-          PresenceBroker.topicFor(userId),
+          topic,
           weakUpdatesPusher
         )
       } else {
-        log.error(s"Already subscribed to $userId")
+        log.warning(s"Already subscribed to $userId")
       }
 
       singletons.presenceBrokerRegion ! PresenceProtocol.Envelope(

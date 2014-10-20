@@ -75,18 +75,19 @@ class PresenceBroker extends PersistentActor with ActorLogging {
       scheduledOffline = Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline))
 
       if (presence != PresenceType.Online) {
-        mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
+        publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
       }
 
       presence = PresenceType.Online
     case UserOffline =>
       presence = PresenceType.Offline
-      lastSeen match {
+      val update = lastSeen match {
         case Some(time) =>
-          mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserLastSeen(selfUserId, time))
+          updateProto.UserLastSeen(selfUserId, time)
         case None => // should never happen but shit happens
-          mediator ! Publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOffline(selfUserId))
+          updateProto.UserOffline(selfUserId)
       }
+      publish(PresenceBroker.topicFor(selfUserId), update)
     case TellPresence(target) =>
       val update = presence match {
         case PresenceType.Online =>
@@ -108,5 +109,10 @@ class PresenceBroker extends PersistentActor with ActorLogging {
 
   def setState(state: State) = {
     lastSeen = state
+  }
+
+  def publish(topic: String, update: updateProto.WeakUpdateMessage) = {
+    log.debug(s"Publishing to $topic $update")
+    mediator ! Publish(topic, update)
   }
 }
