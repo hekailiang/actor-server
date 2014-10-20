@@ -14,7 +14,7 @@ object Dependencies {
     "ch.qos.logback"              % "logback-classic"               % "1.1.2",
     "com.chuusai"                 % "shapeless_2.10.4"              % "2.1.0-SNAPSHOT" changing(),
     "com.gilt"                   %% "gfc-timeuuid"                  % "0.0.5",
-    "com.github.krasserm"        %% "akka-persistence-cassandra"    % "0.3.3",
+    "com.github.krasserm"        %% "akka-persistence-cassandra"    % "0.3.4",
     "com.github.nscala-time"     %% "nscala-time"                   % "1.2.0",
     "com.logentries"              % "logentries-appender"           % "1.1.25",
     "com.newzly"                 %% "util-testing"                  % V.newzlyUtil % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
