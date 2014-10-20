@@ -130,6 +130,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
 
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
+      log.debug(s"$authId#HandleMessageBox($handleBox)")
       transport = handleBox match {
         case _: HandleJsonMessageBox => JsonConnection.some
         case _: HandleMTMessageBox => MTConnection.some
@@ -147,7 +148,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     case handleBox: HandleMessageBox =>
       val connector = sender()
       checkNewConnection(connector)
-      log.debug(s"HandleMessageBox ${handleBox.mb} $connector")
+      log.debug(s"$authId#HandleMessageBox ${handleBox.mb} $connector")
       lastConnector = connector.some
 
       handleBox.mb.body match {
@@ -181,7 +182,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
-      log.debug(s"$msg")
+      log.debug(s"$authId#$msg")
       persist(msg) { _ =>
         currentUser = Some(user)
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)

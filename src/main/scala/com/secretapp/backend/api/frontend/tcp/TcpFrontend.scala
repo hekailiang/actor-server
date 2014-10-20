@@ -22,41 +22,34 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
 
   val transport = MTConnection
 
-  var packageIndex = 0
+  var packageIndex: Int = -1
 
   context.setReceiveTimeout(15.minutes) // TODO
 
   def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
-      log.debug(s"${self.path.name}#Received($data)")
+      log.debug(s"$authId#Received($data)")
       handleByteStream(BitVector(data.toArray))(handlePackage, e => sendDrop(e.msg))
     case ResponseToClient(payload) =>
-      log.debug(s"${self.path.name}#ResponseToClient($payload)")
+      log.debug(s"$authId#ResponseToClient($payload)")
       serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
       serialize2MTPackageBox(payload, writing)
-      silentClose(s"${self.path.name}#ResponseToClientWithDrop")
+      silentClose(s"$authId#ResponseToClientWithDrop")
     case SilentClose =>
       silentClose("SilentClose")
   }
 
   def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {
-    MTPackageBoxCodec.encode(getPackageIndex, BitVector(payload.toByteBuffer)) match {
-      case \/-(reply) =>
-        send(ByteString(reply.toByteBuffer), writing)
+    packageIndex += 1
+    MTPackageBoxCodec.encode(packageIndex, BitVector(payload.toByteBuffer)) match {
+      case \/-(reply) => send(ByteString(reply.toByteBuffer), writing)
       case -\/(e) => silentClose(e)
     }
   }
 
-  private def getPackageIndex: Int = {
-    val res = packageIndex
-    log.debug(s"packageIndex: $res, ${self.path.name}")
-    packageIndex += 1
-    res
-  }
-
   def silentClose(reason: String): Unit = {
-    log.error(s"TcpFrontend.silentClose: $reason")
+    log.error(s"$authId#TcpFrontend.silentClose: $reason")
     connection ! Close
     context.stop(self)
   }

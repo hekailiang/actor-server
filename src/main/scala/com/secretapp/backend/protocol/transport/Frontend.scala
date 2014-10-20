@@ -43,13 +43,15 @@ trait Frontend extends Actor with ActorLogging {
     } else {
       if (authId == 0L) authId = p.authId
       if (p.authId != authId) silentClose("p.authId != authId")
-      else secFrontend.get(p.sessionId) match {
-        case Some(secRef) => secRef ! RequestPackage(p)
-        case None =>
+      else {
+        val secFrontRef = secFrontend.getOrElse(p.sessionId, {
           val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, transport)(session))
           secFrontend += Tuple2(p.sessionId, secRef)
           context.watch(secRef)
-          secRef ! RequestPackage(p)
+          secRef
+        })
+        log.debug(s"$authId#secFrontRef ! RequestPackage($p)")
+        secFrontRef ! RequestPackage(p)
       }
     }
   }

@@ -40,14 +40,14 @@ with ActorLogging
   }
 
   def silentClose(reason: String): Unit = {
-    log.error(s"SecurityFrontend.silentClose: $reason")
+    log.error(s"$authId#SecurityFrontend.silentClose: $reason")
     connection ! SilentClose
     context stop self
   }
 
   def receivePF: Receive = {
     case RequestPackage(p) =>
-      log.info(s"RequestPackage: $p")
+      log.info(s"$authId#RequestPackage: $p")
       if (p.sessionId == 0L) silentClose("p.sessionId == 0L")
       else {
         if (p.sessionId == sessionId) {
@@ -55,6 +55,7 @@ with ActorLogging
             case \/-(mb) =>
 //              TODO
 //              if (mb.messageId % 4 == 0)
+                log.debug(s"$authId#Envelope: ${Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}")
                 sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
 //              else silentClose()
             case -\/(e) =>
