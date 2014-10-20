@@ -17,7 +17,7 @@ object TcpFrontend {
   }
 }
 
-class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService {
+class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService with SslConfiguration {
   import akka.io.Tcp._
 
   val transport = MTConnection
@@ -28,13 +28,14 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
 
   def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
+      log.debug(s"${self.path.name}#Received($data)")
       handleByteStream(BitVector(data.toArray))(handlePackage, e => sendDrop(e.msg))
     case ResponseToClient(payload) =>
-      log.debug(s"ResponseToClient($payload)")
+      log.debug(s"${self.path.name}#ResponseToClient($payload)")
       serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
       serialize2MTPackageBox(payload, writing)
-      silentClose("ResponseToClientWithDrop")
+      silentClose(s"${self.path.name}#ResponseToClientWithDrop")
     case SilentClose =>
       silentClose("SilentClose")
   }
