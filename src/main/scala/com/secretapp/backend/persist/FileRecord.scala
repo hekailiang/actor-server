@@ -85,6 +85,8 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     blockRecord.getBlocksLength(fileId) flatMap (getFile(fileId, 0, _))
   }
 
+  val getFileLength = sourceBlockRecord.getFileLength _
+
   def blocksByFileId(fileId: Int) = blockRecord.blocksByFileId(fileId)
 
   def countSourceBlocks(fileId: Int) = sourceBlockRecord.countBlocks(fileId)
