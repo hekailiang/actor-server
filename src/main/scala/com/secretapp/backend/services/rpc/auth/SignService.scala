@@ -114,7 +114,11 @@ trait SignService extends SocialHelpers {
                   pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
               }
               val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
+              val userName = m match {
+                case -\/(_: RequestSignIn) => userAuth.name
+                case \/-(req: RequestSignUp) => req.name
+              }
+              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes, name = userName)
               auth(newUser)
             } else auth(userAuth)
         }

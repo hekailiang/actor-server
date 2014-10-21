@@ -11,5 +11,5 @@ case class RequestSendMessage(uid: Int,
 }
 
 object RequestSendMessage extends RpcRequestMessageObject {
-  val requestType = 0x0e
+  val requestType = 0x0E
 }

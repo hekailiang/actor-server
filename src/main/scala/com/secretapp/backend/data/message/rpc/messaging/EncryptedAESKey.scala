@@ -12,7 +12,8 @@ import Scalaz._
 
 @SerialVersionUID(1L)
 case class EncryptedAESKey(
-  keyHash: Long, aesEncryptedKey: BitVector
+  keyHash: Long,
+  aesEncryptedKey: BitVector
 ) extends ProtobufMessage {
   def toProto = protobuf.EncryptedAESKey(keyHash, aesEncryptedKey)
 }

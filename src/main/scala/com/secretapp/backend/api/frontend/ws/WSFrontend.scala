@@ -23,6 +23,7 @@ object WSFrontend {
   }
 }
 
+// TODO: extend NackActor
 class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker with SslConfiguration {
   val transport = JsonConnection
   val serverConnection = connection
