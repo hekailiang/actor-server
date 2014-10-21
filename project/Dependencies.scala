@@ -35,6 +35,7 @@ object Dependencies {
     "com.websudos"               %% "phantom-dsl"                   % V.phantom,
     "com.websudos"               %% "phantom-udt"                   % V.phantom,
     "com.wandoulabs.akka"        %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
+    "commons-codec"               % "commons-codec"                 % "1.3", // we need this because commons-codec 1.2 jar is broken (apns dependency)
     "io.spray"                   %% "spray-caching"                 % V.spray,
     "net.databinder.dispatch"    %% "dispatch-core"                 % "0.11.1",
     "net.sandrogrzicic"          %% "scalabuff-compiler"            % "1.3.8",
@@ -59,10 +60,10 @@ object Dependencies {
 
   val testDependencies = Seq(
     "com.typesafe.akka"          %% "akka-testkit"                  % V.akka       % "test",
-    "org.scalacheck"             %% "scalacheck"                    % "1.11.5"     % "test",
-    "org.scalamock"              %% "scalamock-specs2-support"      % "3.0.1"      % "test",
+    "org.scalacheck"             %% "scalacheck"                    % "1.11.6"     % "test",
+    "org.scalamock"              %% "scalamock-specs2-support"      % "3.2-RC1"      % "test",
     "org.specs2"                 %% "specs2"                        % "2.4.6"      % "test",
-    "org.typelevel"              %% "scalaz-specs2"                 % "0.2"        % "test"
+    "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"        % "test"
   )
 
   lazy val rootDependencies = compileDependencies ++ testDependencies

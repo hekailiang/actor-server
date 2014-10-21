@@ -11,6 +11,7 @@ object Resolvers {
   }
 
   lazy val seq = Seq(
+    mavenOrg,
     "typesafe repo"       at "http://repo.typesafe.com/typesafe/releases",
     "sonatype snapshots"  at "https://oss.sonatype.org/content/repositories/snapshots/",
     "sonatype releases"   at "https://oss.sonatype.org/content/repositories/releases/",
@@ -18,8 +19,7 @@ object Resolvers {
     "spray repo" at "http://repo.spray.io/",
     "Websudos releases" at "http://maven.websudos.co.uk/ext-release-local",
     Resolver.url("secret repository", url("http://54.77.139.175:8081/content/repositories/snapshots"))(Resolver.ivyStylePatterns),
-    "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven",
-    mavenOrg
+    "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven"
   )
 
 }
