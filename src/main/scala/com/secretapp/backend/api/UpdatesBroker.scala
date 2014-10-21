@@ -124,8 +124,8 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
           message = message
         )
         pushUpdate(authId, update)
-        deliverGooglePush(destUID, authId, seq)
-        deliverApplePush(destUID, authId, seq)
+        deliverGooglePush(authId, seq)
+        deliverApplePush(authId, seq)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>

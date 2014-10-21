@@ -42,16 +42,16 @@ trait GooglePush {
       case Left(e)  => log.error(s"GCM push failed: ${e.getMessage}")
     }
 
-  private def deliverGooglePush(uid: Int, authId: Long, seq: Int, optCreds: Option[GooglePushCredentials])
+  private def deliverGooglePush(optCreds: Option[GooglePushCredentials], seq: Int)
                                (implicit s: CSession): Future[Unit] =
     optCreds some { c =>
       sendGooglePush(c.regId, seq)
     } none Future.successful()
 
-  def deliverGooglePush(uid: Int, authId: Long, seq: Int)
+  def deliverGooglePush(authId: Long, seq: Int)
                        (implicit s: CSession): Future[Unit] =
-    GooglePushCredentialsRecord.get(uid, authId) flatMap {
-      deliverGooglePush(uid, authId, seq, _)
+    GooglePushCredentialsRecord.get(authId) flatMap {
+      deliverGooglePush(_, seq)
     }
 
 }

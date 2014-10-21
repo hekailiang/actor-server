@@ -12,9 +12,7 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
 
   override lazy val tableName = "google_push_credentials"
 
-  object uid extends IntColumn(this) with PartitionKey[Int]
-
-  object authId extends LongColumn(this) with PrimaryKey[Long] {
+  object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"
   }
 
@@ -22,29 +20,38 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
     override lazy val name = "project_id"
   }
 
-  object regId extends StringColumn(this) {
+  object regId extends StringColumn(this) with Index[String] {
     override lazy val name = "reg_id"
   }
 
   override def fromRow(r: Row): GooglePushCredentials =
-    GooglePushCredentials(uid(r), authId(r), projectId(r), regId(r))
+    GooglePushCredentials(authId(r), projectId(r), regId(r))
 }
 
 object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with DBConnector {
 
-  def set(c: GooglePushCredentials)(implicit s: Session): Future[ResultSet] =
-    update
-      .where(_.uid eqs c.uid).and(_.authId eqs c.authId)
-      .modify(_.projectId setTo c.projectId).and(_.regId setTo c.regId)
-      .future
+  def set(c: GooglePushCredentials)(implicit s: Session): Future[ResultSet] = {
+    @inline def doInsert() =
+      insert.value(_.authId, c.authId).value(_.projectId, c.projectId).value(_.regId, c.regId).future()
 
-  def remove(uid: Int, authId: Long)(implicit s: Session): Future[ResultSet] =
+    select(_.authId).where(_.regId eqs c.regId).one() flatMap {
+      case Some(authId) =>
+        delete.where(_.authId eqs authId).future() flatMap { _ =>
+          doInsert()
+        }
+      case None =>
+        doInsert()
+    }
+  }
+
+
+  def remove(authId: Long)(implicit s: Session): Future[ResultSet] =
     delete
-      .where(_.uid eqs uid).and(_.authId eqs authId)
+      .where(_.authId eqs authId)
       .future
 
-  def get(uid: Int, authId: Long)(implicit s: Session): Future[Option[GooglePushCredentials]] =
+  def get(authId: Long)(implicit s: Session): Future[Option[GooglePushCredentials]] =
     select
-      .where(_.uid eqs uid).and(_.authId eqs authId)
+      .where(_.authId eqs authId)
       .one()
 }

@@ -27,17 +27,17 @@ trait ApplePush {
     Future.successful()
   }
 
-  private def deliverApplePush(uid: Int, authId: Long, seq: Int, optCreds: Option[ApplePushCredentials])
+  private def deliverApplePush(optCreds: Option[ApplePushCredentials], seq: Int)
                                (implicit s: CSession): Future[Unit] =
     optCreds some { c =>
       log.debug(s"Sending apple push creds=$c, seq=$seq")
       sendApplePush(c.token, seq)
     } none Future.successful()
 
-  def deliverApplePush(uid: Int, authId: Long, seq: Int)
+  def deliverApplePush(authId: Long, seq: Int)
                        (implicit s: CSession): Future[Unit] =
-    ApplePushCredentialsRecord.get(uid, authId) flatMap {
-      deliverApplePush(uid, authId, seq, _)
+    ApplePushCredentialsRecord.get(authId) flatMap {
+      deliverApplePush(_, seq)
     }
 
 }

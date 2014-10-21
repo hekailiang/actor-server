@@ -12,9 +12,7 @@ sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredenti
 
   override lazy val tableName = "apple_push_credentials"
 
-  object uid extends IntColumn(this) with PartitionKey[Int]
-
-  object authId extends LongColumn(this) with PrimaryKey[Long] {
+  object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"
   }
 
@@ -22,29 +20,37 @@ sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredenti
     override lazy val name = "apns_key"
   }
 
-  object token extends StringColumn(this) {
+  object token extends StringColumn(this) with Index[String] {
     override lazy val name = "tok"
   }
 
   override def fromRow(r: Row): ApplePushCredentials =
-    ApplePushCredentials(uid(r), authId(r), apnsKey(r), token(r))
+    ApplePushCredentials(authId(r), apnsKey(r), token(r))
 }
 
 object ApplePushCredentialsRecord extends ApplePushCredentialsRecord with DBConnector {
 
-  def set(c: ApplePushCredentials)(implicit s: Session): Future[ResultSet] =
-    update
-      .where(_.uid eqs c.uid).and(_.authId eqs c.authId)
-      .modify(_.apnsKey setTo c.apnsKey).and(_.token setTo c.token)
-      .future
+  def set(c: ApplePushCredentials)(implicit s: Session): Future[ResultSet] = {
+    @inline def doInsert() =
+      insert.value(_.authId, c.authId).value(_.apnsKey, c.apnsKey).value(_.token, c.token).future()
 
-  def remove(uid: Int, authId: Long)(implicit s: Session): Future[ResultSet] =
+    select(_.authId).where(_.token eqs c.token).one() flatMap {
+      case Some(authId) =>
+        delete.where(_.authId eqs authId).future() flatMap { _ =>
+          doInsert()
+        }
+      case None =>
+        doInsert()
+    }
+  }
+
+  def remove(authId: Long)(implicit s: Session): Future[ResultSet] =
     delete
-      .where(_.uid eqs uid).and(_.authId eqs authId)
+      .where(_.authId eqs authId)
       .future
 
-  def get(uid: Int, authId: Long)(implicit s: Session): Future[Option[ApplePushCredentials]] =
+  def get(authId: Long)(implicit s: Session): Future[Option[ApplePushCredentials]] =
     select
-      .where(_.uid eqs uid).and(_.authId eqs authId)
+      .where(_.authId eqs authId)
       .one()
 }

@@ -42,10 +42,10 @@ class PushServiceSpec extends RpcSpec with BeforeExample {
     catchNewSession(scope)
   }
 
-  private def googleCreds(implicit scope: TestScope) = GooglePushCredentials(scope.user.uid, scope.user.authId, 42, "reg id")
-  private def appleCreds(implicit scope: TestScope) = ApplePushCredentials(scope.user.uid, scope.user.authId, 42, "token")
+  private def googleCreds(implicit scope: TestScope) = GooglePushCredentials(scope.user.authId, 42, "reg id")
+  private def appleCreds(implicit scope: TestScope) = ApplePushCredentials(scope.user.authId, 42, "token")
 
-  private def storedGoogleCreds(implicit scope: TestScope) = GooglePushCredentialsRecord.get(googleCreds.uid, googleCreds.authId).sync()
+  private def storedGoogleCreds(implicit scope: TestScope) = GooglePushCredentialsRecord.get(googleCreds.authId).sync()
 
   private def registerGoogleShouldBeOk(implicit scope: TestScope) =
     RequestRegisterGooglePush(googleCreds.projectId, googleCreds.regId) :~> <~:[ResponseVoid]
