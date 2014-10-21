@@ -17,36 +17,36 @@ import com.secretapp.backend.persist.{UserRecord, FileRecord}
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
-/*
-  "test avatar" should {
+
+  "valid avatar" should {
     "have proper size" in {
-      origBytes must have size 112527
+      validOrigBytes must have size 112527
     }
   }
- */
+
   "user service on receiving `RequestSetAvatar`" should {
-    /*
+
     "respond with `ResponseAvatarUploaded`" in {
-      val r = setAvatarShouldBeOk
+      val r = setValidAvatarShouldBeOk
 
-      r.avatar.fullImage.get.width          should_== origDimensions._1
-      r.avatar.fullImage.get.height         should_== origDimensions._2
-      r.avatar.fullImage.get.fileSize       should_== origBytes.length
-      dbImageBytes(r.avatar.fullImage.get)  should_== origBytes
+      r.avatar.fullImage.get.width          should_== validOrigDimensions._1
+      r.avatar.fullImage.get.height         should_== validOrigDimensions._2
+      r.avatar.fullImage.get.fileSize       should_== validOrigBytes.length
+      dbImageBytes(r.avatar.fullImage.get)  should_== validOrigBytes
 
-      r.avatar.smallImage.get.width         should_== smallDimensions._1
-      r.avatar.smallImage.get.height        should_== smallDimensions._2
-      r.avatar.smallImage.get.fileSize      should_== smallBytes.length
-      dbImageBytes(r.avatar.smallImage.get) should_== smallBytes
+      r.avatar.smallImage.get.width         should_== validSmallDimensions._1
+      r.avatar.smallImage.get.height        should_== validSmallDimensions._2
+      r.avatar.smallImage.get.fileSize      should_== validSmallBytes.length
+      dbImageBytes(r.avatar.smallImage.get) should_== validSmallBytes
 
-      r.avatar.largeImage.get.width         should_== largeDimensions._1
-      r.avatar.largeImage.get.height        should_== largeDimensions._2
-      r.avatar.largeImage.get.fileSize      should_== largeBytes.length
-      dbImageBytes(r.avatar.largeImage.get) should_== largeBytes
+      r.avatar.largeImage.get.width         should_== validLargeDimensions._1
+      r.avatar.largeImage.get.height        should_== validLargeDimensions._2
+      r.avatar.largeImage.get.fileSize      should_== validLargeBytes.length
+      dbImageBytes(r.avatar.largeImage.get) should_== validLargeBytes
     }
 
     "update user avatar" in {
-      setAvatarShouldBeOk
+      setValidAvatarShouldBeOk
 
       dbUser.avatar       should beSome
       dbAvatar.fullImage  should beSome
@@ -55,32 +55,32 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
     }
 
     "store full image in user avatar" in {
-      setAvatarShouldBeOk
+      setValidAvatarShouldBeOk
 
-      dbFullImage.width         should_== origDimensions._1
-      dbFullImage.height        should_== origDimensions._2
-      dbFullImage.fileSize      should_== origBytes.length
-      dbImageBytes(dbFullImage) should_== origBytes
+      dbFullImage.width         should_== validOrigDimensions._1
+      dbFullImage.height        should_== validOrigDimensions._2
+      dbFullImage.fileSize      should_== validOrigBytes.length
+      dbImageBytes(dbFullImage) should_== validOrigBytes
     }
 
     "store large image in user avatar" in {
-      setAvatarShouldBeOk
+      setValidAvatarShouldBeOk
 
-      dbLargeImage.width         should_== largeDimensions._1
-      dbLargeImage.height        should_== largeDimensions._2
-      dbLargeImage.fileSize      should_== largeBytes.length
-      dbImageBytes(dbLargeImage) should_== largeBytes
+      dbLargeImage.width         should_== validLargeDimensions._1
+      dbLargeImage.height        should_== validLargeDimensions._2
+      dbLargeImage.fileSize      should_== validLargeBytes.length
+      dbImageBytes(dbLargeImage) should_== validLargeBytes
     }
 
     "store small image in user avatar" in {
-      setAvatarShouldBeOk
+      setValidAvatarShouldBeOk
 
-      dbSmallImage.width         should_== smallDimensions._1
-      dbSmallImage.height        should_== smallDimensions._2
-      dbSmallImage.fileSize      should_== smallBytes.length
-      dbImageBytes(dbSmallImage) should_== smallBytes
+      dbSmallImage.width         should_== validSmallDimensions._1
+      dbSmallImage.height        should_== validSmallDimensions._2
+      dbSmallImage.fileSize      should_== validSmallBytes.length
+      dbImageBytes(dbSmallImage) should_== validSmallBytes
     }
-     */
+
     "append update to chain" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
@@ -94,7 +94,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope2
         connectWithUser(scope1.user)
-        setAvatarShouldBeOk
+        setValidAvatarShouldBeOk
       }
 
       Thread.sleep(1000)
@@ -109,20 +109,28 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
-      a.fullImage.get.width          should_== origDimensions._1
-      a.fullImage.get.height         should_== origDimensions._2
-      a.fullImage.get.fileSize       should_== origBytes.length
-      dbImageBytes(a.fullImage.get)  should_== origBytes
+      a.fullImage.get.width          should_== validOrigDimensions._1
+      a.fullImage.get.height         should_== validOrigDimensions._2
+      a.fullImage.get.fileSize       should_== validOrigBytes.length
+      dbImageBytes(a.fullImage.get)  should_== validOrigBytes
 
-      a.smallImage.get.width         should_== smallDimensions._1
-      a.smallImage.get.height        should_== smallDimensions._2
-      a.smallImage.get.fileSize      should_== smallBytes.length
-      dbImageBytes(a.smallImage.get) should_== smallBytes
+      a.smallImage.get.width         should_== validSmallDimensions._1
+      a.smallImage.get.height        should_== validSmallDimensions._2
+      a.smallImage.get.fileSize      should_== validSmallBytes.length
+      dbImageBytes(a.smallImage.get) should_== validSmallBytes
 
-      a.largeImage.get.width         should_== largeDimensions._1
-      a.largeImage.get.height        should_== largeDimensions._2
-      a.largeImage.get.fileSize      should_== largeBytes.length
-      dbImageBytes(a.largeImage.get) should_== largeBytes
+      a.largeImage.get.width         should_== validLargeDimensions._1
+      a.largeImage.get.height        should_== validLargeDimensions._2
+      a.largeImage.get.fileSize      should_== validLargeBytes.length
+      dbImageBytes(a.largeImage.get) should_== validLargeBytes
+    }
+
+    "respond with IMAGE_LOAD_ERROR if invalid image passed" in {
+      RequestEditAvatar(invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
+    }
+
+    "respond with FILE_TOO_BIG if huge image passed" in {
+      RequestEditAvatar(tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
     }
   }
 
@@ -131,42 +139,51 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
   implicit val timeout = 5.seconds
 
   private implicit var scope: TestScope = _
-  private var fl: FileLocation = _
+  private var validFileLocation: FileLocation = _
+  private var invalidFileLocation: FileLocation = _
+  private var tooLargeFileLocation: FileLocation = _
 
   override def before = {
     scope = TestScope()
     catchNewSession(scope)
-    fl = storeOrigImage
+    validFileLocation = storeImage(42, validOrigBytes)
+    invalidFileLocation = storeImage(43, invalidBytes)
+    tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
   private val fr = new FileRecord
 
-  private val origBytes =
-    Files.readAllBytes(Paths.get(getClass.getResource("/avatar.jpg").toURI))
-  private val origDimensions = AvatarUtils.dimensions(origBytes).sync()
+  private val validOrigBytes =
+    Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
 
-  private val largeBytes = AvatarUtils.resizeToLarge(origBytes).sync()
-  private val largeDimensions = (200, 200)
+  private val invalidBytes = Stream.continually(Random.nextInt.toByte).take(50000).toArray
 
-  private val smallBytes = AvatarUtils.resizeToSmall(origBytes).sync()
-  private val smallDimensions = (100, 100)
+  private val tooLargeBytes =
+    Files.readAllBytes(Paths.get(getClass.getResource("/too-large-avatar.jpg").toURI))
 
-  private def storeOrigImage: FileLocation = {
-    val fileId = 42
+  private val validOrigDimensions = AvatarUtils.dimensions(validOrigBytes).sync()
+
+  private val validLargeBytes = AvatarUtils.resizeToLarge(validOrigBytes).sync()
+  private val validLargeDimensions = (200, 200)
+
+  private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
+  private val validSmallDimensions = (100, 100)
+
+  private def storeImage(fileId: Int, bytes: Array[Byte]): FileLocation = {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
       _    <- fr.createFile(fileId, fileSalt);
-      _    <- fr.write(fileId, 0, origBytes);
-      hash <- fr.getAccessHash(42);
-      fl    = FileLocation(42, hash)
+      _    <- fr.write(fileId, 0, bytes);
+      hash <- fr.getAccessHash(fileId);
+      fl    = FileLocation(fileId, hash)
     ) yield fl
 
     ffl.sync()
   }
 
-  private def setAvatarShouldBeOk(implicit scope: TestScope) = {
-    val (rsp, _) = RequestEditAvatar(fl) :~> <~:[ResponseAvatarChanged]
+  private def setValidAvatarShouldBeOk(implicit scope: TestScope) = {
+    val (rsp, _) = RequestEditAvatar(validFileLocation) :~> <~:[ResponseAvatarChanged]
     rsp
   }
 

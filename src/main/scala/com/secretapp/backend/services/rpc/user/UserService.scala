@@ -3,7 +3,7 @@ package com.secretapp.backend.services.rpc.user
 import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.api.counters.CounterProtocol
-import com.secretapp.backend.data.message.rpc.{ResponseVoid, Ok, RpcRequestMessage, RpcResponse}
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestEditName, RequestEditAvatar, ResponseAvatarChanged}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
@@ -58,21 +58,21 @@ trait UserService extends SocialHelpers with UserHelpers {
     }
   }
 
-  private def handleEditAvatar(user: User, r: RequestEditAvatar): Future[RpcResponse] = {
+  private def scaleAvatar(fl: FileLocation): Future[Avatar] = {
     val fr = new FileRecord
 
-    val avatar = for (
-      fullImageBytes  <- fr.getFile(r.fileLocation.fileId.toInt);
-      (fiw, fih)      <- AvatarUtils.dimensions(fullImageBytes);
+    for (
+      fullImageBytes   <- fr.getFile(fl.fileId.toInt);
+      (fiw, fih)       <- AvatarUtils.dimensions(fullImageBytes);
 
-      smallImageId    <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
-      largeImageId    <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
+      smallImageId     <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
+      largeImageId     <- ask(clusterProxies.filesCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType];
 
-      _               <- fr.createFile(smallImageId, (new Random).nextString(30)); // TODO: genAccessSalt makes specs
-      _               <- fr.createFile(largeImageId, (new Random).nextString(30)); // fail
+      _                <- fr.createFile(smallImageId, (new Random).nextString(30)); // TODO: genAccessSalt makes specs
+      _                <- fr.createFile(largeImageId, (new Random).nextString(30)); // fail
 
-      smallImageHash  <- fr.getAccessHash(smallImageId);
-      largeImageHash  <- fr.getAccessHash(largeImageId);
+      smallImageHash   <- fr.getAccessHash(smallImageId);
+      largeImageHash   <- fr.getAccessHash(largeImageId);
 
       smallImageLoc    = FileLocation(smallImageId, smallImageHash);
       largeImageLoc    = FileLocation(largeImageId, largeImageHash);
@@ -85,21 +85,35 @@ trait UserService extends SocialHelpers with UserHelpers {
 
       smallAvatarImage = AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length);
       largeAvatarImage = AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
-      fullAvatarImage  = AvatarImage(r.fileLocation, fiw, fih, fullImageBytes.length);
+      fullAvatarImage  = AvatarImage(fl, fiw, fih, fullImageBytes.length);
 
       avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
 
     ) yield avatar
+  }
 
-    avatar flatMap { a =>
-      UserRecord.updateAvatar(user.uid, a) map { _ =>
-        withRelatedAuthIds(user.uid) { authIds =>
-          authIds foreach { authId =>
-            updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
+  private def handleEditAvatar(user: User, r: RequestEditAvatar): Future[RpcResponse] = {
+    val sizeLimit: Long = 1024 * 1024
+    val fr = new FileRecord
+
+    fr.getFileLength(r.fileLocation.fileId.toInt) flatMap { len =>
+      if (len > sizeLimit)
+        Future successful Error(400, "FILE_TOO_BIG", "", false)
+      else
+        scaleAvatar(r.fileLocation) flatMap { a =>
+          UserRecord.updateAvatar(user.uid, a) map { _ =>
+            withRelatedAuthIds(user.uid) { authIds =>
+              authIds foreach { authId =>
+                updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
+              }
+            }
+            Ok(ResponseAvatarChanged(a))
           }
+        } recover {
+          case e =>
+            log.warning(s"Failed while updating avatar: $e")
+            Error(400, "IMAGE_LOAD_ERROR", "", false)
         }
-        Ok(ResponseAvatarChanged(a))
-      }
     }
   }
 
