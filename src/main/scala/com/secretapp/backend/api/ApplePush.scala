@@ -18,7 +18,8 @@ trait ApplePush {
   val apnsService: ApnsService
 
   private def payload(seq: Int) = {
-    APNS.newPayload.forNewsstand().sound("").customField("seq", seq).build
+    //APNS.newPayload.forNewsstand().sound("").customField("seq", seq).build
+    APNS.newPayload.alertBody("New message").customField("seq", seq).build
   }
 
   private def sendApplePush(token: String, seq: Int): Future[Unit] = {
