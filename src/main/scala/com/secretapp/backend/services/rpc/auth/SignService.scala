@@ -82,15 +82,21 @@ trait SignService extends SocialHelpers {
 
     @inline
     def signIn(userId: Int) = {
+      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+
       @inline
-      def updateUserRecord(): Future[ResultSet] = m match {
-        case -\/(_: RequestSignIn) =>
-          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber)
-        case \/-(req: RequestSignUp) =>
-          UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, req.name)
+      def updateUserRecord(name: String): Unit = {
+        UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, name) onSuccess {
+          case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+        }
       }
 
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+      @inline
+      def getUserName(name: String) = m match {
+        case \/-(req) => req.name
+        case _ => name
+      }
+
       for {
         userAuthR <- UserRecord.getEntity(userId, authId)
         userR <- UserRecord.getEntity(userId) // remove it when it cause bottleneck
@@ -98,29 +104,28 @@ trait SignService extends SocialHelpers {
         if (userR.isEmpty) Error(400, "INTERNAL_ERROR", "", true)
         else userAuthR match {
           case None =>
-            updateUserRecord() onSuccess {
-              case _ =>
-                pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
-            }
             val user = userR.get
+            val userName = getUserName(user.name)
+            updateUserRecord(userName)
             val keyHashes = user.keyHashes + publicKeyHash
-            val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes)
+            val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
+              keyHashes = keyHashes, name = userName)
             auth(newUser)
           case Some(userAuth) =>
+            val userName = getUserName(userAuth.name)
             if (userAuth.publicKey != publicKey) {
               //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
-              updateUserRecord() onSuccess {
-                case _ =>
-                  pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
-              }
+              updateUserRecord(userName)
               val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-              val userName = m match {
-                case -\/(_: RequestSignIn) => userAuth.name
-                case \/-(req: RequestSignUp) => req.name
-              }
-              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes, name = userName)
+              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                name = userName)
               auth(newUser)
-            } else auth(userAuth)
+            } else {
+              if (userAuth.name != userName) {
+                UserRecord.updateName(userAuth.uid, userName)
+                auth(userAuth.copy(name = userName))
+              } else auth(userAuth)
+            }
         }
       }
     }
