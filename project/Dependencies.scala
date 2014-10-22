@@ -2,12 +2,13 @@ import sbt._
 
 object Dependencies {
   object V {
-    val akka          = "2.3.6"
-    val newzlyUtil    = "0.1.19"
-    val phantom       = "1.2.8"
-    val scalaz        = "7.1.0"
-    val scalazContrib = "0.1.5"
-    val spray         = "1.3.2"
+    val akka             = "2.3.6"
+    val newzlyUtil       = "0.1.19"
+    val phantom          = "1.2.8"
+    val scalaz           = "7.1.0"
+    val scalazContrib    = "0.1.5"
+    val shapelessContrib = "0.2"
+    val spray            = "1.3.2"
   }
 
   val compileDependencies = Seq(
@@ -49,9 +50,9 @@ object Dependencies {
     "org.scalaz"                 %% "scalaz-typelevel"              % V.scalaz,
     "org.typelevel"              %% "scodec-bits"                   % "1.0.2",
     "org.typelevel"              %% "scodec-core"                   % "1.2.0",
-    "org.typelevel"              %% "shapeless-scalacheck"          % "0.2",
-    "org.typelevel"              %% "shapeless-scalaz"              % "0.2",
-    "org.typelevel"              %% "shapeless-spire"               % "0.2"
+    "org.typelevel"              %% "shapeless-scalacheck"          % V.shapelessContrib,
+    "org.typelevel"              %% "shapeless-scalaz"              % V.shapelessContrib,
+    "org.typelevel"              %% "shapeless-spire"               % V.shapelessContrib
   )
 
   val deployDependencies = Seq(

@@ -32,6 +32,10 @@ object AuthIdRecord extends AuthIdRecord with DBConnector {
     select.where(_.authId eqs authId).one()
   }
 
+  def deleteEntity(authId: Long)(implicit session: Session): Future[ResultSet] = {
+    delete.where(_.authId eqs authId).future()
+  }
+
   def getEntityWithUser(authId: Long)(implicit session: Session): Future[Option[(AuthId, Option[User])]] = {
     getEntity(authId).flatMap {
       case Some(auth) => auth.user.flatMap { u => Future.successful(Some(auth, u)) }

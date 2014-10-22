@@ -57,8 +57,10 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
         decode(row, MessageCodec)
       case updateProto.NewDevice.seqUpdateHeader =>
         decode(row, NewDeviceCodec)
-      case updateProto.NewYourDevice.seqUpdateHeader =>
-        decode(row, NewYourDeviceCodec)
+      case updateProto.NewFullDevice.seqUpdateHeader =>
+        decode(row, NewFullDeviceCodec)
+      case updateProto.RemoveDevice.seqUpdateHeader =>
+        decode(row, RemoveDeviceCodec)
       case updateProto.MessageSent.seqUpdateHeader =>
         decode(row, MessageSentCodec)
       case updateProto.AvatarChanged.seqUpdateHeader =>
@@ -170,9 +172,12 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.NewDevice =>
         val body = NewDeviceCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
-      case u: updateProto.NewYourDevice =>
-        val body = NewYourDeviceCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewYourDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.NewFullDevice =>
+        val body = NewFullDeviceCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewFullDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.RemoveDevice =>
+        val body = RemoveDeviceCodec.encode(u)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.RemoveDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.AvatarChanged =>
         val body = AvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.AvatarChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)

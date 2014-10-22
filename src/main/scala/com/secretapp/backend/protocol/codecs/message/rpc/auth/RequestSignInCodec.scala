@@ -15,15 +15,20 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestSignInCodec extends Codec[RequestSignIn] with utils.ProtobufCodec {
   def encode(r: RequestSignIn) = {
-    val boxed = protobuf.RequestSignIn(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)
+    val boxed = protobuf.RequestSignIn(
+      r.phoneNumber, r.smsHash, r.smsCode, r.publicKey,
+      r.deviceHash, r.deviceTitle, r.appId, r.appKey
+    )
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestSignIn.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)) =>
-        RequestSignIn(phoneNumber, smsHash, smsCode, publicKey)
-
+      case Success(protobuf.RequestSignIn(
+        phoneNumber, smsHash, smsCode, publicKey,
+        deviceHash, deviceTitle, appId, appKey
+      )) =>
+        RequestSignIn(phoneNumber, smsHash, smsCode, publicKey, deviceHash, deviceTitle, appId, appKey)
     }
   }
 }

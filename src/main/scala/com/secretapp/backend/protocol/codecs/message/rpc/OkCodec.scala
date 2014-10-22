@@ -25,6 +25,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseSeq.responseType) { case s: ResponseSeq => s }(protoPayload(ResponseSeqCodec))
     .\(Difference.responseType) { case d: Difference => d }(protoPayload(DifferenceCodec))
     .\(ResponseAuth.responseType) { case r: ResponseAuth => r }(protoPayload(ResponseAuthCodec))
+    .\(ResponseGetAuth.responseType) { case r: ResponseGetAuth => r }(protoPayload(ResponseGetAuthCodec))
     .\(ResponseAuthCode.responseType) { case r: ResponseAuthCode => r }(protoPayload(ResponseAuthCodeCodec))
     .\(ResponseImportedContacts.responseType) { case r: ResponseImportedContacts => r }(protoPayload(ResponseImportedContactsCodec))
     .\(ResponsePublicKeys.responseType) { case r: ResponsePublicKeys => r }(protoPayload(ResponsePublicKeysCodec))

@@ -24,7 +24,8 @@ trait JsonFormats {
   implicit val messageReceivedFormat = Json.format[MessageReceived]
   implicit val messageSentFormat = Json.format[MessageSent]
   implicit val newDeviceFormat = Json.format[NewDevice]
-  implicit val newYourDeviceFormat = Json.format[NewYourDevice]
+  implicit val newFullDeviceFormat = Json.format[NewFullDevice]
+  implicit val removeDeviceFormat = Json.format[RemoveDevice]
 
   // WeakUpdateMessage descendants
   implicit val userLastSeenFormat = Json.format[UserLastSeen]

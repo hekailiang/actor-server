@@ -11,15 +11,15 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object NewYourDeviceCodec extends Codec[NewYourDevice] with utils.ProtobufCodec {
-  def encode(n: NewYourDevice) = {
-    val boxed = protobuf.UpdateNewYourDevice(n.uid, n.keyHash, n.key)
+object RemoveDeviceCodec extends Codec[RemoveDevice] with utils.ProtobufCodec {
+  def encode(n: RemoveDevice) = {
+    val boxed = protobuf.UpdateRemoveDevice(n.uid, n.keyHash)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.UpdateNewYourDevice.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateNewYourDevice(uid, keyHash, key)) => NewYourDevice(uid, keyHash, key)
+    decodeProtobuf(protobuf.UpdateRemoveDevice.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.UpdateRemoveDevice(uid, keyHash)) => RemoveDevice(uid, keyHash)
     }
   }
 }

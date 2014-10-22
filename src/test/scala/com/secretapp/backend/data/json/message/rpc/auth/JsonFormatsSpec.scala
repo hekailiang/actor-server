@@ -23,12 +23,16 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestSignIn" in {
       val (bitVector, bitVectorJson) = genBitVector
-      val v = RequestSignIn(1, "smsHash", "smsCode", bitVector)
+      val v = RequestSignIn(1, "smsHash", "smsCode", bitVector, bitVector, "app", 0, "key")
       val j = withHeader(RequestSignIn.requestType)(
         "phoneNumber" -> "1",
         "smsHash" -> "smsHash",
         "smsCode" -> "smsCode",
-        "publicKey" -> bitVectorJson
+        "publicKey" -> bitVectorJson,
+        "deviceHash" -> bitVectorJson,
+        "deviceTitle" -> "app",
+        "appId" -> 0,
+        "appKey" -> "key"
       )
       testToAndFromJson[RpcRequestMessage](j, v)
     }
@@ -36,13 +40,17 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestSignUp" in {
       val (bitVector, bitVectorJson) = genBitVector
-      val v = RequestSignUp(1, "smsHash", "smsCode", "name", bitVector)
+      val v = RequestSignUp(1, "smsHash", "smsCode", "name", bitVector, bitVector, "app", 0, "key")
       val j = withHeader(RequestSignUp.requestType)(
         "phoneNumber" -> "1",
         "smsHash" -> "smsHash",
         "smsCode" -> "smsCode",
         "name" -> "name",
-        "publicKey" -> bitVectorJson
+        "publicKey" -> bitVectorJson,
+        "deviceHash" -> bitVectorJson,
+        "deviceTitle" -> "app",
+        "appId" -> 0,
+        "appKey" -> "key"
       )
       testToAndFromJson[RpcRequestMessage](j, v)
     }

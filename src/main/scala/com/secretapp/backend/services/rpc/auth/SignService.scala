@@ -5,19 +5,21 @@ import java.util.regex.Pattern
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.ResultSet
-import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
-import com.secretapp.backend.data.message.update.{ContactRegistered, NewDevice, NewYourDevice}
-import scala.util.{ Success, Failure }
-import scala.concurrent.Future
-import scala.concurrent.duration._
 import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.api.counters.CounterProtocol
+import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
+import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
+import com.secretapp.backend.data.message.struct.AuthItem
+import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.persist._
 import com.secretapp.backend.helpers.SocialHelpers
+import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
-import com.secretapp.backend.crypto.ec
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.util.{ Success, Failure }
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
@@ -37,12 +39,77 @@ trait SignService extends SocialHelpers {
       }
     case r: RequestSignIn =>
       unauthorizedRequest {
-        handleSign(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.left)
+        handleSign(
+          r.phoneNumber, r.smsHash, r.smsCode, r.publicKey,
+          r.deviceHash, r.deviceTitle, r.appId, r.appKey
+        )(r.left)
       }
     case r: RequestSignUp =>
       unauthorizedRequest {
-        handleSign(r.phoneNumber, r.smsHash, r.smsCode, r.publicKey)(r.right)
+        handleSign(
+          r.phoneNumber, r.smsHash, r.smsCode, r.publicKey,
+          r.deviceHash, r.deviceTitle, r.appId, r.appKey
+        )(r.right)
       }
+    case r: RequestGetAuth =>
+      authorizedRequest {
+        handleRequestGetAuth()
+      }
+    case RequestRemoveAuth(id) =>
+      authorizedRequest {
+        handleRequestRemoveAuth(id)
+      }
+    case r: RequestRemoveAllOtherAuths =>
+      authorizedRequest {
+        handleRequestRemoveAllOtherAuths()
+      }
+    case r: RequestLogout =>
+      authorizedRequest {
+        handleRequestLogout()
+      }
+  }
+
+  def handleRequestGetAuth(): Future[RpcResponse] = {
+    for {
+      authItems <- AuthItemRecord.getEntities(currentUser.get.uid)
+    } yield {
+      Ok(ResponseGetAuth(authItems.toVector map (_._1)))
+    }
+  }
+
+  def handleRequestLogout(): Future[RpcResponse] = {
+    AuthItemRecord.getEntityByUserIdAndAuthId(currentUser.get.uid, currentUser.get.authId) flatMap {
+      case Some((authItem, authId, _)) =>
+        logout(authId, authItem) map { _ =>
+          Ok(ResponseVoid())
+        }
+      case None =>
+        Future.successful(Error(404, "USER_NOT_FOUND", "User not found", false))
+    }
+  }
+
+  def handleRequestRemoveAuth(id: Int): Future[RpcResponse] = {
+    AuthItemRecord.getEntity(currentUser.get.uid, id) flatMap {
+      case Some((authItem, authId, _)) =>
+        logout(authId, authItem) map { _ =>
+          Ok(ResponseVoid())
+        }
+      case None =>
+        Future.successful(Error(404, "USER_NOT_FOUND", "User not found", false))
+    }
+  }
+
+  def handleRequestRemoveAllOtherAuths(): Future[RpcResponse] = {
+    AuthItemRecord.getEntities(currentUser.get.uid) map { authItems =>
+      authItems foreach {
+        case (authItem, authId, _) =>
+          if (authId != currentUser.get.authId) {
+            logout(authId, authItem)
+          }
+      }
+
+      Ok(ResponseVoid())
+    }
   }
 
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
@@ -69,7 +136,10 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def handleSign(phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector)(m: RequestSignIn \/ RequestSignUp): Future[RpcResponse] = {
+  private def handleSign(
+    phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector,
+    deviceHash: BitVector, deviceTitle: String, appId: Int, appKey: String
+  )(m: RequestSignIn \/ RequestSignUp): Future[RpcResponse] = {
     val authId = currentAuthId // TODO
 
     @inline
@@ -77,6 +147,16 @@ trait SignService extends SocialHelpers {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
       log.info(s"Authenticate currentUser=${u}")
       this.currentUser = Some(u)
+
+      nextAuthItemId() map { id =>
+        AuthItemRecord.insertEntity(
+          AuthItem.build(
+            id = id, appId = appId, deviceTitle = deviceTitle, authTime = System.currentTimeMillis / 1000,
+            authLocation = "", latitude = None, longitude = None
+          ), u.uid, u.authId, deviceHash
+        )
+      }
+
       Ok(ResponseAuth(u.publicKeyHash, u.toStruct(authId)))
     }
 
@@ -198,19 +278,45 @@ trait SignService extends SocialHelpers {
     }
   }
 
+  private def nextAuthItemId(): Future[Int] = {
+    ask(clusterProxies.authItemsCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType]
+  }
+
+  private def pushRemoveDeviceUpdates(userId: Int, publicKeyHash: Long): Unit = {
+    getRelations(userId) onComplete {
+      case Success(userIds) =>
+        log.debug(s"Got relations for ${userId} -> ${userIds}")
+        for (targetUserId <- userIds) {
+          getAuthIds(targetUserId) onComplete {
+            case Success(authIds) =>
+              log.debug(s"Fetched authIds for userId=${targetUserId} ${authIds}")
+              for (targetAuthId <- authIds) {
+                updatesBrokerRegion ! NewUpdatePush(targetAuthId, RemoveDevice(userId, publicKeyHash))
+              }
+            case Failure(e) =>
+              log.error(s"Failed to get authIds for uid=${targetUserId} to push RemoveDevice update")
+              throw e
+          }
+        }
+      case Failure(e) =>
+        log.error(s"Failed to get relations to push RemoveDevice updates userId=${userId} ${publicKeyHash}")
+        throw e
+    }
+  }
+
   private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
-    // Push NewYourDevice updates
+    // Push NewFullDevice updates
     UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
       case Success(authIds) =>
         log.debug(s"Fetched authIds for uid=${uid} ${authIds}")
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
-            log.debug(s"Pushing NewYourDevice for authId=${targetAuthId}")
-            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewYourDevice(uid, publicKeyHash, publicKey))
+            log.debug(s"Pushing NewFullDevice for authId=${targetAuthId}")
+            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewFullDevice(uid, publicKeyHash, publicKey))
           }
         }
       case Failure(e) =>
-        log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push NewYourDevice updates")
+        log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push NewFullDevice updates")
         throw e
     }
 
@@ -241,6 +347,22 @@ trait SignService extends SocialHelpers {
       contacts.foreach { c =>
         pushUpdate(c.authId, ContactRegistered(u.uid))
       }
+    }
+  }
+
+  private def logout(authId: Long, authItem: AuthItem)(implicit session: CSession) = {
+    UserRecord.getEntity(currentUser.get.uid, authId) map {
+      case Some(user) =>
+        UserRecord.removeKeyHash(user.uid, user.publicKeyHash) flatMap { _ =>
+          AuthIdRecord.deleteEntity(authId) flatMap { _ =>
+            AuthItemRecord.deleteEntity(user.uid, authItem.id) andThen {
+              case Success(_) =>
+                pushRemoveDeviceUpdates(user.uid, user.publicKeyHash)
+            }
+          }
+        }
+      case None =>
+        throw new Exception("User not found")
     }
   }
 }

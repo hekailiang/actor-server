@@ -7,8 +7,12 @@ import com.secretapp.backend.data.message.struct._
 import play.api.libs.json._
 
 trait JsonFormats {
+  case class Foo(id: Int, appId: Int, appTitle: String, deviceTitle: String, authTime: Long,
+    authLocation: String, latitude: Option[Double], longitude: Option[Double])
+
   implicit val userIdFormat           = Json.format[UserId]
   implicit val avatarImageFormat      = Json.format[AvatarImage]
   implicit val avatarFormat           = Json.format[Avatar]
   implicit val userFormat             = Json.format[User]
+  implicit val authItemFormat         = Json.format[AuthItem]
 }
