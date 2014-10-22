@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
 import akka.io.Tcp._
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.ResponseVoid
@@ -16,6 +15,7 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import scala.collection.immutable
 import scala.language.{ postfixOps, higherKinds }
 import scalaz.{State => _, _}

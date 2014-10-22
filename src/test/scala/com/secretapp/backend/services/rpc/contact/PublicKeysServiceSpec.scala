@@ -16,9 +16,9 @@ import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.crypto.ec
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import scodec.bits._
 import scalaz._
 import Scalaz._

@@ -5,7 +5,7 @@ import akka.io.Tcp.{Close, Received, Write}
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
-import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.api.frontend.ws.WSFrontend
 import com.secretapp.backend.api.frontend.{JsonConnection, MTConnection, TransportConnection}
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend

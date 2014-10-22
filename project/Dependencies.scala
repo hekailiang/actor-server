@@ -3,7 +3,6 @@ import sbt._
 object Dependencies {
   object V {
     val akka             = "2.3.6"
-    val newzlyUtil       = "0.1.19"
     val phantom          = "1.2.8"
     val scalaz           = "7.1.0"
     val scalazContrib    = "0.1.5"
@@ -18,7 +17,6 @@ object Dependencies {
     "com.github.krasserm"        %% "akka-persistence-cassandra"    % "0.3.4",
     "com.github.nscala-time"     %% "nscala-time"                   % "1.2.0",
     "com.logentries"              % "logentries-appender"           % "1.1.25",
-    "com.newzly"                 %% "util-testing"                  % V.newzlyUtil % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
     "com.notnoop.apns"           %  "apns"                          % "1.0.0.Beta4",
     "com.sksamuel.scrimage"      %% "scrimage-core"                 % "1.4.1",
     "com.typesafe.akka"          %% "akka-actor"                    % V.akka,
@@ -35,6 +33,7 @@ object Dependencies {
     "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2",
     "com.websudos"               %% "phantom-dsl"                   % V.phantom,
     "com.websudos"               %% "phantom-udt"                   % V.phantom,
+    "com.websudos"               %% "util-testing"                  % "0.2.4" % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
     "com.wandoulabs.akka"        %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
     "commons-codec"               % "commons-codec"                 % "1.3", // we need this because commons-codec 1.2 jar is broken (apns dependency)
     "io.spray"                   %% "spray-caching"                 % V.spray,

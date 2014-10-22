@@ -1,6 +1,5 @@
 package com.secretapp.backend.services.rpc.user
 
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
@@ -9,6 +8,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._
