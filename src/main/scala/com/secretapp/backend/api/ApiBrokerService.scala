@@ -69,6 +69,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
     }
 
     body match {
+      // TODO: move to separate method!
       case rq: RequestSendMessage =>
         handleMessaging(rq)
 
@@ -79,6 +80,12 @@ with PublicKeysService with PresenceService with TypingService with UserService 
         handleMessaging(rq)
 
       case rq: RequestLeaveChat =>
+        handleMessaging(rq)
+
+      case rq: RequestEditGroupTitle =>
+        handleMessaging(rq)
+
+      case rq: RequestEditGroupAvatar =>
         handleMessaging(rq)
 
       case rq: RequestRemoveUser =>

@@ -5,6 +5,7 @@ import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.struct.{ FileLocation, Avatar }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
@@ -275,6 +276,46 @@ trait MessagingService extends RandomService with UserHelpers {
             }
         }
       }
+    }
+  }
+
+  protected def handleRequestEditGroupAvatar(
+    groupId: Int, accessHash: Long, avatar: FileLocation
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestEditGroupTitle(
+    groupId: Int,
+    accessHash: Long,
+    title: String
+  ): Future[RpcResponse] = {
+    GroupChatRecord.getEntity(groupId) flatMap { optChat =>
+      optChat map { group =>
+        if (group.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid chat access hash.", false))
+        } else {
+          for {
+            _ <- GroupChatRecord.setTitle(groupId, title)
+            s <- getState(currentUser.authId)
+          } yield {
+            GroupChatUserRecord.getUsers(groupId) onSuccess {
+              case groupUserIds =>
+                groupUserIds foreach { groupUserId =>
+                  for {
+                    authIds <- getAuthIds(groupUserId)
+                  } yield {
+                    authIds map { authId =>
+                      updatesBrokerRegion ! NewUpdatePush(authId, GroupTitleChanged(
+                        groupId, title
+                      ))
+                    }
+                  }
+                }
+            }
+
+            Ok(updateProto.ResponseSeq(s._1, s._2))
+          }
+        }
+      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
     }
   }
 

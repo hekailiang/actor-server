@@ -45,6 +45,14 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestRemoveUser(chatId, accessHash, userId, userAccessHash) pipeTo replyTo
 
+    case RpcProtocol.Request(RequestEditGroupTitle(groupId, accessHash, title)) =>
+      val replyTo = sender()
+      handleRequestEditGroupTitle(groupId, accessHash, title) pipeTo replyTo
+
+    case RpcProtocol.Request(RequestEditGroupAvatar(groupId, accessHash, avatar)) =>
+      val replyTo = sender()
+      handleRequestEditGroupAvatar(groupId, accessHash, avatar) pipeTo replyTo
+
     case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message)) =>
       val replyTo = sender()
 

@@ -4,7 +4,7 @@ import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.file.FileLocation
+import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc.user.{RequestEditName, RequestEditAvatar, ResponseAvatarChanged}
 import com.secretapp.backend.data.message.struct.{Avatar, AvatarImage}
 import com.secretapp.backend.data.message.update._

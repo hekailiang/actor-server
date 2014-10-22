@@ -1,8 +1,7 @@
 package com.secretapp.backend.data.models
 
-import com.secretapp.backend.data.message.rpc.file.FileLocation
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.message.struct.{AvatarImage, Avatar}
+import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.Configuration

@@ -34,6 +34,68 @@ class GroupMessagingSpec extends RpcSpec {
   import system.dispatcher
 
   "GroupMessaging" should {
+    "send updates on name change" in {
+      val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+        val rqCreateChat = RequestCreateChat(
+          randomId = 1L,
+          title = "Groupchat 3000",
+          keyHash = BitVector(1, 1, 1),
+          publicKey = BitVector(1, 0, 1, 0),
+          broadcast = EncryptedRSABroadcast(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedUserAESKeys(
+                userId = scope2.user.uid,
+                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                keys = immutable.Seq(
+                  EncryptedAESKey(
+                    keyHash = scope2.user.publicKeyHash,
+                    aesEncryptedKey = BitVector(2, 0, 2, 0)
+                  )
+                )
+              )
+            ),
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                keyHash = scope.user.publicKeyHash,
+                aesEncryptedKey = BitVector(2, 0, 2, 0)
+              )
+            )
+          )
+        )
+        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+
+        Thread.sleep(500)
+
+        RequestEditGroupTitle(
+          groupId = resp.chatId,
+          accessHash = resp.accessHash,
+          title = "Title 3000"
+        ) :~> <~:[updateProto.ResponseSeq]
+
+        Thread.sleep(500)
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
+        diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
+        diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+      }
+    }
+
     "send invites on creation and send/receive messages" in {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)

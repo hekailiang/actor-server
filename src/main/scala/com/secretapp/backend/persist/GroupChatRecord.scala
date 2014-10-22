@@ -57,4 +57,8 @@ object GroupChatRecord extends GroupChatRecord with DBConnector {
   def getEntity(chatId: Int)(implicit session: Session): Future[Option[GroupChat]] = {
     select.where(_.id eqs chatId).one()
   }
+
+  def setTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] = {
+    update.where(_.id eqs id).modify(_.title setTo title).future()
+  }
 }

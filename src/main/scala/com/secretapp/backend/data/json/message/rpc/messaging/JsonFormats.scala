@@ -17,4 +17,5 @@ trait JsonFormats {
   implicit val requestMessageReadFormat = Json.format[RequestMessageRead]
   implicit val requestMessageReceivedFormat = Json.format[RequestMessageReceived]
   implicit val requestSendGroupMessageFormat = Json.format[RequestSendGroupMessage]
+  implicit val requestEditGroupTitleFormat = Json.format[RequestEditGroupTitle]
 }

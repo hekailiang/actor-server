@@ -24,6 +24,8 @@ object SeqUpdateMessageCodec {
       case u: GroupUserLeave    => GroupUserLeaveCodec.encode(u)
       case u: GroupUserKick     => GroupUserKickCodec.encode(u)
       case u: GroupCreated      => GroupCreatedCodec.encode(u)
+      case u: GroupTitleChanged => GroupTitleChangedCodec.encode(u)
+      case u: GroupAvatarChanged=> GroupAvatarChangedCodec.encode(u)
     }
   }
 
@@ -44,6 +46,8 @@ object SeqUpdateMessageCodec {
       case GroupUserLeave.seqUpdateHeader    => GroupUserLeaveCodec.decode(buf)
       case GroupUserKick.seqUpdateHeader     => GroupUserKickCodec.decode(buf)
       case GroupCreated.seqUpdateHeader      => GroupCreatedCodec.decode(buf)
+      case GroupTitleChanged.seqUpdateHeader => GroupTitleChangedCodec.decode(buf)
+      case GroupAvatarChanged.seqUpdateHeader=> GroupAvatarChangedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

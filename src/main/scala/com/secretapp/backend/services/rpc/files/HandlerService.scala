@@ -6,6 +6,7 @@ import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.data.message.RpcResponseBox
+import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.transport.MTPackage

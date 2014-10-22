@@ -2,6 +2,7 @@ package com.secretapp.backend.protocol.codecs.message.rpc.file
 
 import org.specs2.mutable.Specification
 import com.secretapp.backend.data.message.{ RpcRequestBox, RpcResponseBox }
+import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.protocol.codecs._
