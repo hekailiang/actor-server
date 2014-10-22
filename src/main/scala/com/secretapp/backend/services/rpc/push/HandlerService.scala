@@ -11,19 +11,19 @@ trait HandlerService {
   import context.dispatcher
 
   protected def handleRequestRegisterGooglePush(projectId: Long, regId: String): Future[RpcResponse] =
-    GooglePushCredentialsRecord.set(GooglePushCredentials(currentUser.authId, projectId, regId)) map { _ =>
+    GooglePushCredentialsRecord.set(GooglePushCredentials(currentAuthId, projectId, regId)) map { _ =>
       Ok(ResponseVoid())
     }
 
   protected def handleRequestRegisterApplePush(apnsKey: Int, token: String): Future[RpcResponse] =
-    ApplePushCredentialsRecord.set(ApplePushCredentials(currentUser.authId, apnsKey, token)) map { _ =>
+    ApplePushCredentialsRecord.set(ApplePushCredentials(currentAuthId, apnsKey, token)) map { _ =>
       Ok(ResponseVoid())
     }
 
   protected def handleRequestUnregisterPush: Future[RpcResponse] =
     Future.sequence(Seq(
-      GooglePushCredentialsRecord.remove(currentUser.authId),
-      ApplePushCredentialsRecord.remove(currentUser.authId)
+      GooglePushCredentialsRecord.remove(currentAuthId),
+      ApplePushCredentialsRecord.remove(currentAuthId)
     )) map { _ =>
       Ok(ResponseVoid())
     }

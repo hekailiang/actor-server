@@ -7,7 +7,7 @@ import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.models.User
 
-class Handler(val currentUser: User)
+class Handler(val currentAuthId: Long)
              (implicit val session: CSession)
   extends Actor with ActorLogging with HandlerService {
   import context._
