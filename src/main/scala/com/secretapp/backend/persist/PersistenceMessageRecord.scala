@@ -3,7 +3,7 @@ package com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.update._
 import java.nio.ByteBuffer
 import com.datastax.driver.core.ConsistencyLevel
-import com.secretapp.backend.data.message.rpc.file.FileLocation
+import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.struct.{User, AvatarImage, Avatar}
 import com.websudos.phantom.query.ExecutableStatement
 import com.secretapp.backend.data.message.update.SeqUpdate
