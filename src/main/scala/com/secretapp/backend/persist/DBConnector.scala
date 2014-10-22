@@ -28,7 +28,7 @@ object DBConnector {
     cluster.connect(keySpace)
   }
 
-  def createTables(session: Session)(implicit context: ExecutionContext with Executor) = blocking {
+  def createTables(session: Session)(implicit context: ExecutionContext with Executor) = {
     val fileRecord = new FileRecord()(session, context)
 
     Future.sequence(List(
@@ -48,7 +48,7 @@ object DBConnector {
     ))
   }
 
-  def truncateTables(session: Session) = blocking {
+  def truncateTables(session: Session) = {
     Future.sequence(List(
       ApplePushCredentialsRecord.truncateTable(session),
       AuthIdRecord.truncateTable(session),
