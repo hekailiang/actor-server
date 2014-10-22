@@ -20,8 +20,8 @@ class JsonFormatsSpec extends JsonSpec {
       val (userId, userIdJson) = genUserId
 
       val v = Request(UnsubscribeFromOnline(immutable.Seq(userId)))
-      val j = withHeader(Request.rpcType)(
-        "body" -> withHeader(UnsubscribeFromOnline.requestType)(
+      val j = withHeader(Request.header)(
+        "body" -> withHeader(UnsubscribeFromOnline.header)(
           "users" -> Json.arr(userIdJson)
         )
       )
@@ -34,14 +34,14 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize ConnectionNotInitedError" in {
       val v = ConnectionNotInitedError()
-      val j = withHeader(ConnectionNotInitedError.rpcType)()
+      val j = withHeader(ConnectionNotInitedError.header)()
       testToAndFromJson[RpcResponse](j, v)
     }
 
     "(de)serialize Error" in {
       val (bitVector, bitVectorJson) = genBitVector
       val v = Error(1, "tag", "userMessage", true, bitVector)
-      val j = withHeader(Error.rpcType)(
+      val j = withHeader(Error.header)(
         "code"        -> 1,
         "tag"         -> "tag",
         "userMessage" -> "userMessage",
@@ -53,7 +53,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize FloodWait" in {
       val v = FloodWait(1)
-      val j = withHeader(FloodWait.rpcType)(
+      val j = withHeader(FloodWait.header)(
         "delay"        -> 1
       )
       testToAndFromJson[RpcResponse](j, v)
@@ -61,7 +61,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize InternalError" in {
       val v = InternalError(true, 1)
-      val j = withHeader(InternalError.rpcType)(
+      val j = withHeader(InternalError.header)(
         "canTryAgain"   -> true,
         "tryAgainDelay" -> 1
       )
@@ -70,8 +70,8 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize Ok" in {
       val v = Ok(ResponseAuthCode("smsHash", true))
-      val j = withHeader(Ok.rpcType)(
-        "body" -> withHeader(ResponseAuthCode.responseType)(
+      val j = withHeader(Ok.header)(
+        "body" -> withHeader(ResponseAuthCode.header)(
           "smsHash"      -> "smsHash",
           "isRegistered" -> true
         )

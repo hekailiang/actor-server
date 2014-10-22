@@ -8,11 +8,11 @@ case class Message(senderUID: Int,
                    destUID: Int,
                    message: EncryptedRSAPackage) extends SeqUpdateMessage
 {
-  val seqUpdateHeader = Message.seqUpdateHeader
+  val header = Message.header
 
   def userIds: Set[Int] = Set(senderUID, destUID)
 }
 
 object Message extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x1
+  val header = 0x1
 }

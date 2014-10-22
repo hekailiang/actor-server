@@ -8,9 +8,9 @@ import scodec.bits._
 case class ResponseCreateChat(
   chatId: Int, accessHash: Long, seq: Int, state: Option[UUID]
 ) extends RpcResponseMessage {
-  val header = ResponseCreateChat.responseType
+  val header = ResponseCreateChat.header
 }
 
 object ResponseCreateChat extends RpcResponseMessageObject {
-  val responseType = 0x42
+  val header = 0x42
 }

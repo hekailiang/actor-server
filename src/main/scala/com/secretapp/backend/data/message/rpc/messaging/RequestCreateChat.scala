@@ -12,9 +12,9 @@ case class RequestCreateChat(
   publicKey: BitVector,
   broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
-  val header = RequestCreateChat.requestType
+  val header = RequestCreateChat.header
 }
 
 object RequestCreateChat extends RpcRequestMessageObject {
-  val requestType = 0x41
+  val header = 0x41
 }

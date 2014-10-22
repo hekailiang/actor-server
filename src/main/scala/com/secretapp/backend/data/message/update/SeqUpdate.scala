@@ -14,17 +14,17 @@ import Scalaz._
 @SerialVersionUID(1L)
 case class SeqUpdate(seq: Int, state: BitVector, body: SeqUpdateMessage) extends UpdateMessage
 {
-  val updateHeader = SeqUpdate.updateHeader
+  val header = SeqUpdate.header
 
   def toProto: String \/ protobuf.SeqUpdate = {
     for {
       update <- SeqUpdateMessageCodec.encode(body)
-    } yield protobuf.SeqUpdate(seq, state, body.seqUpdateHeader, update)
+    } yield protobuf.SeqUpdate(seq, state, body.header, update)
   }
 }
 
 object SeqUpdate extends UpdateMessageObject {
-  val updateHeader = 0x0D
+  val header = 0x0D
 
   def fromProto(u: protobuf.SeqUpdate): String \/ SeqUpdate = u match {
     case protobuf.SeqUpdate(seq, state, updateId, body) =>

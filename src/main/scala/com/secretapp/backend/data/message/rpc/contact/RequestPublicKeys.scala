@@ -5,9 +5,9 @@ import scala.collection.immutable
 
 @SerialVersionUID(1L)
 case class RequestPublicKeys(keys: immutable.Seq[PublicKeyRequest]) extends RpcRequestMessage {
-  val header = RequestPublicKeys.requestType
+  val header = RequestPublicKeys.header
 }
 
 object RequestPublicKeys extends RpcRequestMessageObject {
-  val requestType = 0x06
+  val header = 0x06
 }

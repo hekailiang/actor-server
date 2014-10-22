@@ -5,9 +5,9 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class RequestUploadPart(config: UploadConfig, offset: Int, data: BitVector) extends RpcRequestMessage {
-  val header = RequestUploadPart.requestType
+  val header = RequestUploadPart.header
 }
 
 object RequestUploadPart extends RpcRequestMessageObject {
-  val requestType = 0x14
+  val header = 0x14
 }

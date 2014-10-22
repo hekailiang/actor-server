@@ -42,7 +42,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestImportContacts" in {
       val (contactToImport, contactToImportJson) = genContactToImport
       val v = RequestImportContacts(immutable.Seq(contactToImport))
-      val j = withHeader(RequestImportContacts.requestType)(
+      val j = withHeader(RequestImportContacts.header)(
         "contacts" -> Json.arr(contactToImportJson)
       )
       testToAndFromJson[RpcRequestMessage](j, v)
@@ -51,7 +51,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestPublicKeys" in {
       val (publicKeyRequest, publicKeyRequestJson) = genPublicKeyRequest
       val v = RequestPublicKeys(immutable.Seq(publicKeyRequest))
-      val j = withHeader(RequestPublicKeys.requestType)(
+      val j = withHeader(RequestPublicKeys.header)(
         "keys" -> Json.arr(publicKeyRequestJson)
       )
       testToAndFromJson[RpcRequestMessage](j, v)
@@ -65,7 +65,7 @@ class JsonFormatsSpec extends JsonSpec {
       val (user, userJson) = genUser
       val (importedContact, importedContactJson) = genImportedContact
       val v = ResponseImportedContacts(immutable.Seq(user), immutable.Seq(importedContact))
-      val j = withHeader(ResponseImportedContacts.responseType)(
+      val j = withHeader(ResponseImportedContacts.header)(
         "users" -> Json.arr(userJson),
         "contacts" -> Json.arr(importedContactJson)
       )
@@ -75,7 +75,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponsePublicKeys" in {
       val (publicKeysResponse, publicKeysResponseJson) = genPublicKeyResponse
       val v = ResponsePublicKeys(immutable.Seq(publicKeysResponse))
-      val j = withHeader(ResponsePublicKeys.responseType)(
+      val j = withHeader(ResponsePublicKeys.header)(
         "keys" -> Json.arr(publicKeysResponseJson)
       )
       testToAndFromJson[RpcResponseMessage](j, v)

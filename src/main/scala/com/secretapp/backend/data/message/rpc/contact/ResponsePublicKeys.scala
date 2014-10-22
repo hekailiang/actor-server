@@ -5,9 +5,9 @@ import scala.collection.immutable
 
 @SerialVersionUID(1L)
 case class ResponsePublicKeys(keys: immutable.Seq[PublicKeyResponse]) extends RpcResponseMessage {
-  val header = ResponsePublicKeys.responseType
+  val header = ResponsePublicKeys.header
 }
 
 object ResponsePublicKeys extends RpcResponseMessageObject {
-  val responseType = 0x18
+  val header = 0x18
 }

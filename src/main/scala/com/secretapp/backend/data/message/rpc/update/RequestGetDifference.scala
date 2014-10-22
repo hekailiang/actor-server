@@ -5,9 +5,9 @@ import java.util.UUID
 
 @SerialVersionUID(1L)
 case class RequestGetDifference(seq: Int, state: Option[UUID]) extends RpcRequestMessage {
-  val header = RequestGetDifference.requestType
+  val header = RequestGetDifference.header
 }
 
 object RequestGetDifference extends RpcRequestMessageObject {
-  val requestType = 0x0B
+  val header = 0x0B
 }

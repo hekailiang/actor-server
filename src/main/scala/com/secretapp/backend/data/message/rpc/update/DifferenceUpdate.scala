@@ -17,7 +17,7 @@ case class DifferenceUpdate(body: SeqUpdateMessage)
   def toProto: String \/ protobuf.DifferenceUpdate = {
     for {
       update <- SeqUpdateMessageCodec.encode(body)
-    } yield protobuf.DifferenceUpdate(body.seqUpdateHeader, update)
+    } yield protobuf.DifferenceUpdate(body.header, update)
   }
 }
 

@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class RequestSetOnline(isOnline: Boolean, timeout: Long) extends RpcRequestMessage {
-  val header = RequestSetOnline.requestType
+  val header = RequestSetOnline.header
 }
 
 object RequestSetOnline extends RpcRequestMessageObject {
-  val requestType = 0x1D
+  val header = 0x1D
 }

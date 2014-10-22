@@ -7,9 +7,9 @@ case class Error(
   code: Int, tag: String, userMessage: String, canTryAgain: Boolean,
   errorData: BitVector = BitVector.empty
 ) extends RpcResponse {
-  val rpcType = Error.rpcType
+  val header = Error.header
 }
 
 object Error extends RpcResponseObject {
-  val rpcType = 0x02
+  val header = 0x02
 }

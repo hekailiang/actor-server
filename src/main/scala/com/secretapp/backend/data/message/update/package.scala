@@ -1,29 +1,17 @@
 package com.secretapp.backend.data.message
 
 package object update {
-  trait UpdateMessage extends ProtobufMessage {
-    val updateHeader: Int
-  }
+  trait UpdateMessage extends ProtobufMessage with MessageWithHeader
 
-  trait SeqUpdateMessage extends ProtobufMessage {
-    val seqUpdateHeader: Int
-
+  trait SeqUpdateMessage extends ProtobufMessage with MessageWithHeader {
     def userIds: Set[Int]
   }
 
-  trait WeakUpdateMessage extends ProtobufMessage {
-    val weakUpdateHeader: Int
-  }
+  trait WeakUpdateMessage extends ProtobufMessage with MessageWithHeader
 
-  trait UpdateMessageObject {
-    val updateHeader: Int
-  }
+  trait UpdateMessageObject extends MessageWithHeader
 
-  trait SeqUpdateMessageObject {
-    val seqUpdateHeader: Int
-  }
+  trait SeqUpdateMessageObject extends MessageWithHeader
 
-  trait WeakUpdateMessageObject {
-    val weakUpdateHeader: Int
-  }
+  trait WeakUpdateMessageObject extends MessageWithHeader
 }

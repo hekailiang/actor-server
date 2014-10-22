@@ -8,17 +8,17 @@ import Scalaz._
 
 @SerialVersionUID(1L)
 case class WeakUpdate(date: Long, body: WeakUpdateMessage) extends UpdateMessage {
-  val updateHeader = WeakUpdate.updateHeader
+  val header = WeakUpdate.header
 
   def toProto: String \/ protobuf.WeakUpdate = {
     for {
       update <- WeakUpdateMessageCodec.encode(body)
-    } yield protobuf.WeakUpdate(date, body.weakUpdateHeader, update)
+    } yield protobuf.WeakUpdate(date, body.header, update)
   }
 }
 
 object WeakUpdate extends UpdateMessageObject {
-  val updateHeader = 0x1A
+  val header = 0x1A
 
   def fromProto(u: protobuf.WeakUpdate): String \/ WeakUpdate = u match {
     case protobuf.WeakUpdate(date, updateId, body) =>

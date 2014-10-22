@@ -12,11 +12,11 @@ case class GroupCreated(
   title: String,
   invite: EncryptedRSAPackage
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupCreated.seqUpdateHeader
+  val header = GroupCreated.header
 
   def userIds: Set[Int] = Set()
 }
 
 object GroupCreated extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x24
+  val header = 0x24
 }

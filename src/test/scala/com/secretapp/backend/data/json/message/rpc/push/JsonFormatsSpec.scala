@@ -11,7 +11,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestRegisterGooglePush" in {
       val v = RequestRegisterGooglePush(1, "token")
-      val j = withHeader(RequestRegisterGooglePush.requestType)(
+      val j = withHeader(RequestRegisterGooglePush.header)(
         "projectId" -> "1",
         "token" -> "token"
       )
@@ -20,7 +20,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestUnregisterPush" in {
       val v = RequestUnregisterPush()
-      val j = withHeader(RequestUnregisterPush.requestType)()
+      val j = withHeader(RequestUnregisterPush.header)()
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 

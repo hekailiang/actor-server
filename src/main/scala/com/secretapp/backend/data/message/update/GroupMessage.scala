@@ -10,11 +10,11 @@ case class GroupMessage(
   chatId: Int,
   message: EncryptedAESPackage
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupMessage.seqUpdateHeader
+  val header = GroupMessage.header
 
   def userIds: Set[Int] = Set(senderUID)
 }
 
 object GroupMessage extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x14
+  val header = 0x14
 }

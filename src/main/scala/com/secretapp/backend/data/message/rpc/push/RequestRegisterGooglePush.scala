@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcReque
 
 @SerialVersionUID(1L)
 case class RequestRegisterGooglePush(projectId: Long, token: String) extends RpcRequestMessage {
-  val header = RequestRegisterGooglePush.requestType
+  val header = RequestRegisterGooglePush.header
 }
 
 object RequestRegisterGooglePush extends RpcRequestMessageObject {
-  val requestType = 0x33
+  val header = 0x33
 }

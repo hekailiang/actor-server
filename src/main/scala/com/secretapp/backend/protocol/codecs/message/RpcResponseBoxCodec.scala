@@ -10,11 +10,11 @@ import scodec.codecs._
 
 object RpcResponseBoxCodec extends Codec[RpcResponseBox] {
   private val rpcResponseCodec: Codec[RpcResponse] = discriminated[RpcResponse].by(uint8)
-    .\(Ok.rpcType) { case r: Ok => r } (OkCodec)
-    .\(Error.rpcType) { case e: Error => e } (ErrorCodec)
-    .\(ConnectionNotInitedError.rpcType) { case c: ConnectionNotInitedError => c } (ConnectionNotInitedErrorCodec)
-    .\(FloodWait.rpcType) { case f: FloodWait => f } (FloodWaitCodec)
-    .\(InternalError.rpcType) { case e: InternalError => e } (InternalErrorCodec)
+    .\(Ok.header) { case r: Ok => r } (OkCodec)
+    .\(Error.header) { case e: Error => e } (ErrorCodec)
+    .\(ConnectionNotInitedError.header) { case c: ConnectionNotInitedError => c } (ConnectionNotInitedErrorCodec)
+    .\(FloodWait.header) { case f: FloodWait => f } (FloodWaitCodec)
+    .\(InternalError.header) { case e: InternalError => e } (InternalErrorCodec)
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("RpcResponseBox"))
 
   private val codec = (int64 :: protoPayload(rpcResponseCodec)).as[RpcResponseBox]

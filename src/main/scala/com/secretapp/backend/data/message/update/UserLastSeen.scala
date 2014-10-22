@@ -2,9 +2,9 @@ package com.secretapp.backend.data.message.update
 
 @SerialVersionUID(1L)
 case class UserLastSeen(uid: Int, time: Long) extends WeakUpdateMessage {
-  val weakUpdateHeader = UserLastSeen.weakUpdateHeader
+  val header = UserLastSeen.header
 }
 
 object UserLastSeen extends WeakUpdateMessageObject {
-  val weakUpdateHeader = 0x09
+  val header = 0x09
 }

@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class ResponseUploadCompleted(location: FileLocation) extends RpcResponseMessage {
-  val header = ResponseUploadCompleted.responseType
+  val header = ResponseUploadCompleted.header
 }
 
 object ResponseUploadCompleted extends RpcResponseMessageObject {
-  val responseType = 0x17
+  val header = 0x17
 }

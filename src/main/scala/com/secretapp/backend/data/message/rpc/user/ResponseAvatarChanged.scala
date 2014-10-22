@@ -5,9 +5,9 @@ import com.secretapp.backend.data.message.struct.Avatar
 
 @SerialVersionUID(1L)
 case class ResponseAvatarChanged(avatar: Avatar) extends RpcResponseMessage {
-  val header = ResponseAvatarChanged.responseType
+  val header = ResponseAvatarChanged.header
 }
 
 object ResponseAvatarChanged extends RpcResponseMessageObject {
-  val responseType = 0x44
+  val header = 0x44
 }

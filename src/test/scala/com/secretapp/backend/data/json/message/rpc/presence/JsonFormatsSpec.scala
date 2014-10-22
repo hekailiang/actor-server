@@ -15,7 +15,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestSetOnline" in {
       val v = RequestSetOnline(true, 1)
-      val j = withHeader(RequestSetOnline.requestType)(
+      val j = withHeader(RequestSetOnline.header)(
         "isOnline" -> true,
         "timeout"  -> "1"
       )
@@ -25,7 +25,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize SubscribeToOnline" in {
       val (userId, userIdJson) = genUserId
       val v = SubscribeToOnline(immutable.Seq(userId))
-      val j = withHeader(SubscribeToOnline.requestType)(
+      val j = withHeader(SubscribeToOnline.header)(
         "users" -> Json.arr(userIdJson)
       )
       testToAndFromJson[RpcRequestMessage](j, v)
@@ -34,7 +34,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize UnsubscribeFromOnline" in {
       val (userId, userIdJson) = genUserId
       val v = UnsubscribeFromOnline(immutable.Seq(userId))
-      val j = withHeader(UnsubscribeFromOnline.requestType)(
+      val j = withHeader(UnsubscribeFromOnline.header)(
         "users" -> Json.arr(userIdJson)
       )
       testToAndFromJson[RpcRequestMessage](j, v)

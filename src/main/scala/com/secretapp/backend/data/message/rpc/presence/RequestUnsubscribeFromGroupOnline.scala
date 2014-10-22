@@ -5,9 +5,9 @@ import com.secretapp.backend.data.message.struct.ChatId
 import scala.collection.immutable
 
 case class UnsubscribeFromGroupOnline(chatIds: immutable.Seq[ChatId]) extends RpcRequestMessage {
-  val header = UnsubscribeFromGroupOnline.requestType
+  val header = UnsubscribeFromGroupOnline.header
 }
 
 object UnsubscribeFromGroupOnline extends RpcRequestMessageObject {
-  val requestType = 0x4B
+  val header = 0x4B
 }

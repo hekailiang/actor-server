@@ -1,9 +1,9 @@
 package com.secretapp.backend.data.message.update
 
 case class Typing(uid: Int, typingType: Int) extends WeakUpdateMessage {
-  val weakUpdateHeader = Typing.weakUpdateHeader
+  val header = Typing.header
 }
 
 object Typing extends WeakUpdateMessageObject {
-  val weakUpdateHeader = 0x06
+  val header = 0x06
 }

@@ -4,29 +4,15 @@ import scalaz._
 import Scalaz._
 
 package object rpc {
-  trait RpcRequest {
-    def rpcType: Int
-  }
-  trait RpcResponse {
-    def rpcType: Int
-  }
+  trait RpcRequest extends MessageWithHeader
+  trait RpcResponse extends MessageWithHeader
 
-  trait RpcMessage extends ProtobufMessage {
-    def header: Int
-  }
+  trait RpcMessage extends ProtobufMessage with MessageWithHeader
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
 
-  trait RpcRequestObject {
-    val rpcType: Int
-  }
-  trait RpcResponseObject {
-    val rpcType: Int
-  }
-  trait RpcRequestMessageObject {
-    val requestType: Int // TODO: Rename to `header`
-  }
-  trait RpcResponseMessageObject {
-    val responseType: Int
-  }
+  trait RpcRequestObject extends MessageWithHeader
+  trait RpcResponseObject extends MessageWithHeader
+  trait RpcRequestMessageObject extends MessageWithHeader
+  trait RpcResponseMessageObject extends MessageWithHeader
 }

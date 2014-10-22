@@ -5,9 +5,9 @@ import com.secretapp.backend.data.message.rpc.file.FileLocation
 
 @SerialVersionUID(1L)
 case class RequestEditAvatar(fileLocation: FileLocation) extends RpcRequestMessage {
-  val header = RequestEditAvatar.requestType
+  val header = RequestEditAvatar.header
 }
 
 object RequestEditAvatar extends RpcRequestMessageObject {
-  val requestType = 0x1F
+  val header = 0x1F
 }

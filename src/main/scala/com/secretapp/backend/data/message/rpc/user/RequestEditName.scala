@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcReque
 
 @SerialVersionUID(1L)
 case class RequestEditName(name: String) extends RpcRequestMessage {
-  val header = RequestEditName.requestType
+  val header = RequestEditName.header
 }
 
 object RequestEditName extends RpcRequestMessageObject {
-  val requestType = 0x35
+  val header = 0x35
 }

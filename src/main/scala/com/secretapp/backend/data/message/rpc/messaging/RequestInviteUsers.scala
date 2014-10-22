@@ -12,10 +12,10 @@ case class RequestInviteUsers(
   chatKeyHash: BitVector,
   broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
-  val header = RequestInviteUsers.requestType
+  val header = RequestInviteUsers.header
 }
 
 
 object RequestInviteUsers extends RpcRequestMessageObject {
-  val requestType = 0x45
+  val header = 0x45
 }

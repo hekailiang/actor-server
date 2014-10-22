@@ -46,7 +46,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestGetDifference" in {
       val state = UUID.randomUUID()
       val v = RequestGetDifference(1, state.some)
-      val j = withHeader(RequestGetDifference.requestType)(
+      val j = withHeader(RequestGetDifference.header)(
         "seq" -> 1,
         "state" -> state.toString
       )
@@ -55,7 +55,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestGetState" in {
       val v = RequestGetState()
-      val j = withHeader(RequestGetState.requestType)()
+      val j = withHeader(RequestGetState.header)()
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
@@ -66,7 +66,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseSeq" in {
       val state = UUID.randomUUID()
       val v = ResponseSeq(1, state.some)
-      val j = withHeader(ResponseSeq.responseType)(
+      val j = withHeader(ResponseSeq.header)(
         "seq" -> 1,
         "state" -> state.toString
       )
@@ -84,7 +84,7 @@ object JsonFormatsSpec extends JsonSpec {
     (
       DifferenceUpdate(ContactRegistered(userId)),
       Json.obj(
-        "body" -> withHeader(ContactRegistered.seqUpdateHeader)(
+        "body" -> withHeader(ContactRegistered.header)(
           "userId" -> userId
         )
       )

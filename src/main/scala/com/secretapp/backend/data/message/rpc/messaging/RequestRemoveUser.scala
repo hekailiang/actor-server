@@ -11,9 +11,9 @@ case class RequestRemoveUser(
   userId: Int,
   userAccessHash: Long
 ) extends RpcRequestMessage {
-  val header = RequestRemoveUser.requestType
+  val header = RequestRemoveUser.header
 }
 
 object RequestRemoveUser extends RpcRequestMessageObject {
-  val requestType = 0x47
+  val header = 0x47
 }

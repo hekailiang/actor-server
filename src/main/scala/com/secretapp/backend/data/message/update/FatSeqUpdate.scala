@@ -14,17 +14,17 @@ import scalaz._
 import Scalaz._
 
 case class FatSeqUpdate(seq: Int, state: BitVector, body: SeqUpdateMessage, users: immutable.Seq[User]) extends UpdateMessage {
-  val updateHeader = SeqUpdate.updateHeader
+  val header = SeqUpdate.header
 
   def toProto: String \/ protobuf.FatSeqUpdate = {
     for {
       update <- SeqUpdateMessageCodec.encode(body)
-    } yield protobuf.FatSeqUpdate(seq, state, body.seqUpdateHeader, update, users map (_.toProto))
+    } yield protobuf.FatSeqUpdate(seq, state, body.header, update, users map (_.toProto))
   }
 }
 
 object FatSeqUpdate extends UpdateMessageObject {
-  val updateHeader = 0x49
+  val header = 0x49
 
   def fromProto(u: protobuf.FatSeqUpdate): String \/ FatSeqUpdate = u match {
     case protobuf.FatSeqUpdate(seq, state, updateId, body, users) =>

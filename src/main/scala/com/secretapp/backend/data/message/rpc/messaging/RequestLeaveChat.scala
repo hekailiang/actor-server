@@ -9,9 +9,9 @@ case class RequestLeaveChat(
   chatId: Int,
   accessHash: Long
 ) extends RpcRequestMessage {
-  val header = RequestLeaveChat.requestType
+  val header = RequestLeaveChat.header
 }
 
 object RequestLeaveChat extends RpcRequestMessageObject {
-  val requestType = 0x46
+  val header = 0x46
 }
