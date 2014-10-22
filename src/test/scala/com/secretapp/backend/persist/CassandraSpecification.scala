@@ -1,16 +1,18 @@
 package com.secretapp.backend.persist
 
-import org.specs2.matcher.ThrownExpectations
-import scala.concurrent.blocking
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session => CSession }
 import com.typesafe.config._
 import com.typesafe.scalalogging.slf4j._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.slf4j.LoggerFactory
+import org.specs2.matcher.ThrownExpectations
 import org.specs2.mutable._
 import org.specs2.specification.{ Fragments, Step }
+import scala.collection.JavaConversions._
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.blocking
+import scala.concurrent.duration._
 
 trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
   protected val keySpace: String = s"secret_test_${System.nanoTime()}"
@@ -28,10 +30,14 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     cluster.connect()
   }
 
+  private def createKeySpace(spaceName: String)(implicit session: CSession) = {
+    cassandraSpecLog.info(s"Creating keyspace $spaceName")
+    session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
+  }
+
   private def createAndUseKeySpace(spaceName: String)(implicit session: CSession) = {
     blocking {
-      cassandraSpecLog.info(s"Creating keyspace $spaceName")
-      session.execute(s"CREATE KEYSPACE IF NOT EXISTS $spaceName WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};")
+      createKeySpace(spaceName)(session)
       session.execute(s"use $spaceName;")
     }
   }
@@ -54,8 +60,10 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
   }
 
   private def createDB() {
+    createKeySpace("test_akka")
+    createKeySpace("test_akka_snapshot")
     createAndUseKeySpace(keySpace)
-    DBConnector.createTables(csession).sync()
+    Await.result(DBConnector.createTables(csession), DurationInt(20).seconds)
   }
 
   private def cleanDB() {
