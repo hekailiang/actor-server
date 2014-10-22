@@ -27,7 +27,6 @@ class SignServiceSpec extends RpcSpec {
 
   transportForeach { implicit transport =>
 
-    /*
     "auth code" should {
       "send sms code" in {
         implicit val scope = genTestScope()
@@ -41,9 +40,8 @@ class SignServiceSpec extends RpcSpec {
         }
       }
     }
-*/
+
     "sign up" should {
-      /*
       "succeed and manage auths" in {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
@@ -59,8 +57,7 @@ class SignServiceSpec extends RpcSpec {
         expectMsgByPF(withNewSession = true) {
           case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
         }
-      }*/
-
+      }
 
       "succeed and handle logout" in {
         implicit val scope = genTestScope()
@@ -78,13 +75,13 @@ class SignServiceSpec extends RpcSpec {
           case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
         }
 
+        Thread.sleep(2000) // let database save user
+
         sendRpcMsg(RequestLogout())
 
         expectRpcMsg(Ok(ResponseVoid()))
-
-        Thread.sleep(1000)
       }
-/*
+
       "succeed with new public key and same authId" in {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
@@ -258,9 +255,9 @@ class SignServiceSpec extends RpcSpec {
             case _: UpdateBox =>
           }
         }
-      }*/
+      }
     }
-/*
+
     "sign in" should {
       "success" in {
         implicit val scope = genTestScopeWithUser()
@@ -356,6 +353,6 @@ class SignServiceSpec extends RpcSpec {
 //        val expectMsg = MessageBox(messageId, rpcRes)
 //        expectMsgWithAck(expectMsg)
 //      }
-    }*/
+    }
   }
 }
