@@ -3,12 +3,12 @@ package com.secretapp.backend.persist
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.message.struct.AuthItem
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.models._
 import scala.concurrent.Future
 import scodec.bits._
 
-sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, (AuthItem, Long, BitVector)] {
+sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, AuthItem] {
   override lazy val tableName = "auth_items"
 
   object userId extends IntColumn(this) with PartitionKey[Int] {
@@ -37,7 +37,7 @@ sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, (AuthItem, Lo
     override lazy val name = "device_title"
   }
 
-  object authTime extends LongColumn(this) {
+  object authTime extends IntColumn(this) {
     override lazy val name = "auth_time"
   }
 
@@ -49,36 +49,36 @@ sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, (AuthItem, Lo
 
   object longitude extends OptionalDoubleColumn(this)
 
-  override def fromRow(row: Row): (AuthItem, Long, BitVector) = {
+  override def fromRow(row: Row): AuthItem = {
     (
       AuthItem(
         id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-        authLocation(row), latitude(row), longitude(row)
-      ),
-      authId(row),
-      BitVector(deviceHash(row))
+        authLocation(row), latitude(row), longitude(row),
+        authId(row), BitVector(deviceHash(row))
+      )
     )
   }
 }
 
 object AuthItemRecord extends AuthItemRecord with DBConnector {
-  def insertEntity(item: AuthItem, userId: Int, authId: Long, deviceHash: BitVector)(implicit session: Session): Future[ResultSet] = {
-    insert.value(_.userId, userId).value(_.id, item.id).value(_.deviceHash, deviceHash.toByteBuffer).value(_.authId, authId)
+  def insertEntity(item: AuthItem, userId: Int)(implicit session: Session): Future[ResultSet] = {
+    insert.value(_.userId, userId).value(_.id, item.id)
+      .value(_.deviceHash, item.deviceHash.toByteBuffer).value(_.authId, item.authId)
       .value(_.appId, item.appId).value(_.appTitle, item.appTitle)
       .value(_.deviceTitle, item.deviceTitle).value(_.authTime, item.authTime)
       .value(_.authLocation, item.authLocation).value(_.latitude, item.latitude).value(_.longitude, item.longitude)
       .future()
   }
 
-  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[(AuthItem, Long, BitVector)]] = {
+  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[AuthItem]] = {
     select.where(_.userId eqs userId).and(_.id eqs id).one()
   }
 
-  def getEntityByUserIdAndAuthId(userId: Int, authId: Long)(implicit session: Session): Future[Option[(AuthItem, Long, BitVector)]] = {
+  def getEntityByUserIdAndAuthId(userId: Int, authId: Long)(implicit session: Session): Future[Option[AuthItem]] = {
     select.where(_.userId eqs userId).and(_.authId eqs authId).one()
   }
 
-  def getEntities(userId: Int)(implicit session: Session): Future[Seq[(AuthItem, Long, BitVector)]] = {
+  def getEntities(userId: Int)(implicit session: Session): Future[Seq[AuthItem]] = {
     select.where(_.userId eqs userId).fetch()
   }
 

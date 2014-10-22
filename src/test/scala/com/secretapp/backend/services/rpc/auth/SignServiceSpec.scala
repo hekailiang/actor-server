@@ -42,7 +42,7 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign up" should {
-      "succeed and manage auths" in {
+      "succeed" in {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -76,6 +76,14 @@ class SignServiceSpec extends RpcSpec {
         }
 
         Thread.sleep(2000) // let database save user
+
+        sendRpcMsg(RequestGetAuth())
+
+        expectMsgByPF() {
+          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
+            struct.AuthItem(_, 0, 0, "Android Official", "app", _, "", None, None)
+          )))) =>
+        }
 
         sendRpcMsg(RequestLogout())
 

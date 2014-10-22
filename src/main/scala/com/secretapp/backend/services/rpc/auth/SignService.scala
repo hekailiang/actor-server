@@ -11,7 +11,7 @@ import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.struct.AuthItem
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.helpers.SocialHelpers
@@ -73,14 +73,14 @@ trait SignService extends SocialHelpers {
     for {
       authItems <- AuthItemRecord.getEntities(currentUser.get.uid)
     } yield {
-      Ok(ResponseGetAuth(authItems.toVector map (_._1)))
+      Ok(ResponseGetAuth(authItems.toVector map (_.toStruct(currentUser.get.authId))))
     }
   }
 
   def handleRequestLogout(): Future[RpcResponse] = {
     AuthItemRecord.getEntityByUserIdAndAuthId(currentUser.get.uid, currentUser.get.authId) flatMap {
-      case Some((authItem, authId, _)) =>
-        logout(authId, authItem) map { _ =>
+      case Some(authItem) =>
+        logout(authItem) map { _ =>
           Ok(ResponseVoid())
         }
       case None =>
@@ -90,8 +90,8 @@ trait SignService extends SocialHelpers {
 
   def handleRequestRemoveAuth(id: Int): Future[RpcResponse] = {
     AuthItemRecord.getEntity(currentUser.get.uid, id) flatMap {
-      case Some((authItem, authId, _)) =>
-        logout(authId, authItem) map { _ =>
+      case Some(authItem) =>
+        logout(authItem) map { _ =>
           Ok(ResponseVoid())
         }
       case None =>
@@ -102,9 +102,9 @@ trait SignService extends SocialHelpers {
   def handleRequestRemoveAllOtherAuths(): Future[RpcResponse] = {
     AuthItemRecord.getEntities(currentUser.get.uid) map { authItems =>
       authItems foreach {
-        case (authItem, authId, _) =>
-          if (authId != currentUser.get.authId) {
-            logout(authId, authItem)
+        case authItem =>
+          if (authItem.authId != currentUser.get.authId) {
+            logout(authItem)
           }
       }
 
@@ -151,9 +151,10 @@ trait SignService extends SocialHelpers {
       nextAuthItemId() map { id =>
         AuthItemRecord.insertEntity(
           AuthItem.build(
-            id = id, appId = appId, deviceTitle = deviceTitle, authTime = System.currentTimeMillis / 1000,
-            authLocation = "", latitude = None, longitude = None
-          ), u.uid, u.authId, deviceHash
+            id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
+            authLocation = "", latitude = None, longitude = None,
+            authId = u.authId, deviceHash = deviceHash
+          ), u.uid
         )
       }
 
@@ -350,11 +351,11 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def logout(authId: Long, authItem: AuthItem)(implicit session: CSession) = {
-    UserRecord.getEntity(currentUser.get.uid, authId) map {
+  private def logout(authItem: AuthItem)(implicit session: CSession) = {
+    UserRecord.getEntity(currentUser.get.uid, authItem.authId) map {
       case Some(user) =>
         UserRecord.removeKeyHash(user.uid, user.publicKeyHash) flatMap { _ =>
-          AuthIdRecord.deleteEntity(authId) flatMap { _ =>
+          AuthIdRecord.deleteEntity(authItem.authId) flatMap { _ =>
             AuthItemRecord.deleteEntity(user.uid, authItem.id) andThen {
               case Success(_) =>
                 pushRemoveDeviceUpdates(user.uid, user.publicKeyHash)
