@@ -11,8 +11,8 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-sealed class GroupChatRecord extends CassandraTable[GroupChatRecord, GroupChat] {
-  override lazy val tableName = "group_chats"
+sealed class GroupRecord extends CassandraTable[GroupRecord, Group] {
+  override lazy val tableName = "group_groups"
 
   object id extends IntColumn(this) with PartitionKey[Int]
 
@@ -30,8 +30,8 @@ sealed class GroupChatRecord extends CassandraTable[GroupChatRecord, GroupChat] 
     override lazy val name = "public_key"
   }
 
-  override def fromRow(row: Row): GroupChat = {
-    GroupChat(
+  override def fromRow(row: Row): Group = {
+    Group(
       id            = id(row),
       creatorUserId = creatorUserId(row),
       accessHash    = accessHash(row),
@@ -42,8 +42,8 @@ sealed class GroupChatRecord extends CassandraTable[GroupChatRecord, GroupChat] 
   }
 }
 
-object GroupChatRecord extends GroupChatRecord with DBConnector {
-  def insertEntity(entity: GroupChat)(implicit session: Session): Future[ResultSet] = {
+object GroupRecord extends GroupRecord with DBConnector {
+  def insertEntity(entity: Group)(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.id, entity.id)
       .value(_.creatorUserId, entity.creatorUserId)
@@ -54,8 +54,8 @@ object GroupChatRecord extends GroupChatRecord with DBConnector {
       .future()
   }
 
-  def getEntity(chatId: Int)(implicit session: Session): Future[Option[GroupChat]] = {
-    select.where(_.id eqs chatId).one()
+  def getEntity(groupId: Int)(implicit session: Session): Future[Option[Group]] = {
+    select.where(_.id eqs groupId).one()
   }
 
   def setTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] = {

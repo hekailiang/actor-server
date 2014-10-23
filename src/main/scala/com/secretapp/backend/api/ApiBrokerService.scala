@@ -73,13 +73,13 @@ with PublicKeysService with PresenceService with TypingService with UserService 
       case rq: RequestSendMessage =>
         handleMessaging(rq)
 
-      case rq: RequestCreateChat =>
+      case rq: RequestCreateGroup =>
         handleMessaging(rq)
 
       case rq: RequestInviteUsers =>
         handleMessaging(rq)
 
-      case rq: RequestLeaveChat =>
+      case rq: RequestLeaveGroup =>
         handleMessaging(rq)
 
       case rq: RequestEditGroupTitle =>

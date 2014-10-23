@@ -187,7 +187,7 @@ object UserRecord extends UserRecord with DBConnector {
           update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
 
           PhoneRecord.removeKeyHashByUserId(uid, publicKeyHash),
-          GroupChatUserRecord.removeUserKeyHash(uid, publicKeyHash)
+          GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
         )
       )
     }

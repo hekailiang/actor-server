@@ -15,7 +15,7 @@ import im.actor.messenger.{ api => protobuf }
 object GroupUserLeaveCodec extends Codec[GroupUserLeave] with utils.ProtobufCodec {
   def encode(u: GroupUserLeave) = {
     val boxed = protobuf.UpdateGroupUserLeave(
-      u.chatId, u.userId
+      u.groupId, u.userId
     )
     encodeToBitVector(boxed)
   }
@@ -24,11 +24,11 @@ object GroupUserLeaveCodec extends Codec[GroupUserLeave] with utils.ProtobufCode
     decodeProtobuf(protobuf.UpdateGroupUserLeave.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupUserLeave(
-          chatId, userId
+          groupId, userId
         )
       ) =>
         GroupUserLeave(
-          chatId, userId
+          groupId, userId
         )
     }
   }

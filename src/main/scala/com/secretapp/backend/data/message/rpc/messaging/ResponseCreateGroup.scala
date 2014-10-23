@@ -5,12 +5,12 @@ import java.util.UUID
 import scodec.bits._
 
 @SerialVersionUID(1L)
-case class ResponseCreateChat(
-  chatId: Int, accessHash: Long, seq: Int, state: Option[UUID]
+case class ResponseCreateGroup(
+  groupId: Int, accessHash: Long, seq: Int, state: Option[UUID]
 ) extends RpcResponseMessage {
-  val header = ResponseCreateChat.responseType
+  val header = ResponseCreateGroup.responseType
 }
 
-object ResponseCreateChat extends RpcResponseMessageObject {
+object ResponseCreateGroup extends RpcResponseMessageObject {
   val responseType = 0x42
 }

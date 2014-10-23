@@ -5,7 +5,7 @@ import scala.collection.immutable
 import scodec.bits.BitVector
 
 case class GroupUserLeave(
-  chatId: Int,
+  groupId: Int,
   userId: Int
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupUserLeave.seqUpdateHeader

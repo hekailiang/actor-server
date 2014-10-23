@@ -45,9 +45,9 @@ object SessionProtocol {
   case class UnsubscribeFromPresences(uids: immutable.Seq[Int]) extends SessionMessage
 
   @SerialVersionUID(1L)
-  case class SubscribeToGroupPresences(chatIds: immutable.Seq[Int]) extends SessionMessage
+  case class SubscribeToGroupPresences(groupIds: immutable.Seq[Int]) extends SessionMessage
   @SerialVersionUID(1L)
-  case class UnsubscribeFromGroupPresences(chatIds: immutable.Seq[Int]) extends SessionMessage
+  case class UnsubscribeFromGroupPresences(groupIds: immutable.Seq[Int]) extends SessionMessage
 
   case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
 }
@@ -206,13 +206,13 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       persist(msg) { _ =>
         unsubscribeToPresences(uids)
       }
-    case msg @ SubscribeToGroupPresences(chatIds) =>
+    case msg @ SubscribeToGroupPresences(groupIds) =>
       persist(msg) { _ =>
-        subscribeToGroupPresences(chatIds)
+        subscribeToGroupPresences(groupIds)
       }
-    case msg @ UnsubscribeFromGroupPresences(chatIds) =>
+    case msg @ UnsubscribeFromGroupPresences(groupIds) =>
       persist(msg) { _ =>
-        unsubscribeFromGroupPresences(chatIds)
+        unsubscribeFromGroupPresences(groupIds)
       }
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
@@ -232,7 +232,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       }
 
       recoverSubscribeToPresences(subscribedToPresencesUids.toList)
-      recoverSubscribeToGroupPresences(subscribedToPresencesChatIds.toList)
+      recoverSubscribeToGroupPresences(subscribedToPresencesGroupIds.toList)
 
       currentUser map { user =>
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
@@ -249,10 +249,10 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       subscribedToPresencesUids = subscribedToPresencesUids -- uids
     case UnsubscribeFromPresences(uids) =>
       subscribedToPresencesUids = subscribedToPresencesUids -- uids
-    case SubscribeToGroupPresences(chatIds) =>
-      subscribedToPresencesChatIds = subscribedToPresencesChatIds ++ chatIds
-    case UnsubscribeFromGroupPresences(chatIds) =>
-      subscribedToPresencesChatIds = subscribedToPresencesChatIds -- chatIds
+    case SubscribeToGroupPresences(groupIds) =>
+      subscribedToPresencesGroupIds = subscribedToPresencesGroupIds ++ groupIds
+    case UnsubscribeFromGroupPresences(groupIds) =>
+      subscribedToPresencesGroupIds = subscribedToPresencesGroupIds -- groupIds
     case _ =>
   }
 }

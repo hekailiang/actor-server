@@ -6,7 +6,7 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class RequestRemoveUser(
-  chatId: Int,
+  groupId: Int,
   accessHash: Long,
   userId: Int,
   userAccessHash: Long

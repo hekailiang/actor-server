@@ -14,16 +14,16 @@ object GroupPresenceProtocol {
   case class UserOffline(userId: Int) extends PresenceMessage
   case class TellPresences(target: ActorRef) extends PresenceMessage
 
-  case class Envelope(chatId: Int, payload: PresenceMessage)
+  case class Envelope(groupId: Int, payload: PresenceMessage)
 }
 
 object GroupPresenceBroker {
   import GroupPresenceProtocol._
 
-  def topicFor(chatId: Int): String = s"presences-g${chatId}"
+  def topicFor(groupId: Int): String = s"presences-g${groupId}"
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case Envelope(chatId, msg) => (s"g${chatId}", msg)
+    case Envelope(groupId, msg) => (s"g${groupId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -52,7 +52,7 @@ class GroupPresenceBroker extends Actor with ActorLogging {
   var onlineUserIds = immutable.Set.empty[Int]
   var scheduledOffline = immutable.Map.empty[Int, Cancellable]
 
-  val selfChatId = Integer.parseInt(self.path.name.drop(1))
+  val selfGroupId = Integer.parseInt(self.path.name.drop(1))
 
   def receive = {
     case m @ UserOnline(userId, timeout) =>
@@ -65,18 +65,18 @@ class GroupPresenceBroker extends Actor with ActorLogging {
       scheduledOffline += Tuple2(userId, system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(userId)))
 
       if (!onlineUserIds.contains(userId)) {
-        log.debug(s"Setting group online for chatId=$selfChatId userId=$userId")
+        log.debug(s"Setting group online for groupId=$selfGroupId userId=$userId")
 
         onlineUserIds += userId
-        mediator ! Publish(GroupPresenceBroker.topicFor(selfChatId), updateProto.GroupOnline(selfChatId, onlineUserIds.size))
+        mediator ! Publish(GroupPresenceBroker.topicFor(selfGroupId), updateProto.GroupOnline(selfGroupId, onlineUserIds.size))
       }
     case UserOffline(userId) =>
       if (onlineUserIds.contains(userId)) {
         onlineUserIds -= userId
-        mediator ! Publish(GroupPresenceBroker.topicFor(selfChatId), updateProto.GroupOnline(selfChatId, onlineUserIds.size))
+        mediator ! Publish(GroupPresenceBroker.topicFor(selfGroupId), updateProto.GroupOnline(selfGroupId, onlineUserIds.size))
       }
     case TellPresences(target) =>
       log.debug(s"Telling presences $onlineUserIds")
-      mediator ! Publish(GroupPresenceBroker.topicFor(selfChatId), updateProto.GroupOnline(selfChatId, onlineUserIds.size))
+      mediator ! Publish(GroupPresenceBroker.topicFor(selfGroupId), updateProto.GroupOnline(selfGroupId, onlineUserIds.size))
   }
 }

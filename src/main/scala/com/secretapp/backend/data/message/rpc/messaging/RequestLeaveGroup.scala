@@ -5,13 +5,13 @@ import com.secretapp.backend.data.message.rpc._
 import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
-case class RequestLeaveChat(
-  chatId: Int,
+case class RequestLeaveGroup(
+  groupId: Int,
   accessHash: Long
 ) extends RpcRequestMessage {
-  val header = RequestLeaveChat.requestType
+  val header = RequestLeaveGroup.requestType
 }
 
-object RequestLeaveChat extends RpcRequestMessageObject {
+object RequestLeaveGroup extends RpcRequestMessageObject {
   val requestType = 0x46
 }

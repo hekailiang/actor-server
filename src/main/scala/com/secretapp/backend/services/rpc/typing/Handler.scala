@@ -14,7 +14,7 @@ class Handler(val sessionActor: ActorRef, val currentUser: User, val typingBroke
   def receive = {
     case rq @ RpcProtocol.Request(RequestTyping(uid, accessHash, typingType)) =>
       handleRequestTyping(uid, accessHash, typingType) pipeTo sender
-    case rq @ RpcProtocol.Request(RequestGroupTyping(chatId, accessHash, typingType)) =>
-      handleRequestGroupTyping(chatId, accessHash, typingType) pipeTo sender
+    case rq @ RpcProtocol.Request(RequestGroupTyping(groupId, accessHash, typingType)) =>
+      handleRequestGroupTyping(groupId, accessHash, typingType) pipeTo sender
   }
 }

@@ -14,14 +14,14 @@ import scala.util.Success
 
 object UnsubscribeFromGroupOnlineCodec extends Codec[UnsubscribeFromGroupOnline] with utils.ProtobufCodec {
   def encode(r: UnsubscribeFromGroupOnline) = {
-    val boxed = protobuf.UnsubscribeFromGroupOnline(r.chatIds map (_.toProto))
+    val boxed = protobuf.UnsubscribeFromGroupOnline(r.groupIds map (_.toProto))
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UnsubscribeFromGroupOnline.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UnsubscribeFromGroupOnline(chatIds)) =>
-        UnsubscribeFromGroupOnline(chatIds map struct.ChatId.fromProto)
+      case Success(protobuf.UnsubscribeFromGroupOnline(groupIds)) =>
+        UnsubscribeFromGroupOnline(groupIds map struct.GroupId.fromProto)
     }
   }
 }

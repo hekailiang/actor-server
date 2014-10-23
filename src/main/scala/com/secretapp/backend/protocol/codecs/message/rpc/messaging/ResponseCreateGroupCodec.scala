@@ -13,27 +13,27 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object ResponseCreateChatCodec extends Codec[ResponseCreateChat] with utils.ProtobufCodec {
-  def encode(r: ResponseCreateChat) = {
+object ResponseCreateGroupCodec extends Codec[ResponseCreateGroup] with utils.ProtobufCodec {
+  def encode(r: ResponseCreateGroup) = {
     val state = r.state match {
       case Some(realState) =>
         uuid.encode(realState).toOption.get
       case None => BitVector.empty
     }
-    val boxed = protobuf.ResponseCreateChat(r.chatId, r.accessHash, r.seq, state)
+    val boxed = protobuf.ResponseCreateGroup(r.groupId, r.accessHash, r.seq, state)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobufEither(protobuf.ResponseCreateChat.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.ResponseCreateChat(chatId, accessHash, seq, state)) =>
+    decodeProtobufEither(protobuf.ResponseCreateGroup.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.ResponseCreateGroup(groupId, accessHash, seq, state)) =>
         state match {
           case ByteString.EMPTY =>
-            ResponseCreateChat(chatId, accessHash, seq, None).right
+            ResponseCreateGroup(groupId, accessHash, seq, None).right
           case _ =>
             uuid.decodeValue(state) match {
               case \/-(uuidState) =>
-                ResponseCreateChat(chatId, accessHash, seq, Some(uuidState)).right
+                ResponseCreateGroup(groupId, accessHash, seq, Some(uuidState)).right
               case l @ -\/(_) =>
                 l
             }

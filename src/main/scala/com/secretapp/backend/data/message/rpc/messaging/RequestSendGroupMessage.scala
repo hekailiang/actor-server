@@ -5,7 +5,7 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class RequestSendGroupMessage(
-  chatId: Int,
+  groupId: Int,
   accessHash: Long,
   randomId: Long,
   message: EncryptedAESMessage

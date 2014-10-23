@@ -41,9 +41,9 @@ class GroupMessagingSpec extends RpcSpec {
 
       {
         implicit val scope = scope1
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
+          title = "Group 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
@@ -68,12 +68,12 @@ class GroupMessagingSpec extends RpcSpec {
             )
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         Thread.sleep(500)
 
         RequestEditGroupTitle(
-          groupId = resp.chatId,
+          groupId = resp.groupId,
           accessHash = resp.accessHash,
           title = "Title 3000"
         ) :~> <~:[updateProto.ResponseSeq]
@@ -105,9 +105,9 @@ class GroupMessagingSpec extends RpcSpec {
 
       {
         implicit val scope = scope1
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
+          title = "Group 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
@@ -136,12 +136,12 @@ class GroupMessagingSpec extends RpcSpec {
             )
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         Thread.sleep(500)
 
         val rqSendMessage = RequestSendGroupMessage(
-          chatId = resp.chatId,
+          groupId = resp.groupId,
           accessHash = resp.accessHash,
           randomId = 666L,
           message = EncryptedAESMessage(
@@ -193,12 +193,12 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val chatKeyHash = BitVector(1, 1, 1)
+        val groupKeyHash = BitVector(1, 1, 1)
 
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
-          keyHash = chatKeyHash,
+          title = "Group 3000",
+          keyHash = groupKeyHash,
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
             encryptedMessage = BitVector(1, 2, 3),
@@ -206,15 +206,15 @@ class GroupMessagingSpec extends RpcSpec {
             ownKeys = immutable.Seq.empty
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         Thread.sleep(1000)
 
         val rqInviteUser = RequestInviteUsers(
-          chatId = resp.chatId,
+          groupId = resp.groupId,
           accessHash = resp.accessHash,
           randomId = 666L,
-          chatKeyHash = chatKeyHash,
+          groupKeyHash = groupKeyHash,
           broadcast = EncryptedRSABroadcast(
             encryptedMessage = BitVector(1, 2, 3),
             keys = immutable.Seq(
@@ -258,9 +258,9 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
+          title = "Group 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
@@ -280,12 +280,12 @@ class GroupMessagingSpec extends RpcSpec {
             ownKeys = immutable.Seq.empty
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         Thread.sleep(1000)
 
-        RequestLeaveChat(
-          chatId = resp.chatId,
+        RequestLeaveGroup(
+          groupId = resp.groupId,
           accessHash = resp.accessHash
         ) :~> <~:[updateProto.ResponseSeq]
       }
@@ -313,12 +313,12 @@ class GroupMessagingSpec extends RpcSpec {
       catchNewSession(scope1)
       catchNewSession(scope2)
 
-      val chat = {
+      val group = {
         implicit val scope = scope1
 
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
+          title = "Group 3000",
           keyHash = BitVector(1, 1, 1),
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
@@ -327,7 +327,7 @@ class GroupMessagingSpec extends RpcSpec {
             ownKeys = immutable.Seq.empty
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         resp
       }
@@ -336,8 +336,8 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope2
 
         val rqSendMessage = RequestSendGroupMessage(
-          chatId = chat.chatId,
-          accessHash = chat.accessHash,
+          groupId = group.groupId,
+          accessHash = group.accessHash,
           randomId = 666L,
           EncryptedAESMessage(
             keyHash = BitVector(1, 1, 1),
@@ -349,7 +349,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "not send GroupUserAdded after inviting user who is already a chat member" in {
+    "not send GroupUserAdded after inviting user who is already a group member" in {
       val (scope1, scope2) = TestScope.pair(5, 6)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -358,12 +358,12 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val chatKeyHash = BitVector(1, 1, 1)
+        val groupKeyHash = BitVector(1, 1, 1)
 
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
-          keyHash = chatKeyHash,
+          title = "Group 3000",
+          keyHash = groupKeyHash,
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
             encryptedMessage = BitVector(1, 2, 3),
@@ -371,16 +371,16 @@ class GroupMessagingSpec extends RpcSpec {
             ownKeys = immutable.Seq.empty
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         Thread.sleep(1000)
 
         {
           val rqInviteUser = RequestInviteUsers(
-            chatId = resp.chatId,
+            groupId = resp.groupId,
             accessHash = resp.accessHash,
             randomId = 666L,
-            chatKeyHash = chatKeyHash,
+            groupKeyHash = groupKeyHash,
             broadcast = EncryptedRSABroadcast(
               encryptedMessage = BitVector(1, 2, 3),
               keys = immutable.Seq(
@@ -408,10 +408,10 @@ class GroupMessagingSpec extends RpcSpec {
 
         {
           val rqInviteUser = RequestInviteUsers(
-            chatId = resp.chatId,
+            groupId = resp.groupId,
             accessHash = resp.accessHash,
             randomId = 666L,
-            chatKeyHash = chatKeyHash,
+            groupKeyHash = groupKeyHash,
             broadcast = EncryptedRSABroadcast(
               encryptedMessage = BitVector(1, 2, 3),
               keys = immutable.Seq(

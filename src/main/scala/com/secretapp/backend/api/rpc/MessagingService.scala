@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models.{ GroupChat, User }
+import com.secretapp.backend.data.models.{ Group, User }
 import com.secretapp.backend.helpers.UserHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon._
@@ -103,10 +103,10 @@ trait MessagingService extends RandomService with UserHelpers {
   }
 
   def mkInvites(
-    chat: GroupChat,
+    group: Group,
     keys: EncryptedUserAESKeys,
     encryptedMessage: BitVector,
-    chatUserIds: immutable.Seq[Int]
+    groupUserIds: immutable.Seq[Int]
     ): Future[Seq[Error \/ NewUpdatePush]] = {
       val futures = keys.keys map { encryptedAESKey =>
         UserPublicKeyRecord.getAuthIdAndSalt(keys.userId, encryptedAESKey.keyHash) flatMap {
@@ -115,15 +115,16 @@ trait MessagingService extends RandomService with UserHelpers {
               Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left)
             } else {
               for {
-                users <- Future.sequence(chatUserIds map (getUserIdStruct(_, authId))) map (_.flatten)
+                users <- Future.sequence(groupUserIds map (getUserIdStruct(_, authId))) map (_.flatten)
               } yield {
                 NewUpdatePush(
                   authId,
                   GroupInvite(
-                    chat.id,
-                    chat.accessHash,
-                    chat.creatorUserId,
-                    chat.title,
+                    group.id,
+                    group.accessHash,
+                    group.creatorUserId,
+                    currentUser.uid,
+                    group.title,
                     users,
                     EncryptedRSAPackage(
                       keyHash = encryptedAESKey.keyHash,
@@ -146,26 +147,26 @@ trait MessagingService extends RandomService with UserHelpers {
 
   // TODO: don't allow to add with the same keyhash user twice
   protected def handleRequestInviteUser(
-    chatId: Int, accessHash: Long, randomId: Long, chatKeyHash: BitVector, broadcast: EncryptedRSABroadcast
+    groupId: Int, accessHash: Long, randomId: Long, groupKeyHash: BitVector, broadcast: EncryptedRSABroadcast
   ): Future[RpcResponse] = {
-    val fchatUserIds = GroupChatUserRecord.getUsers(chatId)
-    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
-      optChat map { chat =>
-        if (chat.accessHash != accessHash) {
+    val fgroupUserIds = GroupUserRecord.getUsers(groupId)
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
+        if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
-        } else if (chat.keyHash != chatKeyHash) {
-          Future.successful(Error(400, "WRONG_KEY", "Invalid chat key hash.", false))
+        } else if (group.keyHash != groupKeyHash) {
+          Future.successful(Error(400, "WRONG_KEY", "Invalid group key hash.", false))
         } else {
           val f = for {
-            chatUserIds <- fchatUserIds
-            chatAuthIds <- Future.sequence(chatUserIds map getAuthIds) map (_.flatten)
-            einvites <- Future.sequence(broadcast.keys map (mkInvites(chat, _, broadcast.encryptedMessage, chatUserIds.toVector))) map (_.flatten)
+            groupUserIds <- fgroupUserIds
+            groupAuthIds <- Future.sequence(groupUserIds map getAuthIds) map (_.flatten)
+            einvites <- Future.sequence(broadcast.keys map (mkInvites(group, _, broadcast.encryptedMessage, groupUserIds.toVector))) map (_.flatten)
           } yield {
-            (einvites, chatAuthIds)
+            (einvites, groupAuthIds)
           }
 
           f flatMap {
-            case (einvites, chatAuthIds) =>
+            case (einvites, groupAuthIds) =>
               einvites.toVector.sequenceU match {
                 case -\/(e) => Future.successful(e)
                 case \/-(updates) =>
@@ -173,7 +174,7 @@ trait MessagingService extends RandomService with UserHelpers {
 
                   Future.sequence(newUserIds map {
                     case (userId, keyHashes) =>
-                      GroupChatUserRecord.addUser(chatId, userId, keyHashes) map {
+                      GroupUserRecord.addUser(groupId, userId, keyHashes) map {
                         case -\/(_) => userId.left
                         case \/-(_) => userId.right
                       }
@@ -183,17 +184,17 @@ trait MessagingService extends RandomService with UserHelpers {
                         updatesBrokerRegion ! update
                       }
 
-                      chatAuthIds foreach {
+                      groupAuthIds foreach {
                         case currentUser.authId =>
                         case authId =>
                           addedUsers foreach { userId =>
-                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(chatId, userId, currentUser.uid))
+                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(groupId, userId, currentUser.uid))
                           }
                       }
 
                       for {
                         xs <- Future.sequence(addedUsers map { userId =>
-                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, GroupUserAdded(chatId, userId, currentUser.uid))).mapTo[StrictState] map {
+                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, GroupUserAdded(groupId, userId, currentUser.uid))).mapTo[StrictState] map {
                             case (seq, state) => (seq, Some(state))
                           }
                         }) flatMap {
@@ -209,11 +210,11 @@ trait MessagingService extends RandomService with UserHelpers {
               }
           }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
     }
   }
 
-  protected def handleRequestCreateChat(
+  protected def handleRequestCreateGroup(
     randomId: Long,
     title: String,
     keyHash: BitVector,
@@ -221,45 +222,54 @@ trait MessagingService extends RandomService with UserHelpers {
     broadcast: EncryptedRSABroadcast
   ): Future[RpcResponse] = {
     val id = rand.nextInt
-    val chat = GroupChat(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
+    val group = Group(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
 
     val newUserIds = broadcast.keys map (key => (key.userId, key.keys map (_.keyHash) toSet))
 
-    GroupChatRecord.insertEntity(chat) flatMap { _ =>
-      Future.sequence(broadcast.keys map (mkInvites(chat, _, broadcast.encryptedMessage, (newUserIds map (_._1)) :+ currentUser.uid))) map (_.flatten) flatMap { einvites =>
+    GroupRecord.insertEntity(group) flatMap { _ =>
+      Future.sequence(broadcast.keys map (mkInvites(group, _, broadcast.encryptedMessage, (newUserIds map (_._1)) :+ currentUser.uid))) map (_.flatten) flatMap { einvites =>
         einvites.toVector.sequenceU match {
           case -\/(e) => Future.successful(e)
           case \/-(updates) =>
             Future.sequence(newUserIds map {
               case (userId, keyHashes) =>
                 Future.sequence(immutable.Seq(
-                  GroupChatUserRecord.addUser(chat.id, userId, keyHashes),
-                  UserGroupChatsRecord.addChat(userId, chat.id)
+                  GroupUserRecord.addUser(group.id, userId, keyHashes),
+                  UserGroupsRecord.addGroup(userId, group.id)
                 ))
             }) flatMap { _ =>
               Future.sequence(immutable.Seq(
-                GroupChatUserRecord.addUser(chat.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
-                UserGroupChatsRecord.addChat(currentUser.uid, chat.id)
+                GroupUserRecord.addUser(group.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
+                UserGroupsRecord.addGroup(currentUser.uid, group.id)
               ))
             } flatMap { _ =>
               Future.sequence(broadcast.ownKeys map { key =>
-                authIdFor(currentUser.uid, key.keyHash) map {
+                authIdFor(currentUser.uid, key.keyHash) flatMap {
                   case Some(authId) =>
-                    NewUpdatePush(
-                      authId,
-                      GroupCreated(
-                        chatId = chat.id,
-                        accessHash = chat.accessHash,
-                        title = chat.title,
-                        invite = EncryptedRSAPackage (
-                          keyHash = key.keyHash,
-                          aesEncryptedKey = key.aesEncryptedKey,
-                          message = broadcast.encryptedMessage
-                        )
+                    for {
+                      users <- Future.sequence(
+                        ((newUserIds map (_._1)) :+ currentUser.uid) map { newUserId =>
+                          getUserIdStruct(newUserId, authId)
+                        }
                       )
-                    ).right
+                    } yield {
+                      NewUpdatePush(
+                        authId,
+                        GroupCreated(
+                          groupId = group.id,
+                          accessHash = group.accessHash,
+                          title = group.title,
+                          invite = EncryptedRSAPackage (
+                            keyHash = key.keyHash,
+                            aesEncryptedKey = key.aesEncryptedKey,
+                            message = broadcast.encryptedMessage
+                          ),
+                          users = users.flatten
+                        )
+                      ).right
+                    }
                   case None =>
-                    Error(404, "OWN_KEY_HASH_NOT_FOUND", s"", false).left
+                    Future.successful(Error(404, "OWN_KEY_HASH_NOT_FOUND", s"", false).left)
                 }
               }) map (_.toVector.sequenceU) flatMap {
                 case -\/(e) =>
@@ -270,7 +280,7 @@ trait MessagingService extends RandomService with UserHelpers {
                   for {
                     s <- getState(currentUser.authId)
                   } yield {
-                    Ok(ResponseCreateChat(chat.id, chat.accessHash, s._1, s._2))
+                    Ok(ResponseCreateGroup(group.id, group.accessHash, s._1, s._2))
                   }
               }
             }
@@ -288,16 +298,16 @@ trait MessagingService extends RandomService with UserHelpers {
     accessHash: Long,
     title: String
   ): Future[RpcResponse] = {
-    GroupChatRecord.getEntity(groupId) flatMap { optChat =>
-      optChat map { group =>
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
         if (group.accessHash != accessHash) {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid chat access hash.", false))
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid group access hash.", false))
         } else {
           for {
-            _ <- GroupChatRecord.setTitle(groupId, title)
+            _ <- GroupRecord.setTitle(groupId, title)
             s <- getState(currentUser.authId)
           } yield {
-            GroupChatUserRecord.getUsers(groupId) onSuccess {
+            GroupUserRecord.getUsers(groupId) onSuccess {
               case groupUserIds =>
                 groupUserIds foreach { groupUserId =>
                   for {
@@ -315,22 +325,22 @@ trait MessagingService extends RandomService with UserHelpers {
             Ok(updateProto.ResponseSeq(s._1, s._2))
           }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
     }
   }
 
   protected def handleRequestRemoveUser(
-    chatId: Int,
+    groupId: Int,
     accessHash: Long,
     userId: Int,
     userAccessHash: Long
   ): Future[RpcResponse] = {
-    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
-      optChat map { chat =>
-        if (chat.creatorUserId != currentUser.uid) {
-          Future.successful(Error(403, "NO_PERMISSION", "You are not creator of this chat.", false))
-        } else if (chat.accessHash != accessHash) {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid chat access hash.", false))
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
+        if (group.creatorUserId != currentUser.uid) {
+          Future.successful(Error(403, "NO_PERMISSION", "You are not creator of this group.", false))
+        } else if (group.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid group access hash.", false))
         } else {
           getUsers(userId) flatMap {
             case users if users.isEmpty =>
@@ -341,22 +351,22 @@ trait MessagingService extends RandomService with UserHelpers {
               if (checkUser.accessHash(currentUser.authId) != userAccessHash) {
                 Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false))
               } else {
-                GroupChatUserRecord.getUsers(chatId) flatMap { chatUserIds =>
-                  if (chatUserIds.contains(userId)) {
+                GroupUserRecord.getUsers(groupId) flatMap { groupUserIds =>
+                  if (groupUserIds.contains(userId)) {
                     for {
                       _ <- Future.sequence(immutable.Seq(
-                        GroupChatUserRecord.removeUser(chatId, userId),
-                        UserGroupChatsRecord.removeChat(userId, chatId)
+                        GroupUserRecord.removeUser(groupId, userId),
+                        UserGroupsRecord.removeGroup(userId, groupId)
                       ))
                       s <- getState(currentUser.authId)
                     } yield {
-                      chatUserIds foreach { chatUserId =>
+                      groupUserIds foreach { groupUserId =>
                         for {
-                          authIds <- getAuthIds(chatUserId)
+                          authIds <- getAuthIds(groupUserId)
                         } yield {
                           authIds map { authId =>
                             updatesBrokerRegion ! NewUpdatePush(authId, GroupUserKick(
-                              chatId, userId, currentUser.uid
+                              groupId, userId, currentUser.uid
                             ))
                           }
                         }
@@ -365,34 +375,34 @@ trait MessagingService extends RandomService with UserHelpers {
                       Ok(updateProto.ResponseSeq(s._1, s._2))
                     }
                   } else {
-                    Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "There is no participant with such userId in this chat.", false))
+                    Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "There is no participant with such userId in this group.", false))
                   }
                 }
               }
           }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
     }
   }
 
-  protected def handleRequestLeaveChat(
-    chatId: Int,
+  protected def handleRequestLeaveGroup(
+    groupId: Int,
     accessHash: Long
   ): Future[RpcResponse] = {
-    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
-      optChat map { chat =>
-        if (chat.accessHash != accessHash) {
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
+        if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
           for {
             _ <- Future.sequence(immutable.Seq(
-              GroupChatUserRecord.removeUser(chatId, currentUser.uid),
-              UserGroupChatsRecord.removeChat(currentUser.uid, chatId)
+              GroupUserRecord.removeUser(groupId, currentUser.uid),
+              UserGroupsRecord.removeGroup(currentUser.uid, groupId)
             ))
-            chatUserIds <- GroupChatUserRecord.getUsers(chatId)
+            groupUserIds <- GroupUserRecord.getUsers(groupId)
             s <- getState(currentUser.authId)
           } yield {
-            (chatUserIds :+ currentUser.uid) foreach { userId =>
+            (groupUserIds :+ currentUser.uid) foreach { userId =>
               for {
                 authIds <- getAuthIds(userId)
               } yield {
@@ -400,7 +410,7 @@ trait MessagingService extends RandomService with UserHelpers {
                   case currentUser.authId =>
                   case authId =>
                     updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
-                      chatId, currentUser.uid
+                      groupId, currentUser.uid
                     ))
                 }
               }
@@ -408,7 +418,7 @@ trait MessagingService extends RandomService with UserHelpers {
             Ok(updateProto.ResponseSeq(s._1, s._2))
           }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
     }
   }
 
@@ -455,21 +465,21 @@ trait MessagingService extends RandomService with UserHelpers {
     }
   }
 
-  protected def handleRequestSendGroupMessage(chatId: Int,
+  protected def handleRequestSendGroupMessage(groupId: Int,
     accessHash: Long,
     randomId: Long,
     message: EncryptedAESMessage
   ): Future[RpcResponse] = {
 
-    val fchatUserIds = GroupChatUserRecord.getUsers(chatId)
-    GroupChatRecord.getEntity(chatId) flatMap { optChat =>
-      optChat map { chat =>
-        if (chat.accessHash != accessHash) {
+    val fgroupUserIds = GroupUserRecord.getUsers(groupId)
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
+        if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
-        } else if (chat.keyHash != message.keyHash) {
-          Future.successful(Error(400, "WRONG_KEY", "Invalid chat key hash.", false))
+        } else if (group.keyHash != message.keyHash) {
+          Future.successful(Error(400, "WRONG_KEY", "Invalid group key hash.", false))
         } else {
-          fchatUserIds flatMap { userIds =>
+          fgroupUserIds flatMap { userIds =>
             if (userIds.contains(currentUser.uid)) {
               val updatesFutures = userIds map { userId =>
                 getUsers(userId) map {
@@ -480,7 +490,7 @@ trait MessagingService extends RandomService with UserHelpers {
                           user.authId,
                           GroupMessage(
                             senderUID = currentUser.uid,
-                            chatId = chat.id,
+                            groupId = group.id,
                             EncryptedAESPackage (
                               keyHash = message.keyHash,
                               message = message.encryptedMessage
@@ -508,7 +518,7 @@ trait MessagingService extends RandomService with UserHelpers {
             }
           }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_CHAT_DOES_NOT_EXISTS", "Group chat does not exists.", true))
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
     }
   }
 

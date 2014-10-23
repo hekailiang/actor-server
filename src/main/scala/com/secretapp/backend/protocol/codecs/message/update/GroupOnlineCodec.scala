@@ -13,13 +13,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object GroupOnlineCodec extends Codec[GroupOnline] with utils.ProtobufCodec {
   def encode(u: GroupOnline) = {
-    val boxed = protobuf.UpdateGroupOnline(u.chatId, u.count)
+    val boxed = protobuf.UpdateGroupOnline(u.groupId, u.count)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateGroupOnline.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateGroupOnline(chatId, count)) => GroupOnline(chatId, count)
+      case Success(protobuf.UpdateGroupOnline(groupId, count)) => GroupOnline(groupId, count)
     }
   }
 }

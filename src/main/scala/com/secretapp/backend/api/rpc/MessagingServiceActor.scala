@@ -29,21 +29,21 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestMessageRead(uid, randomId, accessHash) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestCreateChat(randomId, title, keyHash, publicKey, invites)) =>
+    case RpcProtocol.Request(RequestCreateGroup(randomId, title, keyHash, publicKey, invites)) =>
       val replyTo = sender()
-      handleRequestCreateChat(randomId, title, keyHash, publicKey, invites) pipeTo replyTo
+      handleRequestCreateGroup(randomId, title, keyHash, publicKey, invites) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestInviteUsers(chatId, accessHash, randomId, chatKeyHash, broadcast)) =>
+    case RpcProtocol.Request(RequestInviteUsers(groupId, accessHash, randomId, groupKeyHash, broadcast)) =>
       val replyTo = sender()
-      handleRequestInviteUser(chatId, accessHash, randomId, chatKeyHash, broadcast) pipeTo replyTo
+      handleRequestInviteUser(groupId, accessHash, randomId, groupKeyHash, broadcast) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestLeaveChat(chatId, accessHash)) =>
+    case RpcProtocol.Request(RequestLeaveGroup(groupId, accessHash)) =>
       val replyTo = sender()
-      handleRequestLeaveChat(chatId, accessHash) pipeTo replyTo
+      handleRequestLeaveGroup(groupId, accessHash) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestRemoveUser(chatId, accessHash, userId, userAccessHash)) =>
+    case RpcProtocol.Request(RequestRemoveUser(groupId, accessHash, userId, userAccessHash)) =>
       val replyTo = sender()
-      handleRequestRemoveUser(chatId, accessHash, userId, userAccessHash) pipeTo replyTo
+      handleRequestRemoveUser(groupId, accessHash, userId, userAccessHash) pipeTo replyTo
 
     case RpcProtocol.Request(RequestEditGroupTitle(groupId, accessHash, title)) =>
       val replyTo = sender()
@@ -53,7 +53,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
       val replyTo = sender()
       handleRequestEditGroupAvatar(groupId, accessHash, avatar) pipeTo replyTo
 
-    case RpcProtocol.Request(RequestSendGroupMessage(chatId, accessHash, randomId, message)) =>
+    case RpcProtocol.Request(RequestSendGroupMessage(groupId, accessHash, randomId, message)) =>
       val replyTo = sender()
 
       Option(randomIds.get(randomId)) match {
@@ -61,7 +61,7 @@ class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerR
           replyTo ! Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
         case None =>
           randomIds.put(randomId, true)
-          val f = handleRequestSendGroupMessage(chatId, accessHash, randomId, message) map { res =>
+          val f = handleRequestSendGroupMessage(groupId, accessHash, randomId, message) map { res =>
             replyTo ! res
           }
 

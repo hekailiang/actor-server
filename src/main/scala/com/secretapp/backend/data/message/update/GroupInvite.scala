@@ -7,9 +7,10 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class GroupInvite(
-  chatId: Int,
+  groupId: Int,
   accessHash: Long,
-  chatCreatorUserId: Int,
+  groupCreatorUserId: Int,
+  inviterUserId: Int,
   title: String,
   users: immutable.Seq[UserId],
   invite: EncryptedRSAPackage
