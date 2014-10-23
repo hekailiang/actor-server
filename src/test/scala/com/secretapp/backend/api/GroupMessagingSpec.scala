@@ -3,7 +3,7 @@ package com.secretapp.backend.api
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
-import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._

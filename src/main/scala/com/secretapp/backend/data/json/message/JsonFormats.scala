@@ -42,7 +42,8 @@ trait JsonFormats {
         case u: MessageReceived   => messageReceivedFormat.writes(u)
         case u: MessageSent       => messageSentFormat.writes(u)
         case u: NewDevice         => newDeviceFormat.writes(u)
-        case u: NewYourDevice     => newYourDeviceFormat.writes(u)
+        case u: NewFullDevice     => newFullDeviceFormat.writes(u)
+        case u: RemoveDevice      => removeDeviceFormat.writes(u)
       })
     )
 
@@ -55,7 +56,8 @@ trait JsonFormats {
         case MessageReceived.seqUpdateHeader   => messageReceivedFormat.reads(body)
         case MessageSent.seqUpdateHeader       => messageSentFormat.reads(body)
         case NewDevice.seqUpdateHeader         => newDeviceFormat.reads(body)
-        case NewYourDevice.seqUpdateHeader     => newYourDeviceFormat.reads(body)
+        case NewFullDevice.seqUpdateHeader     => newFullDeviceFormat.reads(body)
+        case RemoveDevice.seqUpdateHeader      => removeDeviceFormat.reads(body)
       }
     }
   }

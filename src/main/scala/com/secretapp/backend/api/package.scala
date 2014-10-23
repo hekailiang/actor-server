@@ -1,7 +1,7 @@
 package com.secretapp.backend
 
 import akka.actor.ActorSystem
-import com.secretapp.backend.api.counters.FilesCounter
+import com.secretapp.backend.api.counters._
 import com.secretapp.backend.services.rpc.presence.{ GroupPresenceBroker, PresenceBroker }
 import com.secretapp.backend.services.rpc.typing.TypingBroker
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
@@ -14,6 +14,7 @@ package object api {
     val config = ConfigFactory.load()
     val appConfig = config.getConfig("secret")
     val filesCounter = FilesCounter.start(system)
+    val authItemsCounter = AuthItemsCounter.start(system)
     val smsEngine = ClickatellSmsEngineActor()
     val typingBrokerRegion = TypingBroker.startRegion()
     val presenceBrokerRegion = PresenceBroker.startRegion()
@@ -26,5 +27,6 @@ package object api {
 
   final class ClusterProxies(implicit val system: ActorSystem) {
     val filesCounter = FilesCounter.startProxy(system)
+    val authItemsCounter = AuthItemsCounter.startProxy(system)
   }
 }

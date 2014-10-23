@@ -4,7 +4,7 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import scala.language.{ postfixOps, higherKinds }
 import scala.concurrent.duration._
 import scala.collection.mutable
-import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import akka.testkit._
 import akka.actor.{ Props, Actor }
 import akka.io.Tcp._

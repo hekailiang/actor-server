@@ -116,10 +116,10 @@ class JsonFormatsSpec extends JsonSpec {
       testToAndFromJson[SeqUpdateMessage](j, v)
     }
 
-    "(de)serialize NewYourDevice" in {
+    "(de)serialize NewFullDevice" in {
       val (key, keyJson) = genBitVector
-      val v = NewYourDevice(1, 2, key)
-      val j = withHeader(NewYourDevice.seqUpdateHeader)(
+      val v = NewFullDevice(1, 2, key)
+      val j = withHeader(NewFullDevice.seqUpdateHeader)(
         "uid" -> 1,
         "keyHash" -> "2",
         "key" -> keyJson

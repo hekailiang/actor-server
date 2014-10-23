@@ -5,7 +5,7 @@ import com.secretapp.backend.persist.{ ApplePushCredentialsRecord, GooglePushCre
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
-import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.specs2.specification.BeforeExample
 import scalaz._
 import Scalaz._

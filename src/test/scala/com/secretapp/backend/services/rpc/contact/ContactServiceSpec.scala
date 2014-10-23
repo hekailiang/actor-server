@@ -3,7 +3,6 @@ package com.secretapp.backend.services.rpc.contact
 import akka.actor._
 import akka.io.Tcp._
 import akka.testkit._
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.{ Ok, Request }
 import com.secretapp.backend.data.message.rpc.contact._
@@ -13,6 +12,7 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable

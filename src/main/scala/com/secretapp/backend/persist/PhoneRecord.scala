@@ -11,7 +11,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   override lazy val tableName = "phones"
 
   object number extends LongColumn(this) with PartitionKey[Long]
-  object userId extends IntColumn(this) {
+  object userId extends IntColumn(this) with Index[Int] {
     override lazy val name = "user_id"
   }
   object userAccessSalt extends StringColumn(this) {
@@ -54,6 +54,10 @@ object PhoneRecord extends PhoneRecord with DBConnector {
 
   def removeKeyHash(phoneNumber: Long, keyHash: Long)(implicit session: Session) = {
     update.where(_.number eqs phoneNumber).modify(_.userKeyHashes remove keyHash).future()
+  }
+
+  def removeKeyHashByUserId(userId: Int, keyHash: Long)(implicit session: Session) = {
+    update.where(_.userId eqs userId).modify(_.userKeyHashes remove keyHash).future()
   }
 
   def updateUserName(phoneNumber: Long, userName: String)(implicit session: Session) = {

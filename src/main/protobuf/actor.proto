@@ -1,35 +1,36 @@
 package proto;
 option java_package = "im.actor.messenger.api";
 option java_outer_classname = "Scheme";
-
 // ************************************************************************
 //                              Common objects
 // ************************************************************************
-
 // Пол пользователя
 enum Sex {
     UNKNOWN = 1;
     MALE = 2;
     FEMALE = 3;
 }
-
 // Публичный ключ пользователя
 message PublicKey {
     required int32 uid = 1;
     required int64 keyHash = 2;
     required bytes key = 3;
 }
-
 // Идентификатор файла
 message FileLocation {
     required int64 fileId = 1;
     required int64 accessHash = 2;
 }
-
 // Идентификатор пользователя
 message UserId {
     required int32 uid = 1;
     required int64 accessHash = 2;
+}
+
+// Идентификатор пользователя
+message UserKey {
+    required int32 uid = 1;
+    required int64 keyHash = 2;
 }
 
 // Идентификатор чата
@@ -37,7 +38,6 @@ message ChatId {
     required int32 chatId = 1;
     required int64 accessHash = 2;
 }
-
 // Аватар пользователя или чата
 message Avatar {
     // 100x100
@@ -47,7 +47,6 @@ message Avatar {
     // Original if bigger than small and large
     optional AvatarImage fullImage = 3;
 }
-
 // Изображение аватара
 message AvatarImage {
     required FileLocation fileLocation = 1;
@@ -55,7 +54,6 @@ message AvatarImage {
     required int32 height = 3;
     required int32 fileSize = 4;
 }
-
 // Пользователь
 message User {
     required int32 id = 1;
@@ -66,67 +64,56 @@ message User {
     required int64 phone = 7;
     optional Avatar avatar = 8;
 }
-
 // Зашифрованный AES-ключ для устройства
 message EncryptedAESKey {
     required int64 keyHash = 1;
     required bytes aesEncryptedKey = 2;
 }
-
 // Зашифрованные RSA+AES данные
 message EncryptedRSAMessage {
     required bytes encryptedMessage = 1;
     repeated EncryptedAESKey keys = 2;
     repeated EncryptedAESKey ownKeys = 3;
 }
-
 // Зашифрованные AES-данные
 message EncryptedAESMessage {
     required bytes keyHash = 1;
     required bytes encryptedMessage = 2;
 }
-
 // Зашифрованные ключи для пользователя
 message EncryptedUserAESKeys {
     required int32 uid = 1;
     required int64 accessHash = 2;
     repeated EncryptedAESKey keys = 3;
 }
-
 // Зашифрованное сообщение для нескольких пользователей
 message EncryptedRSABroadcast {
     required bytes encryptedMessage = 3;
     repeated EncryptedUserAESKeys keys = 4;
     repeated EncryptedAESKey ownKeys = 5;
 }
-
 // Зашифрованные RSA-сообщения
 message EncryptedRSAPackage {
     required int64 keyHash = 1;
     required bytes aesEncryptedKey = 2;
     required bytes message = 3;
 }
-
-// Зашифрованные AES-сообщения 
+// Зашифрованные AES-сообщения
 message EncryptedAESPackage {
     required bytes keyHash = 1;
     required bytes message = 2;
 }
-
 // API#0x32
 // Пустой ответ на запрос
 message ResponseVoid {
-
 }
-
 // API#0x48
 // Успешный ответ на методы, которые возвращают статус цепочки
 message ResponseSeq {
     required int32 seq = 1;
     required bytes state = 2;
 }
-
-
+ 
 // ************************************************************************
 //                              Authentication
 // ************************************************************************
@@ -139,13 +126,11 @@ message RequestAuthCode {
     required int32 appId = 2;
     required string apiKey = 3;
 }
-
 // API#0x02
 message ResponseAuthCode {
     required string smsHash = 1;
     required bool isRegistered = 2;
 }
-
 // API#0x03
 // Ответ: ResponseAuth#0x05
 // Возможные ошибки
@@ -161,8 +146,11 @@ message RequestSignIn {
     required string smsHash = 2;
     required string smsCode = 3;
     required bytes publicKey = 4;
+    required bytes deviceHash = 5;
+    required string deviceTitle = 6;
+    required int32 appId = 7;
+    required string appKey = 8;
 }
-
 // API#0x04
 // Ответ: ResponseAuth#0x05
 // Возможные ошибки
@@ -175,14 +163,16 @@ message RequestSignUp {
     required string smsCode = 3;
     required string name = 4;
     required bytes publicKey = 6;
+    required bytes deviceHash = 7;
+    required string deviceTitle = 8;
+    required int32 appId = 9;
+    required string appKey = 10;
 }
-
 // API#0x05
 message ResponseAuth {
     required int64 publicKeyHash = 1;
     required User user = 2;
 }
-
 // ************************************************************************
 //                                Profile
 // ************************************************************************
@@ -191,7 +181,6 @@ message ResponseAuth {
 message RequestEditName {
     required string name = 1;
 }
-
 // API#0x1F
 // Ответ: ResponseAvatarChanged#0x44
 // #400: IMAGE_LOAD_ERROR - невозможно открыть файл
@@ -203,7 +192,6 @@ message RequestEditAvatar {
 message ResponseAvatarChanged {
     required Avatar avatar = 1;
 }
-
 // ************************************************************************
 //                                Users
 // ************************************************************************
@@ -213,13 +201,11 @@ message ResponseAvatarChanged {
 message RequestPublicKeys {
     repeated PublicKeyRequest keys = 1;
 }
-
 message PublicKeyRequest {
     required int32 uid = 1;
     required int64 accessHash = 2;
     required int64 keyHash = 3;
 }
-
 // API#0x18
 message ResponsePublicKeys {
     repeated PublicKey keys = 1;
@@ -248,7 +234,6 @@ message ResponseImportedContacts {
     repeated User users = 1; // Импортированные пользователи
     repeated ImportedContact contacts = 2;
 }
-
 // ************************************************************************
 //                                 Updates
 // ************************************************************************
@@ -259,7 +244,6 @@ message SeqUpdate {
     required int32 updateHeader = 3;
     required bytes update = 4;
 }
-
 // API#0x49
 message FatSeqUpdate {
     required int32 seq = 1;
@@ -268,35 +252,29 @@ message FatSeqUpdate {
     required bytes update = 4;
     repeated User users = 5;
 }
-
 // API#0x1A
 message WeakUpdate {
     required int64 date = 1;
     required int32 updateId = 2;
     required bytes update = 3;
 }
-
 // API#0x19
 message SeqUpdateTooLong {
 }
-
 // API#0x09
 // Ответ: ResponseSeq#0x48
 message RequestGetState {
 }
-
 // API#0x0B
 // Ответ: Difference#0x0C
 message RequestGetDifference {
     required int32 seq = 1;
     required bytes state = 2;
 }
-
 message DifferenceUpdate {
     required int32 updateId = 1;
     required bytes update = 2;
 }
-
 // API#0x0C
 message Difference {
     required int32 seq = 1;
@@ -305,7 +283,6 @@ message Difference {
     repeated DifferenceUpdate updates = 4;
     required bool needMore = 5;
 }
-
 // API#0x20
 // Игнорировать неправильных пользователей
 message SubscribeToOnline {
@@ -316,19 +293,16 @@ message SubscribeToOnline {
 message UnsubscribeFromOnline {
     repeated UserId users = 1;
 }
-
 // API#0x4A
 // Игнорировать неправильных пользователей
 message SubscribeToGroupOnline {
     repeated ChatId chats = 1;
 }
-
 // API#0x4B
 // Игнорировать неправильных пользователей
 message UnsubscribeFromGroupOnline {
     repeated ChatId chats = 1;
 }
-
 // ************************************************************************
 //                        Sequence updates list
 // ************************************************************************
@@ -339,7 +313,6 @@ message UpdateMessage {
     required int32 destUID = 2;
     required EncryptedRSAPackage message = 3;
 }
-
 // API#0x24
 // Событие о созданном чате созданном чате
 message UpdateGroupCreated {
@@ -348,7 +321,6 @@ message UpdateGroupCreated {
     required string title = 3;
     required EncryptedRSAPackage invite = 4;
 }
-
 // API#0x14
 // Событие о новом групповом сообщении
 message UpdateGroupMessage {
@@ -356,7 +328,6 @@ message UpdateGroupMessage {
     required int32 chatId = 2;
     required EncryptedAESPackage message = 3;
 }
-
 // API#0x19
 // Событие о приглашении в чат
 message UpdateGroupInvite {
@@ -367,7 +338,6 @@ message UpdateGroupInvite {
     repeated UserId users = 4;
     required EncryptedRSAPackage invite = 5;
 }
-
 // API#0x15
 // Событие о добавлении участника в чат
 message UpdateGroupUserAdded {
@@ -375,14 +345,12 @@ message UpdateGroupUserAdded {
     required int32 uid = 2;
     required int32 inviterUID = 3;
 }
-
 // API#0x17
 // Событие о том, что пользователь сам покинул чат
 message UpdateGroupUserLeave {
     required int32 chatId = 1;
     required int32 uid = 2;
 }
-
 // API#0x18
 // Событие о том, что пользователя исключили из чата
 message UpdateGroupUserKick {
@@ -390,19 +358,26 @@ message UpdateGroupUserKick {
     required int32 uid = 2;
     required int32 kickerUid = 3;
 }
-
 // API#0x02
 // Событие о новом устройстве у пользователя
 message UpdateNewDevice {
     required int32 uid = 1;
     required int64 keyHash = 2;
 }
+
 // API#0x03
 // Событие о новом своем устройстве
-message UpdateNewYourDevice {
+message UpdateNewFullDevice {
     required int32 uid = 1;
     required int64 keyHash = 2;
     required bytes key = 3;
+}
+
+// API#0x25
+// Событие об удалении устройства у пользователя
+message UpdateRemoveDevice {
+    required int32 uid = 1;
+    required int64 keyHash = 2;
 }
 
 // API#0x04
@@ -411,27 +386,23 @@ message UpdateMessageSent {
     required int32 uid = 3;
     required int64 randomId = 2;
 }
-
 // API#0x23
 // Событие об отправлении сообщения в группу
 message UpdateMessageGroupSent {
     required int32 chatId = 3;
     required int64 randomId = 2;
 }
-
 // API#0x05
 // Событие о регистрации пользователя из контакт-листа
 message UpdateContactRegistered {
     required int32 uid = 1;
 }
-
 // API#0x10
 // Событие о смене аватара пользователя (в том числе и себя)
 message UpdateAvatarChanged {
     required int32 uid = 1;
     optional Avatar  avatar = 2;
 }
-
 // API#0x20
 // Событие о смене имени пользователя (в том числе и себя)
 message UpdateUserNameChanged {
@@ -459,14 +430,12 @@ message UpdateMessageReceived {
     required int32 uid = 1;
     required int64 randomId = 2;
 }
-
 // API#0x13
 // Событие о прочитанном сообщении
 message UpdateMessageRead {
     required int32 uid = 1;
     required int64 randomId = 2;
 }
-
 // ************************************************************************
 //                        Weak updates list
 // ************************************************************************
@@ -475,47 +444,47 @@ message UpdateTyping {
     required int32 uid = 1;
     required int32 typingType = 4;
 }
-
 // API#0x22
 message UpdateTypingGroup {
     required int32 chatId = 1;
     required int32 uid = 2;
     required int32 typingType = 4;
 }
-
 // API#0x07
 message UpdateUserOnline {
     required int32 uid = 1;
 }
-
 // API#0x08
 message UpdateUserOffline {
     required int32 uid = 1;
 }
-
 // API#0x09
 message UpdateUserLastSeen {
     required int32 uid = 1;
     required int64 time = 2;
 }
-
 // API#0x21
 message UpdateGroupOnline {
     required int32 chatId = 1;
     required int32 count = 2;
 }
-
 // ************************************************************************
 //                               Send message
 // ************************************************************************
-
 // API#0x0E
+// 400#: WRONG_RECEIVERS - когда неправильный набор устройств у устройства
 // Ответ: ResponseSeq#0x48
 message RequestSendMessage {
     required int32 uid = 1;
     required int64 accessHash = 2;
     required int64 randomId = 3;
     required EncryptedRSAMessage message = 4;
+}
+
+// ErrorData при WRONG_RECEIVERS у запросе на отправку сообщения
+message ErrorSendWrongReceivers {
+    repeated UserKey invalid = 1;
+    repeated UserKey missing = 2;
 }
 
 // API#0x43
@@ -535,7 +504,6 @@ message RequestMessageReceived {
     required int64 randomId = 2;
     required int64 accessHash = 3;
 }
-
 // API#0x39
 // Ответ: ResponseVoid#0x32
 message RequestMessageRead {
@@ -543,11 +511,9 @@ message RequestMessageRead {
     required int64 randomId = 2;
     required int64 accessHash = 3;
 }
-
 // ************************************************************************
 //                               Group chats
 // ************************************************************************
-
 // API#0x41
 message RequestCreateChat {
     required int64 randomId = 1;
@@ -556,7 +522,6 @@ message RequestCreateChat {
     required bytes publicKey = 4;
     required EncryptedRSABroadcast invites = 5;
 }
-
 // API#0x42
 message ResponseCreateChat {
     required int32 chatId = 1;
@@ -591,14 +556,12 @@ message RequestInviteUsers {
     required bytes chatKeyHash = 4;
     required EncryptedRSABroadcast invite = 5;
 }
-
 // API#0x46
 // Ответ: ResponseSeq#0x48
 message RequestLeaveChat {
     required int32 chatId = 1;
     required int64 accessHash = 2;
 }
-
 // API#0x47
 // Ответ: ResponseSeq#0x48
 // 403#: NO_PERMISSION - когда невозможно исключить участника из чата из-за настроек приватности
@@ -608,11 +571,9 @@ message RequestRemoveUser {
     required int32 uid = 3;
     required int64 userAccessHash = 4;
 }
-
 // ************************************************************************
 //                                  Files
 // ************************************************************************
-
 // File Download
 // API#0x10
 // Ответ: ResponseFilePart#0x11
@@ -638,11 +599,9 @@ message RequestStartUpload {
 message ResponseUploadStarted {
     required UploadConfig config = 1;
 }
-
 message UploadConfig {
     required bytes serverData = 1;
 }
-
 // API#0x14
 // Ответ: ResponseVoid#0x32
 // #400: CONFIG_INCORRECT - неизвестный конфиг
@@ -651,7 +610,6 @@ message RequestUploadPart {
     required int32 blockIndex = 2;
     required bytes payload = 3;
 }
-
 // API#0x16
 // Ответ: ResponseUploadCompleted#0x17
 // #400: CONFIG_INCORRECT - неизвестный конфиг
@@ -662,12 +620,10 @@ message RequestCompleteUpload {
     required int32 blocksCount = 2;
     required int64 crc32 = 3;
 }
-
 // API#0x17
 message ResponseUploadCompleted {
     required FileLocation location = 1;
 }
-
 // ************************************************************************
 //                                  Typing
 // ************************************************************************
@@ -678,7 +634,6 @@ message RequestTyping {
     required int64 accessHash = 2;
     required int32 typingType = 3;
 }
-
 // API#0x48
 // Ответ: ResponseVoid#0x32
 message RequestGroupTyping {
@@ -686,7 +641,6 @@ message RequestGroupTyping {
     required int64 accessHash = 2;
     required int32 typingType = 3;
 }
-
 // ************************************************************************
 //                                  Online
 // ************************************************************************
@@ -696,9 +650,8 @@ message RequestSetOnline {
     required bool isOnline = 1;
     required int64 timeout = 2;
 }
-
 // ************************************************************************
-//                             Google pushes
+//                             Vendor pushes
 // ************************************************************************
 // API#0x33
 // Ответ: ResponseVoid#0x32
@@ -706,7 +659,7 @@ message RequestRegisterGooglePush {
     required int64 projectId = 1;
     required string token = 2;
 }
-
+ 
 // Запрос на регистрацию эппловых пушей для ключа
 // Ответ: VoidResponse#0x32
 // API#0x4C
@@ -714,8 +667,52 @@ message RequestRegisterApplePush {
     required int32 apnsKey = 1; // Генерируется сервером для каждого приложения и при сборке вшивается в приложение
     required string token = 2;
 }
-
 // API#0x34
 // Ответ: ResponseVoid#0x32
 message RequestUnregisterPush {
+}
+
+// ************************************************************************
+//                               Authorizations
+// ************************************************************************
+
+message AuthItem {
+    required int32 id = 1;
+    required int32 authHolder = 2; // 0: current device, 1: another device
+    required int32 appId = 3;
+    required string appTitle = 4;
+    required string deviceTitle = 5;
+    required int32 authTime = 6; // Время авторизации в секундах
+    required string authLocation = 7;
+    optional double latitude = 8;
+    optional double longitude = 9;
+}
+
+// API#0x50
+// Ответ: ResponseAuth#0x51
+message RequestGetAuth {
+
+}
+
+// API#0x51
+message ResponseGetAuth {
+    repeated AuthItem usersAuths = 1;
+}
+
+// API#0x52
+// Ответ: ResponseVoid
+message RequestRemoveAuth {
+    required int32 id = 1;
+}
+
+// API#0x53
+// Ответ: ResponseVoid
+message RequestRemoveAllOtherAuths {
+
+}
+
+// API#0x54
+// Ответ: ResponseVoid
+message RequestLogout {
+
 }

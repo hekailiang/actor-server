@@ -14,7 +14,7 @@ import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
-import com.newzly.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 
 class FileRecordSpec extends CassandraSpecification {
   "FileRecord" should {

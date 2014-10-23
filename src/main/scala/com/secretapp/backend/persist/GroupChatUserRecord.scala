@@ -61,4 +61,14 @@ object GroupChatUserRecord extends GroupChatUserRecord with DBConnector {
   def addUserKeyHash(chatId: Int, userId: Int, keyHash: Long)(implicit session: Session): Future[ResultSet] = {
     update.where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes add keyHash).future()
   }
+
+  def removeUserKeyHash(userId: Int, keyHash: Long)(implicit session: Session): Future[Seq[ResultSet]] = {
+    UserGroupChatsRecord.getChats(userId) flatMap { chatIds =>
+      Future.sequence(
+        chatIds map { chatId =>
+          update.where(_.chatId eqs chatId).and(_.userId eqs userId).modify(_.keyHashes remove keyHash).future()
+        }
+      )
+    }
+  }
 }

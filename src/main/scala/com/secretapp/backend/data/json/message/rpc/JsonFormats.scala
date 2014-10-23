@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, Reque
 import play.api.libs.json._
 
 trait JsonFormats {
+  implicit val responseVoidFormat = UnitFormat[ResponseVoid]
 
   implicit object rpcRequestFormat extends Format[RpcRequest] {
     override def writes(o: RpcRequest): JsValue = Json.obj(
@@ -56,6 +57,10 @@ trait JsonFormats {
       "header" -> o.header,
       "body"   -> (o match {
         case r: RequestAuthCode           => requestAuthCodeFormat.writes(r)
+        case r: RequestGetAuth            => requestGetAuthFormat.writes(r)
+        case r: RequestRemoveAuth         => requestRemoveAuthFormat.writes(r)
+        case r: RequestRemoveAllOtherAuths=> requestRemoveAllOtherAuthsFormat.writes(r)
+        case r: RequestLogout             => requestLogoutFormat.writes(r)
         case r: RequestCompleteUpload     => requestCompleteUploadFormat.writes(r)
         case r: RequestGetDifference      => requestGetDifferenceFormat.writes(r)
         case r: RequestGetFile            => requestGetFileFormat.writes(r)
@@ -82,6 +87,10 @@ trait JsonFormats {
     override def reads(json: JsValue): JsResult[RpcRequestMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body) => header match {
         case RequestAuthCode.requestType           => requestAuthCodeFormat.reads(body)
+        case RequestGetAuth.requestType            => requestGetAuthFormat.reads(body)
+        case RequestRemoveAuth.requestType         => requestRemoveAuthFormat.reads(body)
+        case RequestRemoveAllOtherAuths.requestType=> requestRemoveAllOtherAuthsFormat.reads(body)
+        case RequestLogout.requestType             => requestLogoutFormat.reads(body)
         case RequestCompleteUpload.requestType     => requestCompleteUploadFormat.reads(body)
         case RequestGetDifference.requestType      => requestGetDifferenceFormat.reads(body)
         case RequestGetFile.requestType            => requestGetFileFormat.reads(body)
@@ -110,7 +119,9 @@ trait JsonFormats {
     override def writes(o: RpcResponseMessage): JsValue = Json.obj(
       "header" -> o.header,
       "body"   -> (o match {
+        case r: ResponseVoid             => responseVoidFormat.writes(r)
         case r: ResponseAuth             => responseAuthFormat.writes(r)
+        case r: ResponseGetAuth          => responseGetAuthFormat.writes(r)
         case r: ResponseAuthCode         => responseAuthCodeFormat.writes(r)
         case r: ResponseImportedContacts => responseImportedContactsFormat.writes(r)
         case r: ResponsePublicKeys       => responsePublicKeysFormat.writes(r)
@@ -124,7 +135,9 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[RpcResponseMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body)         => header match {
+        case ResponseVoid.responseType             => responseVoidFormat.reads(body)
         case ResponseAuth.responseType             => responseAuthFormat.reads(body)
+        case ResponseGetAuth.responseType          => responseGetAuthFormat.reads(body)
         case ResponseAuthCode.responseType         => responseAuthCodeFormat.reads(body)
         case ResponseImportedContacts.responseType => responseImportedContactsFormat.reads(body)
         case ResponsePublicKeys.responseType       => responsePublicKeysFormat.reads(body)

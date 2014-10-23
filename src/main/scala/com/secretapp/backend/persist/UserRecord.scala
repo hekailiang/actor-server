@@ -180,6 +180,19 @@ object UserRecord extends UserRecord with DBConnector {
       future().flatMap(_ => PhoneRecord.addKeyHash(phoneNumber, publicKeyHash))
   }
 
+  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session) = {
+    UserPublicKeyRecord.setDeleted(uid, publicKeyHash) map { _ =>
+      Future.sequence(
+        Vector(
+          update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
+
+          PhoneRecord.removeKeyHashByUserId(uid, publicKeyHash),
+          GroupChatUserRecord.removeUserKeyHash(uid, publicKeyHash)
+        )
+      )
+    }
+  }
+
   def removeKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
     update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).
       future().flatMap(_ => PhoneRecord.removeKeyHash(phoneNumber, publicKeyHash))

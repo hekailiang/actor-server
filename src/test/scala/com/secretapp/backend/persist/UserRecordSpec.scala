@@ -1,9 +1,9 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
-import com.newzly.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.types._
 import com.secretapp.backend.data.models._
+import com.websudos.phantom.Implicits._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 import scodec.bits._
 import org.specs2.mutable.Specification
 import org.specs2.matcher.NoConcurrentExecutionContext
