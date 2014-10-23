@@ -76,6 +76,13 @@ class RpcMessagingSpec extends RpcSpec {
         phoneNumber = defaultPhoneNumber, name = name)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
+      /**
+        * This sleep is needed to let sharding things to initialize
+        * We catch an exception sometimes:
+        * java.lang.IllegalArgumentException: requirement failed: Region Actor[akka.tcp://api@127.0.0.1:46807/user/sharding/Typing#1848681712] not registered: State(Map(),Map(Actor[akka.tcp://api@127.0.0.1:51745/user/sharding/Typing#1056784136] -> Vector()),Set())
+        */
+      Thread.sleep(1000)
+
       catchNewSession(scope)
 
       // get initial state
