@@ -348,9 +348,9 @@ trait SignService extends SocialHelpers {
 
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
       contacts foreach { c =>
-        socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.userId)))
+        socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
 
-        getAuthIds(c.userId) map { authIds =>
+        getAuthIds(c.ownerUserId) map { authIds =>
           authIds foreach { authId =>
             pushUpdate(authId, ContactRegistered(u.uid))
           }
