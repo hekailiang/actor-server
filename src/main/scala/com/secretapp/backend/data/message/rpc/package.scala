@@ -4,15 +4,15 @@ import scalaz._
 import Scalaz._
 
 package object rpc {
-  trait RpcRequest extends MessageWithHeader
-  trait RpcResponse extends MessageWithHeader
+  trait RpcRequest extends ProtoMessageWithHeader
+  trait RpcResponse extends ProtoMessageWithHeader
 
-  trait RpcMessage extends ProtobufMessage with MessageWithHeader
+  trait RpcMessage extends ProtobufMessage with ProtoMessageWithHeader
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
 
-  trait RpcRequestObject extends MessageWithHeader
-  trait RpcResponseObject extends MessageWithHeader
-  trait RpcRequestMessageObject extends MessageWithHeader
-  trait RpcResponseMessageObject extends MessageWithHeader
+  trait RpcRequestObject extends ProtoMessageWithHeader
+  trait RpcResponseObject extends ProtoMessageWithHeader
+  trait RpcRequestMessageObject extends ProtoMessageWithHeader
+  trait RpcResponseMessageObject extends ProtoMessageWithHeader
 }
