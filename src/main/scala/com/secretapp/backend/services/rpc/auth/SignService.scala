@@ -344,9 +344,17 @@ trait SignService extends SocialHelpers {
   }
 
   private def pushContactRegisteredUpdates(u: User): Unit = {
+    import com.secretapp.backend.api.SocialProtocol._
+
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
-      contacts.foreach { c =>
-        pushUpdate(c.authId, ContactRegistered(u.uid))
+      contacts foreach { c =>
+        socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.userId)))
+
+        getAuthIds(c.userId) map { authIds =>
+          authIds foreach { authId =>
+            pushUpdate(authId, ContactRegistered(u.uid))
+          }
+        }
       }
     }
   }

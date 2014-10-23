@@ -64,7 +64,7 @@ trait ContactService {
         }
 
         val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
-        val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(_, currentUser.get.authId))
+        val unregisteredContacts = unregisteredPhones.map(UnregisteredContact(_, currentUser.get.uid))
 
         Future.sequence(unregisteredContacts.map(UnregisteredContactRecord.insertEntity)) map { _ =>
           Ok(ResponseImportedContacts(userStructs, impContacts))

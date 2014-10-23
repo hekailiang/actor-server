@@ -13,19 +13,20 @@ sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContac
   object phoneNumber extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "phone_number"
   }
-  object authId extends LongColumn(this) {
+
+  object userId extends IntColumn(this) {
     override lazy val name = "user_id"
   }
 
   override def fromRow(row: Row): UnregisteredContact =
-    UnregisteredContact(phoneNumber(row), authId(row))
+    UnregisteredContact(phoneNumber(row), userId(row))
 }
 
 object UnregisteredContactRecord extends UnregisteredContactRecord with DBConnector {
   def insertEntity(uc: UnregisteredContact)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.phoneNumber, uc.phoneNumber)
-      .value(_.authId, uc.authId)
+      .value(_.userId, uc.userId)
       .future
 
   def byNumber(phoneNumber: Long)(implicit session: Session): Future[Set[UnregisteredContact]] =
