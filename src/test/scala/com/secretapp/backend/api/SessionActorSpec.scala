@@ -13,7 +13,6 @@ import scodec.bits._
 import scala.util.Random
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import org.specs2.matcher.TraversableMatchers
-import org.scalamock.specs2.MockFactory
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.protocol.codecs._

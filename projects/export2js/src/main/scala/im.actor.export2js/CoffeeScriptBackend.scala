@@ -10,17 +10,17 @@ object CoffeeScriptBackend {
     val sealedClassNames = sealedKlasses.map(_.name)
     val sealedChildNames = sealedKlasses.flatMap(_.child.map(_.name))
     for (sealedKlass <- sealedKlasses) {
-      sealedKlass.child.foreach { klass =>
-        outBuf.append(genKlass(klass, sealedClassNames, sealedChildNames))
-      }
       outBuf.append(genSealedKlass(sealedKlass))
+      sealedKlass.child.foreach { klass =>
+        outBuf.append(genKlass(klass, sealedKlass.name, sealedClassNames, sealedChildNames))
+      }
     }
     val exportKlasses = sealedKlasses.filter(_.child.exists(_.header.isDefined)).map(_.name) ++ sealedChildNames
     outBuf.append(genExport("ActorMessages", exportKlasses))
     outBuf.mkString.replaceAll("\\s+$", "\n\n")
   }
 
-  private def genKlass(klass: JsonClass, sealedClassNames: Seq[String], sealedChildNames: Seq[String]): String = {
+  private def genKlass(klass: JsonClass, sealedKlassName: String, sealedClassNames: Seq[String], sealedChildNames: Seq[String]): String = {
     val staticHeader = klass.header.map { h => s"@header = 0x${h.toHexString}" }.getOrElse("")
     val knownKinds = Seq('Base64) ++ sealedClassNames ++ sealedChildNames
     def wrapField(name: String, kind: String, encode: Boolean, index: Int = 0): String = kind match {
@@ -35,23 +35,23 @@ object CoffeeScriptBackend {
           s"_.map($name, ($itemName) -> { ${wrapField(itemName, itemKind, encode, index + 1)} })"
         }
       case n if !encode && sealedClassNames.contains(n) => s"$n.deserialize($name)"
-      case n if sealedChildNames.contains(n) =>
+      case n if sealedChildNames.contains(n) || sealedClassNames.contains(n) =>
         if (encode) s"$name.serialize()"
         else s"$n.deserialize($name)"
       case _ => name
     }
-    val serializeBlock = klass.fields.map { f =>
+    val serializeBody = klass.fields.map { f =>
       s"${f.name}: ${wrapField(s"@${f.name}", f.kind, encode = true)}"
     }.mkString(", ")
     val deserializeBlock = klass.fields.map { f => wrapField(s"body['${f.name}']", f.kind, encode = false) }.mkString(", ")
 
     s"""
-      |class ${klass.name}
+      |class ${klass.name} extends $sealedKlassName
       |  $staticHeader
       |  constructor: (${klass.fields.map(f => s"@${f.name}").mkString(", ")}) ->
       |
       |  serialize: () ->
-      |    { $serializeBlock }
+      |    ${if (klass.header.isEmpty) s"{ $serializeBody }" else s"toJSON(this, { $serializeBody })"}
       |
       |  @deserialize: (body) ->
       |    new ${klass.name}( $deserializeBlock )
@@ -61,17 +61,18 @@ object CoffeeScriptBackend {
 
   private def genSealedKlass(klass: JsonSealedClass): String = {
     val child = klass.child.filter(_.header.isDefined)
-    if (child.isEmpty) ""
+    if (child.isEmpty) s"\n\nclass ${klass.name}\n\n"
     else {
       val whenBlock = child.sortBy(_.header.get).map { c => s"when ${c.header.get} then ${c.name}" }
       s"""
         |class ${klass.name}
         |  @deserialize: (body) ->
-        |    header = parseInt(body['body']['header'], 10)
-        |    nestedBody = body['body']['body']
+        |    header = parseInt(body['header'], 10)
+        |    nestedBody = body['body']
         |    res = switch header
         |      ${whenBlock.mkString("\n      ")}
-        |      else throw new Error("Unknown message header: #{header}")
+        |      else
+        |        throw new Error("Unknown message header: #{header}")
         |    res.deserialize(nestedBody)
         |
       """.stripMargin
@@ -84,10 +85,12 @@ object CoffeeScriptBackend {
 
   private val topBlock =
     """
-      |base64 = forge.util
+      |base64 =
+      |  encode: (s) -> window.forge.util.encode64(s)
+      |  decode: (s) -> window.forge.util.decode64(s)
       |
       |toJSON = (klass, body) ->
-      |  { header: klass.constructor.header, body: if body? then body else {} }
+      |  { header: klass.constructor.header, body: body || {} }
       |
     """.stripMargin
 }

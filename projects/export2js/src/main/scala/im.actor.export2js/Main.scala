@@ -10,6 +10,8 @@ object Main {
     case (path: String) :: Nil =>
       val sealedKlasses = Seq(
         getSealedClass[TransportMessage],
+        getSealedClass[rpc.RpcRequest],
+        getSealedClass[rpc.RpcResponse],
         getSealedClass[rpc.RpcRequestMessage],
         getSealedClass[rpc.RpcResponseMessage],
         getSealedClass[update.UpdateMessage],

@@ -13,7 +13,6 @@ import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing.AsyncAssertionsHelper._
-import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
 import scala.language.postfixOps

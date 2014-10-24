@@ -16,10 +16,10 @@ object SealedMacros {
     val protoMessageT = weakTypeOf[ProtoMessageWithHeader].typeSymbol.fullName
     val rootPackage = c.mirror.staticPackage("com.secretapp.backend.data")
 
-    def deepSearch(p: Type, space: String = ""): Set[Symbol] = {
+    def deepSearch(p: Type): Set[Symbol] = {
       val declarations = p.declarations
       val child = declarations.filter(c => c.isClass && c.asClass.baseClasses.exists(_.fullName == tm) && c.asClass.isCaseClass && !c.asClass.isAbstractClass)
-      val nested = declarations.filter(_.isPackage) flatMap { p => deepSearch(p.typeSignature, space.concat(" ")) }
+      val nested = declarations.filter(_.isPackage) flatMap { p => deepSearch(p.typeSignature) }
       child.toSet ++ nested
     }
     val childSymbols = deepSearch(rootPackage.typeSignature)

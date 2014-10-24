@@ -11,7 +11,6 @@ import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
-import org.scalamock.specs2.MockFactory
 import org.specs2.matcher.ShouldMatchers
 import org.specs2.mutable._
 import scala.reflect.ClassTag

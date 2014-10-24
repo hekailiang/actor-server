@@ -21,7 +21,6 @@ import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
-import org.scalamock.specs2.MockFactory
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
 import scala.language.higherKinds

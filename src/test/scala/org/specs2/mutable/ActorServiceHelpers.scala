@@ -30,7 +30,6 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
-import org.scalamock.specs2.MockFactory
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
 import org.specs2.specification.{Fragments, Fragment}
@@ -312,7 +311,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
 }
 
 trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with ActorCommon {
-  self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers with MockFactory =>
+  self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers =>
 
   Security.addProvider(new BouncyCastleProvider())
 
