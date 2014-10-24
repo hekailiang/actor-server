@@ -24,7 +24,14 @@ object SealedMacros {
     }
     val childSymbols = deepSearch(rootPackage.typeSignature)
 
-    def normilizeKind(name: String) = name.replaceFirst("=> ", "").replaceAll(".*\\.", "").replaceAll("(Vector|Set|List|Array)\\[", "Seq[").trim
+    def normilizeKind(name: String) = {
+      name
+        .replaceFirst("=> ", "")
+        .replaceAll(".*\\.", "")
+        .replaceAll("(Vector|Set|List|Array)\\[", "Seq[")
+        .replaceAll("(BitVector|ByteString)", "Base64")
+        .trim
+    }
 
     val child = childSymbols map { klass =>
       val fields = klass.typeSignature.declarations.collect {
