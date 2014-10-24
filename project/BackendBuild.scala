@@ -64,9 +64,18 @@ object BackendBuild extends Build {
     fork in Test := true
   )
 
-  lazy val export2js = Project(
+  lazy val export2JS = Project(
     "export2js",
-    file("export2js"),
+    file("projects/export2js"),
+    settings = Revolver.settings ++ Seq(
+      libraryDependencies ++= rootDependencies,
+      resolvers ++= Resolvers.seq
+    )
+  ).dependsOn(root, export2JSMacros)
+
+  lazy val export2JSMacros = Project(
+    "export2JSMacros",
+    file("projects/export2js/macros"),
     settings = Revolver.settings ++ Seq(
       libraryDependencies ++= rootDependencies,
       resolvers ++= Resolvers.seq

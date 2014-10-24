@@ -7,7 +7,7 @@ package object rpc {
   trait RpcRequest extends ProtoMessageWithHeader
   trait RpcResponse extends ProtoMessageWithHeader
 
-  trait RpcMessage extends ProtobufMessage with ProtoMessageWithHeader
+  trait RpcMessage extends ProtoMessageWithHeader
   trait RpcRequestMessage extends RpcMessage
   trait RpcResponseMessage extends RpcMessage
 
