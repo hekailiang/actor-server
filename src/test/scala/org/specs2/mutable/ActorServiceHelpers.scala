@@ -76,6 +76,8 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
   private var packageIndex = 0
   private var messageId = 0
 
+  val defaultTimeout: FiniteDuration = 10.seconds
+
   def transportForeach(f: (TransportConnection) => Fragments) = {
     Seq(MTConnection, JsonConnection) foreach { t =>
       addFragments(t.toString, f(t), "session")
@@ -145,11 +147,11 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     sendMsg(MessageAck(msgIds.toVector))
   }
 
-  def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectMsg(msg: TransportMessage, withNewSession: Boolean = false, duration: Duration = defaultTimeout)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     expectMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Unit])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Unit])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
@@ -176,7 +178,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     sendMessageAck(f(Set(), false, false))
   }
 
-  def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = 3.seconds)(pf: PartialFunction[TransportMessage, Boolean])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Boolean])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     def f(acks: immutable.Set[Long], receivedByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
       def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
         case m :: msgs =>
@@ -203,7 +205,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     sendMessageAck(f(Set(), false, false))
   }
 
-  def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectMsgs(msgs: immutable.Set[TransportMessage], withNewSession: Boolean = false, duration: Duration = defaultTimeout)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     def f(messages: immutable.Set[TransportMessage], acks: immutable.Set[Long]): immutable.Set[Long] = {
       def g(data: ByteString) = {
         val receivedMsgs = mutable.Set[TransportMessage]()
@@ -244,11 +246,11 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     sendMessageAck(acks)
   }
 
-  def expectRpcMsg(msg: RpcResponse, withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectRpcMsg(msg: RpcResponse, withNewSession: Boolean = false, duration: Duration = defaultTimeout)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     expectRpcMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectRpcMsgs(msgs: immutable.Set[RpcResponse], withNewSession: Boolean = false, duration: Duration = 3.seconds)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
+  def expectRpcMsgs(msgs: immutable.Set[RpcResponse], withNewSession: Boolean = false, duration: Duration = defaultTimeout)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
     var receivedNewSession = false
     def f(messages: immutable.Set[RpcResponse], acks: immutable.Set[Long]): immutable.Set[Long] = {
       def g(data: ByteString) = {
@@ -462,7 +464,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     }
   }
 
-  def tcpReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef) = {
+  def tcpReceiveN(n: Int, duration: FiniteDuration = 5.seconds)(implicit probe: TestProbe, destActor: ActorRef) = {
     @annotation.tailrec
     def receive(acc: immutable.Seq[Object] = immutable.Seq.empty): immutable.Seq[Object] = {
       // TODO: move to argument
@@ -486,7 +488,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     receive()
   }
 
-  def protoReceiveN(n: Int, duration: FiniteDuration = 3.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[MTPackage] = {
+  def protoReceiveN(n: Int, duration: FiniteDuration = 5.seconds)(implicit probe: TestProbe, destActor: ActorRef): immutable.Seq[MTPackage] = {
     tcpReceiveN(n, duration) map {
       case Write(data, _) =>
         val p = MTPackageBoxCodec.decodeValidValue(data).p
