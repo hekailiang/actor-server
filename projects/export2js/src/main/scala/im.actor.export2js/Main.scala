@@ -17,9 +17,7 @@ object Main {
         getSealedClass[update.WeakUpdateMessage],
         getSealedClass[ProtobufMessage]
       )
-      println(s"sealedKlasses: $sealedKlasses")
       val coffeeResult = CoffeeScriptBackend(sealedKlasses)
-      println(s"coffeeResult: $coffeeResult")
       val file = new FileOutputStream(path, false)
       file.write(coffeeResult.getBytes)
       file.close()

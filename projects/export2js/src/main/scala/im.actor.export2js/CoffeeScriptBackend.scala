@@ -15,7 +15,8 @@ object CoffeeScriptBackend {
       }
       outBuf.append(genSealedKlass(sealedKlass))
     }
-    outBuf.append(genExport("ActorMessages", sealedKlasses))
+    val exportKlasses = sealedKlasses.filter(_.child.exists(_.header.isDefined)).map(_.name) ++ sealedChildNames
+    outBuf.append(genExport("ActorMessages", exportKlasses))
     outBuf.mkString.replaceAll("\\s+$", "\n\n")
   }
 
@@ -77,9 +78,8 @@ object CoffeeScriptBackend {
     }
   }
 
-  private def genExport(namespace: String, sealedKlasses: Seq[JsonSealedClass]): String = {
-    val klasses = sealedKlasses.flatMap(_.child).sortBy(_.name)
-    s"\nwindow['$namespace'] = { ${klasses.map { c => s"'${c.name}': ${c.name}" }.mkString(", ")} }\n"
+  private def genExport(namespace: String, klassNames: Seq[String]): String = {
+    s"\nwindow['$namespace'] = { ${klassNames.sorted.map { n => s"$n: $n" }.mkString(", ")} }\n"
   }
 
   private val topBlock =
