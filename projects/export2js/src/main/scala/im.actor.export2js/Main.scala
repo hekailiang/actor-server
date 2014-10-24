@@ -10,14 +10,14 @@ object Main {
     case (path: String) :: Nil =>
       val sealedKlasses = Seq(
         getSealedClass[TransportMessage],
+        getSealedClass[ProtobufMessage],
         getSealedClass[rpc.RpcRequest],
         getSealedClass[rpc.RpcResponse],
         getSealedClass[rpc.RpcRequestMessage],
         getSealedClass[rpc.RpcResponseMessage],
         getSealedClass[update.UpdateMessage],
         getSealedClass[update.SeqUpdateMessage],
-        getSealedClass[update.WeakUpdateMessage],
-        getSealedClass[ProtobufMessage]
+        getSealedClass[update.WeakUpdateMessage]
       )
       val coffeeResult = CoffeeScriptBackend(sealedKlasses)
       val file = new FileOutputStream(path, false)

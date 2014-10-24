@@ -1,7 +1,6 @@
 package im.actor.export2js
 
 import im.actor.export2js.macros.JsonType._
-import scala.util.Random
 
 object CoffeeScriptBackend {
   def apply(sealedKlasses: Seq[JsonSealedClass]): String = {

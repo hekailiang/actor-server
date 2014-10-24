@@ -360,16 +360,6 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     authUser(user, phoneNumber)
   }
 
-  trait RandomServiceMock extends RandomService { self: Actor =>
-    override lazy val rand = mock[Random]
-
-    override def preStart(): Unit = {
-      withExpectations {
-        (rand.nextLong _) stubs () returning (12345L)
-      }
-    }
-  }
-
   val smsCode = "test_sms_code"
   val smsHash = "test_sms_hash"
   val userId = 101
@@ -387,7 +377,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion, csession) with RandomServiceMock with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion, csession) with GeneratorServiceMock))
     (probe, actor)
   }
 
