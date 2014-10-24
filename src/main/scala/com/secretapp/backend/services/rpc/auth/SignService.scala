@@ -262,12 +262,13 @@ trait SignService extends SocialHelpers {
                   phoneR match {
                     case None => withValidName(req.name) { name =>
                       withValidPublicKey(publicKey) { publicKey =>
-                        val userId = genUserId
-                        val accessSalt = genUserAccessSalt
-                        val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
-                        UserRecord.insertEntityWithPhoneAndPK(user)
-                        pushContactRegisteredUpdates(user)
-                        Future.successful(auth(user))
+                        ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] map { userId =>
+                          val accessSalt = genUserAccessSalt
+                          val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
+                          UserRecord.insertEntityWithPhoneAndPK(user)
+                          pushContactRegisteredUpdates(user)
+                          auth(user)
+                        }
                       }
                     }
                     case Some(rec) =>

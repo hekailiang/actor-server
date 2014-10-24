@@ -27,6 +27,8 @@ package object api {
   final class ClusterProxies(implicit val system: ActorSystem) {
     private val filesCounter = FilesCounter.start(system)
     val filesCounterProxy = FilesCounter.startProxy(system)
+    private val usersCounter = UsersCounter.start(system)
+    val usersCounterProxy = UsersCounter.startProxy(system)
     val authItemsCounter = AuthItemsCounter.startProxy(system)
   }
 }
