@@ -7,15 +7,16 @@ import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.struct.{ FileLocation, Avatar }
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ Group, User }
-import com.secretapp.backend.helpers.UserHelpers
+import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.util.AvatarUtils
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -26,7 +27,7 @@ import scalaz._
 import scodec.bits._
 import scodec.codecs.uuid
 
-trait MessagingService extends RandomService with UserHelpers {
+trait MessagingService extends RandomService with UserHelpers with GroupHelpers {
   self: MessagingServiceActor =>
 
   import context.{ dispatcher, system }
@@ -290,42 +291,60 @@ trait MessagingService extends RandomService with UserHelpers {
   }
 
   protected def handleRequestEditGroupAvatar(
-    groupId: Int, accessHash: Long, avatar: FileLocation
-  ): Future[RpcResponse] = ???
+    groupId: Int, accessHash: Long, fileLocation: FileLocation
+  ): Future[RpcResponse] = {
+    withGroup(groupId, accessHash) { group =>
+      val sizeLimit: Long = 1024 * 1024 // TODO: configurable
+
+      fileRecord.getFileLength(fileLocation.fileId.toInt) flatMap { len =>
+        if (len > sizeLimit)
+          Future successful Error(400, "FILE_TOO_BIG", "", false)
+        else
+          AvatarUtils.scaleAvatar(fileRecord, filesCounterProxy, fileLocation) flatMap { a =>
+            GroupRecord.updateAvatar(groupId, a) map { _ =>
+              withGroupUserAuthIds(groupId) { authIds =>
+                authIds foreach { authId =>
+                  updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, GroupAvatarChanged(groupId, Some(a)))
+                }
+              }
+              Ok(ResponseAvatarChanged(a))
+            }
+          } recover {
+            case e =>
+              log.warning(s"Failed while updating avatar: $e")
+              Error(400, "IMAGE_LOAD_ERROR", "", false)
+          }
+      }
+    }
+  }
 
   protected def handleRequestEditGroupTitle(
     groupId: Int,
     accessHash: Long,
     title: String
   ): Future[RpcResponse] = {
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
-      optGroup map { group =>
-        if (group.accessHash != accessHash) {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid group access hash.", false))
-        } else {
-          for {
-            _ <- GroupRecord.setTitle(groupId, title)
-            s <- getState(currentUser.authId)
-          } yield {
-            GroupUserRecord.getUsers(groupId) onSuccess {
-              case groupUserIds =>
-                groupUserIds foreach { groupUserId =>
-                  for {
-                    authIds <- getAuthIds(groupUserId)
-                  } yield {
-                    authIds map { authId =>
-                      updatesBrokerRegion ! NewUpdatePush(authId, GroupTitleChanged(
-                        groupId, title
-                      ))
-                    }
-                  }
+    withGroup(groupId, accessHash) { group =>
+      for {
+        _ <- GroupRecord.updateTitle(groupId, title)
+        s <- getState(currentUser.authId)
+      } yield {
+        GroupUserRecord.getUsers(groupId) onSuccess {
+          case groupUserIds =>
+            groupUserIds foreach { groupUserId =>
+              for {
+                authIds <- getAuthIds(groupUserId)
+              } yield {
+                authIds map { authId =>
+                  updatesBrokerRegion ! NewUpdatePush(authId, GroupTitleChanged(
+                    groupId, title
+                  ))
                 }
+              }
             }
-
-            Ok(updateProto.ResponseSeq(s._1, s._2))
-          }
         }
-      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
+
+        Ok(updateProto.ResponseSeq(s._1, s._2))
+      }
     }
   }
 
@@ -531,5 +550,17 @@ trait MessagingService extends RandomService with UserHelpers {
       seq <- getSeq(authId)
       muuid <- SeqUpdateRecord.getState(authId)
     } yield (seq, muuid)
+  }
+
+  protected def withGroup(groupId: Int, accessHash: Long)(f: Group => Future[RpcResponse]): Future[RpcResponse] = {
+    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+      optGroup map { group =>
+        if (group.accessHash != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", s"Invalid group access hash.", false))
+        } else {
+          f(group)
+        }
+      } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
+    }
   }
 }

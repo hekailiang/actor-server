@@ -2,8 +2,8 @@ package com.secretapp.backend.data.json.message.rpc.user
 
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
-import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
-import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, RequestEditAvatar}
+import com.secretapp.backend.data.message.rpc.{ ResponseAvatarChanged, RpcResponseMessage, RpcRequestMessage }
+import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.data.json.message.rpc.file.JsonFormatsSpec._
 import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 

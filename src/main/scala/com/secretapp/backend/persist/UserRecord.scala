@@ -1,18 +1,18 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.secretapp.backend.data.message.struct.Avatar
-import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.models._
 import com.secretapp.backend.crypto.ec.PublicKey
+import com.secretapp.backend.data.Implicits._
+import com.secretapp.backend.data.message.struct.Avatar
+import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.types._
+import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
-import scodec.bits.BitVector
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
+import scodec.bits.BitVector
 
 sealed class UserRecord extends CassandraTable[UserRecord, User] {
   override lazy val tableName = "users"

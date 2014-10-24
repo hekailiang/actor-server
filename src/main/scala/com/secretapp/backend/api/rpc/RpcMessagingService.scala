@@ -21,7 +21,7 @@ trait RpcMessagingService {
   import context.system
 
   lazy val messagingService = context.actorOf(Props(
-    new MessagingServiceActor(updatesBrokerRegion, socialBrokerRegion, currentUser.get)
+    new MessagingServiceActor(updatesBrokerRegion, socialBrokerRegion, fileRecord, clusterProxies.filesCounterProxy, currentUser.get)
   ), "messaging-service")
 
   def handleMessagingRpc(rq: RpcRequestMessage): Future[RpcResponse] = {

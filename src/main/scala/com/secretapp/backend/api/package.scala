@@ -13,7 +13,6 @@ package object api {
   final class Singletons(implicit val system: ActorSystem, csession: CSession) {
     val config = ConfigFactory.load()
     val appConfig = config.getConfig("secret")
-    val filesCounter = FilesCounter.start(system)
     val authItemsCounter = AuthItemsCounter.start(system)
     val smsEngine = ClickatellSmsEngineActor()
     val typingBrokerRegion = TypingBroker.startRegion()
@@ -26,7 +25,8 @@ package object api {
   }
 
   final class ClusterProxies(implicit val system: ActorSystem) {
-    val filesCounter = FilesCounter.startProxy(system)
+    private val filesCounter = FilesCounter.start(system)
+    val filesCounterProxy = FilesCounter.startProxy(system)
     val authItemsCounter = AuthItemsCounter.startProxy(system)
   }
 }

@@ -17,7 +17,7 @@ trait FilesService {
   import context.dispatcher
   import context.system
 
-  lazy val filesHandler = context.actorOf(Props(new Handler(currentUser.get, new FileRecord, clusterProxies.filesCounter)), "files")
+  lazy val filesHandler = context.actorOf(Props(new Handler(currentUser.get, fileRecord, clusterProxies.filesCounterProxy)), "files")
 
   def handleRpcFiles: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case rq: RequestStartUpload =>

@@ -8,9 +8,13 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.persist.FileRecord
 import scala.concurrent.duration._
 
-class MessagingServiceActor(val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef, val currentUser: User)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
+class MessagingServiceActor(
+  val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef,
+  val fileRecord: FileRecord, val filesCounterProxy: ActorRef, val currentUser: User
+)(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.{ system, become, dispatcher }
 
   implicit val timeout = Timeout(5.seconds)

@@ -1,6 +1,7 @@
-package com.secretapp.backend.protocol.codecs.message.rpc.user
+package com.secretapp.backend.protocol.codecs.message.rpc
 
 import com.secretapp.backend.protocol.codecs._
+import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.user._
 import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.protocol.codecs.utils.protobuf._

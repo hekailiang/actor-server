@@ -1,18 +1,20 @@
 package com.secretapp.backend.services.rpc.user
 
-import java.nio.file.{Files, Paths}
-import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
+import java.nio.file.{ Files, Paths }
+import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.User
+import com.secretapp.backend.util.AvatarUtils
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
-import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, RequestEditAvatar}
-import com.secretapp.backend.persist.{UserRecord, FileRecord}
+import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
+import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
+import com.secretapp.backend.persist.{ UserRecord, FileRecord }
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
