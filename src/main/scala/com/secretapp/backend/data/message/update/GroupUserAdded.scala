@@ -9,11 +9,11 @@ case class GroupUserAdded(
   userId: Int,
   inviterUserId: Int
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupUserAdded.seqUpdateHeader
+  val header = GroupUserAdded.header
 
   def userIds: Set[Int] = Set(userId)
 }
 
 object GroupUserAdded extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x15
+  val header = 0x15
 }

@@ -15,11 +15,11 @@ case class GroupInvite(
   users: immutable.Seq[UserId],
   invite: EncryptedRSAPackage
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupInvite.seqUpdateHeader
+  val header = GroupInvite.header
 
   def userIds: Set[Int] = Set(users: _*) map (_.uid)
 }
 
 object GroupInvite extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x19
+  val header = 0x19
 }

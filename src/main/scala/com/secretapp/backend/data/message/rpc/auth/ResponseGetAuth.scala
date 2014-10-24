@@ -6,9 +6,9 @@ import scala.collection.immutable
 
 @SerialVersionUID(1L)
 case class ResponseGetAuth(userAuths: immutable.Seq[struct.AuthItem]) extends RpcResponseMessage {
-  val header = ResponseGetAuth.responseType
+  val header = ResponseGetAuth.header
 }
 
 object ResponseGetAuth extends RpcResponseMessageObject {
-  val responseType = 0x51
+  val header = 0x51
 }

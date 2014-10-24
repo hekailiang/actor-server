@@ -21,12 +21,12 @@ object WeakUpdateMessageCodec {
 
   def decode(weakUpdateHeader: Int, buf: BitVector): String \/ WeakUpdateMessage = {
     val tried = Try(weakUpdateHeader match {
-      case UserOnline.weakUpdateHeader => UserOnlineCodec.decode(buf)
-      case UserOffline.weakUpdateHeader => UserOfflineCodec.decode(buf)
-      case UserLastSeen.weakUpdateHeader => UserLastSeenCodec.decode(buf)
-      case GroupOnline.weakUpdateHeader => GroupOnlineCodec.decode(buf)
-      case Typing.weakUpdateHeader => TypingCodec.decode(buf)
-      case TypingGroup.weakUpdateHeader => TypingGroupCodec.decode(buf)
+      case UserOnline.header => UserOnlineCodec.decode(buf)
+      case UserOffline.header => UserOfflineCodec.decode(buf)
+      case UserLastSeen.header => UserLastSeenCodec.decode(buf)
+      case GroupOnline.header => GroupOnlineCodec.decode(buf)
+      case Typing.header => TypingCodec.decode(buf)
+      case TypingGroup.header => TypingGroupCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

@@ -15,9 +15,9 @@ case class RequestSignUp(
   appId: Int,
   appKey: String
 ) extends RpcRequestMessage {
-  val header = RequestSignUp.requestType
+  val header = RequestSignUp.header
 }
 
 object RequestSignUp extends RpcRequestMessageObject {
-  val requestType = 0x04
+  val header = 0x04
 }

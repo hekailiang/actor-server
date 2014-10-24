@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class RequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int) extends RpcRequestMessage {
-  val header = RequestGroupTyping.requestType
+  val header = RequestGroupTyping.header
 }
 
 object RequestGroupTyping extends RpcRequestMessageObject {
-  val requestType = 0x48
+  val header = 0x48
 }

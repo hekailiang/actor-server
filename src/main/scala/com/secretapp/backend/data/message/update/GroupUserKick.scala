@@ -9,11 +9,11 @@ case class GroupUserKick(
   userId: Int,
   kickerUserId: Int
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupUserKick.seqUpdateHeader
+  val header = GroupUserKick.header
 
   def userIds: Set[Int] = Set(userId)
 }
 
 object GroupUserKick extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x18
+  val header = 0x18
 }

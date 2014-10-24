@@ -18,20 +18,20 @@ trait JsonFormats {
 
   implicit object rpcRequestFormat extends Format[RpcRequest] {
     override def writes(o: RpcRequest): JsValue = Json.obj(
-      "header"  -> o.rpcType,
+      "header"  -> o.header,
       "body"    -> requestFormat.writes(o.asInstanceOf[Request])
     )
 
     override def reads(json: JsValue): JsResult[RpcRequest] = Json.fromJson[MessageWithHeader](json) flatMap {
-      case MessageWithHeader(rpcType, body) => rpcType match {
-        case Request.rpcType         => requestFormat.reads(body)
+      case MessageWithHeader(header, body) => header match {
+        case Request.header         => requestFormat.reads(body)
       }
     }
   }
 
   implicit object rpcResponseFormat extends Format[RpcResponse] {
     override def writes(o: RpcResponse): JsValue = Json.obj(
-      "header" -> o.rpcType,
+      "header" -> o.header,
       "body"   -> (o match {
         case e: ConnectionNotInitedError => connectionNotInitedErrorFormat.writes(e)
         case e: Error                    => errorFormat.writes(e)
@@ -42,12 +42,12 @@ trait JsonFormats {
     )
 
     override def reads(json: JsValue): JsResult[RpcResponse] = Json.fromJson[MessageWithHeader](json) flatMap {
-      case MessageWithHeader(rpcType, body) => rpcType match {
-        case ConnectionNotInitedError.rpcType => connectionNotInitedErrorFormat.reads(body)
-        case Error.rpcType                    => errorFormat.reads(body)
-        case FloodWait.rpcType                => floodWaitFormat.reads(body)
-        case InternalError.rpcType            => internalErrorFormat.reads(body)
-        case Ok.rpcType                       => okFormat.reads(body)
+      case MessageWithHeader(header, body) => header match {
+        case ConnectionNotInitedError.header => connectionNotInitedErrorFormat.reads(body)
+        case Error.header                    => errorFormat.reads(body)
+        case FloodWait.header                => floodWaitFormat.reads(body)
+        case InternalError.header            => internalErrorFormat.reads(body)
+        case Ok.header                       => okFormat.reads(body)
       }
     }
   }
@@ -86,31 +86,31 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[RpcRequestMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body) => header match {
-        case RequestAuthCode.requestType           => requestAuthCodeFormat.reads(body)
-        case RequestGetAuth.requestType            => requestGetAuthFormat.reads(body)
-        case RequestRemoveAuth.requestType         => requestRemoveAuthFormat.reads(body)
-        case RequestRemoveAllOtherAuths.requestType=> requestRemoveAllOtherAuthsFormat.reads(body)
-        case RequestLogout.requestType             => requestLogoutFormat.reads(body)
-        case RequestCompleteUpload.requestType     => requestCompleteUploadFormat.reads(body)
-        case RequestGetDifference.requestType      => requestGetDifferenceFormat.reads(body)
-        case RequestGetFile.requestType            => requestGetFileFormat.reads(body)
-        case RequestGetState.requestType           => requestGetStateFormat.reads(body)
-        case RequestImportContacts.requestType     => requestImportContactsFormat.reads(body)
-        case RequestMessageRead.requestType        => requestMessageReadFormat.reads(body)
-        case RequestMessageReceived.requestType    => requestMessageReceivedFormat.reads(body)
-        case RequestSendGroupMessage.requestType   => requestSendGroupMessageFormat.reads(body)
-        case RequestPublicKeys.requestType         => requestPublicKeysFormat.reads(body)
-        case RequestRegisterGooglePush.requestType => requestRegisterGooglePushFormat.reads(body)
-        case RequestSendMessage.requestType        => requestSendMessageFormat.reads(body)
-        case RequestEditAvatar.requestType         => requestSetAvatarFormat.reads(body)
-        case RequestSetOnline.requestType          => requestSetOnlineFormat.reads(body)
-        case RequestSignIn.requestType             => requestSignInFormat.reads(body)
-        case RequestSignUp.requestType             => requestSignUpFormat.reads(body)
-        case RequestStartUpload.requestType        => requestStartUploadFormat.reads(body)
-        case RequestUnregisterPush.requestType     => requestUnregisterPushFormat.reads(body)
-        case RequestUploadPart.requestType         => requestUploadPartFormat.reads(body)
-        case SubscribeToOnline.requestType         => subscribeForOnlineFormat.reads(body)
-        case UnsubscribeFromOnline.requestType     => unsubscribeForOnlineFormat.reads(body)
+        case RequestAuthCode.header           => requestAuthCodeFormat.reads(body)
+ 		case RequestGetAuth.header            => requestGetAuthFormat.reads(body)
+        case RequestRemoveAuth.header         => requestRemoveAuthFormat.reads(body)
+        case RequestRemoveAllOtherAuths.header => requestRemoveAllOtherAuthsFormat.reads(body)
+        case RequestLogout.header             => requestLogoutFormat.reads(body)
+        case RequestCompleteUpload.header     => requestCompleteUploadFormat.reads(body)
+        case RequestGetDifference.header      => requestGetDifferenceFormat.reads(body)
+        case RequestGetFile.header            => requestGetFileFormat.reads(body)
+        case RequestGetState.header           => requestGetStateFormat.reads(body)
+        case RequestImportContacts.header     => requestImportContactsFormat.reads(body)
+        case RequestMessageRead.header        => requestMessageReadFormat.reads(body)
+        case RequestMessageReceived.header    => requestMessageReceivedFormat.reads(body)
+        case RequestSendGroupMessage.header   => requestSendGroupMessageFormat.reads(body)
+        case RequestPublicKeys.header         => requestPublicKeysFormat.reads(body)
+        case RequestRegisterGooglePush.header => requestRegisterGooglePushFormat.reads(body)
+        case RequestSendMessage.header        => requestSendMessageFormat.reads(body)
+        case RequestEditAvatar.header         => requestSetAvatarFormat.reads(body)
+        case RequestSetOnline.header          => requestSetOnlineFormat.reads(body)
+        case RequestSignIn.header             => requestSignInFormat.reads(body)
+        case RequestSignUp.header             => requestSignUpFormat.reads(body)
+        case RequestStartUpload.header        => requestStartUploadFormat.reads(body)
+        case RequestUnregisterPush.header     => requestUnregisterPushFormat.reads(body)
+        case RequestUploadPart.header         => requestUploadPartFormat.reads(body)
+        case SubscribeToOnline.header         => subscribeForOnlineFormat.reads(body)
+        case UnsubscribeFromOnline.header     => unsubscribeForOnlineFormat.reads(body)
       }
     }
   }
@@ -135,17 +135,17 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[RpcResponseMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body)         => header match {
-        case ResponseVoid.responseType             => responseVoidFormat.reads(body)
-        case ResponseAuth.responseType             => responseAuthFormat.reads(body)
-        case ResponseGetAuth.responseType          => responseGetAuthFormat.reads(body)
-        case ResponseAuthCode.responseType         => responseAuthCodeFormat.reads(body)
-        case ResponseImportedContacts.responseType => responseImportedContactsFormat.reads(body)
-        case ResponsePublicKeys.responseType       => responsePublicKeysFormat.reads(body)
-        case ResponseFilePart.responseType         => responseFilePartFormat.reads(body)
-        case ResponseUploadCompleted.responseType  => responseUploadCompletedFormat.reads(body)
-        case ResponseUploadStarted.responseType    => responseUploadStartedFormat.reads(body)
-        case ResponseSeq.responseType              => responseSeqFormat.reads(body)
-        case ResponseAvatarChanged.responseType    => responseAvatarChanged.reads(body)
+        case ResponseVoid.header             => responseVoidFormat.reads(body)
+        case ResponseAuth.header             => responseAuthFormat.reads(body)
+        case ResponseGetAuth.header          => responseGetAuthFormat.reads(body)
+        case ResponseAuthCode.header         => responseAuthCodeFormat.reads(body)
+        case ResponseImportedContacts.header => responseImportedContactsFormat.reads(body)
+        case ResponsePublicKeys.header       => responsePublicKeysFormat.reads(body)
+        case ResponseFilePart.header         => responseFilePartFormat.reads(body)
+        case ResponseUploadCompleted.header  => responseUploadCompletedFormat.reads(body)
+        case ResponseUploadStarted.header    => responseUploadStartedFormat.reads(body)
+        case ResponseSeq.header              => responseSeqFormat.reads(body)
+        case ResponseAvatarChanged.header    => responseAvatarChanged.reads(body)
       }
     }
   }

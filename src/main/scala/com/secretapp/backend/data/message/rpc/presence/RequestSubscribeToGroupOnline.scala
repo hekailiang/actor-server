@@ -5,9 +5,9 @@ import com.secretapp.backend.data.message.struct.GroupId
 import scala.collection.immutable
 
 case class SubscribeToGroupOnline(groupIds: immutable.Seq[GroupId]) extends RpcRequestMessage {
-  val header = SubscribeToGroupOnline.requestType
+  val header = SubscribeToGroupOnline.header
 }
 
 object SubscribeToGroupOnline extends RpcRequestMessageObject {
-  val requestType = 0x4A
+  val header = 0x4A
 }

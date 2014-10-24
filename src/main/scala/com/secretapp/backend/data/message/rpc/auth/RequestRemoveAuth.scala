@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{ RpcRequestMessage, RpcRequestMes
 
 @SerialVersionUID(1L)
 case class RequestRemoveAuth(id: Int) extends RpcRequestMessage {
-  val header = RequestRemoveAuth.requestType
+  val header = RequestRemoveAuth.header
 }
 
 object RequestRemoveAuth extends RpcRequestMessageObject {
-  val requestType = 0x52
+  val header = 0x52
 }

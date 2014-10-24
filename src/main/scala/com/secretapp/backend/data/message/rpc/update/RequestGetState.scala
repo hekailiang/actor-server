@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class RequestGetState() extends RpcRequestMessage {
-  val header = RequestGetState.requestType
+  val header = RequestGetState.header
 }
 
 object RequestGetState extends RpcRequestMessageObject {
-  val requestType = 0x09
+  val header = 0x09
 }

@@ -5,9 +5,9 @@ import java.util.UUID
 
 @SerialVersionUID(1L)
 case class ResponseSeq(seq: Int, state: Option[UUID]) extends RpcResponseMessage {
-  val header = ResponseSeq.responseType
+  val header = ResponseSeq.header
 }
 
 object ResponseSeq extends RpcResponseMessageObject {
-  val responseType = 0x48
+  val header = 0x48
 }

@@ -8,11 +8,11 @@ case class GroupUserLeave(
   groupId: Int,
   userId: Int
 ) extends SeqUpdateMessage {
-  val seqUpdateHeader = GroupUserLeave.seqUpdateHeader
+  val header = GroupUserLeave.header
 
   def userIds: Set[Int] = Set(userId)
 }
 
 object GroupUserLeave extends SeqUpdateMessageObject {
-  val seqUpdateHeader = 0x17
+  val header = 0x17
 }

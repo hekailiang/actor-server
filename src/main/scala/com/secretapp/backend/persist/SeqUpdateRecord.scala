@@ -53,41 +53,41 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
     }
 
     header(row) match {
-      case updateProto.Message.seqUpdateHeader =>
+      case updateProto.Message.header =>
         decode(row, MessageCodec)
-      case updateProto.NewDevice.seqUpdateHeader =>
+      case updateProto.NewDevice.header =>
         decode(row, NewDeviceCodec)
-      case updateProto.NewFullDevice.seqUpdateHeader =>
+      case updateProto.NewFullDevice.header =>
         decode(row, NewFullDeviceCodec)
-      case updateProto.RemoveDevice.seqUpdateHeader =>
+      case updateProto.RemoveDevice.header =>
         decode(row, RemoveDeviceCodec)
-      case updateProto.MessageSent.seqUpdateHeader =>
+      case updateProto.MessageSent.header =>
         decode(row, MessageSentCodec)
-      case updateProto.AvatarChanged.seqUpdateHeader =>
+      case updateProto.AvatarChanged.header =>
         decode(row, AvatarChangedCodec)
-      case updateProto.NameChanged.seqUpdateHeader =>
+      case updateProto.NameChanged.header =>
         decode(row, NameChangedCodec)
-      case updateProto.ContactRegistered.seqUpdateHeader =>
+      case updateProto.ContactRegistered.header =>
         decode(row, ContactRegisteredCodec)
-      case updateProto.MessageReceived.seqUpdateHeader =>
+      case updateProto.MessageReceived.header =>
         decode(row, MessageReceivedCodec)
-      case updateProto.MessageRead.seqUpdateHeader =>
+      case updateProto.MessageRead.header =>
         decode(row, MessageReadCodec)
-      case updateProto.GroupInvite.seqUpdateHeader =>
+      case updateProto.GroupInvite.header =>
         decode(row, GroupInviteCodec)
-      case updateProto.GroupMessage.seqUpdateHeader =>
+      case updateProto.GroupMessage.header =>
         decode(row, GroupMessageCodec)
-      case updateProto.GroupUserAdded.seqUpdateHeader =>
+      case updateProto.GroupUserAdded.header =>
         decode(row, GroupUserAddedCodec)
-      case updateProto.GroupUserLeave.seqUpdateHeader =>
+      case updateProto.GroupUserLeave.header =>
         decode(row, GroupUserLeaveCodec)
-      case updateProto.GroupUserKick.seqUpdateHeader =>
+      case updateProto.GroupUserKick.header =>
         decode(row, GroupUserKickCodec)
-      case updateProto.GroupCreated.seqUpdateHeader =>
+      case updateProto.GroupCreated.header =>
         decode(row, GroupCreatedCodec)
-      case updateProto.GroupTitleChanged.seqUpdateHeader =>
+      case updateProto.GroupTitleChanged.header =>
         decode(row, GroupTitleChangedCodec)
-      case updateProto.GroupAvatarChanged.seqUpdateHeader =>
+      case updateProto.GroupAvatarChanged.header =>
         decode(row, GroupAvatarChangedCodec)
     }
 
@@ -169,58 +169,58 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       // TODO: DRY
       case u: updateProto.Message =>
         val body = MessageCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.Message.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.Message.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.MessageSent =>
         val body = MessageSentCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageSent.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageSent.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.NewDevice =>
         val body = NewDeviceCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewDevice.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.NewFullDevice =>
         val body = NewFullDeviceCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewFullDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NewFullDevice.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.RemoveDevice =>
         val body = RemoveDeviceCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.RemoveDevice.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.RemoveDevice.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.AvatarChanged =>
         val body = AvatarChangedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.AvatarChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.AvatarChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.NameChanged =>
         val body = NameChangedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NameChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NameChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.ContactRegistered =>
         val body = ContactRegisteredCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.ContactRegistered.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.ContactRegistered.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.MessageReceived =>
         val body = MessageReceivedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageReceived.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageReceived.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.MessageRead =>
         val body = MessageReadCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageRead.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageRead.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupInvite =>
         val body = GroupInviteCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupInvite.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupInvite.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupMessage =>
         val body = GroupMessageCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupMessage.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupMessage.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupUserAdded =>
         val body = GroupUserAddedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserAdded.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserAdded.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupUserLeave =>
         val body = GroupUserLeaveCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserLeave.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserLeave.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupUserKick =>
         val body = GroupUserKickCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserKick.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupUserKick.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupCreated =>
         val body = GroupCreatedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupCreated.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupCreated.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupTitleChanged =>
         val body = GroupTitleChangedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupTitleChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupTitleChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.GroupAvatarChanged =>
         val body = GroupAvatarChangedCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupAvatarChanged.seqUpdateHeader).value(_.protobufBody, body.toOption.get.toByteBuffer)
+        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupAvatarChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

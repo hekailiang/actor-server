@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{RpcRequestMessageObject, RpcReque
 
 @SerialVersionUID(1L)
 case class RequestUnregisterPush() extends RpcRequestMessage {
-  val header = RequestUnregisterPush.requestType
+  val header = RequestUnregisterPush.header
 }
 
 object RequestUnregisterPush extends RpcRequestMessageObject {
-  val requestType = 0x34
+  val header = 0x34
 }

@@ -19,8 +19,8 @@ class JsonFormatsSpec extends JsonSpec {
       val (userId, userIdJson) = genUserId
       val v = RpcRequestBox(Request(UnsubscribeFromOnline(immutable.Seq(userId))))
       val j = Json.obj(
-        "body" -> withHeader(Request.rpcType)(
-          "body" -> withHeader(UnsubscribeFromOnline.requestType)(
+        "body" -> withHeader(Request.header)(
+          "body" -> withHeader(UnsubscribeFromOnline.header)(
             "users" -> Json.arr(userIdJson)
           )
         )
@@ -33,7 +33,7 @@ class JsonFormatsSpec extends JsonSpec {
       val v = RpcResponseBox(1, ConnectionNotInitedError())
       val j = Json.obj(
         "messageId" -> "1",
-        "body" -> withHeader(ConnectionNotInitedError.rpcType)()
+        "body" -> withHeader(ConnectionNotInitedError.header)()
       )
       testToAndFromJson(j, v)
     }
@@ -45,7 +45,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize UpdateBox" in {
       val v = UpdateBox(SeqUpdateTooLong())
       val j = withHeader(UpdateBox.header)(
-        "body" -> withHeader(SeqUpdateTooLong.updateHeader)()
+        "body" -> withHeader(SeqUpdateTooLong.header)()
       )
       testToAndFromJson[TransportMessage](j, v)
     }

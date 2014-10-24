@@ -8,7 +8,7 @@ import scalabuff.ScalaBuffPlugin._
 //import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
 
 object BackendBuild extends Build {
-  val Organization = "secretapp"
+  val Organization = "Actor IM"
   val Version = "0.1-SNAPSHOT"
   val ScalaVersion = "2.10.4"
 
@@ -45,8 +45,8 @@ object BackendBuild extends Build {
     version := Version,
     scalaVersion := ScalaVersion,
     crossPaths := false,
-    organizationName := "Secret LLC.",
-    organizationHomepage := Some(url("https://secretapp.io"))
+    organizationName := Organization,
+    organizationHomepage := Some(url("https://actor.im"))
   )
 
   lazy val defaultSettings = buildSettings ++ scalabuffSettings ++ Seq(
@@ -63,4 +63,22 @@ object BackendBuild extends Build {
     parallelExecution in Test := false,
     fork in Test := true
   )
+
+  lazy val export2JS = Project(
+    "export2js",
+    file("projects/export2js"),
+    settings = Revolver.settings ++ Seq(
+      libraryDependencies ++= rootDependencies,
+      resolvers ++= Resolvers.seq
+    )
+  ).dependsOn(root, export2JSMacros)
+
+  lazy val export2JSMacros = Project(
+    "export2JSMacros",
+    file("projects/export2js/macros"),
+    settings = Revolver.settings ++ Seq(
+      libraryDependencies ++= rootDependencies,
+      resolvers ++= Resolvers.seq
+    )
+  ).dependsOn(root)
 }

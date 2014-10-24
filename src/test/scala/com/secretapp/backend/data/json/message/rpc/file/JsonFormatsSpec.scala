@@ -31,7 +31,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestCompleteUpload" in {
       val (uploadConfig, uploadConfigJson) = genUploadConfig
       val v = RequestCompleteUpload(uploadConfig, 1, 2)
-      val j = withHeader(RequestCompleteUpload.requestType)(
+      val j = withHeader(RequestCompleteUpload.header)(
         "config" -> uploadConfigJson,
         "blockCount" -> 1,
         "crc32" -> "2"
@@ -42,7 +42,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestGetFile" in {
       val (fileLocation, fileLocationJson) = genFileLocation
       val v = RequestGetFile(fileLocation, 1, 2)
-      val j = withHeader(RequestGetFile.requestType)(
+      val j = withHeader(RequestGetFile.header)(
         "fileLocation" -> fileLocationJson,
         "offset" -> 1,
         "limit" -> 2
@@ -52,7 +52,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestStartUpload" in {
       val v = RequestStartUpload()
-      val j = withHeader(RequestStartUpload.requestType)()
+      val j = withHeader(RequestStartUpload.header)()
       testToAndFromJson[RpcRequestMessage](j, v)
     }
 
@@ -60,7 +60,7 @@ class JsonFormatsSpec extends JsonSpec {
       val (uploadConfig, uploadConfigJson) = genUploadConfig
       val (bitVector, bitVectorJson) = genBitVector
       val v = RequestUploadPart(uploadConfig, 1, bitVector)
-      val j = withHeader(RequestUploadPart.requestType)(
+      val j = withHeader(RequestUploadPart.header)(
         "config" -> uploadConfigJson,
         "offset" -> 1,
         "data" -> bitVectorJson
@@ -75,7 +75,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseFilePart" in {
       val (data, dataJson) = genBitVector
       val v = ResponseFilePart(data)
-      val j = withHeader(ResponseFilePart.responseType)(
+      val j = withHeader(ResponseFilePart.header)(
         "data" -> dataJson
       )
       testToAndFromJson[RpcResponseMessage](j, v)
@@ -84,7 +84,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseUploadCompleted" in {
       val (fileLocation, fileLocationJson) = genFileLocation
       val v = ResponseUploadCompleted(fileLocation)
-      val j = withHeader(ResponseUploadCompleted.responseType)(
+      val j = withHeader(ResponseUploadCompleted.header)(
         "location" -> fileLocationJson
       )
       testToAndFromJson[RpcResponseMessage](j, v)
@@ -93,7 +93,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseUploadStarted" in {
       val (uploadConfig, uploadConfigJson) = genUploadConfig
       val v = ResponseUploadStarted(uploadConfig)
-      val j = withHeader(ResponseUploadStarted.responseType)(
+      val j = withHeader(ResponseUploadStarted.header)(
         "config" -> uploadConfigJson
       )
       testToAndFromJson[RpcResponseMessage](j, v)

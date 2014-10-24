@@ -13,7 +13,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize RequestAuthCode" in {
       val v = RequestAuthCode(1, 2, "apiKey")
-      val j = withHeader(RequestAuthCode.requestType)(
+      val j = withHeader(RequestAuthCode.header)(
         "phoneNumber" -> "1",
         "appId" -> 2,
         "apiKey" -> "apiKey"
@@ -24,7 +24,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestSignIn" in {
       val (bitVector, bitVectorJson) = genBitVector
       val v = RequestSignIn(1, "smsHash", "smsCode", bitVector, bitVector, "app", 0, "key")
-      val j = withHeader(RequestSignIn.requestType)(
+      val j = withHeader(RequestSignIn.header)(
         "phoneNumber" -> "1",
         "smsHash" -> "smsHash",
         "smsCode" -> "smsCode",
@@ -41,7 +41,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestSignUp" in {
       val (bitVector, bitVectorJson) = genBitVector
       val v = RequestSignUp(1, "smsHash", "smsCode", "name", bitVector, bitVector, "app", 0, "key")
-      val j = withHeader(RequestSignUp.requestType)(
+      val j = withHeader(RequestSignUp.header)(
         "phoneNumber" -> "1",
         "smsHash" -> "smsHash",
         "smsCode" -> "smsCode",
@@ -62,7 +62,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseAuth" in {
       val (user, userJson) = genUser
       val v = ResponseAuth(1, user)
-      val j = withHeader(ResponseAuth.responseType)(
+      val j = withHeader(ResponseAuth.header)(
         "publicKeyHash" -> "1",
         "user" -> userJson
       )
@@ -71,7 +71,7 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize ResponseAuthCode" in {
       val v = ResponseAuthCode("smsHash", true)
-      val j = withHeader(ResponseAuthCode.responseType)(
+      val j = withHeader(ResponseAuthCode.header)(
         "smsHash" -> "smsHash",
         "isRegistered" -> true
       )

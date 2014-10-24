@@ -10,10 +10,10 @@ case class RequestSendGroupMessage(
   randomId: Long,
   message: EncryptedAESMessage
 ) extends RpcRequestMessage {
-  val header = RequestSendGroupMessage.requestType
+  val header = RequestSendGroupMessage.header
 }
 
 
 object RequestSendGroupMessage extends RpcRequestMessageObject {
-  val requestType = 0x43
+  val header = 0x43
 }

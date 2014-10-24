@@ -14,7 +14,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize RequestEditAvatar" in {
       val (fileLocation, fileLocationJson) = genFileLocation
       val v = RequestEditAvatar(fileLocation)
-      val j = withHeader(RequestEditAvatar.requestType)(
+      val j = withHeader(RequestEditAvatar.header)(
         "fileLocation" -> fileLocationJson
       )
       testToAndFromJson[RpcRequestMessage](j, v)
@@ -27,7 +27,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ResponseAvatarChanged" in {
       val (avatar, avatarJson) = genAvatar
       val v = ResponseAvatarChanged(avatar)
-      val j = withHeader(ResponseAvatarChanged.responseType)(
+      val j = withHeader(ResponseAvatarChanged.header)(
         "avatar" -> avatarJson
       )
       testToAndFromJson[RpcResponseMessage](j, v)

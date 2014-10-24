@@ -12,7 +12,7 @@ trait JsonFormats {
 
   implicit object updateMessageFormat extends Format[UpdateMessage] {
     override def writes(o: UpdateMessage): JsValue = Json.obj(
-      "header" -> o.updateHeader,
+      "header" -> o.header,
       "body"   -> (o match {
         case u: SeqUpdate        => seqUpdateFormat.writes(u)
         case u: SeqUpdateTooLong => seqUpdateTooLongFormat.writes(u)
@@ -23,17 +23,17 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[UpdateMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body) => header match {
-        case SeqUpdate.updateHeader        => seqUpdateFormat.reads(body)
-        case SeqUpdateTooLong.updateHeader => seqUpdateTooLongFormat.reads(body)
-        case WeakUpdate.updateHeader       => weakUpdateFormat.reads(body)
-        case FatSeqUpdate.updateHeader     => fatSeqUpdate.reads(body)
+        case SeqUpdate.header        => seqUpdateFormat.reads(body)
+        case SeqUpdateTooLong.header => seqUpdateTooLongFormat.reads(body)
+        case WeakUpdate.header       => weakUpdateFormat.reads(body)
+        case FatSeqUpdate.header     => fatSeqUpdate.reads(body)
       }
     }
   }
 
   implicit object seqUpdateMessageFormat extends Format[SeqUpdateMessage] {
     override def writes(o: SeqUpdateMessage): JsValue = Json.obj(
-      "header" -> o.seqUpdateHeader,
+      "header" -> o.header,
       "body"   -> (o match {
         case u: AvatarChanged     => avatarChangedFormat.writes(u)
         case u: ContactRegistered => contactRegisteredFormat.writes(u)
@@ -49,22 +49,22 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[SeqUpdateMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body) => header match {
-        case AvatarChanged.seqUpdateHeader     => avatarChangedFormat.reads(body)
-        case ContactRegistered.seqUpdateHeader => contactRegisteredFormat.reads(body)
-        case Message.seqUpdateHeader           => messageFormat.reads(body)
-        case MessageRead.seqUpdateHeader       => messageReadFormat.reads(body)
-        case MessageReceived.seqUpdateHeader   => messageReceivedFormat.reads(body)
-        case MessageSent.seqUpdateHeader       => messageSentFormat.reads(body)
-        case NewDevice.seqUpdateHeader         => newDeviceFormat.reads(body)
-        case NewFullDevice.seqUpdateHeader     => newFullDeviceFormat.reads(body)
-        case RemoveDevice.seqUpdateHeader      => removeDeviceFormat.reads(body)
+        case AvatarChanged.header     => avatarChangedFormat.reads(body)
+        case ContactRegistered.header => contactRegisteredFormat.reads(body)
+        case Message.header           => messageFormat.reads(body)
+        case MessageRead.header       => messageReadFormat.reads(body)
+        case MessageReceived.header   => messageReceivedFormat.reads(body)
+        case MessageSent.header       => messageSentFormat.reads(body)
+        case NewDevice.header         => newDeviceFormat.reads(body)
+        case NewFullDevice.header     => newFullDeviceFormat.reads(body)
+        case RemoveDevice.header      => removeDeviceFormat.reads(body)
       }
     }
   }
 
   implicit object weakUpdateMessageFormat extends Format[WeakUpdateMessage] {
     override def writes(o: WeakUpdateMessage): JsValue = Json.obj(
-      "header" -> o.weakUpdateHeader,
+      "header" -> o.header,
       "body"   -> (o match {
         case u: UserLastSeen => userLastSeenFormat.writes(u)
         case u: UserOffline  => userOfflineFormat.writes(u)
@@ -74,9 +74,9 @@ trait JsonFormats {
 
     override def reads(json: JsValue): JsResult[WeakUpdateMessage] = Json.fromJson[MessageWithHeader](json) flatMap {
       case MessageWithHeader(header, body) => header match {
-        case UserLastSeen.weakUpdateHeader => userLastSeenFormat.reads(body)
-        case UserOffline.weakUpdateHeader  => userOfflineFormat.reads(body)
-        case UserOnline.weakUpdateHeader  => userOnlineFormat.reads(body)
+        case UserLastSeen.header => userLastSeenFormat.reads(body)
+        case UserOffline.header  => userOfflineFormat.reads(body)
+        case UserOnline.header  => userOnlineFormat.reads(body)
       }
     }
   }

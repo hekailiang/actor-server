@@ -5,9 +5,9 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class ResponseFilePart(data: BitVector) extends RpcResponseMessage {
-  val header = ResponseFilePart.responseType
+  val header = ResponseFilePart.header
 }
 
 object ResponseFilePart extends RpcResponseMessageObject {
-  val responseType = 0x11
+  val header = 0x11
 }

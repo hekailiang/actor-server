@@ -14,9 +14,9 @@ case class RequestSignIn(
   appId: Int,
   appKey: String
 ) extends RpcRequestMessage {
-  val header = RequestSignIn.requestType
+  val header = RequestSignIn.header
 }
 
 object RequestSignIn extends RpcRequestMessageObject {
-  val requestType = 0x03
+  val header = 0x03
 }

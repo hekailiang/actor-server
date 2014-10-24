@@ -32,7 +32,7 @@ class JsonFormatsSpec extends JsonSpec {
 //    "(de)serialize RequestSendMessage" in {
 //      val (encryptedMessage1, encryptedMessage1Json) = genEncryptedMessage
 //      val v = RequestSendMessage(1, 2, 3, encryptedMessage1)
-//      val j = withHeader(RequestSendMessage.requestType)(
+//      val j = withHeader(RequestSendMessage.header)(
 //        "uid" -> 1,
 //        "accessHash" -> "2",
 //        "randomId" -> "3",
@@ -43,7 +43,7 @@ class JsonFormatsSpec extends JsonSpec {
 //
 //    "(de)serialize RequestMessageRead" in {
 //      val v = RequestMessageRead(1, 2, 3)
-//      val j = withHeader(RequestMessageRead.requestType)(
+//      val j = withHeader(RequestMessageRead.header)(
 //        "uid" -> 1,
 //        "randomId" -> "2",
 //        "accessHash" -> "3"
@@ -53,7 +53,7 @@ class JsonFormatsSpec extends JsonSpec {
 //
 //    "(de)serialize RequestMessageReceived" in {
 //      val v = RequestMessageReceived(1, 2, 3)
-//      val j = withHeader(RequestMessageReceived.requestType)(
+//      val j = withHeader(RequestMessageReceived.header)(
 //        "uid" -> 1,
 //        "randomId" -> "2",
 //        "accessHash" -> "3"
@@ -65,7 +65,7 @@ class JsonFormatsSpec extends JsonSpec {
 //      val keyHash = hex"ac1d".bits
 //      val message = hex"123456abcdf".bits
 //      val v = RequestSendGroupMessage(1, 2, 3, keyHash, message)
-//      val j = withHeader(RequestSendGroupMessage.requestType)(
+//      val j = withHeader(RequestSendGroupMessage.header)(
 //        "chatId" -> 1,
 //        "accessHash" -> "2",
 //        "randomId" -> "3",

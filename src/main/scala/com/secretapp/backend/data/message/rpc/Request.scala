@@ -2,9 +2,9 @@ package com.secretapp.backend.data.message.rpc
 
 @SerialVersionUID(1L)
 case class Request(body: RpcRequestMessage) extends RpcRequest {
-  val rpcType = Request.rpcType
+  val header = Request.header
 }
 
 object Request extends RpcRequestObject {
-  val rpcType = 0x01
+  val header = 0x01
 }

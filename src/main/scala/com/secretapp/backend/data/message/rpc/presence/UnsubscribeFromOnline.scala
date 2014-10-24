@@ -6,9 +6,9 @@ import scala.collection.immutable
 
 @SerialVersionUID(1L)
 case class UnsubscribeFromOnline(users: immutable.Seq[UserId]) extends RpcRequestMessage {
-  val header = UnsubscribeFromOnline.requestType
+  val header = UnsubscribeFromOnline.header
 }
 
 object UnsubscribeFromOnline extends RpcRequestMessageObject {
-  val requestType = 0x21
+  val header = 0x21
 }

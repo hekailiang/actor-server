@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class RequestMessageRead(uid: Int, randomId: Long, accessHash: Long) extends RpcRequestMessage {
-  val header = RequestMessageRead.requestType
+  val header = RequestMessageRead.header
 }
 
 object RequestMessageRead extends RpcRequestMessageObject {
-  val requestType = 0x39
+  val header = 0x39
 }

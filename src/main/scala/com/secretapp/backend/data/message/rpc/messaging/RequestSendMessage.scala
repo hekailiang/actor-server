@@ -7,9 +7,9 @@ case class RequestSendMessage(uid: Int,
                               accessHash: Long,
                               randomId: Long,
                               message: EncryptedRSAMessage) extends RpcRequestMessage {
-  val header = RequestSendMessage.requestType
+  val header = RequestSendMessage.header
 }
 
 object RequestSendMessage extends RpcRequestMessageObject {
-  val requestType = 0x0E
+  val header = 0x0E
 }

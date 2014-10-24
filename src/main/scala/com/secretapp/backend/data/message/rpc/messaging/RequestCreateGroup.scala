@@ -12,9 +12,9 @@ case class RequestCreateGroup(
   publicKey: BitVector,
   broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
-  val header = RequestCreateGroup.requestType
+  val header = RequestCreateGroup.header
 }
 
 object RequestCreateGroup extends RpcRequestMessageObject {
-  val requestType = 0x41
+  val header = 0x41
 }

@@ -5,9 +5,9 @@ import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
 case class ResponseAuth(publicKeyHash: Long, user: struct.User) extends RpcResponseMessage {
-  val header = ResponseAuth.responseType
+  val header = ResponseAuth.header
 }
 
 object ResponseAuth extends RpcResponseMessageObject {
-  val responseType = 0x05
+  val header = 0x05
 }

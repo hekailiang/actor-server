@@ -2,9 +2,9 @@ package com.secretapp.backend.data.message.rpc
 
 @SerialVersionUID(1L)
 case class FloodWait(delay: Int) extends RpcResponse {
-  val rpcType = FloodWait.rpcType
+  val header = FloodWait.header
 }
 
 object FloodWait extends RpcResponseObject {
-  val rpcType = 0x03
+  val header = 0x03
 }

@@ -4,9 +4,9 @@ import com.secretapp.backend.data.message.rpc.{ RpcRequestMessage, RpcRequestMes
 
 @SerialVersionUID(1L)
 case class RequestLogout() extends RpcRequestMessage {
-  val header = RequestLogout.requestType
+  val header = RequestLogout.header
 }
 
 object RequestLogout extends RpcRequestMessageObject {
-  val requestType = 0x54
+  val header = 0x54
 }

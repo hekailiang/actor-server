@@ -9,9 +9,9 @@ case class RequestLeaveGroup(
   groupId: Int,
   accessHash: Long
 ) extends RpcRequestMessage {
-  val header = RequestLeaveGroup.requestType
+  val header = RequestLeaveGroup.header
 }
 
 object RequestLeaveGroup extends RpcRequestMessageObject {
-  val requestType = 0x46
+  val header = 0x46
 }

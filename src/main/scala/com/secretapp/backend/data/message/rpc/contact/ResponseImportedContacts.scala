@@ -7,9 +7,9 @@ import com.secretapp.backend.data.message.struct
 @SerialVersionUID(1L)
 case class ResponseImportedContacts(users: immutable.Seq[struct.User],
                                     contacts: immutable.Seq[ImportedContact]) extends RpcResponseMessage {
-  val header = ResponseImportedContacts.responseType
+  val header = ResponseImportedContacts.header
 }
 
 object ResponseImportedContacts extends RpcResponseMessageObject {
-  val responseType = 0x08
+  val header = 0x08
 }

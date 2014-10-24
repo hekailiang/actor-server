@@ -8,9 +8,9 @@ import scodec.bits._
 case class ResponseCreateGroup(
   groupId: Int, accessHash: Long, seq: Int, state: Option[UUID]
 ) extends RpcResponseMessage {
-  val header = ResponseCreateGroup.responseType
+  val header = ResponseCreateGroup.header
 }
 
 object ResponseCreateGroup extends RpcResponseMessageObject {
-  val responseType = 0x42
+  val header = 0x42
 }
