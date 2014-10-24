@@ -7,7 +7,7 @@ import scodec.bits.BitVector
 
 case class GroupMessage(
   senderUID: Int,
-  chatId: Int,
+  groupId: Int,
   message: EncryptedAESPackage
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupMessage.seqUpdateHeader

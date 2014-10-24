@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.message.rpc.user
+package com.secretapp.backend.data.message.rpc
 
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct.Avatar

@@ -5,12 +5,13 @@ import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import scala.collection.immutable
 import scodec.bits.BitVector
 
-@SerialVersionUID(1L)
+@SerialVersionUID(2L)
 case class GroupCreated(
-  chatId: Int,
+  groupId: Int,
   accessHash: Long,
   title: String,
-  invite: EncryptedRSAPackage
+  invite: EncryptedRSAPackage,
+  users: immutable.Seq[UserId]
 ) extends SeqUpdateMessage {
   val seqUpdateHeader = GroupCreated.seqUpdateHeader
 

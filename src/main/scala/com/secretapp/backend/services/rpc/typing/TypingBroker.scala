@@ -6,7 +6,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.persist.GroupChatUserRecord
+import com.secretapp.backend.persist.GroupUserRecord
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -57,7 +57,7 @@ object TypingBroker {
 
   private val idExtractor: ShardRegion.IdExtractor = {
     case Envelope(userId, msg) => (s"u${userId}", msg)
-    case GroupEnvelope(chatId, msg) => (s"g${chatId}", msg)
+    case GroupEnvelope(groupId, msg) => (s"g${groupId}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -65,7 +65,7 @@ object TypingBroker {
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
     case Envelope(userId, msg) => (userId % shardCount).toString
-    case GroupEnvelope(chatId, msg) => (chatId % shardCount).toString
+    case GroupEnvelope(groupId, msg) => (groupId % shardCount).toString
   }
 
   def startRegion()(implicit system: ActorSystem, session: CSession) =
@@ -115,7 +115,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
         case BrokerType.Group =>
           log.debug(s"Publishing UserTypingGroup ${userId}")
-          GroupChatUserRecord.getUsersWithKeyHashes(selfId) map { xs =>
+          GroupUserRecord.getUsersWithKeyHashes(selfId) map { xs =>
             xs foreach {
               case (userId, keyHashes) =>
                 keyHashes foreach { keyHash =>

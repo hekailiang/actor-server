@@ -1,7 +1,7 @@
 package com.secretapp.backend.services.rpc.presence
 
 import akka.actor._
-import com.secretapp.backend.data.message.struct.{ ChatId, UserId }
+import com.secretapp.backend.data.message.struct.{ GroupId, UserId }
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Error, Ok, RpcResponse}
@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.persist.{ GroupChatUserRecord, UserGroupChatsRecord }
+import com.secretapp.backend.persist.{ GroupUserRecord, UserGroupsRecord }
 import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
@@ -35,15 +35,15 @@ trait HandlerService {
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleSubscribeToGroupOnline(chats: immutable.Seq[ChatId]): Future[RpcResponse] = {
-    log.info(s"handling SubscribeToGroupOnline $chats")
-    sessionActor ! SessionProtocol.SubscribeToGroupPresences(chats map (_.chatId))
+  protected def handleSubscribeToGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
+    log.info(s"handling SubscribeToGroupOnline $groups")
+    sessionActor ! SessionProtocol.SubscribeToGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeFromGroupOnline(chats: immutable.Seq[ChatId]): Future[RpcResponse] = {
-    log.info(s"handling UnsubscribeFromGroupOnline $chats")
-    sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(chats map (_.chatId))
+  protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
+    log.info(s"handling UnsubscribeFromGroupOnline $groups")
+    sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }
 
@@ -58,15 +58,15 @@ trait HandlerService {
     presenceBrokerRegion ! Envelope(currentUser.uid, message)
 
     for {
-      chatIds <- UserGroupChatsRecord.getChats(currentUser.uid)
+      groupIds <- UserGroupsRecord.getGroups(currentUser.uid)
     } yield {
-      chatIds foreach { chatId =>
+      groupIds foreach { groupId =>
         val message = if (isOnline) {
           GroupPresenceProtocol.UserOnline(currentUser.uid, timeout)
         } else {
           GroupPresenceProtocol.UserOffline(currentUser.uid)
         }
-        groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(chatId, message)
+        groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(groupId, message)
       }
     }
 

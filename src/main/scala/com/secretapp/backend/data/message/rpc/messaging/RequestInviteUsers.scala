@@ -6,10 +6,10 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class RequestInviteUsers(
-  chatId: Int,
+  groupId: Int,
   accessHash: Long,
   randomId: Long,
-  chatKeyHash: BitVector,
+  groupKeyHash: BitVector,
   broadcast: EncryptedRSABroadcast
 ) extends RpcRequestMessage {
   val header = RequestInviteUsers.requestType

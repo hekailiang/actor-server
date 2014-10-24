@@ -16,7 +16,7 @@ import im.actor.messenger.{ api => protobuf }
 object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
   def encode(u: GroupInvite) = {
     val boxed = protobuf.UpdateGroupInvite(
-      u.chatId, u.accessHash, u.chatCreatorUserId,
+      u.groupId, u.accessHash, u.groupCreatorUserId, u.inviterUserId,
       u.title, u.users map (_.toProto),
       u.invite.toProto
     )
@@ -27,12 +27,12 @@ object GroupInviteCodec extends Codec[GroupInvite] with utils.ProtobufCodec {
     decodeProtobuf(protobuf.UpdateGroupInvite.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupInvite(
-          chatId, accessHash, chatCreatorUserId,
+          groupId, accessHash, groupCreatorUserId, inviterUserId,
           title, users, invite
         )
       ) =>
         GroupInvite(
-          chatId, accessHash, chatCreatorUserId,
+          groupId, accessHash, groupCreatorUserId, inviterUserId,
           title, users map UserId.fromProto, EncryptedRSAPackage.fromProto(invite)
         )
     }

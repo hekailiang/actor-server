@@ -5,7 +5,7 @@ import scala.collection.immutable
 import scodec.bits.BitVector
 
 case class GroupUserAdded(
-  chatId: Int,
+  groupId: Int,
   userId: Int,
   inviterUserId: Int
 ) extends SeqUpdateMessage {

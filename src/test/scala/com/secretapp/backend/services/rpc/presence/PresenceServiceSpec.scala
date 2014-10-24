@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.struct.{ ChatId, UserId }
+import com.secretapp.backend.data.message.struct.{ GroupId, UserId }
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.rpc.update._
@@ -114,9 +114,9 @@ class PresenceServiceSpec extends RpcSpec {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
-      val rqCreateChat = RequestCreateChat(
+      val rqCreateGroup = RequestCreateGroup(
         randomId = 1L,
-        title = "Groupchat 3000",
+        title = "Groupgroup 3000",
         keyHash = BitVector(1, 1, 1),
         publicKey = BitVector(1, 0, 1, 0),
         broadcast = EncryptedRSABroadcast(
@@ -130,7 +130,7 @@ class PresenceServiceSpec extends RpcSpec {
           )
         )
       )
-      val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+      val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
       Thread.sleep(500)
 
@@ -140,7 +140,7 @@ class PresenceServiceSpec extends RpcSpec {
       diff.updates.head.body.assertInstanceOf[GroupCreated]
 
       RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
-      SubscribeToGroupOnline(immutable.Seq(ChatId(resp.chatId, 0))) :~> <~:[ResponseVoid]
+      SubscribeToGroupOnline(immutable.Seq(GroupId(resp.groupId, 0))) :~> <~:[ResponseVoid]
 
       {
         val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)

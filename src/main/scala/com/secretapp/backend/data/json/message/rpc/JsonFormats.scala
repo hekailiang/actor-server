@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message.rpc.messaging.{RequestSendGroupMessage
 import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
 import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
 import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState, RequestGetDifference}
-import com.secretapp.backend.data.message.rpc.user.{ResponseAvatarChanged, RequestEditAvatar}
+import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import play.api.libs.json._
 
 trait JsonFormats {

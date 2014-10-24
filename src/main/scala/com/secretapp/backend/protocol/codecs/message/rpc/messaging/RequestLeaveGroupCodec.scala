@@ -12,16 +12,16 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object RequestCreateChatCodec extends Codec[RequestCreateChat] with utils.ProtobufCodec {
-  def encode(r: RequestCreateChat) = {
-    val boxed = protobuf.RequestCreateChat(r.randomId, r.title, r.keyHash, r.publicKey, r.broadcast.toProto)
+object RequestLeaveGroupCodec extends Codec[RequestLeaveGroup] with utils.ProtobufCodec {
+  def encode(r: RequestLeaveGroup) = {
+    val boxed = protobuf.RequestLeaveGroup(r.groupId, r.accessHash)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestCreateChat.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestCreateChat(randomId, title, keyHash, publicKey, broadcast)) =>
-        RequestCreateChat(randomId, title, keyHash, publicKey, EncryptedRSABroadcast.fromProto(broadcast))
+    decodeProtobuf(protobuf.RequestLeaveGroup.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.RequestLeaveGroup(groupId, accessHash)) =>
+        RequestLeaveGroup(groupId, accessHash)
     }
   }
 }

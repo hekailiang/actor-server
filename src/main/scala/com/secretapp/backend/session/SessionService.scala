@@ -31,7 +31,7 @@ trait SessionService extends UserManagerService {
   var subscribingToUpdates = false
 
   var subscribedToPresencesUids = immutable.Set.empty[Int]
-  var subscribedToPresencesChatIds = immutable.Set.empty[Int]
+  var subscribedToPresencesGroupIds = immutable.Set.empty[Int]
 
   protected def handleMessage(connector: ActorRef, mb: MessageBox): Unit = {
     acknowledgeReceivedPackage(connector, mb)
@@ -96,47 +96,47 @@ trait SessionService extends UserManagerService {
     }
   }
 
-  protected def subscribeToGroupPresences(chatIds: immutable.Seq[Int]) = {
-    chatIds foreach { chatId =>
-      if (!subscribedToPresencesChatIds.contains(chatId)) {
-        log.info(s"Subscribing to chat presences chatId=$chatId")
-        subscribedToPresencesChatIds = subscribedToPresencesChatIds + chatId
+  protected def subscribeToGroupPresences(groupIds: immutable.Seq[Int]) = {
+    groupIds foreach { groupId =>
+      if (!subscribedToPresencesGroupIds.contains(groupId)) {
+        log.info(s"Subscribing to group presences groupId=$groupId")
+        subscribedToPresencesGroupIds = subscribedToPresencesGroupIds + groupId
         mediator ! Subscribe(
-          GroupPresenceBroker.topicFor(chatId),
+          GroupPresenceBroker.topicFor(groupId),
           weakUpdatesPusher
         )
       } else {
-        log.error(s"Already subscribed to $chatId")
+        log.error(s"Already subscribed to $groupId")
       }
 
       singletons.groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(
-        chatId,
+        groupId,
         GroupPresenceProtocol.TellPresences(weakUpdatesPusher)
       )
     }
   }
 
-  protected def recoverSubscribeToGroupPresences(chatIds: immutable.Seq[Int]) = {
-    chatIds foreach { chatId =>
-      log.info(s"Subscribing to chat presences chatId=$chatId")
-      subscribedToPresencesChatIds = subscribedToPresencesChatIds + chatId
+  protected def recoverSubscribeToGroupPresences(groupIds: immutable.Seq[Int]) = {
+    groupIds foreach { groupId =>
+      log.info(s"Subscribing to group presences groupId=$groupId")
+      subscribedToPresencesGroupIds = subscribedToPresencesGroupIds + groupId
       mediator ! Subscribe(
-        GroupPresenceBroker.topicFor(chatId),
+        GroupPresenceBroker.topicFor(groupId),
         weakUpdatesPusher
       )
 
       singletons.groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(
-        chatId,
+        groupId,
         GroupPresenceProtocol.TellPresences(weakUpdatesPusher)
       )
     }
   }
 
-  protected def unsubscribeFromGroupPresences(chatIds: immutable.Seq[Int]) = {
-    chatIds foreach { chatId =>
-      subscribedToPresencesChatIds = subscribedToPresencesChatIds - chatId
+  protected def unsubscribeFromGroupPresences(groupIds: immutable.Seq[Int]) = {
+    groupIds foreach { groupId =>
+      subscribedToPresencesGroupIds = subscribedToPresencesGroupIds - groupId
       mediator ! Unsubscribe(
-        GroupPresenceBroker.topicFor(chatId),
+        GroupPresenceBroker.topicFor(groupId),
         weakUpdatesPusher
       )
     }

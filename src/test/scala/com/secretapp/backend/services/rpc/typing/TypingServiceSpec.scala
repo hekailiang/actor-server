@@ -80,12 +80,12 @@ class TypingServiceSpec extends RpcSpec {
       catchNewSession(scope1)
       catchNewSession(scope2)
 
-      val respChat = {
+      val respGroup = {
         implicit val scope = scope1
 
-        val rqCreateChat = RequestCreateChat(
+        val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
-          title = "Groupchat 3000",
+          title = "Groupgroup 3000",
           keyHash = BitVector(1, 2, 3),
           publicKey = BitVector(1, 0, 1, 0),
           broadcast = EncryptedRSABroadcast(
@@ -99,7 +99,7 @@ class TypingServiceSpec extends RpcSpec {
             )
           )
         )
-        val (resp, _) = rqCreateChat :~> <~:[ResponseCreateChat]
+        val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
 
         RequestGetState() :~> <~:[ResponseSeq]
 
@@ -109,7 +109,7 @@ class TypingServiceSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestGroupTyping(respChat.chatId, respChat.accessHash, 1) :~> <~:[ResponseVoid]
+        RequestGroupTyping(respGroup.groupId, respGroup.accessHash, 1) :~> <~:[ResponseVoid]
       }
 
       {

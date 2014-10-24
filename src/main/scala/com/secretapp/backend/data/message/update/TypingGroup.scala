@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.update
 
 @SerialVersionUID(1L)
-case class TypingGroup(chatId: Int, uid: Int, typingType: Int) extends WeakUpdateMessage {
+case class TypingGroup(groupId: Int, uid: Int, typingType: Int) extends WeakUpdateMessage {
   val weakUpdateHeader = TypingGroup.weakUpdateHeader
 }
 

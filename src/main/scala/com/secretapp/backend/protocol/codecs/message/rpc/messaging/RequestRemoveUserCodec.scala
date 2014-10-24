@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestRemoveUserCodec extends Codec[RequestRemoveUser] with utils.ProtobufCodec {
   def encode(r: RequestRemoveUser) = {
-    val boxed = protobuf.RequestRemoveUser(r.chatId, r.accessHash, r.userId, r.userAccessHash)
+    val boxed = protobuf.RequestRemoveUser(r.groupId, r.accessHash, r.userId, r.userAccessHash)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestRemoveUser.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestRemoveUser(chatId, accessHash, userId, userAccessHash)) =>
-        RequestRemoveUser(chatId, accessHash, userId, userAccessHash)
+      case Success(protobuf.RequestRemoveUser(groupId, accessHash, userId, userAccessHash)) =>
+        RequestRemoveUser(groupId, accessHash, userId, userAccessHash)
     }
   }
 }

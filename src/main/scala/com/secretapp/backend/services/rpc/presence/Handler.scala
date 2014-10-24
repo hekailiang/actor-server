@@ -18,10 +18,10 @@ class Handler(
       handleSubscribeToOnline(users) pipeTo sender
     case rq @ RpcProtocol.Request(UnsubscribeFromOnline(users)) =>
       handleUnsubscribeFromOnline(users) pipeTo sender
-    case rq @ RpcProtocol.Request(SubscribeToGroupOnline(chats)) =>
-      handleSubscribeToGroupOnline(chats) pipeTo sender
-    case rq @ RpcProtocol.Request(UnsubscribeFromGroupOnline(chats)) =>
-      handleUnsubscribeFromGroupOnline(chats) pipeTo sender
+    case rq @ RpcProtocol.Request(SubscribeToGroupOnline(groups)) =>
+      handleSubscribeToGroupOnline(groups) pipeTo sender
+    case rq @ RpcProtocol.Request(UnsubscribeFromGroupOnline(groups)) =>
+      handleUnsubscribeFromGroupOnline(groups) pipeTo sender
     case rq @ RpcProtocol.Request(RequestSetOnline(isOnline, timeout)) =>
       handleRequestSetOnline(isOnline, timeout) pipeTo sender
   }

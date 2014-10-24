@@ -34,7 +34,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseUploadCompleted.responseType) { case r: ResponseUploadCompleted => r }(protoPayload(FileUploadedCodec))
     .\(ResponseAvatarChanged.responseType) { case r: ResponseAvatarChanged => r }(protoPayload(ResponseAvatarChangedCodec))
     .\(ResponseVoid.responseType) { case r: ResponseVoid => r } (protoPayload(ResponseVoidCodec))
-    .\(ResponseCreateChat.responseType) { case r: ResponseCreateChat => r } (protoPayload(ResponseCreateChatCodec))
+    .\(ResponseCreateGroup.responseType) { case r: ResponseCreateGroup => r } (protoPayload(ResponseCreateGroupCodec))
     .\(0, _ => true) { case a: Any => a }(new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)

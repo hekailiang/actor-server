@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Error, Ok, RpcResponse}
 import com.secretapp.backend.data.message.rpc.typing._
 import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.persist.GroupChatRecord
+import com.secretapp.backend.persist.GroupRecord
 import com.secretapp.backend.helpers.UserHelpers
 import com.secretapp.backend.session.SessionProtocol
 import scala.collection.immutable
@@ -39,18 +39,18 @@ trait HandlerService extends UserHelpers {
     }
   }
 
-  protected def handleRequestGroupTyping(chatId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    log.info(s"Handling RequestGroupTyping $chatId, $accessHash, $typingType")
-    GroupChatRecord.getEntity(chatId)(session) map {
-      case Some(chat) =>
-        if (chat.accessHash != accessHash) {
+  protected def handleRequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
+    log.info(s"Handling RequestGroupTyping $groupId, $accessHash, $typingType")
+    GroupRecord.getEntity(groupId)(session) map {
+      case Some(group) =>
+        if (group.accessHash != accessHash) {
           Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
         } else {
-          typingBrokerRegion ! GroupEnvelope(chatId, UserTyping(currentUser.uid, typingType))
+          typingBrokerRegion ! GroupEnvelope(groupId, UserTyping(currentUser.uid, typingType))
           Ok(ResponseVoid())
         }
       case None =>
-        Error(404, "CHAT_DOES_NOT_EXISTS", "Chat does not exists.", true)
+        Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true)
     }
   }
 }

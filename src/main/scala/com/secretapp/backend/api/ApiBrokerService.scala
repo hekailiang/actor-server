@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.UserPublicKeyRecord
+import com.secretapp.backend.persist.{ CassandraRecords, UserPublicKeyRecord }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
@@ -31,7 +31,7 @@ import Scalaz._
 trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
-trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
+trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with CassandraRecords with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
 with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
@@ -73,13 +73,13 @@ with PublicKeysService with PresenceService with TypingService with UserService 
       case rq: RequestSendMessage =>
         handleMessaging(rq)
 
-      case rq: RequestCreateChat =>
+      case rq: RequestCreateGroup =>
         handleMessaging(rq)
 
       case rq: RequestInviteUsers =>
         handleMessaging(rq)
 
-      case rq: RequestLeaveChat =>
+      case rq: RequestLeaveGroup =>
         handleMessaging(rq)
 
       case rq: RequestEditGroupTitle =>
