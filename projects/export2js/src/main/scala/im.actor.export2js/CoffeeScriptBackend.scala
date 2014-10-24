@@ -86,8 +86,8 @@ object CoffeeScriptBackend {
   private val topBlock =
     """
       |base64 =
-      |  encode: (s) -> window.forge.util.encode64(s)
-      |  decode: (s) -> window.forge.util.decode64(s)
+      |  encode: (s) -> window.forge.util.encode64(s || "")
+      |  decode: (s) -> window.forge.util.decode64(s || "")
       |
       |toJSON = (klass, body) ->
       |  { header: klass.constructor.header, body: body || {} }
