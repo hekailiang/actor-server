@@ -90,11 +90,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       persist(SeqUpdate) { _ =>
         seq += 1
         pushUpdate(authId, update) map { reply =>
-          if (update.isInstanceOf[updateProto.Message]) {
-            deliverGooglePush(authId, seq)
-            deliverApplePush(authId, seq)
-          }
-
           replyTo ! reply
         }
         maybeSnapshot()
@@ -127,7 +122,12 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       update match {
         case _: updateProto.MessageSent =>
           log.debug("Not pushing update MessageSent to session")
-        case _ =>
+        case u =>
+          if (u.isInstanceOf[updateProto.Message]) {
+            deliverGooglePush(authId, seq)
+            deliverApplePush(authId, seq)
+          }
+
           mediator ! Publish(topic, (updSeq, uuid, update))
           log.info(
             s"Published update authId=$authId seq=${this.seq} state=${uuid} update=${update}"
