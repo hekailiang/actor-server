@@ -17,7 +17,7 @@ import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.persist.{ UserRecord, FileRecord }
 import com.secretapp.backend.services.rpc.RpcSpec
 
-class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
+class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
 
   "valid avatar" should {
     "have proper size" in {
@@ -83,7 +83,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
     }
 
     "append update to chain" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -105,7 +105,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
 
-      updates2.length should beEqualTo(1)
+      updates2.length should beEqualTo(2)
       updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[AvatarChanged]
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
@@ -215,7 +215,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       )
     )
 
-    rq :~> <~:(400, "WRONG_KEYS")
+    rq :~> <~:[ResponseSeq]
 
     Thread.sleep(1000)
   }
