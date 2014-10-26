@@ -3,6 +3,7 @@ package com.secretapp.backend.api.frontend
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.persist.AuthIdRecord
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.session.SessionProtocol.{HandleMTMessageBox, HandleJsonMessageBox, Envelope}
@@ -41,8 +42,11 @@ with ActorLogging
 
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#SecurityFrontend.silentClose: $reason")
+    // TODO
+    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    connection ! ResponseToClientWithDrop(pkg.encode)
     connection ! SilentClose
-    context stop self
+//    context stop self
   }
 
   def receivePF: Receive = {

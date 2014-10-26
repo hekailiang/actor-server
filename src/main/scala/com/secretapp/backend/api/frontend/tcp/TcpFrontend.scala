@@ -3,6 +3,8 @@ package com.secretapp.backend.api.frontend.tcp
 import akka.actor._
 import akka.util.ByteString
 import com.secretapp.backend.api.frontend._
+import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.protocol.transport.{MTPackageBoxCodec, MTPackageService, Frontend}
 import scodec.bits.BitVector
 import scala.concurrent.duration._
@@ -50,7 +52,10 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
 
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#TcpFrontend.silentClose: $reason")
+    // TODO
+    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    connection ! ResponseToClientWithDrop(pkg.encode)
     connection ! Close
-    context.stop(self)
+//    context.stop(self)
   }
 }
