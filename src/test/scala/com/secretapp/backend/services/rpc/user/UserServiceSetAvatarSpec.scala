@@ -215,7 +215,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
       )
     )
 
-    rq :~> <~:[ResponseSeq]
+    rq :~> <~:(400, "WRONG_KEYS")
 
     Thread.sleep(1000)
   }

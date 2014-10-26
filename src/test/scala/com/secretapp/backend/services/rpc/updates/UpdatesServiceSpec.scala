@@ -21,7 +21,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
   "updates service" should {
     "not subscribe to updates twice" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -71,7 +71,7 @@ class UpdatesServiceSpec extends RpcSpec {
     }
 
     "send updates in new connection" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -107,7 +107,11 @@ class UpdatesServiceSpec extends RpcSpec {
                 scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
             ),
-            ownKeys = immutable.Seq.empty
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
           )
         )
 

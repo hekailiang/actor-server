@@ -91,6 +91,6 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
       )
     )
 
-    rq :~> <~:[ResponseSeq]
+    rq :~> <~:(400, "WRONG_KEYS")
   }
 }
