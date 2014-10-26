@@ -8,9 +8,9 @@ import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.struct.{ Avatar, FileLocation, UserKey, WrongReceiversErrorData }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.struct.UserId
-import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.models.{ Group, User }
 import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
@@ -46,7 +46,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       *
       * @return Right containing sequences of (authId, key) or Left containing new keys, removed keys and invalid keys
       */
-    def mkUpdates(): Future[(Seq[UserKey], Seq[UserKey], Seq[UserKey]) \/ Seq[NewUpdateEvent]] = {
+    def mkUpdates(): Future[(Seq[UserKey], Seq[UserKey], Seq[UserKey]) \/ Seq[NewUpdatePush]] = {
       val fown  = fetchAuthIdsAndCheckKeysFor(currentUser.uid, message.ownKeys, Some(currentUser.publicKeyHash))
       val fdest = fetchAuthIdsAndCheckKeysFor(destUserId, message.keys, None)
 
@@ -66,9 +66,9 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
             val updates = authIdsKeys map {
               case (authId, key) =>
-                NewUpdateEvent(
+                NewUpdatePush(
                   authId,
-                  NewMessage(
+                  updateProto.Message(
                     currentUser.uid,
                     destUserId,
                     EncryptedRSAPackage(
@@ -103,15 +103,15 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
               val fstate = ask(
                 updatesBrokerRegion,
-                NewUpdateEvent(
+                NewUpdatePush(
                   currentUser.authId,
-                  NewMessageSent(destUserId, randomId)
+                  updateProto.MessageSent(destUserId, randomId)
                 )).mapTo[UpdatesBroker.StrictState]
 
               for {
                 s <- fstate
               } yield {
-                val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
+                val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
                 Ok(rsp)
               }
             case -\/((newKeys, removedKeys, invalidKeys)) =>
@@ -144,7 +144,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
               } yield {
                 NewUpdatePush(
                   authId,
-                  GroupInvite(
+                  updateProto.GroupInvite(
                     group.id,
                     group.accessHash,
                     group.creatorUserId,
@@ -213,13 +213,13 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                         case currentUser.authId =>
                         case authId =>
                           addedUsers foreach { userId =>
-                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserAdded(groupId, userId, currentUser.uid))
+                            updatesBrokerRegion ! NewUpdatePush(authId, updateProto.GroupUserAdded(groupId, userId, currentUser.uid))
                           }
                       }
 
                       for {
                         xs <- Future.sequence(addedUsers map { userId =>
-                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, GroupUserAdded(groupId, userId, currentUser.uid))).mapTo[StrictState] map {
+                          ask(updatesBrokerRegion, NewUpdatePush(currentUser.authId, updateProto.GroupUserAdded(groupId, userId, currentUser.uid))).mapTo[StrictState] map {
                             case (seq, state) => (seq, Some(state))
                           }
                         }) flatMap {
@@ -229,7 +229,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                         }
                       } yield {
                         val s = xs.maxBy(_._1)
-                        Ok(updateProto.ResponseSeq(s._1, s._2))
+                        Ok(ResponseSeq(s._1, s._2))
                       }
                   }
               }
@@ -280,7 +280,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                     } yield {
                       NewUpdatePush(
                         authId,
-                        GroupCreated(
+                        updateProto.GroupCreated(
                           groupId = group.id,
                           accessHash = group.accessHash,
                           title = group.title,
@@ -328,7 +328,10 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             GroupRecord.updateAvatar(groupId, a) map { _ =>
               withGroupUserAuthIds(groupId) { authIds =>
                 authIds foreach { authId =>
-                  updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, GroupAvatarChanged(groupId, Some(a)))
+                  updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(
+                    authId,
+                    updateProto.GroupAvatarChanged(groupId, Some(a))
+                  )
                 }
               }
               Ok(ResponseAvatarChanged(a))
@@ -359,15 +362,18 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                 authIds <- getAuthIds(groupUserId)
               } yield {
                 authIds map { authId =>
-                  updatesBrokerRegion ! NewUpdatePush(authId, GroupTitleChanged(
-                    groupId, title
-                  ))
+                  updatesBrokerRegion ! NewUpdatePush(
+                    authId,
+                    updateProto.GroupTitleChanged(
+                      groupId, title
+                    )
+                  )
                 }
               }
             }
         }
 
-        Ok(updateProto.ResponseSeq(s._1, s._2))
+        Ok(ResponseSeq(s._1, s._2))
       }
     }
   }
@@ -408,14 +414,17 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                           authIds <- getAuthIds(groupUserId)
                         } yield {
                           authIds map { authId =>
-                            updatesBrokerRegion ! NewUpdatePush(authId, GroupUserKick(
-                              groupId, userId, currentUser.uid
-                            ))
+                            updatesBrokerRegion ! NewUpdatePush(
+                              authId,
+                              updateProto.GroupUserKick(
+                                groupId, userId, currentUser.uid
+                              )
+                            )
                           }
                         }
                       }
 
-                      Ok(updateProto.ResponseSeq(s._1, s._2))
+                      Ok(ResponseSeq(s._1, s._2))
                     }
                   } else {
                     Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "There is no participant with such userId in this group.", false))
@@ -452,13 +461,13 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                 authIds foreach {
                   case currentUser.authId =>
                   case authId =>
-                    updatesBrokerRegion ! NewUpdatePush(authId, GroupUserLeave(
+                    updatesBrokerRegion ! NewUpdatePush(authId, updateProto.GroupUserLeave(
                       groupId, currentUser.uid
                     ))
                 }
               }
             }
-            Ok(updateProto.ResponseSeq(s._1, s._2))
+            Ok(ResponseSeq(s._1, s._2))
           }
         }
       } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
@@ -475,7 +484,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
         if (user.accessHash(currentUser.authId) == accessHash) {
           users map {
             case (_, u) =>
-              updatesBrokerRegion ! NewUpdatePush(u.authId, MessageReceived(currentUser.uid, randomId))
+              updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageReceived(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
@@ -497,7 +506,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
         if (user.accessHash(currentUser.authId) == accessHash) {
           users map {
             case (_, u) =>
-              updatesBrokerRegion ! NewUpdatePush(u.authId, MessageRead(currentUser.uid, randomId))
+              updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId))
           }
           for {
             seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
@@ -531,7 +540,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                       case (_, user) =>
                         (
                           user.authId,
-                          GroupMessage(
+                          updateProto.GroupMessage(
                             senderUID = currentUser.uid,
                             groupId = group.id,
                             EncryptedAESPackage (
@@ -554,7 +563,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
               for {
                 s <- getState(currentUser.authId)
               } yield {
-                Ok(updateProto.ResponseSeq(s._1, s._2))
+                Ok(ResponseSeq(s._1, s._2))
               }
             } else {
               Future.successful(Error(403, "NO_PERMISSION", "You are not a member of this group.", true))

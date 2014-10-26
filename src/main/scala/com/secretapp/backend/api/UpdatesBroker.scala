@@ -23,12 +23,6 @@ import scodec.bits._
 object UpdatesBroker {
   trait UpdateEvent
 
-  // for events which should be processed by some internal logic inside UpdatesBroker
-  case class NewUpdateEvent(authId: Long, event: UpdateEvent)
-  case class NewMessageSent(uid: Int, randomId: Long) extends UpdateEvent
-  case class NewMessage(senderUID: Int, destUID: Int, message: EncryptedRSAPackage) extends UpdateEvent
-
-  // for events which should be just pushed to the sequence
   case class NewUpdatePush(authId: Long, update: SeqUpdateMessage)
 
   case class GetSeq(authId: Long)
@@ -46,7 +40,6 @@ object UpdatesBroker {
   def topicFor(authId: String): String = s"updates-${authId}"
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case msg @ NewUpdateEvent(authId, _) => (authId.toString, msg)
     case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
     case msg @ GetSeq(authId) => (authId.toString, msg)
     case msg @ GetSeqAndState(authId) => (authId.toString, msg)
@@ -55,7 +48,6 @@ object UpdatesBroker {
   private val shardCount = 2 // TODO: configurable
 
   private val shardResolver: ShardRegion.ShardResolver = msg => msg match {
-    case msg @ NewUpdateEvent(authId, _) => (authId % shardCount).toString
     case msg @ NewUpdatePush(authId, _) => (authId % shardCount).toString
     case msg @ GetSeq(authId) => (authId % shardCount).toString
     case msg @ GetSeqAndState(authId) => (authId % shardCount).toString
@@ -98,34 +90,13 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       persist(SeqUpdate) { _ =>
         seq += 1
         pushUpdate(authId, update) map { reply =>
+          if (update.isInstanceOf[updateProto.Message]) {
+            deliverGooglePush(authId, seq)
+            deliverApplePush(authId, seq)
+          }
+
           replyTo ! reply
         }
-        maybeSnapshot()
-      }
-    case p @ NewUpdateEvent(authId, NewMessageSent(uid, randomId)) =>
-      val replyTo = sender()
-      log.info(s"NewMessageSent $p from ${replyTo.path}")
-      persist(SeqUpdate) { _ =>
-        seq += 1
-        val update = updateProto.MessageSent(uid, randomId)
-        pushUpdate(authId, update) map { reply =>
-          replyTo ! reply
-        }
-        maybeSnapshot()
-      }
-    case p @ NewUpdateEvent(authId, NewMessage(senderUID, destUID, message)) =>
-      val replyTo = sender()
-      log.info(s"NewMessage $p from ${replyTo.path}")
-      persist(SeqUpdate) { _ =>
-        seq += 1
-        val update = updateProto.Message(
-          senderUID = senderUID,
-          destUID = destUID,
-          message = message
-        )
-        pushUpdate(authId, update)
-        deliverGooglePush(authId, seq)
-        deliverApplePush(authId, seq)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
@@ -140,15 +111,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
       val seq = offeredSnapshot.asInstanceOf[PersistentStateType]
       this.seq = seq
-    case msg @ NewUpdatePush(_, update) =>
-      log.debug(s"Recovering NewUpdatePush ${msg}")
-      this.seq += 1
-    case msg @ NewUpdateEvent(_, NewMessage(_, _, _)) =>
-      log.debug(s"Recovering NewMessage ${msg}")
-      this.seq += 1
-    case msg @ NewUpdateEvent(_, NewMessageSent(_, _)) =>
-      log.debug(s"Recovering NewMessageSent ${msg}")
-      this.seq += 1
     case SeqUpdate =>
       log.debug("Recovering SeqUpdate")
       this.seq += 1
