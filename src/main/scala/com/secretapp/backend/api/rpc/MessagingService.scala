@@ -47,8 +47,8 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       * @return Right containing sequences of (authId, key) or Left containing new keys, removed keys and invalid keys
       */
     def mkUpdates(): Future[(Seq[UserKey], Seq[UserKey], Seq[UserKey]) \/ Seq[NewUpdateEvent]] = {
-      val fown  = fetchAuthIdsAndCheckKeysFor(currentUser.uid, message.ownKeys)
-      val fdest = fetchAuthIdsAndCheckKeysFor(destUserId, message.keys)
+      val fown  = fetchAuthIdsAndCheckKeysFor(currentUser.uid, message.ownKeys, Some(currentUser.publicKeyHash))
+      val fdest = fetchAuthIdsAndCheckKeysFor(destUserId, message.keys, None)
 
       for {
         own <- fown

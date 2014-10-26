@@ -59,7 +59,7 @@ trait UserHelpers {
     * @param keyHashes key hashes
     * @return tuple containing sequences of (authId, key): new keys, removed keys and invalid keys
     */
-  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey]): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
+  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
     case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
 
     UserPublicKeyRecord.fetchAllAuthIdsMap(userId) map { authIdsMap =>
@@ -75,9 +75,16 @@ trait UserHelpers {
           }
       }
 
+      val allKeys = skipKeyHash match {
+        case Some(keyHash) =>
+          authIdsMap.keySet - keyHash
+        case None =>
+          authIdsMap.keySet
+      }
+
       (
         withoutNew.good,
-        authIdsMap.keySet.diff(keys.map(_.keyHash).toSet).toSeq map (UserKey(userId, _)),
+        allKeys.diff(keys.map(_.keyHash).toSet).toSeq map (UserKey(userId, _)),
         withoutNew.removed map (UserKey(userId, _)),
         withoutNew.invalid map (UserKey(userId, _))
       )

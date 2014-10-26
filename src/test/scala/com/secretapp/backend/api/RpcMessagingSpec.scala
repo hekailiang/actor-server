@@ -262,6 +262,34 @@ class RpcMessagingSpec extends RpcSpec {
           invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
         ))
       }
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 556L,
+          message = EncryptedRSAMessage(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedAESKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            ),
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                111L, BitVector(1, 0, 1, 0)
+              )
+            )
+          )
+        )
+        val error = rq :~> <~:(400, "WRONG_KEYS")
+        error.data.get should equalTo(struct.WrongReceiversErrorData(
+          newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
+          removedKeys = Seq(struct.UserKey(scope2.user.uid, scope2.user.publicKeyHash)),
+          invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
+        ))
+      }
     }
   }
 }
