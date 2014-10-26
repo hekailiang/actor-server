@@ -136,9 +136,9 @@ class UpdatesServiceSpec extends RpcSpec {
         MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.assertInstanceOf[UpdateBox]
       }
     }
-/*
+
     "get difference" in {
-      val (scope1, scope2) = TestScope.pair(3, 4)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -206,6 +206,6 @@ class UpdatesServiceSpec extends RpcSpec {
         diff3.updates.length must equalTo(0)
         diff3.state must not equalTo(None)
       }
-    }*/
+    }
   }
 }
