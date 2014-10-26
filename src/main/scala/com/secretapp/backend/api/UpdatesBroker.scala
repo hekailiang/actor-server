@@ -89,9 +89,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       log.info(s"NewUpdatePush for $authId: $update")
       persist(SeqUpdate) { _ =>
         seq += 1
-        pushUpdate(authId, update) map { reply =>
-          replyTo ! reply
-        }
+        pushUpdate(authId, update) map (replyTo.!)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
