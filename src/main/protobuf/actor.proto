@@ -75,6 +75,7 @@ message Group {
 message WrongReceiversErrorData {
     repeated UserKey newKeys = 1;
     repeated UserKey removedKeys = 2;
+    repeated UserKey invalidKeys = 3;
 }
 // Зашифрованный AES-ключ для устройства
 message EncryptedAESKey {

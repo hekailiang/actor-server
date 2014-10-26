@@ -7,6 +7,7 @@ import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
@@ -22,6 +23,8 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
 import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.language.higherKinds
 import scala.util.Random
 import scalaz.Scalaz._
@@ -216,6 +219,48 @@ class RpcMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body should beAnInstanceOf[MessageRead]
+      }
+    }
+
+    "check provided keys" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val scope2_2 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+      catchNewSession(scope2_2)
+
+      Await.result(UserPublicKeyRecord.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
+
+      {
+        implicit val scope = scope1
+
+        val rq = RequestSendMessage(
+          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          randomId = 555L,
+          message = EncryptedRSAMessage(
+            encryptedMessage = BitVector(1, 2, 3),
+            keys = immutable.Seq(
+              EncryptedAESKey(
+                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            ),
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              ),
+              EncryptedAESKey(
+                111L, BitVector(1, 0, 1, 0)
+              )
+            )
+          )
+        )
+        val error = rq :~> <~:(400, "WRONG_KEYS")
+        error.data.get should equalTo(struct.WrongReceiversErrorData(
+          newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
+          removedKeys = Seq(struct.UserKey(scope2.user.uid, scope2.user.publicKeyHash)),
+          invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
+        ))
       }
     }
   }

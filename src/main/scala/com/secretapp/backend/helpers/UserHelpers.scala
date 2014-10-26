@@ -57,24 +57,29 @@ trait UserHelpers {
     *
     * @param userId user id
     * @param keyHashes key hashes
-    * @return tuple containing Seq of (authId, key), new keys and invalid (possibly removed) keys
+    * @return tuple containing sequences of (authId, key): new keys, removed keys and invalid keys
     */
-  def fetchAuthIdsAndChangedKeysFor[A](userId: Int, keys: Seq[EncryptedAESKey]): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey])] = {
-    UserPublicKeyRecord.fetchAuthIdsMap(userId) map { authIdsMap =>
-      val withoutOld = keys.foldLeft(Tuple2(Seq.empty[(Long, EncryptedAESKey)], Seq.empty[Long])) {
+  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey]): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
+    case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
+
+    UserPublicKeyRecord.fetchAllAuthIdsMap(userId) map { authIdsMap =>
+      val withoutNew = keys.foldLeft(WithRemovedAndInvalid(Seq.empty, Seq.empty, Seq.empty)) {
         case (res, key) =>
           authIdsMap.get(key.keyHash) match {
-            case Some(authId) =>
-              (res._1 :+ (authId, key), res._2)
+            case Some(\/-(authId)) =>
+              res.copy(good = res.good :+ (authId, key))
+            case Some(-\/(authId)) =>
+              res.copy(removed = res.removed :+ key.keyHash)
             case None =>
-              (res._1, res._2 :+ key.keyHash)
+              res.copy(invalid = res.invalid :+ key.keyHash)
           }
       }
 
       (
-        withoutOld._1,
+        withoutNew.good,
         authIdsMap.keySet.diff(keys.map(_.keyHash).toSet).toSeq map (UserKey(userId, _)),
-        withoutOld._2 map (UserKey(userId, _))
+        withoutNew.removed map (UserKey(userId, _)),
+        withoutNew.invalid map (UserKey(userId, _))
       )
     }
   }

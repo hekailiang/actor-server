@@ -10,6 +10,7 @@ import java.util.{ Date, UUID }
 import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
+import scala.language.postfixOps
 import scala.math.BigInt
 import scodec.bits.BitVector
 
@@ -108,13 +109,28 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
   }
 
   /**
-    * Gets authIds and key hashes by userId
+    * Gets authIds and key hashes by userId, active only
     *
     * @param userId user id
     * @return Future of map of key hashes and auth ids
     */
   def fetchAuthIdsMap(uid: Int)(implicit session: Session): Future[Map[Long, Long]] = {
     select(_.publicKeyHash, _.authId).where(_.uid eqs uid).and(_.isDeleted eqs false).fetch() map (_.toMap)
+  }
+
+  /**
+    * Gets authIds and key hashes by userId, including deleted
+    *
+    * @param userId user id
+    * @return Future of map of key hashes and auth ids eithers
+    */
+  def fetchAllAuthIdsMap(uid: Int)(implicit session: Session): Future[Map[Long, Long \/ Long]] = {
+    select(_.publicKeyHash, _.authId, _.isDeleted).where(_.uid eqs uid).fetch() map { tuples =>
+      tuples map {
+        case (keyHash, authId, false) => (keyHash, authId.right)
+        case (keyHash, authId, true) => (keyHash, authId.left)
+      } toMap
+    }
   }
 
   def fetchAuthIdsByUserId(uid: Int)(implicit session: Session): Future[Seq[Long]] = {

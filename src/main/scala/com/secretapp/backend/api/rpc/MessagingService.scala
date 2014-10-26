@@ -44,37 +44,42 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     /**
       * Makes updates for valid keys
       *
-      * @return tuple containing Seq of updates for valid keys, Seq of new keys and Seq of removed keys
+      * @return Right containing sequences of (authId, key) or Left containing new keys, removed keys and invalid keys
       */
-    def mkUpdates(): Future[(Seq[NewUpdateEvent], Seq[UserKey], Seq[UserKey])] = {
-      val fown =  fetchAuthIdsAndChangedKeysFor(destUserId, message.keys)
-      val fdest = fetchAuthIdsAndChangedKeysFor(currentUser.uid, message.ownKeys)
+    def mkUpdates(): Future[(Seq[UserKey], Seq[UserKey], Seq[UserKey]) \/ Seq[NewUpdateEvent]] = {
+      val fown  = fetchAuthIdsAndCheckKeysFor(currentUser.uid, message.ownKeys)
+      val fdest = fetchAuthIdsAndCheckKeysFor(destUserId, message.keys)
 
       for {
         own <- fown
         dest <- fdest
       } yield {
-        val authIdsKeys = own._1 ++ dest._1
-        val newKeys = own._2 ++ dest._2
-        val oldKeys = own._3 ++ dest._3
+        (
+          own._2 ++ dest._2, // new
+          own._3 ++ dest._3, // removed
+          own._4 ++ dest._4  // invalid
+        ) match {
+          case (Nil, Nil, Nil) =>
+            val authIdsKeys = own._1 ++ dest._1
 
-        val updates = authIdsKeys map {
-          case (authId, key) =>
-            NewUpdateEvent(
-              authId,
-              NewMessage(
-                currentUser.uid,
-                destUserId,
-                EncryptedRSAPackage(
-                  key.keyHash,
-                  key.aesEncryptedKey,
-                  message.encryptedMessage
+            val updates = authIdsKeys map {
+              case (authId, key) =>
+                NewUpdateEvent(
+                  authId,
+                  NewMessage(
+                    currentUser.uid,
+                    destUserId,
+                    EncryptedRSAPackage(
+                      key.keyHash,
+                      key.aesEncryptedKey,
+                      message.encryptedMessage
+                    )
+                  )
                 )
-              )
-            )
+            }
+            updates.right
+          case res @ (newKeys, removedKeys, invalidKeys) => res.left
         }
-
-        (updates, newKeys, oldKeys)
       }
     }
 
@@ -89,32 +94,30 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             currentUser.uid, SocialProtocol.RelationsNoted(Set(destUserId)))
 
           mkUpdates() flatMap {
-            case (updates, newKeys, oldKeys) =>
-              if (newKeys.isEmpty && oldKeys.isEmpty) {
-                updates foreach { update =>
-                  updatesBrokerRegion ! update
-                }
-
-                val fstate = ask(
-                  updatesBrokerRegion,
-                  NewUpdateEvent(
-                    currentUser.authId,
-                    NewMessageSent(destUserId, randomId)
-                  )).mapTo[UpdatesBroker.StrictState]
-
-                for {
-                  s <- fstate
-                } yield {
-                  val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
-                  Ok(rsp)
-                }
-              } else {
-                val errorData = WrongReceiversErrorData(newKeys, oldKeys)
-
-                Future.successful(
-                  Error(400, "WRONG_KEYS", "", false, Some(errorData))
-                )
+            case \/-(updates) =>
+              updates foreach { update =>
+                updatesBrokerRegion ! update
               }
+
+              val fstate = ask(
+                updatesBrokerRegion,
+                NewUpdateEvent(
+                  currentUser.authId,
+                  NewMessageSent(destUserId, randomId)
+                )).mapTo[UpdatesBroker.StrictState]
+
+              for {
+                s <- fstate
+              } yield {
+                val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
+                Ok(rsp)
+              }
+            case -\/((newKeys, removedKeys, invalidKeys)) =>
+              val errorData = WrongReceiversErrorData(newKeys, removedKeys, invalidKeys)
+
+              Future.successful(
+                Error(400, "WRONG_KEYS", "", false, Some(errorData))
+              )
           }
         }
       case None =>

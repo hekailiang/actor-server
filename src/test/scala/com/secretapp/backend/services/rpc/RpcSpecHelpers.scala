@@ -71,11 +71,13 @@ trait RpcSpecHelpers {
     /**
       * Sends message, asserts reply is error and checks its params
       */
-    def :~>(wp: WrappedReceiveResponseError)(implicit scope: TestScope) = {
+    def :~>(wp: WrappedReceiveResponseError)(implicit scope: TestScope): Error = {
       implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
       :~>!
+
       val error = receiveOneWithAck().assertResponseError
       wp.f(error)
+      error
     }
 
     /**
