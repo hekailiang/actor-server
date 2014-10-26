@@ -60,6 +60,8 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           own._4 ++ dest._4  // invalid
         ) match {
           case (Nil, Nil, Nil) =>
+            randomIds.put(randomId, true)
+
             val authIdsKeys = own._1 ++ dest._1
 
             val updates = authIdsKeys map {

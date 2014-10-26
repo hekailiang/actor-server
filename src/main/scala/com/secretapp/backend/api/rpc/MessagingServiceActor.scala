@@ -84,7 +84,6 @@ class MessagingServiceActor(
         case Some(_) =>
           replyTo ! Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false)
         case None =>
-          randomIds.put(randomId, true)
           val f = handleRequestSendMessage(uid, accessHash, randomId, message) map { res =>
             replyTo ! res
           }

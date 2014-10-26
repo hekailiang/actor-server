@@ -268,7 +268,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         val rq = RequestSendMessage(
           uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
-          randomId = 556L,
+          randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
             keys = immutable.Seq(
