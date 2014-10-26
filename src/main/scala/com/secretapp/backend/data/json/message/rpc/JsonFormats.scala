@@ -1,16 +1,18 @@
 package com.secretapp.backend.data.json.message.rpc
 
 import com.secretapp.backend.data.json.CommonJsonFormats._
-import com.secretapp.backend.data.json.{UnitFormat, MessageWithHeader}
+import com.secretapp.backend.data.json.{ UnitFormat, MessageWithHeader }
+import com.secretapp.backend.data.json.message.struct.{ JsonFormats => StructJsonFormats }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.rpc.contact.{ResponsePublicKeys, ResponseImportedContacts, RequestPublicKeys, RequestImportContacts}
+import com.secretapp.backend.data.message.rpc.contact.{ ResponsePublicKeys, ResponseImportedContacts, RequestPublicKeys, RequestImportContacts }
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging.{RequestSendGroupMessage, RequestMessageReceived, RequestMessageRead, RequestSendMessage}
-import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
-import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
-import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState, RequestGetDifference}
+import com.secretapp.backend.data.message.rpc.messaging.{ RequestSendGroupMessage, RequestMessageReceived, RequestMessageRead, RequestSendMessage }
+import com.secretapp.backend.data.message.rpc.presence.{ UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline }
+import com.secretapp.backend.data.message.rpc.push.{ RequestUnregisterPush, RequestRegisterGooglePush }
+import com.secretapp.backend.data.message.rpc.update.{ ResponseSeq, RequestGetState, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
+import com.secretapp.backend.data.message.struct.{ UserKey, WrongReceiversErrorData }
 import play.api.libs.json._
 
 trait JsonFormats {
@@ -153,7 +155,66 @@ trait JsonFormats {
   val requestFormat = Json.format[Request]
 
   val connectionNotInitedErrorFormat = UnitFormat[ConnectionNotInitedError]
-  val errorFormat                    = Json.format[Error]
+
+  implicit object errorFormat extends Format[Error] with StructJsonFormats {
+    import play.api.libs.functional.syntax._
+
+    val wrongReceiversErrorDataFormat = Json.format[WrongReceiversErrorData]
+
+    override def writes(o: Error): JsValue = {
+      o match {
+        case Error(code, tag, userMessage, canTryAgain, data) =>
+          val jsonData = data match {
+            case Some(data: WrongReceiversErrorData) =>
+              wrongReceiversErrorDataFormat.writes(data)
+            case _ =>
+              Json.obj()
+          }
+          Json.obj(
+            "code" -> code,
+            "tag" -> tag,
+            "userMessage" -> userMessage,
+            "canTryAgain" -> canTryAgain,
+            "data" -> jsonData
+          )
+      }
+    }
+
+    override def reads(json: JsValue): JsResult[Error] = {
+      case class ErrorWithoutData(code: Int, tag: String, userMessage: String, canTryAgain: Boolean)
+
+      val tagResult: JsResult[String] = (json \ "tag").validate[String]
+
+      tagResult match {
+        case JsSuccess(tag, _) =>
+          val reads: Reads[ErrorWithoutData] = (
+            (JsPath \ "code").read[Int] and
+              (JsPath \ "tag").read[String] and
+              (JsPath \ "userMessage").read[String] and
+              (JsPath \ "canTryAgain").read[Boolean]
+          )(ErrorWithoutData.apply _)
+
+          reads.reads(json) match {
+            case JsSuccess(ewd, _) =>
+              val errorDataResult = ewd.tag match {
+                case "WRONG_RECEIVERS" =>
+                  (json \ "data").validate(wrongReceiversErrorDataFormat) map (Some(_))
+                case _ =>
+                  JsSuccess(None, JsPath(List(KeyPathNode("data"))))
+              }
+              errorDataResult match {
+                case JsSuccess(errorData, _) =>
+                  JsSuccess(Error(ewd.code, ewd.tag, ewd.userMessage, ewd.canTryAgain, errorData))
+                case e: JsError =>
+                  e
+              }
+            case e: JsError => e
+          }
+        case e: JsError => e
+      }
+    }
+  }
+
   val floodWaitFormat                = Json.format[FloodWait]
   val internalErrorFormat            = Json.format[InternalError]
   val okFormat                       = Json.format[Ok]

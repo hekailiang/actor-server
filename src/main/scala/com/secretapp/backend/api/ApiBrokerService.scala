@@ -126,25 +126,25 @@ with PublicKeysService with PresenceService with TypingService with UserService 
     f.right
   }
 
-  protected def withAuthIds(uid: Int)(f: Seq[Long] => Unit): Unit =
-    UserPublicKeyRecord.fetchAuthIdsByUid(uid)(session) onComplete {
+  protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
+    UserPublicKeyRecord.fetchAuthIdsByUserId(userId)(session) onComplete {
       case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=$uid $authIds")
+        log.debug(s"Fetched authIds for uid=$userId $authIds")
         f(authIds)
 
       case Failure(e) =>
-        log.error(s"Failed to get authIds for uid=$uid to push new device updates")
+        log.error(s"Failed to get authIds for uid=$userId to push new device updates")
         throw e
     }
 
-  protected def withRelations(uid: Int)(f: Seq[Long] => Unit): Unit =
-    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
-      case Success(uids) =>
-        log.debug(s"Got relations for $uid -> $uids")
-        uids.foreach(withAuthIds(_)(f))
+  protected def withRelations(userId: Int)(f: Seq[Long] => Unit): Unit =
+    ask(socialBrokerRegion, SocialMessageBox(userId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
+      case Success(userIds) =>
+        log.debug(s"Got relations for $userId -> $userIds")
+        userIds.foreach(withAuthIds(_)(f))
 
       case Failure(e) =>
-        log.error(s"Failed to get relations for uid=$uid to push new device updates")
+        log.error(s"Failed to get relations for uid=$userId to push new device updates")
         throw e
     }
 

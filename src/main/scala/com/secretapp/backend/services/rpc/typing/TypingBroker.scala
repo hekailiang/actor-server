@@ -10,6 +10,8 @@ import com.secretapp.backend.persist.GroupUserRecord
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scalaz._
+import Scalaz._
 
 object TypingType {
   val Text = 0
@@ -121,10 +123,12 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
                 keyHashes foreach { keyHash =>
                   for {
                     optAuthId <- authIdFor(userId, keyHash)
-
                   } yield {
-                    optAuthId map { authId =>
-                      mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
+                    optAuthId map {
+                      case \/-(authId) =>
+                        mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
+                      case _ =>
+                        log.warning(s"Attempt to send to user with deleted key userId=$userId keyHash=$keyHash")
                     }
                   }
                 }

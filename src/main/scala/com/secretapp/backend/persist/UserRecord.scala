@@ -180,16 +180,28 @@ object UserRecord extends UserRecord with DBConnector {
       future().flatMap(_ => PhoneRecord.addKeyHash(phoneNumber, publicKeyHash))
   }
 
-  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session) = {
-    UserPublicKeyRecord.setDeleted(uid, publicKeyHash) map { _ =>
-      Future.sequence(
-        Vector(
-          update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
-
-          PhoneRecord.removeKeyHashByUserId(uid, publicKeyHash),
-          GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
-        )
-      )
+  /**
+    * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
+    * removes keyHash from the following records: [[UserPublicKeyRecord]], [[AuthIdRecord]], [[PhoneRecord]], [[GroupUserRecord]].
+    *
+    * @param uid user id
+    * @param publicKeyHash user public key hash
+    * @return a Future containing Some(authId) if removal succeeded and None if keyHash was not found
+    */
+  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] = {
+    UserPublicKeyRecord.setDeleted(uid, publicKeyHash) flatMap {
+      case Some(authId) =>
+        Future.sequence(
+          Vector(
+            update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
+            delete.where(_.uid eqs uid).and(_.authId eqs authId).future(),
+            AuthIdRecord.getEntity(authId),
+            PhoneRecord.removeKeyHashByUserId(uid, publicKeyHash),
+            GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
+          )
+        ) map (_ => Some(authId))
+      case None =>
+        Future.successful(None)
     }
   }
 

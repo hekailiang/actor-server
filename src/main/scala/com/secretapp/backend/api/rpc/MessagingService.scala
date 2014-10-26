@@ -5,7 +5,7 @@ import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.struct.{ FileLocation, Avatar }
+import com.secretapp.backend.data.message.struct.{ Avatar, FileLocation, UserKey, WrongReceiversErrorData }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.models.{ Group, User }
 import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
+import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.AvatarUtils
@@ -40,31 +41,41 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     randomId: Long,
     message: EncryptedRSAMessage
   ): Future[RpcResponse] = {
-    def mkUpdates(): Future[Seq[Error \/ NewUpdateEvent]] = {
-      val keysWithUserIds = (message.keys map ((destUserId, _))) ++ (message.ownKeys map ((currentUser.uid, _)))
+    /**
+      * Makes updates for valid keys
+      *
+      * @return tuple containing Seq of updates for valid keys, Seq of new keys and Seq of removed keys
+      */
+    def mkUpdates(): Future[(Seq[NewUpdateEvent], Seq[UserKey], Seq[UserKey])] = {
+      val fown =  fetchAuthIdsAndChangedKeysFor(destUserId, message.keys)
+      val fdest = fetchAuthIdsAndChangedKeysFor(currentUser.uid, message.ownKeys)
 
-      val futures = (keysWithUserIds) map {
-        case (uid, encryptedAESKey) =>
-          authIdFor(uid, encryptedAESKey.keyHash) map {
-            case Some(authId) =>
-              NewUpdateEvent(
-                authId,
-                NewMessage(
-                  currentUser.uid,
-                  destUserId,
-                  EncryptedRSAPackage(
-                    encryptedAESKey.keyHash,
-                    encryptedAESKey.aesEncryptedKey,
-                    message.encryptedMessage
-                  )
+      for {
+        own <- fown
+        dest <- fdest
+      } yield {
+        val authIdsKeys = own._1 ++ dest._1
+        val newKeys = own._2 ++ dest._2
+        val oldKeys = own._3 ++ dest._3
+
+        val updates = authIdsKeys map {
+          case (authId, key) =>
+            NewUpdateEvent(
+              authId,
+              NewMessage(
+                currentUser.uid,
+                destUserId,
+                EncryptedRSAPackage(
+                  key.keyHash,
+                  key.aesEncryptedKey,
+                  message.encryptedMessage
                 )
-              ).right
-            case None =>
-              Error(404, "USER_NOT_FOUND", s"User $uid with ${encryptedAESKey.keyHash} not found", false).left
-          }
-      }
+              )
+            )
+        }
 
-      Future.sequence(futures)
+        (updates, newKeys, oldKeys)
+      }
     }
 
     UserRecord.getEntity(destUserId) flatMap {
@@ -77,25 +88,33 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           socialBrokerRegion ! SocialProtocol.SocialMessageBox(
             currentUser.uid, SocialProtocol.RelationsNoted(Set(destUserId)))
 
-          mkUpdates() map (_.toVector) map (_.sequenceU) map {
-            case -\/(error) => error
-            case \/-(updates) =>
+          mkUpdates() flatMap {
+            case (updates, newKeys, oldKeys) =>
               updates foreach { update =>
                 updatesBrokerRegion ! update
               }
-          }
 
-          // FIXME: handle failures (retry or error, should not break seq)
-          for {
-            s <- ask(
-              updatesBrokerRegion,
-              NewUpdateEvent(
-                currentUser.authId,
-                NewMessageSent(destUserId, randomId)
-              )).mapTo[UpdatesBroker.StrictState]
-          } yield {
-            val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
-            Ok(rsp)
+              val fstate = ask(
+                updatesBrokerRegion,
+                NewUpdateEvent(
+                  currentUser.authId,
+                  NewMessageSent(destUserId, randomId)
+                )).mapTo[UpdatesBroker.StrictState]
+
+              if (newKeys.isEmpty && oldKeys.isEmpty) {
+                for {
+                  s <- fstate
+                } yield {
+                  val rsp = updateProto.ResponseSeq(seq = s._1, state = Some(s._2))
+                  Ok(rsp)
+                }
+              } else {
+                val errorData = WrongReceiversErrorData(newKeys, oldKeys)
+
+                Future.successful(
+                  Error(400, "WRONG_KEYS", "", false, Some(errorData))
+                )
+              }
           }
         }
       case None =>
@@ -246,7 +265,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             } flatMap { _ =>
               Future.sequence(broadcast.ownKeys map { key =>
                 authIdFor(currentUser.uid, key.keyHash) flatMap {
-                  case Some(authId) =>
+                  case Some(\/-(authId)) =>
                     for {
                       users <- Future.sequence(
                         ((newUserIds map (_._1)) :+ currentUser.uid) map { newUserId =>
@@ -269,7 +288,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                         )
                       ).right
                     }
-                  case None =>
+                  case _ =>
                     Future.successful(Error(404, "OWN_KEY_HASH_NOT_FOUND", s"", false).left)
                 }
               }) map (_.toVector.sequenceU) flatMap {

@@ -306,40 +306,40 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def pushNewDeviceUpdates(authId: Long, uid: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
+  private def pushNewDeviceUpdates(authId: Long, userId: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
     // Push NewFullDevice updates
-    UserPublicKeyRecord.fetchAuthIdsByUid(uid) onComplete {
+    UserPublicKeyRecord.fetchAuthIdsByUserId(userId) onComplete {
       case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=${uid} ${authIds}")
+        log.debug(s"Fetched authIds for uid=$userId $authIds")
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
-            log.debug(s"Pushing NewFullDevice for authId=${targetAuthId}")
-            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewFullDevice(uid, publicKeyHash, publicKey))
+            log.debug(s"Pushing NewFullDevice for authId=$targetAuthId")
+            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewFullDevice(userId, publicKeyHash, publicKey))
           }
         }
       case Failure(e) =>
-        log.error(s"Failed to get authIds for authId=${authId} uid=${uid} to push NewFullDevice updates")
+        log.error(s"Failed to get authIds for authId=$authId uid=$userId to push NewFullDevice updates")
         throw e
     }
 
     // Push NewDevice updates
-    getRelations(uid) onComplete {
-      case Success(uids) =>
-        log.debug(s"Got relations for ${uid} -> ${uids}")
-        for (targetUid <- uids) {
-          UserPublicKeyRecord.fetchAuthIdsByUid(targetUid) onComplete {
+    getRelations(userId) onComplete {
+      case Success(userIds) =>
+        log.debug(s"Got relations for ${userId} -> ${userIds}")
+        for (targetUserId <- userIds) {
+          UserPublicKeyRecord.fetchAuthIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
-              log.debug(s"Fetched authIds for uid=${targetUid} ${authIds}")
+              log.debug(s"Fetched authIds for uid=${targetUserId} ${authIds}")
               for (targetAuthId <- authIds) {
-                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(uid, publicKeyHash))
+                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash))
               }
             case Failure(e) =>
-              log.error(s"Failed to get authIds for authId=${authId} uid=${targetUid} to push new device updates ${publicKeyHash}")
+              log.error(s"Failed to get authIds for authId=${authId} uid=${targetUserId} to push new device updates ${publicKeyHash}")
               throw e
           }
         }
       case Failure(e) =>
-        log.error(s"Failed to get relations to push new device updates authId=${authId} uid=${uid} ${publicKeyHash}")
+        log.error(s"Failed to get relations to push new device updates authId=$authId uid=$userId $publicKeyHash")
         throw e
     }
   }

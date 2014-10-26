@@ -11,6 +11,7 @@ trait JsonFormats {
     authLocation: String, latitude: Option[Double], longitude: Option[Double])
 
   implicit val userIdFormat           = Json.format[UserId]
+  implicit val userKeyFormat          = Json.format[UserKey]
   implicit val avatarImageFormat      = Json.format[AvatarImage]
   implicit val avatarFormat           = Json.format[Avatar]
   implicit val userFormat             = Json.format[User]

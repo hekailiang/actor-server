@@ -88,7 +88,7 @@ class RpcMessagingSpec extends RpcSpec {
       val (initialState, _) = getState
 
       val rq = RequestSendMessage(
-        uid = userId, accessHash = accessHash,
+        uid = secondUser.uid, accessHash = secondUser.accessHash(scope.user.authId),
         randomId = 555L,
         message = EncryptedRSAMessage(
           encryptedMessage = BitVector(1, 2, 3),
@@ -97,54 +97,29 @@ class RpcMessagingSpec extends RpcSpec {
               secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
             )
           ),
-          ownKeys = immutable.Seq.empty
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          )
         )
       )
 
-      val messageId = getMessageId()
-      val rpcRq = RpcRequestBox(Request(rq))
-      val packageBlob = pack(0, scope.user.authId, MessageBox(messageId, rpcRq))(scope.session)
+      val (resp, _) = rq :~> <~:[updateProto.ResponseSeq]
+      resp.seq should beEqualTo(initialState.seq + 2)
 
-      {
-        send(packageBlob)(scope.probe, scope.apiActor)
-        val msg = receiveOneWithAck()(scope.probe, scope.apiActor)
-        val resp = msg
-          .body.asInstanceOf[RpcResponseBox]
-          .body.asInstanceOf[Ok]
-          .body.asInstanceOf[updateProto.ResponseSeq]
+      val (state, _) = getState
+      state.seq must equalTo(initialState.seq + 2)
+      getDifference(initialState.seq, initialState.state).updates.length must equalTo(2)
 
-        val rsp = new updateProto.ResponseSeq(
-          seq = initialState.seq + 1,
-          state =
-            resp.state)
-        val rpcRes = RpcResponseBox(messageId, Ok(rsp))
-        val expectMsg = MessageBox(msg.messageId, rpcRes)
 
-        msg must equalTo(expectMsg)
-      }
-
-      {
-        val (state, _) = getState
-        state.seq must equalTo(initialState.seq + 1)
-        getDifference(initialState.seq, initialState.state).updates.length must equalTo(1)
-      }
+      rq :~> <~:(409, "MESSAGE_ALREADY_SENT")
 
       Thread.sleep(1000)
 
-      {
-        send(packageBlob)(scope.probe, scope.apiActor)
-
-        val msg = receiveOneWithAck()(scope.probe, scope.apiActor)
-
-        val rpcRes = RpcResponseBox(messageId, Error(409, "MESSAGE_ALREADY_SENT", "Message with the same randomId has been already sent.", false))
-        val expectMsg = MessageBox(msg.messageId, rpcRes)
-
-        msg must equalTo(expectMsg)
-      }
-
-      getState._1.seq must equalTo(initialState.seq + 1)
+      getState._1.seq must equalTo(initialState.seq + 2)
     }
-/*
+
     "send UpdateMessageReceived on RequestMessageReceived" in {
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
@@ -163,7 +138,11 @@ class RpcMessagingSpec extends RpcSpec {
                 scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
             ),
-            ownKeys = immutable.Seq.empty
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
           )
         )
         rq :~> <~:[updateProto.ResponseSeq]
@@ -206,7 +185,11 @@ class RpcMessagingSpec extends RpcSpec {
                 scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
               )
             ),
-            ownKeys = immutable.Seq.empty
+            ownKeys = immutable.Seq(
+              EncryptedAESKey(
+                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
+              )
+            )
           )
         )
         rq :~> <~:[updateProto.ResponseSeq]
@@ -234,6 +217,6 @@ class RpcMessagingSpec extends RpcSpec {
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body should beAnInstanceOf[MessageRead]
       }
-    }*/
+    }
   }
 }

@@ -40,13 +40,13 @@ class JsonFormatsSpec extends JsonSpec {
 
     "(de)serialize Error" in {
       val (bitVector, bitVectorJson) = genBitVector
-      val v = Error(1, "tag", "userMessage", true, bitVector)
+      val v = Error(1, "tag", "userMessage", true, None)
       val j = withHeader(Error.header)(
         "code"        -> 1,
         "tag"         -> "tag",
         "userMessage" -> "userMessage",
         "canTryAgain" -> true,
-        "errorData"   -> bitVectorJson
+        "data"   -> Json.obj()
       )
       testToAndFromJson[RpcResponse](j, v)
     }

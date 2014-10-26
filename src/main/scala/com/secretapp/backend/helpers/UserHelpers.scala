@@ -3,7 +3,8 @@ package com.secretapp.backend.helpers
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.struct.{ UserId, UserKey }
+import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.persist.UserRecord
@@ -11,6 +12,8 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
+import scalaz._
+import Scalaz._
 
 trait UserHelpers {
   val context: ActorContext
@@ -45,28 +48,43 @@ trait UserHelpers {
     }
   }
 
-  // FIXME: select from C* authId only for better performance
-  def getAuthIds(uid: Int): Future[immutable.Seq[Long]] = {
-    for {
-      users <- getUsers(uid)
-    } yield {
-      val authIds = users.toList map (_._2.authId)
-      authIds
+  def getAuthIds(userId: Int): Future[Seq[Long]] = {
+    UserPublicKeyRecord.fetchAuthIdsByUserId(userId)
+  }
+
+  /**
+    * Fetches authIds for userId and his key hashes
+    *
+    * @param userId user id
+    * @param keyHashes key hashes
+    * @return tuple containing Seq of (authId, key), new keys and invalid (possibly removed) keys
+    */
+  def fetchAuthIdsAndChangedKeysFor[A](userId: Int, keys: Seq[EncryptedAESKey]): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey])] = {
+    UserPublicKeyRecord.fetchAuthIdsMap(userId) map { authIdsMap =>
+      val withoutOld = keys.foldLeft(Tuple2(Seq.empty[(Long, EncryptedAESKey)], Seq.empty[Long])) {
+        case (res, key) =>
+          authIdsMap.get(key.keyHash) match {
+            case Some(authId) =>
+              (res._1 :+ (authId, key), res._2)
+            case None =>
+              (res._1, res._2 :+ key.keyHash)
+          }
+      }
+
+      (
+        withoutOld._1,
+        authIdsMap.keySet.diff(keys.map(_.keyHash).toSet).toSeq map (UserKey(userId, _)),
+        withoutOld._2 map (UserKey(userId, _))
+      )
     }
   }
 
-  // Stores (userId, publicKeyHash) -> authId associations
-  // TODO: migrate to ConcurrentLinkedHashMap
-  private val authIds = new TrieMap[(Int, Long), Future[Option[Long]]]
+  // fetchAuthIdsMap
+  def getAuthIdsAndKeyHashes(userId: Int): Future[Map[Long, Long]] = {
+    UserPublicKeyRecord.fetchAuthIdsMap(userId)
+  }
 
-  def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long]] = {
-    authIds.get((uid, publicKeyHash)) match {
-      case Some(f) =>
-        f
-      case None =>
-        val f = UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
-        authIds.put((uid, publicKeyHash), f)
-        f
-    }
+  def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
+    UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
   }
 }
