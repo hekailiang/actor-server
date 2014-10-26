@@ -105,7 +105,7 @@ class UserServiceSetAvatarSpec extends RpcSpec with BeforeExample {
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
       }
 
-      updates2.length should beEqualTo(2)
+      updates2.length should beEqualTo(1)
       updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[AvatarChanged]
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get

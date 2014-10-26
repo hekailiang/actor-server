@@ -90,18 +90,18 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
           mkUpdates() flatMap {
             case (updates, newKeys, oldKeys) =>
-              updates foreach { update =>
-                updatesBrokerRegion ! update
-              }
-
-              val fstate = ask(
-                updatesBrokerRegion,
-                NewUpdateEvent(
-                  currentUser.authId,
-                  NewMessageSent(destUserId, randomId)
-                )).mapTo[UpdatesBroker.StrictState]
-
               if (newKeys.isEmpty && oldKeys.isEmpty) {
+                updates foreach { update =>
+                  updatesBrokerRegion ! update
+                }
+
+                val fstate = ask(
+                  updatesBrokerRegion,
+                  NewUpdateEvent(
+                    currentUser.authId,
+                    NewMessageSent(destUserId, randomId)
+                  )).mapTo[UpdatesBroker.StrictState]
+
                 for {
                   s <- fstate
                 } yield {
