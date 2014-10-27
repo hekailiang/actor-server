@@ -85,45 +85,38 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       }
     }
 
-    UserRecord.getEntity(destUserId) flatMap {
-      case Some(destUserEntity) =>
-        if (destUserEntity.accessHash(currentUser.authId) != accessHash) {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
-        } else {
-          // Record relation between receiver authId and sender uid
-          log.debug(s"Recording relation uid=${destUserId} -> uid=${currentUser.uid}")
-          socialBrokerRegion ! SocialProtocol.SocialMessageBox(
-            currentUser.uid, SocialProtocol.RelationsNoted(Set(destUserId)))
+    withUser(destUserId, accessHash, currentUser) { destUserEntity =>
+      // Record relation between receiver authId and sender uid
+      log.debug(s"Recording relation uid=${destUserId} -> uid=${currentUser.uid}")
+      socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+        currentUser.uid, SocialProtocol.RelationsNoted(Set(destUserId)))
 
-          mkUpdates() flatMap {
-            case \/-(updates) =>
-              updates foreach { update =>
-                updatesBrokerRegion ! update
-              }
-
-              val fstate = ask(
-                updatesBrokerRegion,
-                NewUpdatePush(
-                  currentUser.authId,
-                  updateProto.MessageSent(destUserId, randomId)
-                )).mapTo[UpdatesBroker.StrictState]
-
-              for {
-                s <- fstate
-              } yield {
-                val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
-                Ok(rsp)
-              }
-            case -\/((newKeys, removedKeys, invalidKeys)) =>
-              val errorData = WrongReceiversErrorData(newKeys, removedKeys, invalidKeys)
-
-              Future.successful(
-                Error(400, "WRONG_KEYS", "", false, Some(errorData))
-              )
+      mkUpdates() flatMap {
+        case \/-(updates) =>
+          updates foreach { update =>
+            updatesBrokerRegion ! update
           }
-        }
-      case None =>
-       Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
+
+          val fstate = ask(
+            updatesBrokerRegion,
+            NewUpdatePush(
+              currentUser.authId,
+              updateProto.MessageSent(destUserId, randomId)
+            )).mapTo[UpdatesBroker.StrictState]
+
+          for {
+            s <- fstate
+          } yield {
+            val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
+            Ok(rsp)
+          }
+        case -\/((newKeys, removedKeys, invalidKeys)) =>
+          val errorData = WrongReceiversErrorData(newKeys, removedKeys, invalidKeys)
+
+          Future.successful(
+            Error(400, "WRONG_KEYS", "", false, Some(errorData))
+          )
+      }
     }
   }
 
@@ -475,41 +468,25 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    getUsers(uid) map {
-      case users if users.isEmpty =>
-        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
-      case users =>
-        val (_, user) = users.head
+    withUsers(uid, accessHash, currentUser) { users =>
+      users map {
+        case (_, u) =>
+          updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageReceived(currentUser.uid, randomId))
+      }
 
-        if (user.accessHash(currentUser.authId) == accessHash) {
-          users map {
-            case (_, u) =>
-              updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageReceived(currentUser.uid, randomId))
-          }
-          Ok(ResponseVoid())
-        } else {
-          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
-        }
+      Future.successful(Ok(ResponseVoid()))
     }
   }
 
   // TODO: DRY
   protected def handleRequestMessageRead(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    getUsers(uid) map {
-      case users if users.isEmpty =>
-        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
-      case users =>
-        val (_, user) = users.head
+    withUsers(uid, accessHash, currentUser) { users =>
+      users map {
+        case (_, u) =>
+          updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId))
+      }
 
-        if (user.accessHash(currentUser.authId) == accessHash) {
-          users map {
-            case (_, u) =>
-              updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId))
-          }
-          Ok(ResponseVoid())
-        } else {
-          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
-        }
+      Future.successful(Ok(ResponseVoid()))
     }
   }
 
@@ -590,6 +567,46 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           f(group)
         }
       } getOrElse Future.successful(Error(404, "GROUP_DOES_NOT_EXISTS", "Group does not exists.", true))
+    }
+  }
+
+  protected def withUsers(
+    destUserId: Int,
+    accessHash: Long,
+    currentUser: User
+  )(f: Seq[(Long, User)] => Future[RpcResponse])(
+    implicit session: CSession
+  ): Future[RpcResponse] = {
+    getUsers(destUserId) flatMap {
+      case users if users.isEmpty =>
+        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
+      case users =>
+        val (_, user) = users.head
+
+        if (user.accessHash(currentUser.authId) == accessHash) {
+          f(users)
+        } else {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        }
+    }
+  }
+
+  protected def withUser(
+    destUserId: Int,
+    accessHash: Long,
+    currentUser: User
+  )(f: User => Future[RpcResponse])(
+    implicit session: CSession
+  ): Future[RpcResponse] = {
+    UserRecord.getEntity(destUserId) flatMap {
+      case Some(destUserEntity) =>
+        if (destUserEntity.accessHash(currentUser.authId) != accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        } else {
+          f(destUserEntity)
+        }
+      case None =>
+        Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
     }
   }
 }
