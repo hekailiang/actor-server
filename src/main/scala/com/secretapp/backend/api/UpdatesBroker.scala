@@ -89,7 +89,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       log.info(s"NewUpdatePush for $authId: $update")
       persist(SeqUpdate) { _ =>
         seq += 1
-        pushUpdate(authId, update) map (replyTo.!)
+        pushUpdate(authId, seq, update) map (replyTo.!)
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
@@ -109,30 +109,29 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       this.seq += 1
   }
 
-  private def pushUpdate(authId: Long, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
+  private def pushUpdate(authId: Long, updateSeq: Int, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
-    val updSeq = seq
     val uuid = TimeUuid()
 
     SeqUpdateRecord.push(uuid, authId, update)(session) map { _ =>
-      log.debug(s"Wrote update authId=${authId} seq=${this.seq} state=${uuid} update=${update}")
+      log.debug(s"Wrote update authId=$authId seq=$updateSeq state=$uuid update=$update")
 
       update match {
         case _: updateProto.MessageSent =>
           log.debug("Not pushing update MessageSent to session")
         case u =>
           if (u.isInstanceOf[updateProto.Message]) {
-            deliverGooglePush(authId, seq)
-            deliverApplePush(authId, seq)
+            deliverGooglePush(authId, updateSeq)
+            deliverApplePush(authId, updateSeq)
           }
 
-          mediator ! Publish(topic, (updSeq, uuid, update))
+          mediator ! Publish(topic, (updateSeq, uuid, update))
           log.info(
-            s"Published update authId=$authId seq=${this.seq} state=${uuid} update=${update}"
+            s"Published update authId=$authId seq=$updateSeq state=$uuid update=$update"
           )
       }
 
-      (seq, uuid)
+      (updateSeq, uuid)
     }
   }
 

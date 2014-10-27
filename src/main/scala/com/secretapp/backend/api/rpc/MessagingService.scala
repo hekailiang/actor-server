@@ -475,9 +475,9 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    getUsers(uid) flatMap {
+    getUsers(uid) map {
       case users if users.isEmpty =>
-        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
+        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
       case users =>
         val (_, user) = users.head
 
@@ -486,20 +486,18 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             case (_, u) =>
               updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageReceived(currentUser.uid, randomId))
           }
-          for {
-            seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
-          } yield Ok(ResponseVoid())
+          Ok(ResponseVoid())
         } else {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
         }
     }
   }
 
   // TODO: DRY
   protected def handleRequestMessageRead(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
-    getUsers(uid) flatMap {
+    getUsers(uid) map {
       case users if users.isEmpty =>
-        Future.successful(Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true))
+        Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
       case users =>
         val (_, user) = users.head
 
@@ -508,11 +506,9 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             case (_, u) =>
               updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId))
           }
-          for {
-            seq <- ask(updatesBrokerRegion, UpdatesBroker.GetSeq(currentUser.authId)).mapTo[Int]
-          } yield Ok(ResponseVoid())
+          Ok(ResponseVoid())
         } else {
-          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+          Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)
         }
     }
   }
