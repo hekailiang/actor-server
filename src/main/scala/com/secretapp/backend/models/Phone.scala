@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.models
+package com.secretapp.backend.models
 
 import scala.collection.immutable
 import com.secretapp.backend.data.types._

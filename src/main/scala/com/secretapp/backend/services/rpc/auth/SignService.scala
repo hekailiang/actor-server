@@ -14,7 +14,7 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
@@ -144,7 +144,7 @@ trait SignService extends SocialHelpers {
     val authId = currentAuthId // TODO
 
     @inline
-    def auth(u: User): RpcResponse = {
+    def auth(u: models.User): RpcResponse = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
       log.info(s"Authenticate currentUser=${u}")
       this.currentUser = Some(u)
@@ -265,7 +265,7 @@ trait SignService extends SocialHelpers {
                       withValidPublicKey(publicKey) { publicKey =>
                         ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] map { userId =>
                           val accessSalt = genUserAccessSalt
-                          val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
+                          val user = models.User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
                           UserRecord.insertEntityWithPhoneAndPK(user)
                           pushContactRegisteredUpdates(user)
                           auth(user)
@@ -345,7 +345,7 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def pushContactRegisteredUpdates(u: User): Unit = {
+  private def pushContactRegisteredUpdates(u: models.User): Unit = {
     import com.secretapp.backend.api.SocialProtocol._
 
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>

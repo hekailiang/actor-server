@@ -104,7 +104,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
 object UserRecord extends UserRecord with DBConnector {
 
   def insertEntityWithPhoneAndPK(entity: models.User)(implicit session: Session): Future[ResultSet] = {
-    val phone = Phone(
+    val phone = models.Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
       userAccessSalt = entity.accessSalt,
