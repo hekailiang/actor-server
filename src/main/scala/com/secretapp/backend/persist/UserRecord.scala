@@ -107,7 +107,6 @@ object UserRecord extends UserRecord with DBConnector {
       number = entity.phoneNumber,
       userId = entity.uid,
       userAccessSalt = entity.accessSalt,
-      userKeyHashes = immutable.Set(entity.publicKeyHash),
       userName = entity.name,
       userSex = sexToInt(entity.sex))
 
@@ -176,8 +175,7 @@ object UserRecord extends UserRecord with DBConnector {
   }
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
-    update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).
-      future().flatMap(_ => PhoneRecord.addKeyHash(phoneNumber, publicKeyHash))
+    update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).future()
   }
 
   /**
@@ -196,7 +194,6 @@ object UserRecord extends UserRecord with DBConnector {
             update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
             delete.where(_.uid eqs uid).and(_.authId eqs authId).future(),
             AuthIdRecord.getEntity(authId),
-            PhoneRecord.removeKeyHashByUserId(uid, publicKeyHash),
             GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
           )
         ) map (_ => Some(authId))
@@ -206,8 +203,7 @@ object UserRecord extends UserRecord with DBConnector {
   }
 
   def removeKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
-    update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).
-      future().flatMap(_ => PhoneRecord.removeKeyHash(phoneNumber, publicKeyHash))
+    update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future()
   }
 
   def updateAvatar(uid: Int, avatar: Avatar)(implicit session: Session) =

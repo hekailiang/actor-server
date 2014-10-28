@@ -17,9 +17,6 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
   object userAccessSalt extends StringColumn(this) {
     override lazy val name = "user_access_salt"
   }
-  object userKeyHashes extends SetColumn[PhoneRecord, Phone, Long](this) {
-    override lazy val name = "user_key_hashes"
-  }
   object userName extends StringColumn(this) {
     override lazy val name = "user_first_name"
   }
@@ -29,7 +26,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, Phone] {
 
   override def fromRow(row: Row): Phone = {
     Phone(number = number(row), userId = userId(row), userAccessSalt = userAccessSalt(row),
-      userName = userName(row), userKeyHashes = userKeyHashes(row), userSex = intToSex(userSex(row)))
+      userName = userName(row), userSex = intToSex(userSex(row)))
   }
 }
 
@@ -38,7 +35,6 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     insert.value(_.number, entity.number)
       .value(_.userId, entity.userId)
       .value(_.userAccessSalt, entity.userAccessSalt)
-      .value(_.userKeyHashes, entity.userKeyHashes.toSet)
       .value(_.userName, entity.userName)
       .value(_.userSex, sexToInt(entity.userSex))
       .future()
@@ -46,18 +42,6 @@ object PhoneRecord extends PhoneRecord with DBConnector {
 
   def dropEntity(phoneNumber: Long)(implicit session: Session) = {
     delete.where(_.number eqs phoneNumber).future()
-  }
-
-  def addKeyHash(phoneNumber: Long, keyHash: Long)(implicit session: Session) = {
-    update.where(_.number eqs phoneNumber).modify(_.userKeyHashes add keyHash).future()
-  }
-
-  def removeKeyHash(phoneNumber: Long, keyHash: Long)(implicit session: Session) = {
-    update.where(_.number eqs phoneNumber).modify(_.userKeyHashes remove keyHash).future()
-  }
-
-  def removeKeyHashByUserId(userId: Int, keyHash: Long)(implicit session: Session) = {
-    update.where(_.userId eqs userId).modify(_.userKeyHashes remove keyHash).future()
   }
 
   def updateUserName(phoneNumber: Long, userName: String)(implicit session: Session) = {

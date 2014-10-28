@@ -5,4 +5,4 @@ import com.secretapp.backend.data.types._
 
 @SerialVersionUID(1L)
 case class Phone(number: Long, userId: Int, userAccessSalt: String, userName: String,
-                 userKeyHashes: immutable.Set[Long], userSex: Sex = NoSex)
+                 userSex: Sex = NoSex)
