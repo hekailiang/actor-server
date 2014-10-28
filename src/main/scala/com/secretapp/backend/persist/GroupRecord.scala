@@ -4,6 +4,7 @@ import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import com.secretapp.backend.data.types._
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.websudos.phantom.Implicits._
@@ -14,7 +15,7 @@ import scalaz._
 import Scalaz._
 import scodec.bits.BitVector
 
-sealed class GroupRecord extends CassandraTable[GroupRecord, Group] {
+sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
   override lazy val tableName = "groups"
 
   object id extends IntColumn(this) with PartitionKey[Int]
@@ -67,8 +68,8 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, Group] {
     override lazy val name = "full_avatar_height"
   }
 
-  override def fromRow(row: Row): Group = {
-    Group(
+  override def fromRow(row: Row): models.Group = {
+    models.Group(
       id            = id(row),
       creatorUserId = creatorUserId(row),
       accessHash    = accessHash(row),
@@ -78,9 +79,9 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, Group] {
     )
   }
 
-  def fromRowWithAvatar(row: Row): (Group, AvatarData) = {
+  def fromRowWithAvatar(row: Row): (models.Group, AvatarData) = {
     (
-      Group(
+      models.Group(
         id            = id(row),
         creatorUserId = creatorUserId(row),
         accessHash    = accessHash(row),
@@ -104,12 +105,12 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, Group] {
     )
   }
 
-  def selectWithAvatar: SelectQuery[GroupRecord, (Group, AvatarData)] =
-    new SelectQuery[GroupRecord, (Group, AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
+  def selectWithAvatar: SelectQuery[GroupRecord, (models.Group, AvatarData)] =
+    new SelectQuery[GroupRecord, (models.Group, AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
 }
 
 object GroupRecord extends GroupRecord with DBConnector {
-  def insertEntity(entity: Group)(implicit session: Session): Future[ResultSet] = {
+  def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.id, entity.id)
       .value(_.creatorUserId, entity.creatorUserId)
@@ -120,11 +121,11 @@ object GroupRecord extends GroupRecord with DBConnector {
       .future()
   }
 
-  def getEntity(groupId: Int)(implicit session: Session): Future[Option[Group]] = {
+  def getEntity(groupId: Int)(implicit session: Session): Future[Option[models.Group]] = {
     select.where(_.id eqs groupId).one()
   }
 
-  def getEntityWithAvatar(groupId: Int)(implicit session: Session): Future[Option[(Group, AvatarData)]] = {
+  def getEntityWithAvatar(groupId: Int)(implicit session: Session): Future[Option[(models.Group, AvatarData)]] = {
     selectWithAvatar.where(_.id eqs groupId).one()
   }
 

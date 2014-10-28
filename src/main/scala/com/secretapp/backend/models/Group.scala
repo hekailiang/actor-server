@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.models
+package com.secretapp.backend.models
 
 import scodec.bits._
 
