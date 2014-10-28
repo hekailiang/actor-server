@@ -5,6 +5,7 @@ import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 import java.util.{ Date, UUID }
 import org.joda.time.DateTime
@@ -14,7 +15,7 @@ import scala.language.postfixOps
 import scala.math.BigInt
 import scodec.bits.BitVector
 
-sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, UserPublicKey] {
+sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, models.UserPublicKey] {
   override lazy val tableName = "user_public_keys"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
@@ -39,8 +40,8 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, Use
     override lazy val name = "is_deleted"
   }
 
-  override def fromRow(row: Row): UserPublicKey = {
-    UserPublicKey(
+  override def fromRow(row: Row): models.UserPublicKey = {
+    models.UserPublicKey(
       uid = uid(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row)),
@@ -54,7 +55,7 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
   import scalaz._
   import Scalaz._
 
-  def insertEntity(entity: UserPublicKey)(implicit session: Session): Future[ResultSet] = {
+  def insertEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
@@ -64,7 +65,7 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .future()
   }
 
-  def insertDeletedEntity(entity: UserPublicKey)(implicit session: Session): Future[ResultSet] = {
+  def insertDeletedEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, entity.uid)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
@@ -75,7 +76,8 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .future()
   }
 
-  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] = {
+  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)
+                      (implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, uid)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
@@ -84,7 +86,8 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .future()
   }
 
-  def getEntitiesByPublicKeyHash(uidAndPK: immutable.Seq[(Int, Long)])(implicit session: Session): Future[immutable.Seq[UserPublicKey]] = {
+  def getEntitiesByPublicKeyHash(uidAndPK: immutable.Seq[(Int, Long)])
+                                (implicit session: Session): Future[immutable.Seq[models.UserPublicKey]] = {
     val q = uidAndPK.map { t =>
       val (uid, pk) = t
       select.where(_.uid eqs uid).and(_.publicKeyHash eqs pk).one()
@@ -99,7 +102,8 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
     * @param publicKeyHash user public key hash
     * @return an authId value, right if its public key is active, left otherwise
     */
-  def getAuthIdByUidAndPublicKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long \/ Long]] = {
+  def getAuthIdByUidAndPublicKeyHash(uid: Int, publicKeyHash: Long)
+                                    (implicit session: Session): Future[Option[Long \/ Long]] = {
     select(_.authId, _.isDeleted).where(_.uid eqs uid).and(_.publicKeyHash eqs publicKeyHash).one() map { optAuthId =>
       optAuthId map {
         case (authId, false) => authId.right

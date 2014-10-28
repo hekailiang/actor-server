@@ -5,7 +5,7 @@ import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.data.models._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.data.types._
 import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
@@ -15,7 +15,7 @@ import scalaz._
 import Scalaz._
 import scodec.bits.BitVector
 
-sealed class UserRecord extends CassandraTable[UserRecord, User] {
+sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
   override lazy val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
@@ -28,7 +28,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
   object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
-  object keyHashes extends SetColumn[UserRecord, User, Long](this) with StaticColumn[Set[Long]] {
+  object keyHashes extends SetColumn[UserRecord, models.User, Long](this) with StaticColumn[Set[Long]] {
     override lazy val name = "key_hashes"
   }
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
@@ -75,8 +75,8 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
     override lazy val name = "full_avatar_height"
   }
 
-  override def fromRow(row: Row): User = {
-    User(
+  override def fromRow(row: Row): models.User = {
+    models.User(
       uid                 = uid(row),
       authId              = authId(row),
       publicKeyHash       = publicKeyHash(row),
@@ -103,7 +103,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, User] {
 
 object UserRecord extends UserRecord with DBConnector {
 
-  def insertEntityWithPhoneAndPK(entity: User)(implicit session: Session): Future[ResultSet] = {
+  def insertEntityWithPhoneAndPK(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
@@ -111,7 +111,7 @@ object UserRecord extends UserRecord with DBConnector {
       userName = entity.name,
       userSex = sexToInt(entity.sex))
 
-    val userPK = UserPublicKey(
+    val userPK = models.UserPublicKey(
       uid = entity.uid,
       publicKeyHash = entity.publicKeyHash,
       userAccessSalt = entity.accessSalt,
@@ -227,15 +227,15 @@ object UserRecord extends UserRecord with DBConnector {
       .modify(_.name setTo name)
       .future
 
-  def getEntity(uid: Int)(implicit session: Session): Future[Option[User]] = {
+  def getEntity(uid: Int)(implicit session: Session): Future[Option[models.User]] = {
     select.where(_.uid eqs uid).one()
   }
 
-  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[User]] = {
+  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] = {
     select.where(_.uid eqs uid).and(_.authId eqs authId).one()
   }
 
-  def byUid(uid: Int)(implicit session: Session): Future[Seq[User]] =
+  def byUid(uid: Int)(implicit session: Session): Future[Seq[models.User]] =
     select.where(_.uid eqs uid).fetch()
 
   def fixAvatars()(implicit session: Session, context: ExecutionContext with Executor) = {
