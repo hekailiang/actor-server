@@ -2,10 +2,8 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.secretapp.backend.crypto.ec.PublicKey
-import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.models
-import com.secretapp.backend.data.types._
 import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
 import scala.concurrent.{ ExecutionContext, Future }
@@ -84,7 +82,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
       accessSalt          = accessSalt(row),
       phoneNumber         = phoneNumber(row),
       name                = name(row),
-      sex                 = intToSex(sex(row)),
+      sex                 = models.Sex.fromInt(sex(row)),
       smallAvatarFileId   = smallAvatarFileId(row),
       smallAvatarFileHash = smallAvatarFileHash(row),
       smallAvatarFileSize = smallAvatarFileSize(row),
@@ -108,7 +106,7 @@ object UserRecord extends UserRecord with DBConnector {
       userId = entity.uid,
       userAccessSalt = entity.accessSalt,
       userName = entity.name,
-      userSex = sexToInt(entity.sex))
+      userSex = entity.sex)
 
     val userPK = models.UserPublicKey(
       uid = entity.uid,
@@ -125,7 +123,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.name, entity.name)
-      .value(_.sex, sexToInt(entity.sex))
+      .value(_.sex, entity.sex.toInt)
       .value(_.smallAvatarFileId, entity.smallAvatarFileId)
       .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
       .value(_.smallAvatarFileSize, entity.smallAvatarFileSize)
@@ -157,7 +155,7 @@ object UserRecord extends UserRecord with DBConnector {
       flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
   }
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: Sex = NoSex)
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
                                     (implicit session: Session): Future[ResultSet] = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
 
@@ -166,7 +164,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.name, name)
-      .value(_.sex, sexToInt(sex))
+      .value(_.sex, sex.toInt)
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
       flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).

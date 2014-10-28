@@ -14,7 +14,6 @@ import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGe
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.data.message.struct.{User, Avatar, AvatarImage, UserId}
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.data.types.{NoSex, Female, Sex, Male}
 import org.specs2.mutable.Specification
 import com.secretapp.backend.data.json.message._
 import play.api.libs.json

@@ -1,7 +1,6 @@
 package com.secretapp.backend.data.json.types
 
 import com.secretapp.backend.data.json.JsonSpec
-import com.secretapp.backend.data.types._
 import play.api.libs.json._
 
 class JsonFormatsSpec extends JsonSpec {

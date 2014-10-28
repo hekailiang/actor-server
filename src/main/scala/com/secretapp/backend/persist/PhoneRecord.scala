@@ -1,8 +1,6 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.models
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -25,10 +23,9 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, models.Phone] {
     override lazy val name = "user_sex"
   }
 
-  override def fromRow(row: Row): models.Phone = {
+  override def fromRow(row: Row): models.Phone =
     models.Phone(number = number(row), userId = userId(row), userAccessSalt = userAccessSalt(row),
-      userName = userName(row), userSex = intToSex(userSex(row)))
-  }
+      userName = userName(row), userSex = models.Sex.fromInt(userSex(row)))
 }
 
 object PhoneRecord extends PhoneRecord with DBConnector {
@@ -37,7 +34,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
       .value(_.userId, entity.userId)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.userName, entity.userName)
-      .value(_.userSex, sexToInt(entity.userSex))
+      .value(_.userSex, entity.userSex.toInt)
       .future()
   }
 
@@ -56,7 +53,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     update.
       where(_.number eqs phoneNumber).
       modify(_.userName setTo user.name).
-      and(_.userSex setTo sexToInt(user.sex)).
+      and(_.userSex setTo user.sex.toInt).
       future()
   }
 

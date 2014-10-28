@@ -3,7 +3,6 @@ package com.secretapp.backend.models
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable
-import com.secretapp.backend.data.types._
 import com.secretapp.backend.Configuration
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector

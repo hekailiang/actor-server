@@ -5,8 +5,10 @@ import play.api.libs.json._
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
+import com.secretapp.backend.models
 
 trait CommonJsonFormats {
+
   implicit object longFormat extends Format[Long] {
     override def writes(o: Long): JsValue = JsString(o.toString)
 
@@ -28,6 +30,23 @@ trait CommonJsonFormats {
 
     override def writes(o: BitVector): JsValue = JsString(o.toBase64)
   }
+
+  // TODO: Move to the more appropriate place
+  implicit object sexFormat extends Format[models.Sex] {
+    override def reads(json: JsValue): JsResult[models.Sex] = json match {
+      case JsString("male")   => JsSuccess(models.Male)
+      case JsString("female") => JsSuccess(models.Female)
+      case JsString("nosex")  => JsSuccess(models.NoSex)
+      case _                  => JsError()
+    }
+
+    override def writes(o: models.Sex): JsValue = o match {
+      case models.Male   => JsString("male")
+      case models.Female => JsString("female")
+      case models.NoSex  => JsString("nosex")
+    }
+  }
+
 }
 
 object CommonJsonFormats extends CommonJsonFormats {

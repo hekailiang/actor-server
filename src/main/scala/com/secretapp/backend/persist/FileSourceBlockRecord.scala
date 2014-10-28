@@ -1,12 +1,7 @@
 package com.secretapp.backend.persist
 
-import akka.dispatch.Dispatcher
-import com.datastax.driver.core.{ResultSet, Row, Session}
-import com.secretapp.backend.data.Implicits._
 import com.websudos.phantom.Implicits._
-import com.websudos.phantom.keys.ClusteringOrder
 import java.util.concurrent.Executor
-import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 
 case class FileSourceBlock(fileId: Int, offset: Int, length: Int)

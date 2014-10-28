@@ -1,7 +1,5 @@
 package com.secretapp.backend.persist
 
-import com.secretapp.backend.data.types._
-import com.secretapp.backend.data.models._
 import com.websudos.phantom.Implicits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import scodec.bits._

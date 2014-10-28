@@ -1,14 +1,10 @@
 package com.secretapp.backend.persist
 
-import akka.dispatch.Dispatcher
-import com.datastax.driver.core.{ResultSet, Row, Session}
-import com.secretapp.backend.data.Implicits._
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.keys.ClusteringOrder
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import play.api.libs.iteratee._
-import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
 

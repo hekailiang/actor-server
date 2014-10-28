@@ -1,7 +1,6 @@
 package com.secretapp.backend.data.message.struct
 
 import scala.language.implicitConversions
-import com.secretapp.backend.data.types
 import com.secretapp.backend.data.message.ProtobufMessage
 import im.actor.messenger.{ api => protobuf }
 import scalaz._

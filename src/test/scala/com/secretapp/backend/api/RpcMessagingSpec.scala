@@ -14,7 +14,6 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageSent, MessageRead }
 import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.data.types._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.common.RandomService

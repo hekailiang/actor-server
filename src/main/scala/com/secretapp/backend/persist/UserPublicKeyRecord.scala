@@ -1,18 +1,12 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.secretapp.backend.crypto.ec.PublicKey
-import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data._
-import com.secretapp.backend.data.models._
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
-import java.util.{ Date, UUID }
 import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.math.BigInt
 import scodec.bits.BitVector
 
 sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, models.UserPublicKey] {

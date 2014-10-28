@@ -9,7 +9,6 @@ import scodec.bits.BitVector
 import com.google.protobuf.{ ByteString => ProtoByteString }
 import scalaz._
 import Scalaz._
-import com.secretapp.backend.data.types
 
 package object protobuf {
   implicit def bitVector2ProtoByteString(buf: BitVector): ProtoByteString = ProtoByteString.copyFrom(buf.toByteBuffer)
