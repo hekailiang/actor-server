@@ -1,7 +1,6 @@
 package com.secretapp.backend.services.rpc.push
 
 import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid, RpcResponse }
-import com.secretapp.backend.data.models.{ ApplePushCredentials }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist.{ ApplePushCredentialsRecord, GooglePushCredentialsRecord }
 import scala.concurrent.Future
@@ -17,7 +16,7 @@ trait HandlerService {
     }
 
   protected def handleRequestRegisterApplePush(apnsKey: Int, token: String): Future[RpcResponse] =
-    ApplePushCredentialsRecord.set(ApplePushCredentials(currentAuthId, apnsKey, token)) map { _ =>
+    ApplePushCredentialsRecord.set(models.ApplePushCredentials(currentAuthId, apnsKey, token)) map { _ =>
       Ok(ResponseVoid())
     }
 

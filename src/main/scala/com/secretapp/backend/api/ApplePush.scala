@@ -3,7 +3,7 @@ package com.secretapp.backend.api
 import akka.actor.ActorLogging
 import com.datastax.driver.core.{ Session => CSession }
 import com.notnoop.apns.{ APNS, ApnsService }
-import com.secretapp.backend.data.models.ApplePushCredentials
+import com.secretapp.backend.models
 import com.secretapp.backend.persist.ApplePushCredentialsRecord
 import com.typesafe.config.ConfigFactory
 import dispatch._
@@ -17,10 +17,8 @@ trait ApplePush {
 
   val apnsService: ApnsService
 
-  private def payload(seq: Int) = {
-    //APNS.newPayload.forNewsstand().sound("").customField("seq", seq).build
+  private def payload(seq: Int) =
     APNS.newPayload.forNewsstand().customField("seq", seq).build
-  }
 
   private def sendApplePush(token: String, seq: Int): Future[Unit] = {
     val notification = apnsService.push(token, payload(seq))
@@ -28,7 +26,7 @@ trait ApplePush {
     Future.successful()
   }
 
-  private def deliverApplePush(optCreds: Option[ApplePushCredentials], seq: Int)
+  private def deliverApplePush(optCreds: Option[models.ApplePushCredentials], seq: Int)
                                (implicit s: CSession): Future[Unit] =
     optCreds some { c =>
       log.debug(s"Sending apple push creds=$c, seq=$seq")
