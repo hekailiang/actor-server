@@ -1,9 +1,7 @@
 package com.secretapp.backend.protocol.codecs.utils
 
 import net.sandrogrzicic.scalabuff.MessageBuilder
-
 import scala.language.implicitConversions
-import scala.collection.JavaConversions._
 import scala.util.{ Try, Success, Failure }
 import scodec.bits.BitVector
 import com.google.protobuf.{ ByteString => ProtoByteString }
