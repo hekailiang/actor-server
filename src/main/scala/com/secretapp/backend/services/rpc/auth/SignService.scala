@@ -74,7 +74,7 @@ trait SignService extends SocialHelpers {
     for {
       authItems <- AuthItemRecord.getEntities(currentUser.get.uid)
     } yield {
-      Ok(ResponseGetAuth(authItems.toVector map (_.toStruct(currentUser.get.authId))))
+      Ok(ResponseGetAuth(authItems.toVector map (struct.AuthItem.fromModel(_, currentUser.get.authId))))
     }
   }
 
@@ -151,7 +151,7 @@ trait SignService extends SocialHelpers {
 
       nextAuthItemId() map { id =>
         AuthItemRecord.insertEntity(
-          AuthItem.build(
+          models.AuthItem.build(
             id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
             authLocation = "", latitude = None, longitude = None,
             authId = u.authId, deviceHash = deviceHash
@@ -361,7 +361,7 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def logout(authItem: AuthItem)(implicit session: CSession) = {
+  private def logout(authItem: models.AuthItem)(implicit session: CSession) = {
     UserRecord.getEntity(currentUser.get.uid, authItem.authId) map {
       case Some(user) =>
         UserRecord.removeKeyHash(user.uid, user.publicKeyHash) flatMap { _ =>

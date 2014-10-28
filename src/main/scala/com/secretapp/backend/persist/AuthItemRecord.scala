@@ -2,13 +2,11 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import scala.concurrent.Future
 import scodec.bits._
 
-sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, AuthItem] {
+sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, models.AuthItem] {
   override lazy val tableName = "auth_items"
 
   object userId extends IntColumn(this) with PartitionKey[Int] {
@@ -49,19 +47,16 @@ sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, AuthItem] {
 
   object longitude extends OptionalDoubleColumn(this)
 
-  override def fromRow(row: Row): AuthItem = {
-    (
-      AuthItem(
-        id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-        authLocation(row), latitude(row), longitude(row),
-        authId(row), BitVector(deviceHash(row))
-      )
+  override def fromRow(row: Row): models.AuthItem =
+    models.AuthItem(
+      id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
+      authLocation(row), latitude(row), longitude(row),
+      authId(row), BitVector(deviceHash(row))
     )
-  }
 }
 
 object AuthItemRecord extends AuthItemRecord with DBConnector {
-  def insertEntity(item: AuthItem, userId: Int)(implicit session: Session): Future[ResultSet] = {
+  def insertEntity(item: models.AuthItem, userId: Int)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.userId, userId).value(_.id, item.id)
       .value(_.deviceHash, item.deviceHash.toByteBuffer).value(_.authId, item.authId)
       .value(_.appId, item.appId).value(_.appTitle, item.appTitle)
@@ -70,15 +65,15 @@ object AuthItemRecord extends AuthItemRecord with DBConnector {
       .future()
   }
 
-  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[AuthItem]] = {
+  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[models.AuthItem]] = {
     select.where(_.userId eqs userId).and(_.id eqs id).one()
   }
 
-  def getEntityByUserIdAndAuthId(userId: Int, authId: Long)(implicit session: Session): Future[Option[AuthItem]] = {
+  def getEntityByUserIdAndAuthId(userId: Int, authId: Long)(implicit session: Session): Future[Option[models.AuthItem]] = {
     select.where(_.userId eqs userId).and(_.authId eqs authId).one()
   }
 
-  def getEntities(userId: Int)(implicit session: Session): Future[Seq[AuthItem]] = {
+  def getEntities(userId: Int)(implicit session: Session): Future[Seq[models.AuthItem]] = {
     select.where(_.userId eqs userId).fetch()
   }
 

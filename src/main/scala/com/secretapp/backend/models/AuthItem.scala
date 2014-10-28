@@ -1,6 +1,4 @@
-package com.secretapp.backend.data.models
-
-import com.secretapp.backend.data.message.struct
+package com.secretapp.backend.models
 
 import scodec.bits._
 
@@ -9,19 +7,7 @@ case class AuthItem(
   id: Int, appId: Int, appTitle: String, deviceTitle: String, authTime: Int,
   authLocation: String, latitude: Option[Double], longitude: Option[Double],
   authId: Long, deviceHash: BitVector
-) {
-  def toStruct(currentAuthId: Long) = {
-    val authHolder = if (currentAuthId == authId) {
-      0
-    } else {
-      1
-    }
-    struct.AuthItem(
-      id, authHolder, appId, appTitle, deviceTitle, authTime,
-      authLocation, latitude, longitude
-    )
-  }
-}
+)
 
 object AuthItem {
   def build(
