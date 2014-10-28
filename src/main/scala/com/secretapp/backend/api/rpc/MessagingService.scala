@@ -11,7 +11,8 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.data.models.{ Group, User }
+import com.secretapp.backend.data.models.Group
+import com.secretapp.backend.models.User
 import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._

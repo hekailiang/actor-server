@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.update.WeakUpdate
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable

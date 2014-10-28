@@ -5,7 +5,7 @@ import akka.pattern.pipe
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.push._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 
 class Handler(val currentAuthId: Long)
              (implicit val session: CSession)

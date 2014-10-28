@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing.AsyncAssertionsHelper._

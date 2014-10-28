@@ -7,7 +7,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.persist.FileRecord
 import scala.concurrent.duration._
 

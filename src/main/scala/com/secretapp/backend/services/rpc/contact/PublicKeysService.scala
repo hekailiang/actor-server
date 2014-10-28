@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, PublicKeyResponse, RequestPublicKeys, ResponsePublicKeys}
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.UserPublicKeyRecord
 import scala.collection.immutable

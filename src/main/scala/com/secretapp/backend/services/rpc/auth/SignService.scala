@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.models.User
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor

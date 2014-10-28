@@ -13,7 +13,7 @@ import com.secretapp.backend.data.message.{ struct, update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.SeqUpdate
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon

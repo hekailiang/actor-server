@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.update.SeqUpdate
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.data.message.rpc.RpcResponse
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.SeqUpdateRecord

@@ -4,6 +4,7 @@ import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.models.User
 import scala.collection.immutable
 import scala.concurrent.Future
 

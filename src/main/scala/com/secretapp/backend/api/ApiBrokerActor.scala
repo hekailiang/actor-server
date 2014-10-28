@@ -5,7 +5,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc._
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Ok, Error, RpcRequest }
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol

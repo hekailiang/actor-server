@@ -2,8 +2,8 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.models._
+import com.secretapp.backend.models.User
 import scala.concurrent.Future
 
 sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, AuthId] {
@@ -38,7 +38,7 @@ object AuthIdRecord extends AuthIdRecord with DBConnector {
 
   def getEntityWithUser(authId: Long)(implicit session: Session): Future[Option[(AuthId, Option[User])]] = {
     getEntity(authId).flatMap {
-      case Some(auth) => auth.user.flatMap { u => Future.successful(Some(auth, u)) }
+      case Some(auth) => auth.user map { u => Some(auth, u) }
       case None => Future.successful(None)
     }
   }

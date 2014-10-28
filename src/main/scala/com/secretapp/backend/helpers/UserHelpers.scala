@@ -5,7 +5,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct.{ UserId, UserKey }
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.persist.UserRecord
 import scala.collection.concurrent.TrieMap

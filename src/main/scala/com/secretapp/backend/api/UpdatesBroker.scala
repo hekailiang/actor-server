@@ -12,8 +12,8 @@ import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.data.message.{update => updateProto}
+import com.secretapp.backend.models.User
 import com.secretapp.backend.persist.SeqUpdateRecord
 import java.util.UUID
 import scala.concurrent.Future

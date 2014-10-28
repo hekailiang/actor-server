@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDif
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.util.AvatarUtils
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable

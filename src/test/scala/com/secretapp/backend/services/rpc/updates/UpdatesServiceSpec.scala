@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.presence.{ RequestSetOnline }
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable

@@ -4,6 +4,7 @@ import com.secretapp.backend.persist.KeyedEntity
 import scala.concurrent.Future
 import com.datastax.driver.core.Session
 import com.secretapp.backend.persist._
+import com.secretapp.backend.models.User
 
 @SerialVersionUID(1L)
 case class AuthId(authId: Long, userId: Option[Int]) extends KeyedEntity[Long] {

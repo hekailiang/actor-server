@@ -8,7 +8,8 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord, UserRecord}
-import com.secretapp.backend.data.models.{UnregisteredContact, User}
+import com.secretapp.backend.data.models.UnregisteredContact
+import com.secretapp.backend.models.User
 import com.datastax.driver.core.{ Session => CSession }
 import scala.collection.immutable
 import scala.concurrent.Future

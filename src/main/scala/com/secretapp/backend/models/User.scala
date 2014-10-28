@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.models
+package com.secretapp.backend.models
 
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
@@ -14,25 +14,25 @@ import Scalaz._
 
 @SerialVersionUID(1L)
 case class User(uid: Int,
-                authId: Long,
-                publicKeyHash: Long,
-                publicKey: BitVector,
-                phoneNumber: Long,
-                accessSalt: String,
-                name: String,
-                sex: Sex,
-                smallAvatarFileId: Option[Int] = None,
-                smallAvatarFileHash: Option[Long] = None,
-                smallAvatarFileSize: Option[Int] = None,
-                largeAvatarFileId: Option[Int] = None,
-                largeAvatarFileHash: Option[Long] = None,
-                largeAvatarFileSize: Option[Int] = None,
-                fullAvatarFileId: Option[Int] = None,
-                fullAvatarFileHash: Option[Long] = None,
-                fullAvatarFileSize: Option[Int] = None,
-                fullAvatarWidth: Option[Int] = None,
-                fullAvatarHeight: Option[Int] = None,
-                keyHashes: immutable.Set[Long] = immutable.Set()) {
+  authId: Long,
+  publicKeyHash: Long,
+  publicKey: BitVector,
+  phoneNumber: Long,
+  accessSalt: String,
+  name: String,
+  sex: Sex,
+  smallAvatarFileId: Option[Int] = None,
+  smallAvatarFileHash: Option[Long] = None,
+  smallAvatarFileSize: Option[Int] = None,
+  largeAvatarFileId: Option[Int] = None,
+  largeAvatarFileHash: Option[Long] = None,
+  largeAvatarFileSize: Option[Int] = None,
+  fullAvatarFileId: Option[Int] = None,
+  fullAvatarFileHash: Option[Long] = None,
+  fullAvatarFileSize: Option[Int] = None,
+  fullAvatarWidth: Option[Int] = None,
+  fullAvatarHeight: Option[Int] = None,
+  keyHashes: immutable.Set[Long] = immutable.Set()) {
 
   def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
 
