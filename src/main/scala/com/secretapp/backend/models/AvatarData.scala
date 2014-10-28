@@ -1,4 +1,4 @@
-package com.secretapp.backend.data.models
+package com.secretapp.backend.models
 
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable

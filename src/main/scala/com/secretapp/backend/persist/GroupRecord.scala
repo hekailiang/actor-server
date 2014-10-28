@@ -1,16 +1,12 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.struct.Avatar
-import com.secretapp.backend.data.models._
 import com.secretapp.backend.models
-import com.secretapp.backend.data.types._
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.query.SelectQuery
 import scala.concurrent.Future
-import scala.collection.immutable
 import scalaz._
 import Scalaz._
 import scodec.bits.BitVector
@@ -79,7 +75,7 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
     )
   }
 
-  def fromRowWithAvatar(row: Row): (models.Group, AvatarData) = {
+  def fromRowWithAvatar(row: Row): (models.Group, models.AvatarData) = {
     (
       models.Group(
         id            = id(row),
@@ -89,7 +85,7 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
         keyHash       = BitVector(keyHash(row)),
         publicKey     = BitVector(publicKey(row))
       ),
-      AvatarData(
+      models.AvatarData(
         smallAvatarFileId   = smallAvatarFileId(row),
         smallAvatarFileHash = smallAvatarFileHash(row),
         smallAvatarFileSize = smallAvatarFileSize(row),
@@ -105,8 +101,8 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
     )
   }
 
-  def selectWithAvatar: SelectQuery[GroupRecord, (models.Group, AvatarData)] =
-    new SelectQuery[GroupRecord, (models.Group, AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
+  def selectWithAvatar: SelectQuery[GroupRecord, (models.Group, models.AvatarData)] =
+    new SelectQuery[GroupRecord, (models.Group, models.AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
 }
 
 object GroupRecord extends GroupRecord with DBConnector {
@@ -125,7 +121,8 @@ object GroupRecord extends GroupRecord with DBConnector {
     select.where(_.id eqs groupId).one()
   }
 
-  def getEntityWithAvatar(groupId: Int)(implicit session: Session): Future[Option[(models.Group, AvatarData)]] = {
+  def getEntityWithAvatar(groupId: Int)
+                         (implicit session: Session): Future[Option[(models.Group, models.AvatarData)]] = {
     selectWithAvatar.where(_.id eqs groupId).one()
   }
 

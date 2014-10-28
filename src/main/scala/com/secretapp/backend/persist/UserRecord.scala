@@ -4,7 +4,6 @@ import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.data.Implicits._
 import com.secretapp.backend.data.message.struct.Avatar
-import com.secretapp.backend.data.models._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.types._
 import com.websudos.phantom.Implicits._
