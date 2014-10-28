@@ -4,7 +4,6 @@ import java.util.regex.Pattern
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
@@ -19,7 +18,6 @@ import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{ Success, Failure }
 import scodec.bits.BitVector
 import scalaz._
@@ -120,7 +118,7 @@ trait SignService extends SocialHelpers {
       phoneR <- PhoneRecord.getEntity(phoneNumber)
     } yield {
       val (smsHash, smsCode) = smsR match {
-        case Some(AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
+        case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
         case None =>
           val smsHash = genSmsHash
           val smsCode = phoneNumber.toString match {
@@ -128,7 +126,7 @@ trait SignService extends SocialHelpers {
               strNumber { 4 }.toString * 4
             case _ => genSmsCode
           }
-          AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
+          AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
 
@@ -146,7 +144,7 @@ trait SignService extends SocialHelpers {
     @inline
     def auth(u: models.User): RpcResponse = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
-      log.info(s"Authenticate currentUser=${u}")
+      log.info(s"Authenticate currentUser=$u")
       this.currentUser = Some(u)
 
       nextAuthItemId() map { id =>
