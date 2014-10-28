@@ -11,7 +11,6 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.protocol.codecs.message.update.SeqUpdateMessageCodec
-import com.gilt.timeuuid._
 import scala.collection.immutable
 import scala.collection.JavaConversions._
 import scala.concurrent.Future

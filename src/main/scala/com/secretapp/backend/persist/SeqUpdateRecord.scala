@@ -2,6 +2,7 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.driver.core.utils.UUIDs
 import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.struct.{User, AvatarImage, Avatar}
 import com.websudos.phantom.query.ExecutableStatement
@@ -10,7 +11,6 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.protocol.codecs.message.update.SeqUpdateMessageCodec
-import com.gilt.timeuuid._
 import java.nio.ByteBuffer
 import java.util.UUID
 import scala.collection.immutable
@@ -160,7 +160,7 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
     SeqUpdateRecord.select(_.uuid).where(_.authId eqs authId).orderBy(_.uuid.desc).one
 
   def push(authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] = {
-    val uuid = TimeUuid()
+    val uuid = UUIDs.timeBased
     push(uuid, authId, update)
   }
 

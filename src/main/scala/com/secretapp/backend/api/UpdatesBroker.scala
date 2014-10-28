@@ -7,12 +7,12 @@ import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence._
 import akka.util.Timeout
-import com.datastax.driver.core.{Session => CSession}
-import com.gilt.timeuuid.TimeUuid
+import com.datastax.driver.core.{ Session => CSession }
+import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import com.secretapp.backend.data.message.{update => updateProto}
+import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.data.models.User
 import com.secretapp.backend.persist.SeqUpdateRecord
 import java.util.UUID
@@ -111,7 +111,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
 
   private def pushUpdate(authId: Long, updateSeq: Int, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
-    val uuid = TimeUuid()
+    val uuid = UUIDs.timeBased
 
     SeqUpdateRecord.push(uuid, authId, update)(session) map { _ =>
       log.debug(s"Wrote update authId=$authId seq=$updateSeq state=$uuid update=$update")

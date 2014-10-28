@@ -13,7 +13,6 @@ object Dependencies {
   val compileDependencies = Seq(
     "ch.qos.logback"              % "logback-classic"               % "1.1.2",
     "com.chuusai"                 % "shapeless_2.10.4"              % "2.1.0-SNAPSHOT" changing(),
-    "com.gilt"                   %% "gfc-timeuuid"                  % "0.0.5",
     "com.github.krasserm"        %% "akka-persistence-cassandra"    % "0.3.4",
     "com.github.nscala-time"     %% "nscala-time"                   % "1.2.0",
     "com.notnoop.apns"           %  "apns"                          % "1.0.0.Beta4",
