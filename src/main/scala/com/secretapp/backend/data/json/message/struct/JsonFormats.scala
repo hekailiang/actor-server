@@ -2,7 +2,6 @@ package com.secretapp.backend.data.json.message.struct
 
 import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.message.rpc.file._
-import com.secretapp.backend.data.json.types._
 import com.secretapp.backend.data.message.struct._
 import play.api.libs.json._
 

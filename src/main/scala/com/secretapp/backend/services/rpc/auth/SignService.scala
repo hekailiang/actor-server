@@ -4,7 +4,6 @@ import java.util.regex.Pattern
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
@@ -13,12 +12,11 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{ Success, Failure }
 import scodec.bits.BitVector
 import scalaz._
@@ -73,7 +71,7 @@ trait SignService extends SocialHelpers {
     for {
       authItems <- AuthItemRecord.getEntities(currentUser.get.uid)
     } yield {
-      Ok(ResponseGetAuth(authItems.toVector map (_.toStruct(currentUser.get.authId))))
+      Ok(ResponseGetAuth(authItems.toVector map (struct.AuthItem.fromModel(_, currentUser.get.authId))))
     }
   }
 
@@ -119,7 +117,7 @@ trait SignService extends SocialHelpers {
       phoneR <- PhoneRecord.getEntity(phoneNumber)
     } yield {
       val (smsHash, smsCode) = smsR match {
-        case Some(AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
+        case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
         case None =>
           val smsHash = genSmsHash
           val smsCode = phoneNumber.toString match {
@@ -127,7 +125,7 @@ trait SignService extends SocialHelpers {
               strNumber { 4 }.toString * 4
             case _ => genSmsCode
           }
-          AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode))
+          AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
 
@@ -143,13 +141,13 @@ trait SignService extends SocialHelpers {
     val authId = currentAuthId // TODO
 
     @inline
-    def auth(u: User): RpcResponse = {
+    def auth(u: models.User): RpcResponse = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
-      log.info(s"Authenticate currentUser=${u}")
+      log.info(s"Authenticate currentUser=$u")
       this.currentUser = Some(u)
 
       nextAuthItemId() map { id =>
-        val authItem = AuthItem.build(
+        val authItem = models.AuthItem.build(
           id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
           authLocation = "", latitude = None, longitude = None,
           authId = u.authId, deviceHash = deviceHash
@@ -158,7 +156,7 @@ trait SignService extends SocialHelpers {
         AuthItemRecord.insertEntity(authItem, u.uid)
       }
 
-      Ok(ResponseAuth(u.publicKeyHash, u.toStruct(authId)))
+      Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
     }
 
     @inline
@@ -264,7 +262,7 @@ trait SignService extends SocialHelpers {
                       withValidPublicKey(publicKey) { publicKey =>
                         ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] map { userId =>
                           val accessSalt = genUserAccessSalt
-                          val user = User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
+                          val user = models.User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
                           UserRecord.insertEntityWithPhoneAndPK(user)
                           pushContactRegisteredUpdates(user)
                           auth(user)
@@ -348,7 +346,7 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def pushContactRegisteredUpdates(u: User): Unit = {
+  private def pushContactRegisteredUpdates(u: models.User): Unit = {
     import com.secretapp.backend.api.SocialProtocol._
 
     UnregisteredContactRecord.byNumber(u.phoneNumber) map { contacts =>
@@ -364,7 +362,7 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def logout(authItem: AuthItem)(implicit session: CSession) = {
+  private def logout(authItem: models.AuthItem)(implicit session: CSession) = {
     UserRecord.getEntity(currentUser.get.uid, authItem.authId) map {
       case Some(user) =>
         UserRecord.removeKeyHash(user.uid, user.publicKeyHash) flatMap { _ =>

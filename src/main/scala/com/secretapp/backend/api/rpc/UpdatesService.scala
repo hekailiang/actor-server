@@ -13,7 +13,7 @@ import com.secretapp.backend.data.message.{ struct, update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.SeqUpdate
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.common.PackageCommon
@@ -91,9 +91,9 @@ sealed trait UpdatesService {
 
   protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     @inline
-    def getUserStruct(uid: Int): Future[Option[struct.User]] = {
-      UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
-    }
+    def getUserStruct(uid: Int): Future[Option[struct.User]] =
+      UserRecord.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
+
     if (updates.length > 0) {
       val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
       Future.sequence(userIds.map(getUserStruct).toVector) map (_.flatten)

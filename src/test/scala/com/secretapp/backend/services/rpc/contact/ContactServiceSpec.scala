@@ -1,28 +1,11 @@
 package com.secretapp.backend.services.rpc.contact
 
-import akka.actor._
-import akka.io.Tcp._
-import akka.testkit._
-import com.secretapp.backend.crypto.ec
-import com.secretapp.backend.data.message.rpc.{ Ok, Request }
 import com.secretapp.backend.data.message.rpc.contact._
-import com.secretapp.backend.data.message.{ RpcRequestBox, RpcResponseBox }
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.persist._
-import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.services.rpc.RpcSpec
-import com.websudos.util.testing.AsyncAssertionsHelper._
-import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
-import scala.language.postfixOps
-import scala.util.Random
-import scalaz.Scalaz._
-import scodec.bits._
 
 class ContactServiceSpec extends RpcSpec {
-  import system.dispatcher
-
   "ContactService" should {
 
     "handle RPC import contacts request" in {
@@ -36,7 +19,7 @@ class ContactServiceSpec extends RpcSpec {
         val (response, _) = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
 
         response should_== ResponseImportedContacts(
-          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(struct.User.fromModel(scope2.user, scope.user.authId)),
           immutable.Seq(ImportedContact(42, scope2.user.uid)))
       }
     }
@@ -54,7 +37,7 @@ class ContactServiceSpec extends RpcSpec {
         val (response, _) = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
 
         response should_== ResponseImportedContacts(
-          immutable.Seq(scope2.user.toStruct(scope.user.authId)),
+          immutable.Seq(struct.User.fromModel(scope2.user, scope.user.authId)),
           immutable.Seq(ImportedContact(42, scope2.user.uid)))
       }
     }

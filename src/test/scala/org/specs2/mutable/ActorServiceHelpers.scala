@@ -12,7 +12,7 @@ import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc.{Request, RpcRequestMessage, RpcResponse}
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
 import com.secretapp.backend.protocol.codecs._
@@ -61,10 +61,10 @@ trait ActorCommon { self: RandomService =>
 
   case class SessionIdentifier(id: Long)
   object SessionIdentifier {
-    def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong)
+    def apply(): SessionIdentifier = SessionIdentifier(rand.nextLong())
   }
 
-  case class TestScopeNew(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, authId: Long, userOpt: Option[User] = None) {
+  case class TestScopeNew(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, authId: Long, userOpt: Option[models.User] = None) {
     lazy val user = userOpt.get
   }
 }
@@ -338,24 +338,25 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   }
 
   def insertAuthId(authId: Long, userId: Option[Int] = None): Unit = blocking {
-    AuthIdRecord.insertEntity(AuthId(authId, userId)).sync()
+    AuthIdRecord.insertEntity(models.AuthId(authId, userId)).sync()
   }
 
-  def addUser(authId: Long, sessionId: Long, u: User, phoneNumber: Long): Unit = blocking {
-    AuthIdRecord.insertEntity(AuthId(authId, None)).sync()
+  def addUser(authId: Long, sessionId: Long, u: models.User, phoneNumber: Long): Unit = blocking {
+    AuthIdRecord.insertEntity(models.AuthId(authId, None)).sync()
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
   }
 
-  def authUser(u: User, phoneNumber: Long): User = blocking {
+  def authUser(u: models.User, phoneNumber: Long): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
     UserRecord.insertEntityWithPhoneAndPK(u).sync()
     u
   }
 
-  def authDefaultUser(uid: Int, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): User = blocking {
+  def authDefaultUser(uid: Int, phoneNumber: Long = defaultPhoneNumber)
+                     (implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): models.User = blocking {
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
-    val user = User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",
+    val user = models.User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",
       phoneNumber = phoneNumber, name = name)
     authUser(user, phoneNumber)
   }
@@ -381,7 +382,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     (probe, actor)
   }
 
-  def genTestScope()(implicit transport: TransportConnection) = {
+  def genTestScope()(implicit transport: TransportConnection): TestScopeNew = {
     val (probe, apiActor) = getProbeAndActor()
     TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(), authId = rand.nextLong())
   }
@@ -393,7 +394,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val publicKey = BitVector(rand.nextString(100).getBytes)
     val salt = rand.nextString(25)
     val name = s"Timothy$userId Klim$userId"
-    val userStruct = User.build(uid = userId, authId = scope.authId, publicKey = publicKey, accessSalt = salt,
+    val userStruct = models.User.build(uid = userId, authId = scope.authId, publicKey = publicKey, accessSalt = salt,
       phoneNumber = phoneNumber, name = name)
     val user = authUser(userStruct, phoneNumber)
     scope.copy(userOpt = user.some)
@@ -412,7 +413,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     (probe, actor)
   }
 
-  case class TestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: User) {
+  case class TestScope(probe: TestProbe, apiActor: ActorRef, session: SessionIdentifier, user: models.User) {
     def reconnect(): TestScope = {
       val (probe, actor) = probeAndActor()
       this.copy(probe = probe, apiActor = actor)
@@ -433,10 +434,10 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     def apply(uid: Int, phone: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
-      implicit val authId = rand.nextLong
-      val newUser = User.build(
-        uid = uid, authId = authId, publicKey = BitVector.fromLong(rand.nextLong), accessSalt = "salt",
-        phoneNumber = phone, name = s"Timothy${uid} Klim${uid}"
+      implicit val authId = rand.nextLong()
+      val newUser = models.User.build(
+        uid = uid, authId = authId, publicKey = BitVector.fromLong(rand.nextLong()), accessSalt = "salt",
+        phoneNumber = phone, name = s"Timothy$uid Klim$uid"
       )
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
@@ -468,7 +469,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
           }
         case Close => receive(acc)
         case x =>
-          println(s"unknown receive ${x}")
+          println(s"unknown receive $x")
           receive(acc)
       }
 

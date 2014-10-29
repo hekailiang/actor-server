@@ -1,12 +1,12 @@
 package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ResultSet, Session, Row}
-import com.secretapp.backend.data.models.UnregisteredContact
+import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 
 import scala.concurrent.Future
 
-sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContactRecord, UnregisteredContact] {
+sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContactRecord, models.UnregisteredContact] {
 
   override val tableName = "unregistered_contacts"
 
@@ -18,17 +18,17 @@ sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContac
     override lazy val name = "owner_user_id"
   }
 
-  override def fromRow(row: Row): UnregisteredContact =
-    UnregisteredContact(phoneNumber(row), ownerUserId(row))
+  override def fromRow(row: Row): models.UnregisteredContact =
+    models.UnregisteredContact(phoneNumber(row), ownerUserId(row))
 }
 
 object UnregisteredContactRecord extends UnregisteredContactRecord with DBConnector {
-  def insertEntity(uc: UnregisteredContact)(implicit session: Session): Future[ResultSet] =
+  def insertEntity(uc: models.UnregisteredContact)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.phoneNumber, uc.phoneNumber)
       .value(_.ownerUserId, uc.ownerUserId)
       .future
 
-  def byNumber(phoneNumber: Long)(implicit session: Session): Future[Set[UnregisteredContact]] =
+  def byNumber(phoneNumber: Long)(implicit session: Session): Future[Set[models.UnregisteredContact]] =
     select.where(_.phoneNumber eqs phoneNumber).fetch().map(_.toSet)
 }

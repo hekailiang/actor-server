@@ -2,7 +2,7 @@ package com.secretapp.backend.session
 
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.data.message.{ struct, update => updateProto, RpcResponseBox, UpdateBox }
+import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
 import com.secretapp.backend.data.message.update.{ ContactRegistered, FatSeqUpdate, SeqUpdate }
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.common.PackageCommon._
@@ -10,7 +10,8 @@ import java.util.UUID
 import scala.concurrent.Future
 import scodec.codecs.{ uuid => uuidCodec }
 
-private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)(implicit val session: CSession) extends Actor with ActorLogging {
+private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
+                                     (implicit val session: CSession) extends Actor with ActorLogging {
   import context.dispatcher
 
   def receive = {
@@ -19,7 +20,7 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)(impl
       val fupd = u match {
         case _: ContactRegistered =>
           val fuserStructs = u.userIds map { userId =>
-            UserRecord.getEntity(userId) map (_ map (_.toStruct(authId)))
+            UserRecord.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)(context.system)))
           }
           for {
             userStructs <- Future.sequence(fuserStructs)

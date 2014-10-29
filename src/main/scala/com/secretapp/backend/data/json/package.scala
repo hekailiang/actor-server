@@ -19,7 +19,6 @@ package object json
   with message.rpc.user.JsonFormats
   with message.struct.JsonFormats
   with message.update.JsonFormats
-  with transport.JsonFormats
-  with types.JsonFormats {
+  with transport.JsonFormats {
 
 }

@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.user.{ RequestEditName, RequestEditAvatar }
 import com.secretapp.backend.data.message.struct.{ Avatar, AvatarImage }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.helpers.{ SocialHelpers, UserHelpers }
 import com.secretapp.backend.persist.{ FileRecord, UserRecord }
 import com.secretapp.backend.util.AvatarUtils

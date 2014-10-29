@@ -1,13 +1,7 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.types._
-import scodec.bits.BitVector
 import scala.concurrent.Future
-import scala.collection.immutable
 import scalaz._
 import Scalaz._
 

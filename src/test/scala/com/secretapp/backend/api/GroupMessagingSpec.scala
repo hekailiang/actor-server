@@ -1,37 +1,17 @@
 package com.secretapp.backend.api
 
-import akka.actor._
-import akka.io.Tcp._
-import akka.testkit._
+import com.secretapp.backend.util.ACL
 import com.websudos.util.testing.AsyncAssertionsHelper._
-import com.secretapp.backend.crypto.ec
-import com.secretapp.backend.data._
-import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport._
-import com.secretapp.backend.data.types._
-import com.secretapp.backend.persist._
-import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
-import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
-import java.util.UUID
-import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
 import scala.language.higherKinds
-import scala.util.Random
-import scalaz.Scalaz._
 import scodec.bits._
-import scodec.codecs.uuid
 
 class GroupMessagingSpec extends RpcSpec {
-  import system.dispatcher
-
   "GroupMessaging" should {
     "send updates on name change" in {
       val (scope1, scope2) = TestScope.pair()
@@ -50,7 +30,7 @@ class GroupMessagingSpec extends RpcSpec {
             keys = immutable.Seq(
               EncryptedUserAESKeys(
                 userId = scope2.user.uid,
-                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                accessHash = ACL.userAccessHash(scope1.user.authId, scope2.user),
                 keys = immutable.Seq(
                   EncryptedAESKey(
                     keyHash = scope2.user.publicKeyHash,
@@ -114,7 +94,7 @@ class GroupMessagingSpec extends RpcSpec {
             keys = immutable.Seq(
               EncryptedUserAESKeys(
                 userId = scope2.user.uid,
-                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                accessHash = ACL.userAccessHash(scope1.user.authId, scope2.user),
                 keys = immutable.Seq(
                   EncryptedAESKey(
                     keyHash = scope2.user.publicKeyHash,
@@ -176,8 +156,8 @@ class GroupMessagingSpec extends RpcSpec {
         val invite = diff.updates.head.body.assertInstanceOf[GroupInvite]
 
         invite.users.toSet should beEqualTo(Set(
-          UserId(scope1.user.uid, scope1.user.accessHash(scope.user.authId)),
-          UserId(scope2.user.uid, scope2.user.accessHash(scope.user.authId))
+          UserId(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          UserId(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ))
 
         diff.updates(1).body.assertInstanceOf[GroupMessage]
@@ -219,7 +199,7 @@ class GroupMessagingSpec extends RpcSpec {
             keys = immutable.Seq(
               EncryptedUserAESKeys(
                 userId = scope2.user.uid,
-                accessHash = scope2.user.accessHash(scope.user.authId),
+                accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
                 keys = immutable.Seq(
                   EncryptedAESKey(
                     keyHash = scope2.user.publicKeyHash,
@@ -243,7 +223,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         val update = diff.updates.head.body.assertInstanceOf[GroupInvite]
-        update.users should beEqualTo(Seq(UserId(scope1.user.uid, scope1.user.accessHash(scope2.user.authId))))
+        update.users should beEqualTo(Seq(UserId(scope1.user.uid, ACL.userAccessHash(scope2.user.authId, scope1.user))))
       }
     }
 
@@ -267,7 +247,7 @@ class GroupMessagingSpec extends RpcSpec {
             keys = immutable.Seq(
               EncryptedUserAESKeys(
                 userId = scope2.user.uid,
-                accessHash = User.getAccessHash(scope1.user.authId, scope2.user.uid, scope2.user.accessSalt),
+                accessHash = ACL.userAccessHash(scope1.user.authId, scope2.user),
                 keys = immutable.Seq(
                   EncryptedAESKey(
                     keyHash = scope2.user.publicKeyHash,
@@ -385,7 +365,7 @@ class GroupMessagingSpec extends RpcSpec {
               keys = immutable.Seq(
                 EncryptedUserAESKeys(
                   userId = scope2.user.uid,
-                  accessHash = scope2.user.accessHash(scope.user.authId),
+                  accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
                   keys = immutable.Seq(
                     EncryptedAESKey(
                       keyHash = scope2.user.publicKeyHash,
@@ -416,7 +396,7 @@ class GroupMessagingSpec extends RpcSpec {
               keys = immutable.Seq(
                 EncryptedUserAESKeys(
                   userId = scope22.user.uid,
-                  accessHash = scope22.user.accessHash(scope.user.authId),
+                  accessHash = ACL.userAccessHash(scope.user.authId, scope22.user),
                   keys = immutable.Seq(
                     EncryptedAESKey(
                       keyHash = scope22.user.publicKeyHash,

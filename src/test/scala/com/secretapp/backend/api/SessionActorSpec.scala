@@ -13,7 +13,6 @@ import scodec.bits._
 import scala.util.Random
 import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
 import org.specs2.matcher.TraversableMatchers
-import com.secretapp.backend.data.models._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data._
@@ -23,7 +22,6 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.types._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService
 import com.datastax.driver.core.{ Session => CSession }

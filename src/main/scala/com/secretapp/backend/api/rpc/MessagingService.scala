@@ -11,13 +11,13 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.data.models.{ Group, User }
+import com.secretapp.backend.models
 import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.util.AvatarUtils
+import com.secretapp.backend.util.{ACL, AvatarUtils}
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -121,7 +121,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   def mkInvites(
-    group: Group,
+    group: models.Group,
     keys: EncryptedUserAESKeys,
     encryptedMessage: BitVector,
     groupUserIds: immutable.Seq[Int]
@@ -129,7 +129,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       val futures = keys.keys map { encryptedAESKey =>
         UserPublicKeyRecord.getAuthIdAndSalt(keys.userId, encryptedAESKey.keyHash) flatMap {
           case Some((authId, accessSalt)) =>
-            if (User.getAccessHash(currentUser.authId, keys.userId, accessSalt) != keys.accessHash) {
+            if (ACL.userAccessHash(currentUser.authId, keys.userId, accessSalt) != keys.accessHash) {
               Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left)
             } else {
               for {
@@ -239,10 +239,10 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     publicKey: BitVector,
     broadcast: EncryptedRSABroadcast
   ): Future[RpcResponse] = {
-    val id = rand.nextInt
-    val group = Group(id, currentUser.uid, rand.nextLong, title, keyHash, publicKey)
+    val id = rand.nextInt()
+    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, keyHash, publicKey)
 
-    val newUserIds = broadcast.keys map (key => (key.userId, key.keys map (_.keyHash) toSet))
+    val newUserIds = broadcast.keys map (key => (key.userId, key.keys.map(_.keyHash).toSet))
 
     GroupRecord.insertEntity(group) flatMap { _ =>
       Future.sequence(broadcast.keys map (mkInvites(group, _, broadcast.encryptedMessage, (newUserIds map (_._1)) :+ currentUser.uid))) map (_.flatten) flatMap { einvites =>
@@ -390,7 +390,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             case users =>
               val (_, checkUser) = users.head
 
-              if (checkUser.accessHash(currentUser.authId) != userAccessHash) {
+              if (ACL.userAccessHash(currentUser.authId, checkUser) != userAccessHash) {
                 Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false))
               } else {
                 GroupUserRecord.getUsers(groupId) flatMap { groupUserIds =>
@@ -558,7 +558,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     } yield (seq, muuid)
   }
 
-  protected def withGroup(groupId: Int, accessHash: Long)(f: Group => Future[RpcResponse]): Future[RpcResponse] = {
+  protected def withGroup(groupId: Int, accessHash: Long)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
     GroupRecord.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
@@ -573,8 +573,8 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   protected def withUsers(
     destUserId: Int,
     accessHash: Long,
-    currentUser: User
-  )(f: Seq[(Long, User)] => Future[RpcResponse])(
+    currentUser: models.User
+  )(f: Seq[(Long, models.User)] => Future[RpcResponse])(
     implicit session: CSession
   ): Future[RpcResponse] = {
     getUsers(destUserId) flatMap {
@@ -583,7 +583,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       case users =>
         val (_, user) = users.head
 
-        if (user.accessHash(currentUser.authId) == accessHash) {
+        if (ACL.userAccessHash(currentUser.authId, user) == accessHash) {
           f(users)
         } else {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -594,13 +594,13 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   protected def withUser(
     destUserId: Int,
     accessHash: Long,
-    currentUser: User
-  )(f: User => Future[RpcResponse])(
+    currentUser: models.User
+  )(f: models.User => Future[RpcResponse])(
     implicit session: CSession
   ): Future[RpcResponse] = {
     UserRecord.getEntity(destUserId) flatMap {
       case Some(destUserEntity) =>
-        if (destUserEntity.accessHash(currentUser.authId) != accessHash) {
+        if (ACL.userAccessHash(currentUser.authId, destUserEntity) != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
           f(destUserEntity)

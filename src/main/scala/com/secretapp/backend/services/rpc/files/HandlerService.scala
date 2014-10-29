@@ -5,24 +5,20 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.Configuration
-import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.LocationInvalid
-import com.secretapp.backend.persist.{ FileRecordError, FileRecord }
+import com.secretapp.backend.persist.FileRecordError
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.PackageCommon._
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.util.zip.CRC32
 import play.api.libs.iteratee._
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{ Failure, Success }
 import scalaz._
-import scalaz.Scalaz._
+import Scalaz._
 import scodec.bits._
 import scodec.codecs.{ int32 => int32codec }
 

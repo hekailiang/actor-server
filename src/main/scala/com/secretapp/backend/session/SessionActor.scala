@@ -7,7 +7,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.util.Timeout
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.services.common.RandomService
 import scala.concurrent.duration._
 import scala.collection.immutable

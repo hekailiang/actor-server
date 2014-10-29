@@ -1,20 +1,16 @@
 package com.secretapp.backend.services.rpc.auth
 
-import akka.actor._
-import akka.io.Tcp._
-import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState}
-import com.secretapp.backend.data.message.rpc.{Error, Ok, Request}
-import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct, RpcRequestBox}
-import com.secretapp.backend.data.models._
-import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.data.message.rpc.{Error, Ok}
+import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox}
+import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.models
 import com.secretapp.backend.persist._
-import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.rpc.RpcSpec
-import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
+import com.secretapp.backend.util.ACL
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import scala.collection.immutable
 import scala.language.{ postfixOps, higherKinds }
@@ -50,7 +46,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -67,7 +63,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -94,33 +90,33 @@ class SignServiceSpec extends RpcSpec {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey, BitVector.empty, "app", 0, "key"))
 
-        val accessHash = User.getAccessHash(scope.authId, scope.user.uid, scope.user.accessSalt)
+        val accessHash = ACL.userAccessHash(scope.authId, scope.user)
         val newUser = struct.User(scope.user.uid, accessHash, scope.user.name, None, Set(newPublicKeyHash), scope.user.phoneNumber)
         expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser)), withNewSession = true)
       }
 
       "succeed with new public key and new authId" in {
         val scope = genTestScopeWithUser()
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val newAuthId = rand.nextLong()
         val newSessionId = SessionIdentifier()
         implicit val newScope = scope.copy(authId = newAuthId, session = newSessionId)
-        AuthIdRecord.insertEntity(AuthId(newAuthId, scope.user.uid.some)).sync()
+        AuthIdRecord.insertEntity(models.AuthId(newAuthId, scope.user.uid.some)).sync()
         sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey, BitVector.empty, "app", 0, "key"))
 
         val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
         val newUser = scope.user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
           keyHashes = keyHashes)
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser.toStruct(newAuthId))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, newAuthId))), withNewSession = true)
 
-        def sortU(users: Seq[User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
+        def sortU(users: Seq[models.User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
         val users = UserRecord.byUid(scope.user.uid).map(usrs => sortU(usrs))
         val expectUsers = sortU(immutable.Seq(scope.user, newUser))
@@ -136,7 +132,7 @@ class SignServiceSpec extends RpcSpec {
         val userId = rand.nextInt()
         val name = "Тимоти Клим"
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
         PhoneRecord.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
@@ -151,7 +147,7 @@ class SignServiceSpec extends RpcSpec {
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignUp(phoneNumber, "invalid", smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -163,7 +159,7 @@ class SignServiceSpec extends RpcSpec {
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, "invalid", "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -175,7 +171,7 @@ class SignServiceSpec extends RpcSpec {
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
         PhoneRecord.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "   ", publicKey, BitVector.empty, "app", 0, "key"))
@@ -188,7 +184,7 @@ class SignServiceSpec extends RpcSpec {
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
         PhoneRecord.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey, BitVector.empty, "app", 0, "key"))
@@ -201,7 +197,7 @@ class SignServiceSpec extends RpcSpec {
         val publicKey = BitVector.empty
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
         PhoneRecord.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key"))
@@ -233,7 +229,7 @@ class SignServiceSpec extends RpcSpec {
 
         {
           implicit val scope = registered
-          UnregisteredContactRecord.insertEntity(UnregisteredContact(unregPhone, scope.user.uid)).sync()
+          UnregisteredContactRecord.insertEntity(models.UnregisteredContact(unregPhone, scope.user.uid)).sync()
 
           sendRpcMsg(RequestGetState())
 
@@ -247,7 +243,7 @@ class SignServiceSpec extends RpcSpec {
           implicit val scope = unregistered.copy(authId = authId)
           val publicKey = genPublicKey
           insertAuthId(authId)
-          AuthSmsCodeRecord.insertEntity(AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
+          AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(unregPhone, smsHash, smsCode)).sync()
 
           sendRpcMsg(RequestSignUp(unregPhone, smsHash, smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -269,11 +265,11 @@ class SignServiceSpec extends RpcSpec {
     "sign in" should {
       "success" in {
         implicit val scope = genTestScopeWithUser()
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, scope.user.publicKey, BitVector.empty, "app", 0, "key"))
 
-        expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, scope.user.toStruct(scope.authId))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, struct.User.fromModel(scope.user, scope.authId))), withNewSession = true)
       }
 
       "success with second public key and authId" in {
@@ -284,7 +280,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
         val userId = rand.nextInt()
-        val user = User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
+        val user = models.User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
           phoneNumber = phoneNumber, name = name)
         addUser(authId, session.id, user, phoneNumber)
 
@@ -292,7 +288,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
-        AuthIdRecord.insertEntity(AuthId(newAuthId, userId.some)).sync()
+        AuthIdRecord.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
         UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
@@ -301,18 +297,18 @@ class SignServiceSpec extends RpcSpec {
           val (probe, apiActor) = getProbeAndActor()
           val (authId, sessionId, publicKey, publicKeyHash) = t
           implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(sessionId), authId = authId)
-          AuthSmsCodeRecord.insertEntity(AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+          AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
 
           sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey, BitVector.empty, "app", 0, "key"))
 
-          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, newUser.toStruct(authId))), withNewSession = true)
+          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, struct.User.fromModel(newUser, authId))), withNewSession = true)
         }
       }
 
       "success with new public key and valid authId" in {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, newPublicKey, BitVector.empty, "app", 0, "key"))
 
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -324,7 +320,7 @@ class SignServiceSpec extends RpcSpec {
 
       "failed with invalid sms hash" in {
         implicit val scope = genTestScopeWithUser()
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, "invlid", smsCode, scope.user.publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -333,7 +329,7 @@ class SignServiceSpec extends RpcSpec {
 
       "failed with invalid sms code" in {
         implicit val scope = genTestScopeWithUser()
-        AuthSmsCodeRecord.insertEntity(AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, "invalid", scope.user.publicKey, BitVector.empty, "app", 0, "key"))
 

@@ -2,11 +2,11 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.Implicits._
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
+import com.secretapp.backend.models.User
 import scala.concurrent.Future
 
-sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, AuthId] {
+sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, models.AuthId] {
   override lazy val tableName = "auth_ids"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
@@ -16,19 +16,17 @@ sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, AuthId] {
     override lazy val name = "user_id"
   }
 
-  override def fromRow(row: Row): AuthId = {
-    AuthId(authId(row), userId(row))
-  }
+  override def fromRow(row: Row): models.AuthId = models.AuthId(authId(row), userId(row))
 }
 
 object AuthIdRecord extends AuthIdRecord with DBConnector {
-  def insertEntity(item: AuthId)(implicit session: Session): Future[ResultSet] = {
-    insert.value(_.authId, item.authId)
+  def insertEntity(item: models.AuthId)(implicit session: Session): Future[ResultSet] =
+    insert
+      .value(_.authId, item.authId)
       .value(_.userId, item.userId)
       .future()
-  }
 
-  def getEntity(authId: Long)(implicit session: Session): Future[Option[AuthId]] = {
+  def getEntity(authId: Long)(implicit session: Session): Future[Option[models.AuthId]] = {
     select.where(_.authId eqs authId).one()
   }
 
@@ -36,9 +34,16 @@ object AuthIdRecord extends AuthIdRecord with DBConnector {
     delete.where(_.authId eqs authId).future()
   }
 
-  def getEntityWithUser(authId: Long)(implicit session: Session): Future[Option[(AuthId, Option[User])]] = {
-    getEntity(authId).flatMap {
-      case Some(auth) => auth.user.flatMap { u => Future.successful(Some(auth, u)) }
+  def getEntityWithUser(authId: Long)
+                       (implicit session: Session): Future[Option[(models.AuthId, Option[models.User])]] = {
+    def user(a: models.AuthId): Future[Option[User]] =
+      a.userId match {
+        case Some(uid) => UserRecord.getEntity(uid, a.authId)
+        case None => Future.successful(None)
+      }
+
+    getEntity(authId) flatMap {
+      case Some(auth) => user(auth) map { u => Some(auth, u)}
       case None => Future.successful(None)
     }
   }

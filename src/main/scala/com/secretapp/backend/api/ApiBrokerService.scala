@@ -7,7 +7,7 @@ import com.secretapp.backend.api.UpdatesBroker.NewUpdatePush
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.persist.{ CassandraRecords, UserPublicKeyRecord }
 import com.secretapp.backend.services.GeneratorService

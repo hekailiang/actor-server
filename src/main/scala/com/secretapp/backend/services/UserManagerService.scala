@@ -1,6 +1,6 @@
 package com.secretapp.backend.services
 
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 
 trait UserManagerService {
   protected var currentUser: Option[User] = None

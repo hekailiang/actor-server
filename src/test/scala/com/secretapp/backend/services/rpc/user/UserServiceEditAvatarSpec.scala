@@ -5,8 +5,8 @@ import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDif
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.data.models.User
-import com.secretapp.backend.util.AvatarUtils
+import com.secretapp.backend.models
+import com.secretapp.backend.util.{ACL, AvatarUtils}
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
@@ -83,7 +83,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
     }
 
     "append update to chain" in {
-      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -199,10 +199,10 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   private def dbImageBytes(a: AvatarImage)(implicit scope: TestScope) =
     fr.getFile(a.fileLocation.fileId.toInt).sync()
 
-  private def connectWithUser(u: User)(implicit scope: TestScope) = {
+  private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
     val rq = RequestSendMessage(
       u.uid,
-      u.accessHash(scope.user.authId),
+      ACL.userAccessHash(scope.user.authId, u),
       555L,
       message = EncryptedRSAMessage(
         encryptedMessage = BitVector(1, 2, 3),

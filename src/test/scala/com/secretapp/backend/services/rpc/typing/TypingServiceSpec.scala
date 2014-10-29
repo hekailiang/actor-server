@@ -1,26 +1,18 @@
 package com.secretapp.backend.services.rpc.typing
 
-import akka.actor._
-import akka.testkit._
-import com.secretapp.backend.data.message.{ UpdateBox, RpcResponseBox }
-import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid }
+import com.secretapp.backend.data.message.UpdateBox
+import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.typing._
-import com.secretapp.backend.data.message.struct.UserId
-import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.update.WeakUpdate
-import com.secretapp.backend.data.models.User
-import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.util.ACL
 import scala.collection.immutable
-import scala.concurrent.duration._
 import scodec.bits._
 
 class TypingServiceSpec extends RpcSpec {
-  import system.dispatcher
-
   "presence service" should {
     "send typings on subscribtion and receive typing weak updates" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
@@ -30,7 +22,7 @@ class TypingServiceSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        RequestTyping(scope2.user.uid, scope2.user.accessHash(scope.user.authId), 1) :~> <~:[ResponseVoid]
+        RequestTyping(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user), 1) :~> <~:[ResponseVoid]
       }
 
       {
@@ -63,7 +55,7 @@ class TypingServiceSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestTyping(scope1.user.uid, scope1.user.accessHash(scope.user.authId), 1) :~> <~:[ResponseVoid]
+        RequestTyping(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user), 1) :~> <~:[ResponseVoid]
       }
 
       {

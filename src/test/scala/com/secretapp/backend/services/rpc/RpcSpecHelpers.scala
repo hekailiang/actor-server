@@ -7,7 +7,7 @@ import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.models.User
+import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
