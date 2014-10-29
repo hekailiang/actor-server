@@ -281,7 +281,11 @@ trait SignService extends SocialHelpers {
   }
 
   private def nextAuthItemId(): Future[Int] = {
-    ask(clusterProxies.authItemsCounter, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType]
+    ask(clusterProxies.authItemsCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] andThen {
+      case Failure(e) =>
+        log.error("Failed to get next auth item id")
+        throw e
+    }
   }
 
   private def pushRemoveDeviceUpdates(userId: Int, publicKeyHash: Long): Unit = {

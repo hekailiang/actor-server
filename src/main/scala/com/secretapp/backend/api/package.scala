@@ -13,7 +13,6 @@ package object api {
   final class Singletons(implicit val system: ActorSystem, csession: CSession) {
     val config = ConfigFactory.load()
     val appConfig = config.getConfig("secret")
-    val authItemsCounter = AuthItemsCounter.start(system)
     val smsEngine = ClickatellSmsEngineActor()
     val typingBrokerRegion = TypingBroker.startRegion()
     val presenceBrokerRegion = PresenceBroker.startRegion()
@@ -29,6 +28,7 @@ package object api {
     val filesCounterProxy = FilesCounter.startProxy(system)
     private val usersCounter = UsersCounter.start(system)
     val usersCounterProxy = UsersCounter.startProxy(system)
-    val authItemsCounter = AuthItemsCounter.startProxy(system)
+    private val authItemsCounter = AuthItemsCounter.start(system)
+    val authItemsCounterProxy = AuthItemsCounter.startProxy(system)
   }
 }
