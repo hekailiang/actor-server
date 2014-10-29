@@ -3,6 +3,7 @@ package com.secretapp.backend.data.json.message.struct
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.message.rpc.file.JsonFormatsSpec._
 import com.secretapp.backend.data.message.struct._
+import com.secretapp.backend.models
 import play.api.libs.json._
 import scala.util.Random
 import scalaz._
@@ -96,7 +97,7 @@ object JsonFormatsSpec {
     val (avatar, avatarJson) = genAvatar
 
     (
-      User(uid, accessHash, "name", Male.some, Set(keyHash), phoneNumber, avatar.some),
+      User(uid, accessHash, "name", models.Male.some, Set(keyHash), phoneNumber, avatar.some),
       Json.obj(
         "uid"         -> uid,
         "accessHash"  -> accessHash.toString,

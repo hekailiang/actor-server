@@ -5,9 +5,10 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.util.ACL
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
@@ -75,10 +76,10 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
   private def editNameShouldBeOk(implicit scope: TestScope) =
     RequestEditName(newName) :~> <~:[ResponseVoid]
 
-  private def connectWithUser(u: User)(implicit scope: TestScope) = {
+  private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
     val rq = RequestSendMessage(
       u.uid,
-      u.accessHash(scope.user.authId),
+      ACL.userAccessHash(scope.user.authId, u),
       555L,
       message = EncryptedRSAMessage(
         encryptedMessage = BitVector(1, 2, 3),

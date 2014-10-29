@@ -1,7 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.models
 import org.specs2.mutable.Specification
 import org.specs2.matcher.NoConcurrentExecutionContext
 import scalaz._
@@ -10,7 +10,7 @@ import Scalaz._
 class AuthIdRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
   "AuthIdRecord" should {
     "insert/get AuthId Entity" in {
-      val entity = AuthId(123L, None)
+      val entity = models.AuthId(123L, None)
       val insertFuture = AuthIdRecord.insertEntity(entity)
 
       val chain = for {

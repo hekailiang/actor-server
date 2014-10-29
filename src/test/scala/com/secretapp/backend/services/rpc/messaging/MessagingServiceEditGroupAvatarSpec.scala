@@ -1,12 +1,11 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{ Files, Paths }
-import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference, ResponseSeq }
+import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.models.User
-import com.secretapp.backend.util.AvatarUtils
+import com.secretapp.backend.util.{ACL, AvatarUtils}
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
@@ -68,7 +67,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
         setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
       }
 
-      dbGroup(respGroup.groupId)._2.avatar       should beSome
+      dbGroup(respGroup.groupId)._2.avatar    should beSome
       dbAvatar(respGroup.groupId).fullImage   should beSome
       dbAvatar(respGroup.groupId).smallImage  should beSome
       dbAvatar(respGroup.groupId).largeImage  should beSome
@@ -277,7 +276,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
         keys = immutable.Seq(
           EncryptedUserAESKeys(
             userId = scope2.user.uid,
-            accessHash = User.getAccessHash(ownerScope.user.authId, scope2.user.uid, scope2.user.accessSalt),
+            accessHash = ACL.userAccessHash(ownerScope.user.authId, scope2.user),
             keys = immutable.Seq(
               EncryptedAESKey(
                 keyHash = scope2.user.publicKeyHash,

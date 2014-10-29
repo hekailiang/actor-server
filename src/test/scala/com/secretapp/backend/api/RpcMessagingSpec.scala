@@ -1,46 +1,37 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import akka.io.Tcp._
 import akka.testkit._
+import com.secretapp.backend.util.ACL
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.crypto.ec
-import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageSent, MessageRead }
-import com.secretapp.backend.data.models._
+import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageRead }
+import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
-import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
-import org.specs2.mutable.{ ActorLikeSpecification, ActorServiceHelpers }
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.higherKinds
-import scala.util.Random
-import scalaz.Scalaz._
 import scodec.bits._
-import scodec.codecs.uuid
 
 class RpcMessagingSpec extends RpcSpec {
-  import system.dispatcher
-
   def getState(implicit scope: TestScope): (updateProto.ResponseSeq, Seq[UpdateBox]) = {
-    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
     updateProto.RequestGetState() :~> <~:[updateProto.ResponseSeq]
   }
 
   def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
-    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: User) = scope
+    implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
     val rq = updateProto.RequestGetDifference(seq, state)
     val messageId = getMessageId()
@@ -65,15 +56,15 @@ class RpcMessagingSpec extends RpcSpec {
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
-      val user = User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
+      val user = models.User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
-      val accessHash = User.getAccessHash(scope.user.authId, userId, userSalt)
+      val accessHash = ACL.userAccessHash(scope.user.authId, userId, userSalt)
       authUser(user, defaultPhoneNumber)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
-      val secondUser = User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
+      val secondUser = models.User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
@@ -90,7 +81,8 @@ class RpcMessagingSpec extends RpcSpec {
       val (initialState, _) = getState
 
       val rq = RequestSendMessage(
-        uid = secondUser.uid, accessHash = secondUser.accessHash(scope.user.authId),
+        uid = secondUser.uid,
+        accessHash = ACL.userAccessHash(scope.user.authId, secondUser),
         randomId = 555L,
         message = EncryptedRSAMessage(
           encryptedMessage = BitVector(1, 2, 3),
@@ -131,7 +123,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
@@ -156,7 +148,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageReceived(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+        RequestMessageReceived(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
       }
 
       {
@@ -178,7 +170,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
@@ -205,7 +197,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageRead(scope1.user.uid, 555L, scope1.user.accessHash(scope.user.authId)) :~> <~:[ResponseVoid]
+        RequestMessageRead(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
       }
 
       {
@@ -222,7 +214,7 @@ class RpcMessagingSpec extends RpcSpec {
     }
 
     "check provided keys" in {
-      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       val scope2_2 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
 
       catchNewSession(scope1)
@@ -235,7 +227,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
@@ -266,7 +258,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = scope2.user.accessHash(scope.user.authId),
+          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),

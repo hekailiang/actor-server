@@ -1,20 +1,17 @@
 package com.secretapp.backend.services.rpc.updates
 
-import akka.actor._
-import akka.testkit._
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.presence.{ RequestSetOnline }
+import com.secretapp.backend.data.message.rpc.presence.RequestSetOnline
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update
-import com.secretapp.backend.models.User
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scodec.bits._
-import scodec.codecs.{ int32 => int32codec }
 
 class UpdatesServiceSpec extends RpcSpec {
   import system.dispatcher
@@ -39,7 +36,7 @@ class UpdatesServiceSpec extends RpcSpec {
         state.state must equalTo(None)
 
         val rq = RequestSendMessage(
-          uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
+          uid = scope1.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope1.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
@@ -71,7 +68,7 @@ class UpdatesServiceSpec extends RpcSpec {
     }
 
     "send updates in new connection" in {
-      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -98,7 +95,7 @@ class UpdatesServiceSpec extends RpcSpec {
         state.seq must equalTo(0)
 
         val rq = RequestSendMessage(
-          uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
+          uid = scope1.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope1.user),
           randomId = 555L,
           message = EncryptedRSAMessage(
             encryptedMessage = BitVector(1, 2, 3),
@@ -138,7 +135,7 @@ class UpdatesServiceSpec extends RpcSpec {
     }
 
     "get difference" in {
-      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)
 
@@ -158,7 +155,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
         for (i <- (1 to 330)) {
           val rq = RequestSendMessage(
-            uid = scope1.user.uid, accessHash = scope1.user.accessHash(scope.user.authId),
+            uid = scope1.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope1.user),
             randomId = i,
             message = EncryptedRSAMessage(
               encryptedMessage = BitVector(i),
@@ -183,7 +180,7 @@ class UpdatesServiceSpec extends RpcSpec {
         protoReceiveN(330, DurationInt(180).seconds)(scope.probe, scope.apiActor)
 
         val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
-        state.state must not equalTo (None)
+        state.state must not equalTo None
 
         val (diff1, _) = RequestGetDifference(0, None) :~> <~:[Difference]
         diff1.updates.length must equalTo(300)
