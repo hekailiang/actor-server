@@ -65,11 +65,6 @@ case class User(uid: Int,
       Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
     else
       None
-
-  def toStruct(senderAuthId: Long) = {
-    val hash = User.getAccessHash(senderAuthId, uid, accessSalt)
-    struct.User(uid, hash, name, sex.toOption, keyHashes, phoneNumber, avatar)
-  }
 }
 
 object User {

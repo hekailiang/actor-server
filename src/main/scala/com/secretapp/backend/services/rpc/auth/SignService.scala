@@ -156,7 +156,7 @@ trait SignService extends SocialHelpers {
         )
       }
 
-      Ok(ResponseAuth(u.publicKeyHash, u.toStruct(authId)))
+      Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
     }
 
     @inline

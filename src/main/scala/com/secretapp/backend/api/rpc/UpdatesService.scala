@@ -91,9 +91,9 @@ sealed trait UpdatesService {
 
   protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     @inline
-    def getUserStruct(uid: Int): Future[Option[struct.User]] = {
-      UserRecord.getEntity(uid) map (_ map (_.toStruct(authId)))
-    }
+    def getUserStruct(uid: Int): Future[Option[struct.User]] =
+      UserRecord.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
+
     if (updates.length > 0) {
       val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
       Future.sequence(userIds.map(getUserStruct).toVector) map (_.flatten)

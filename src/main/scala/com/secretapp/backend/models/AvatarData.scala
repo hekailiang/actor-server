@@ -2,8 +2,6 @@ package com.secretapp.backend.models
 
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable
-import scalaz._
-import Scalaz._
 
 case class AvatarData(
   smallAvatarFileId: Option[Int] = None,
@@ -43,7 +41,7 @@ case class AvatarData(
 
   lazy val avatar =
     if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
-      Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
+      Some(Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage))
     else
       None
 }

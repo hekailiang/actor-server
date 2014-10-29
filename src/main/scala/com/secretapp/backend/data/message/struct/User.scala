@@ -41,6 +41,11 @@ object User {
 
   def fromProto(u: protobuf.User): User = u match {
     case protobuf.User(uid, accessHash, name, sex, keyHashes, phoneNumber, avatar) =>
-      User(uid, accessHash, name, sex.flatMap(fromProto(_).some), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
+      User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
+  }
+
+  def fromModel(u: models.User, senderAuthId: Long) = {
+    val hash = models.User.getAccessHash(senderAuthId, u.uid, u.accessSalt)
+    User(u.uid, hash, u.name, u.sex.toOption, u.keyHashes, u.phoneNumber, u.avatar)
   }
 }
