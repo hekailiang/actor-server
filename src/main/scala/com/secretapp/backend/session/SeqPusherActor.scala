@@ -15,7 +15,7 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)(impl
 
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.SeqUpdateMessage) =>
-      log.info(s"Pushing update to session authId=$authId $u")
+      log.info(s"Pushing update to session seq=$seq authId=$authId $u")
       val fupd = u match {
         case _: ContactRegistered =>
           val fuserStructs = u.userIds map { userId =>
