@@ -144,7 +144,7 @@ trait SessionService extends UserManagerService {
 
   protected def subscribeToUpdates() = {
     subscribingToUpdates = true
-    log.info(s"Subscribing to updates authId=$authId")
+    log.info(s"Subscribing to updates authId=$authId sessionId=$sessionId")
     mediator ! Subscribe(UpdatesBroker.topicFor(authId), commonUpdatesPusher)
 
     subscribeToTypings()
