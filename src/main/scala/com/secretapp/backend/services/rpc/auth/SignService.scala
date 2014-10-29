@@ -149,13 +149,13 @@ trait SignService extends SocialHelpers {
       this.currentUser = Some(u)
 
       nextAuthItemId() map { id =>
-        AuthItemRecord.insertEntity(
-          AuthItem.build(
-            id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-            authLocation = "", latitude = None, longitude = None,
-            authId = u.authId, deviceHash = deviceHash
-          ), u.uid
+        val authItem = AuthItem.build(
+          id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
+          authLocation = "", latitude = None, longitude = None,
+          authId = u.authId, deviceHash = deviceHash
         )
+        log.info(s"Inserting authItem $authItem")
+        AuthItemRecord.insertEntity(authItem, u.uid)
       }
 
       Ok(ResponseAuth(u.publicKeyHash, u.toStruct(authId)))
