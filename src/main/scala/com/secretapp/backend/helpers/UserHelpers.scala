@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models.User
 import com.secretapp.backend.persist.UserPublicKeyRecord
 import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.util.ACL
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -38,12 +39,12 @@ trait UserHelpers {
     }
   }
 
-  def getUserIdStruct(userId: Int, authId: Long): Future[Option[UserId]] = {
+  def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[UserId]] = {
     for {
       users <- getUsers(userId)
     } yield {
       users.headOption map { user =>
-        UserId(userId, user._2.accessHash(authId))
+        UserId(userId, ACL.userAccessHash(authId, user._2))
       }
     }
   }

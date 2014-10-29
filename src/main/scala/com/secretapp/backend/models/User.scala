@@ -1,18 +1,15 @@
 package com.secretapp.backend.models
 
-import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable
-import com.secretapp.backend.Configuration
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
-import java.security.MessageDigest
-import java.nio.ByteBuffer
 import scalaz._
 import Scalaz._
 
 @SerialVersionUID(1L)
-case class User(uid: Int,
+case class User(
+  uid: Int,
   authId: Long,
   publicKeyHash: Long,
   publicKey: BitVector,
@@ -31,11 +28,8 @@ case class User(uid: Int,
   fullAvatarFileSize: Option[Int] = None,
   fullAvatarWidth: Option[Int] = None,
   fullAvatarHeight: Option[Int] = None,
-  keyHashes: immutable.Set[Long] = immutable.Set()) {
-
-  def accessHash(senderAuthId: Long): Long = User.getAccessHash(senderAuthId, this)
-
-  lazy val selfAccessHash = accessHash(authId)
+  keyHashes: immutable.Set[Long] = immutable.Set()
+) {
 
   lazy val smallAvatarImage =
     for (
@@ -68,28 +62,18 @@ case class User(uid: Int,
 }
 
 object User {
-  import Configuration._
-
   def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String, sex: Sex = NoSex) = {
     val publicKeyHash = ec.PublicKey.keyHash(publicKey)
     User(
-      uid = uid,
-      authId = authId,
-      publicKey = publicKey,
-      publicKeyHash = publicKeyHash,
-      phoneNumber = phoneNumber,
-      accessSalt = accessSalt,
-      name = name,
-      sex = sex,
-      keyHashes = immutable.Set(publicKeyHash))
+      uid,
+      authId,
+      publicKeyHash,
+      publicKey,
+      phoneNumber,
+      accessSalt,
+      name,
+      sex,
+      keyHashes = immutable.Set(publicKeyHash)
+    )
   }
-
-  def getAccessHash(authId: Long, uid: Int, accessSalt: String): Long = {
-    val str = s"$authId:$uid:$accessSalt:$secretKey"
-    val digest = MessageDigest.getInstance("MD5")
-    val res = digest.digest(str.getBytes)
-    ByteBuffer.wrap(res).getLong
-  }
-
-  def getAccessHash(authId: Long, user: User): Long = getAccessHash(authId, user.uid, user.accessSalt)
 }

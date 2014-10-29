@@ -10,6 +10,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord, UserRecord}
 import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
@@ -44,7 +45,7 @@ trait ContactService {
         case ((userStructs, impContacts, uids, registeredPhones), user) =>
           val u = struct.User(
             user.uid,
-            models.User.getAccessHash(authId, user.uid, user.accessSalt),
+            ACL.userAccessHash(authId, user),
             user.name,
             user.sex.toOption,
             user.keyHashes,

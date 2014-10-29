@@ -1,5 +1,8 @@
 package com.secretapp.backend.data.message.struct
 
+import akka.actor.ActorSystem
+import com.secretapp.backend.util.ACL
+
 import scala.language.implicitConversions
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.ProtobufMessage
@@ -44,8 +47,8 @@ object User {
       User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
   }
 
-  def fromModel(u: models.User, senderAuthId: Long) = {
-    val hash = models.User.getAccessHash(senderAuthId, u.uid, u.accessSalt)
+  def fromModel(u: models.User, senderAuthId: Long)(implicit s: ActorSystem) = {
+    val hash = ACL.userAccessHash(senderAuthId, u)
     User(u.uid, hash, u.name, u.sex.toOption, u.keyHashes, u.phoneNumber, u.avatar)
   }
 }
