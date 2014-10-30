@@ -22,7 +22,6 @@ class SignServiceSpec extends RpcSpec {
   import system.dispatcher
 
   transportForeach { implicit transport =>
-
     "auth code" should {
       "send sms code" in {
         implicit val scope = genTestScope()
@@ -85,7 +84,6 @@ class SignServiceSpec extends RpcSpec {
 
         expectRpcMsg(Ok(ResponseVoid()))
       }
-
       "succeed with new public key and same authId" in {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
@@ -289,7 +287,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
         AuthIdRecord.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
-        UserRecord.insertPartEntityWithPhoneAndPK(userId, newAuthId, newPublicKey, phoneNumber).sync()
+        UserRecord.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, phoneNumber, name).sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
         val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
@@ -334,6 +332,124 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, "invalid", scope.user.publicKey, BitVector.empty, "app", 0, "key"))
 
         expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
+      }
+
+      "remove previous auth but keep keyHash on sign in with the same deviceHash and same keyHash" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val pkHash = ec.PublicKey.keyHash(publicKey)
+        val pkHashes = Set(pkHash)
+        val phoneNumber = genPhoneNumber()
+        val name = "Timothy Klim"
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector(1), "app1", 0, "key"))
+
+        expectMsgByPF(withNewSession = true) {
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+        }
+
+        Thread.sleep(2000) // let database save user
+
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey, BitVector(1), "app2", 0, "key"))
+
+        var userId: Integer = null
+
+        expectMsgByPF() {
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(registeredUserId, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+            userId = registeredUserId
+        }
+
+        Thread.sleep(2000) // let database process old auth deletion
+
+        sendRpcMsg(RequestGetAuth())
+
+        expectMsgByPF() {
+          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
+            struct.AuthItem(_, 0, 0, "Android Official", "app2", _, "", None, None)
+          )))) =>
+        }
+
+        val authItems = AuthItemRecord.getEntitiesByUserId(userId).sync()
+
+        authItems.length should_== 1
+        authItems.head.deviceTitle should_== "app2"
+
+        val deletedAuthItems = DeletedAuthItemRecord.getEntitiesByUserId(userId).sync()
+
+        deletedAuthItems.length should_== 1
+        deletedAuthItems.head.deviceTitle should_== "app1"
+
+        val pkeys = UserPublicKeyRecord.getEntitiesByUserId(userId).sync()
+        pkeys.length should_== 1
+
+        val deletedPkeys = UserPublicKeyRecord.getDeletedEntitiesByUserId(userId).sync()
+        deletedPkeys.length should_== 0
+      }
+
+      "remove previous auth and mark keyHash as deleted on sign in with the same deviceHash" in {
+        implicit val scope = genTestScope()
+        val publicKey = genPublicKey
+        val pkHash = ec.PublicKey.keyHash(publicKey)
+        val pkHashes = Set(pkHash)
+        val phoneNumber = genPhoneNumber()
+        val name = "Timothy Klim"
+        insertAuthId(scope.authId)
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector(1), "app1", 0, "key"))
+
+        expectMsgByPF(withNewSession = true) {
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+        }
+
+        Thread.sleep(2000) // let database save user
+
+        AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        val newPublicKey = genPublicKey
+        val newPkHash = ec.PublicKey.keyHash(newPublicKey)
+        val newPkHashes = Set(newPkHash)
+
+        sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, newPublicKey, BitVector(1), "app2", 0, "key"))
+
+        var userId: Integer = null
+
+        expectMsgByPF() {
+          case RpcResponseBox(_, Ok(ResponseAuth(`newPkHash`, struct.User(registeredUserId, _, `name`, None, `newPkHashes`, `phoneNumber`, None) ))) =>
+            userId = registeredUserId
+        }
+
+        Thread.sleep(2000) // let database process old auth deletion
+
+        sendRpcMsg(RequestGetAuth())
+
+        expectMsgByPF() {
+          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
+            struct.AuthItem(_, 0, 0, "Android Official", "app2", _, "", None, None)
+          )))) =>
+        }
+
+        val authItems = AuthItemRecord.getEntitiesByUserId(userId).sync()
+
+        authItems.length should_== 1
+        authItems.head.deviceTitle should_== "app2"
+
+        val deletedAuthItems = DeletedAuthItemRecord.getEntitiesByUserId(userId).sync()
+
+        deletedAuthItems.length should_== 1
+        deletedAuthItems.head.deviceTitle should_== "app1"
+
+        val pkeys = UserPublicKeyRecord.getEntitiesByUserId(userId).sync()
+        pkeys.length should_== 1
+        pkeys.head.publicKeyHash should_== newPkHash
+
+        val deletedPKeys = UserPublicKeyRecord.getDeletedEntitiesByUserId(userId).sync()
+        deletedPKeys.length should_== 1
+        deletedPKeys.head.publicKeyHash should_== pkHash
       }
 
 //      "failed with invalid public key" in {

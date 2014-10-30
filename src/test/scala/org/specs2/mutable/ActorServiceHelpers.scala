@@ -343,12 +343,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def addUser(authId: Long, sessionId: Long, u: models.User, phoneNumber: Long): Unit = blocking {
     AuthIdRecord.insertEntity(models.AuthId(authId, None)).sync()
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithChildren(u).sync()
   }
 
   def authUser(u: models.User, phoneNumber: Long): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    UserRecord.insertEntityWithPhoneAndPK(u).sync()
+    UserRecord.insertEntityWithChildren(u).sync()
     u
   }
 

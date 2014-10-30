@@ -21,6 +21,7 @@ import scala.util.{ Success, Failure }
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
+import shapeless._
 import Function.tupled
 
 trait SignService extends SocialHelpers {
@@ -76,9 +77,9 @@ trait SignService extends SocialHelpers {
   }
 
   def handleRequestLogout(): Future[RpcResponse] = {
-    AuthItemRecord.getEntityByUserIdAndAuthId(currentUser.get.uid, currentUser.get.authId) flatMap {
+    AuthItemRecord.getEntityByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
       case Some(authItem) =>
-        logout(authItem) map { _ =>
+        logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
         }
       case None =>
@@ -89,7 +90,7 @@ trait SignService extends SocialHelpers {
   def handleRequestRemoveAuth(id: Int): Future[RpcResponse] = {
     AuthItemRecord.getEntity(currentUser.get.uid, id) flatMap {
       case Some(authItem) =>
-        logout(authItem) map { _ =>
+        logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
         }
       case None =>
@@ -102,7 +103,7 @@ trait SignService extends SocialHelpers {
       authItems foreach {
         case authItem =>
           if (authItem.authId != currentUser.get.authId) {
-            logout(authItem)
+            logout(authItem, currentUser.get)
           }
       }
 
@@ -141,31 +142,37 @@ trait SignService extends SocialHelpers {
     val authId = currentAuthId // TODO
 
     @inline
-    def auth(u: models.User): RpcResponse = {
+    def auth(u: models.User): Future[RpcResponse] = {
       AuthSmsCodeRecord.dropEntity(phoneNumber)
       log.info(s"Authenticate currentUser=$u")
       this.currentUser = Some(u)
 
-      nextAuthItemId() map { id =>
-        val authItem = models.AuthItem.build(
-          id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-          authLocation = "", latitude = None, longitude = None,
-          authId = u.authId, deviceHash = deviceHash
-        )
-        log.info(s"Inserting authItem $authItem")
-        AuthItemRecord.insertEntity(authItem, u.uid)
-      }
+      AuthItemRecord.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+        for (authItem <- authItems) {
+          logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
+        }
 
-      Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
+        nextAuthItemId() map { id =>
+          AuthItemRecord.insertEntity(
+            models.AuthItem.build(
+              id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
+              authLocation = "", latitude = None, longitude = None,
+              authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
+            ), u.uid
+          )
+
+          Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
+        }
+      }
     }
 
     @inline
-    def signIn(userId: Int) = {
+    def signIn(userId: Int): Future[RpcResponse] = {
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
 
       @inline
       def updateUserRecord(name: String): Unit = {
-        UserRecord.insertPartEntityWithPhoneAndPK(userId, authId, publicKey, phoneNumber, name) onSuccess {
+        UserRecord.insertEntityRowWithChildren(userId, authId, publicKey, phoneNumber, name) onSuccess {
           case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
         }
       }
@@ -176,35 +183,41 @@ trait SignService extends SocialHelpers {
         case _ => name
       }
 
-      for {
-        userAuthR <- UserRecord.getEntity(userId, authId)
-        userR <- UserRecord.getEntity(userId) // remove it when it cause bottleneck
-      } yield {
-        if (userR.isEmpty) Error(400, "INTERNAL_ERROR", "", true)
-        else userAuthR match {
-          case None =>
-            val user = userR.get
-            val userName = getUserName(user.name)
-            updateUserRecord(userName)
-            val keyHashes = user.keyHashes + publicKeyHash
-            val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
-              keyHashes = keyHashes, name = userName)
-            auth(newUser)
-          case Some(userAuth) =>
-            val userName = getUserName(userAuth.name)
-            if (userAuth.publicKey != publicKey) {
-              //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
+      // TODO: use sequence from shapeless-contrib
+
+      val (fuserAuthR, fuserR) = (
+        UserRecord.getEntity(userId, authId),
+        UserRecord.getEntity(userId) // remove it when it cause bottleneck
+      )
+
+      fuserAuthR flatMap { userAuthR =>
+        fuserR flatMap { userR =>
+          if (userR.isEmpty) Future.successful(Error(400, "INTERNAL_ERROR", "", true))
+          else userAuthR match {
+            case None =>
+              val user = userR.get
+              val userName = getUserName(user.name)
               updateUserRecord(userName)
-              val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-              val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
-                name = userName)
+              val keyHashes = user.keyHashes + publicKeyHash
+              val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
+                keyHashes = keyHashes, name = userName)
               auth(newUser)
-            } else {
-              if (userAuth.name != userName) {
-                UserRecord.updateName(userAuth.uid, userName)
-                auth(userAuth.copy(name = userName))
-              } else auth(userAuth)
-            }
+            case Some(userAuth) =>
+              val userName = getUserName(userAuth.name)
+              if (userAuth.publicKey != publicKey) {
+                //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
+                updateUserRecord(userName)
+                val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
+                val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                  name = userName)
+                auth(newUser)
+              } else {
+                if (userAuth.name != userName) {
+                  UserRecord.updateName(userAuth.uid, userName)
+                  auth(userAuth.copy(name = userName))
+                } else auth(userAuth)
+              }
+          }
         }
       }
     }
@@ -260,12 +273,13 @@ trait SignService extends SocialHelpers {
                   phoneR match {
                     case None => withValidName(req.name) { name =>
                       withValidPublicKey(publicKey) { publicKey =>
-                        ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] map { userId =>
+                        ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
                           val accessSalt = genUserAccessSalt
                           val user = models.User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
-                          UserRecord.insertEntityWithPhoneAndPK(user)
-                          pushContactRegisteredUpdates(user)
-                          auth(user)
+                          UserRecord.insertEntityWithChildren(user) flatMap { _ =>
+                            pushContactRegisteredUpdates(user)
+                            auth(user)
+                          }
                         }
                       }
                     }
@@ -289,21 +303,21 @@ trait SignService extends SocialHelpers {
   private def pushRemoveDeviceUpdates(userId: Int, publicKeyHash: Long): Unit = {
     getRelations(userId) onComplete {
       case Success(userIds) =>
-        log.debug(s"Got relations for ${userId} -> ${userIds}")
+        log.debug(s"Got relations for $userId -> $userIds")
         for (targetUserId <- userIds) {
           getAuthIds(targetUserId) onComplete {
             case Success(authIds) =>
-              log.debug(s"Fetched authIds for userId=${targetUserId} ${authIds}")
+              log.debug(s"Fetched authIds for userId=$targetUserId $authIds")
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, RemoveDevice(userId, publicKeyHash))
               }
             case Failure(e) =>
-              log.error(s"Failed to get authIds for uid=${targetUserId} to push RemoveDevice update")
+              log.error(s"Failed to get authIds for uid=$targetUserId to push RemoveDevice update")
               throw e
           }
         }
       case Failure(e) =>
-        log.error(s"Failed to get relations to push RemoveDevice updates userId=${userId} ${publicKeyHash}")
+        log.error(s"Failed to get relations to push RemoveDevice updates userId=$userId $publicKeyHash")
         throw e
     }
   }
@@ -336,7 +350,7 @@ trait SignService extends SocialHelpers {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash))
               }
             case Failure(e) =>
-              log.error(s"Failed to get authIds for authId=${authId} uid=${targetUserId} to push new device updates ${publicKeyHash}")
+              log.error(s"Failed to get authIds for authId=$authId uid=$targetUserId to push new device updates $publicKeyHash")
               throw e
           }
         }
@@ -362,19 +376,39 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  private def logout(authItem: models.AuthItem)(implicit session: CSession) = {
-    UserRecord.getEntity(currentUser.get.uid, authItem.authId) map {
-      case Some(user) =>
-        UserRecord.removeKeyHash(user.uid, user.publicKeyHash) flatMap { _ =>
-          AuthIdRecord.deleteEntity(authItem.authId) flatMap { _ =>
-            AuthItemRecord.deleteEntity(user.uid, authItem.id) andThen {
-              case Success(_) =>
-                pushRemoveDeviceUpdates(user.uid, user.publicKeyHash)
-            }
-          }
-        }
-      case None =>
-        throw new Exception("User not found")
+  private def logout(authItem: models.AuthItem, currentUser: models.User)(implicit session: CSession) = {
+    // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
+    Future.sequence(Seq(
+      AuthIdRecord.deleteEntity(authItem.authId),
+      UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
+      AuthItemRecord.setDeleted(currentUser.uid, authItem.id)
+    )) andThen {
+      case Success(_) =>
+        pushRemoveDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
+    }
+  }
+
+  private def logoutKeepingCurrentAuthIdAndPK(authItem: models.AuthItem, currentUser: models.User)(implicit session: CSession) = {
+    val frmAuthId = if (currentUser.authId != authItem.authId) {
+      AuthIdRecord.deleteEntity(authItem.authId)
+    } else {
+      Future.successful()
+    }
+
+    val frmKeyHash = if (currentUser.publicKeyHash != authItem.publicKeyHash) {
+      UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId))
+    } else {
+      Future.successful()
+    }
+
+    // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
+    Future.sequence(Seq(
+      frmKeyHash,
+      frmAuthId,
+      AuthItemRecord.setDeleted(currentUser.uid, authItem.id)
+    )) andThen {
+      case Success(_) =>
+        pushRemoveDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
     }
   }
 }

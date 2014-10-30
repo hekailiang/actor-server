@@ -66,7 +66,7 @@ class RpcMessagingSpec extends RpcSpec {
       val sndUID = 3000
       val secondUser = models.User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
         phoneNumber = defaultPhoneNumber, name = name)
-      UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
+      UserRecord.insertEntityWithChildren(secondUser).sync()
 
       /**
         * This sleep is needed to let sharding things to initialize

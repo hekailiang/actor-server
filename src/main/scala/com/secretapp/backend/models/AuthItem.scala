@@ -6,14 +6,14 @@ import scodec.bits._
 case class AuthItem(
   id: Int, appId: Int, appTitle: String, deviceTitle: String, authTime: Int,
   authLocation: String, latitude: Option[Double], longitude: Option[Double],
-  authId: Long, deviceHash: BitVector
+  authId: Long, publicKeyHash: Long, deviceHash: BitVector
 )
 
 object AuthItem {
   def build(
     id: Int, appId: Int, deviceTitle: String, authTime: Int,
     authLocation: String, latitude: Option[Double], longitude: Option[Double],
-    authId: Long, deviceHash: BitVector
+    authId: Long, publicKeyHash: Long, deviceHash: BitVector
   ): AuthItem = {
     val appTitle = appId match {
       case 0 => "Android Official"
@@ -23,7 +23,7 @@ object AuthItem {
     AuthItem(
       id = id, appId = appId, appTitle = appTitle, deviceTitle = deviceTitle, authTime = authTime,
       authLocation = authLocation, latitude = latitude, longitude = longitude,
-      authId = authId, deviceHash = deviceHash
+      authId = authId, publicKeyHash = publicKeyHash, deviceHash = deviceHash
     )
   }
 }

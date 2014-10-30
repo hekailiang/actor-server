@@ -100,7 +100,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
 
 object UserRecord extends UserRecord with DBConnector {
 
-  def insertEntityWithPhoneAndPK(entity: models.User)(implicit session: Session): Future[ResultSet] = {
+  def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = models.Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
@@ -141,21 +141,7 @@ object UserRecord extends UserRecord with DBConnector {
       flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, entity.uid.some)))
   }
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long)
-                                    (implicit session: Session): Future[ResultSet] = {
-    val publicKeyHash = PublicKey.keyHash(publicKey)
-
-    insert.value(_.uid, uid)
-      .value(_.authId, authId)
-      .value(_.publicKeyHash, publicKeyHash)
-      .value(_.publicKey, publicKey.toByteBuffer)
-      .future().
-      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
-  }
-
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
+  def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
                                     (implicit session: Session): Future[ResultSet] = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
 
@@ -167,7 +153,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.sex, sex.toInt)
       .future().
       flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
+      flatMap(_ => UserPublicKeyRecord.insertEntityRow(uid, publicKeyHash, publicKey, authId)).
       flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some))).
       flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
   }
@@ -178,30 +164,33 @@ object UserRecord extends UserRecord with DBConnector {
 
   /**
     * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
-    * removes keyHash from the following records: [[UserPublicKeyRecord]], [[AuthIdRecord]], [[PhoneRecord]], [[GroupUserRecord]].
+    * removes keyHash from the following records: [[UserPublicKeyRecord]], [[PhoneRecord]], [[GroupUserRecord]].
     *
     * @param uid user id
     * @param publicKeyHash user public key hash
+    * @param optKeepAuthId authId value to protect its row in UserRecord from deletion
     * @return a Future containing Some(authId) if removal succeeded and None if keyHash was not found
     */
-  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] = {
+  def removeKeyHash(uid: Int, publicKeyHash: Long, optKeepAuthId: Option[Long])(implicit session: Session): Future[Option[Long]] = {
     UserPublicKeyRecord.setDeleted(uid, publicKeyHash) flatMap {
       case Some(authId) =>
+        val frmUser = optKeepAuthId match {
+          case Some(keepAuthId) if keepAuthId == authId =>
+            Future.successful()
+          case _ =>
+            delete.where(_.uid eqs uid).and(_.authId eqs authId).future()
+        }
+
         Future.sequence(
           Vector(
             update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
-            delete.where(_.uid eqs uid).and(_.authId eqs authId).future(),
-            AuthIdRecord.getEntity(authId),
+            frmUser,
             GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
           )
         ) map (_ => Some(authId))
       case None =>
         Future.successful(None)
     }
-  }
-
-  def removeKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
-    update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future()
   }
 
   def updateAvatar(uid: Int, avatar: Avatar)(implicit session: Session) =

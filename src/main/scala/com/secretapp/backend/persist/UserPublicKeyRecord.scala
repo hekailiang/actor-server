@@ -70,8 +70,7 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .future()
   }
 
-  def insertPartEntity(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)
-                      (implicit session: Session): Future[ResultSet] = {
+  def insertEntityRow(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] = {
     insert.value(_.uid, uid)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
@@ -80,8 +79,15 @@ object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
       .future()
   }
 
-  def getEntitiesByPublicKeyHash(uidAndPK: immutable.Seq[(Int, Long)])
-                                (implicit session: Session): Future[immutable.Seq[models.UserPublicKey]] = {
+  def getEntitiesByUserId(userId: Int)(implicit session: Session): Future[Seq[models.UserPublicKey]] = {
+    select.where(_.uid eqs userId).and(_.isDeleted eqs false).fetch()
+  }
+
+  def getDeletedEntitiesByUserId(userId: Int)(implicit session: Session): Future[Seq[models.UserPublicKey]] = {
+    select.where(_.uid eqs userId).and(_.isDeleted eqs true).fetch()
+  }
+
+  def getEntitiesByPublicKeyHash(uidAndPK: immutable.Seq[(Int, Long)])(implicit session: Session): Future[immutable.Seq[models.UserPublicKey]] = {
     val q = uidAndPK.map { t =>
       val (uid, pk) = t
       select.where(_.uid eqs uid).and(_.publicKeyHash eqs pk).one()
