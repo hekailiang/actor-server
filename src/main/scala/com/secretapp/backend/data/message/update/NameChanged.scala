@@ -1,7 +1,5 @@
 package com.secretapp.backend.data.message.update
 
-import com.secretapp.backend.data.message.struct.Avatar
-
 case class NameChanged(uid: Int, name: Option[String]) extends SeqUpdateMessage {
   override val header = NameChanged.header
 

@@ -1,14 +1,10 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
-import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.models
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.query.SelectQuery
 import scala.concurrent.Future
-import scalaz._
-import Scalaz._
 import scodec.bits.BitVector
 
 sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {

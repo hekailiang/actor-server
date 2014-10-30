@@ -3,25 +3,13 @@ package com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.core.utils.UUIDs
-import com.secretapp.backend.data.message.struct.FileLocation
-import com.secretapp.backend.data.message.struct.{User, AvatarImage, Avatar}
-import com.websudos.phantom.query.ExecutableStatement
-import com.secretapp.backend.data.message.update.SeqUpdate
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.protocol.codecs.message.update.SeqUpdateMessageCodec
-import java.nio.ByteBuffer
 import java.util.UUID
 import scala.collection.immutable
-import scala.collection.JavaConversions._
 import scala.concurrent.Future
 import scodec.Codec
 import scodec.bits._
-import scodec.codecs.{ uuid => uuidCodec }
-import scalaz._
-import Scalaz._
-import im.actor.messenger.api.{User => ProtoUser}
 
 sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
   override lazy val tableName = "seq_updates"

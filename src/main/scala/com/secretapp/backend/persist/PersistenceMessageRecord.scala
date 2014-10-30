@@ -1,23 +1,9 @@
 package com.secretapp.backend.persist
 
-import com.secretapp.backend.protocol.codecs.message.update._
-import java.nio.ByteBuffer
-import com.datastax.driver.core.ConsistencyLevel
-import com.secretapp.backend.data.message.struct.FileLocation
-import com.secretapp.backend.data.message.struct.{User, AvatarImage, Avatar}
-import com.websudos.phantom.query.ExecutableStatement
-import com.secretapp.backend.data.message.update.SeqUpdate
-import com.secretapp.backend.data.message.{ update => updateProto }
 import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
-import com.secretapp.backend.protocol.codecs.message.update.SeqUpdateMessageCodec
-import scala.collection.immutable
-import scala.collection.JavaConversions._
 import scala.concurrent.Future
 import scodec.bits._
-import scodec.codecs.{ uuid => uuidCodec }
-import scalaz._
-import Scalaz._
 
 case class PersistenceMessage(processorId: String, partitionNr: Long, sequenceNr: Long, marker: String, message: BitVector)
 
