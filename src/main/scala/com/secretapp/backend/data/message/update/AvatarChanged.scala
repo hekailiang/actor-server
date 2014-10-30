@@ -1,9 +1,9 @@
 package com.secretapp.backend.data.message.update
 
-import com.secretapp.backend.data.message.struct.Avatar
+import com.secretapp.backend.models
 
 @SerialVersionUID(1L)
-case class AvatarChanged(uid: Int, avatar: Option[Avatar]) extends SeqUpdateMessage {
+case class AvatarChanged(uid: Int, avatar: Option[models.Avatar]) extends SeqUpdateMessage {
   val header = AvatarChanged.header
 
   def userIds: Set[Int] = Set(uid)

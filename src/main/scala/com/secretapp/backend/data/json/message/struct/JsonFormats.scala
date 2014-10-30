@@ -11,8 +11,10 @@ trait JsonFormats {
 
   implicit val userIdFormat           = Json.format[UserId]
   implicit val userKeyFormat          = Json.format[UserKey]
-  implicit val avatarImageFormat      = Json.format[AvatarImage]
-  implicit val avatarFormat           = Json.format[Avatar]
-  implicit val userFormat             = Json.format[User]
-  implicit val authItemFormat         = Json.format[AuthItem]
+
+  val userFormat: Format[User] = Json.format[User]
+  implicit val implicitUserFormat = userFormat
+
+  val authItemFormat: Format[AuthItem] = Json.format[AuthItem]
+  implicit val implicitAuthItemFormat = authItemFormat
 }

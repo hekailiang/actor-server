@@ -47,6 +47,19 @@ trait CommonJsonFormats {
     }
   }
 
+  // TODO: Move to the more appropriate place
+  // FIXME: Looks like macro bug.
+  val fileLocationFormat: Format[models.FileLocation] = Json.format[models.FileLocation]
+  implicit val implicitfileLocationFormat = fileLocationFormat
+
+  // TODO: Move to the more appropriate place
+  implicit val avatarImageFormat = Json.format[models.AvatarImage]
+
+  // TODO: Move to the more appropriate place
+  // FIXME: Looks like macro bug.
+  val avatarFormat: Format[models.Avatar] = Json.format[models.Avatar]
+  implicit val implicitAvatarFormat = avatarFormat
+
 }
 
 object CommonJsonFormats extends CommonJsonFormats {

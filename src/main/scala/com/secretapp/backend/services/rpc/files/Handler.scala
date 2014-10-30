@@ -5,11 +5,11 @@ import akka.pattern.pipe
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.persist.FileRecord
 
 class Handler(
-  val currentUser: User,
+  val currentUser: models.User,
   val fileRecord: FileRecord, val filesCounterProxy: ActorRef)(implicit val session: CSession)
   extends Actor with ActorLogging with HandlerService {
 

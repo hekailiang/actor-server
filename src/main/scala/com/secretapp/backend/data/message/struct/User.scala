@@ -2,7 +2,7 @@ package com.secretapp.backend.data.message.struct
 
 import akka.actor.ActorSystem
 import com.secretapp.backend.util.ACL
-
+import com.secretapp.backend.proto
 import scala.language.implicitConversions
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.ProtobufMessage
@@ -17,7 +17,7 @@ case class User(uid: Int,
                 sex: Option[models.Sex],
                 keyHashes: Set[Long],
                 phoneNumber: Long,
-                avatar: Option[Avatar] = None) extends ProtobufMessage {
+                avatar: Option[models.Avatar] = None) extends ProtobufMessage {
 
   protected def sexToProto(s: models.Sex): protobuf.Sex.EnumVal = s match {
     case models.Male => protobuf.Sex.MALE
@@ -32,7 +32,7 @@ case class User(uid: Int,
     sex.map(sexToProto),
     keyHashes.toIndexedSeq,
     phoneNumber,
-    avatar.map(_.toProto))
+    avatar map proto.toProto[models.Avatar, protobuf.Avatar])
 }
 
 object User {
@@ -44,7 +44,8 @@ object User {
 
   def fromProto(u: protobuf.User): User = u match {
     case protobuf.User(uid, accessHash, name, sex, keyHashes, phoneNumber, avatar) =>
-      User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
+      User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber,
+        avatar map proto.fromProto[models.Avatar, protobuf.Avatar])
   }
 
   def fromModel(u: models.User, senderAuthId: Long)(implicit s: ActorSystem) = {

@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.services.common.RandomService
 import com.sksamuel.scrimage.{ AsyncImage, Format, Position }
-import com.secretapp.backend.data.message.struct.{ Avatar, AvatarImage, FileLocation }
+import com.secretapp.backend.models
 import com.secretapp.backend.persist.FileRecord
 import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
@@ -36,7 +36,8 @@ object AvatarUtils extends RandomService {
     (implicit ec: ExecutionContext): Future[(Int, Int)] =
     AsyncImage(imgBytes) map { i => (i.width, i.height) }
 
-  def scaleAvatar(fr: FileRecord, fc: ActorRef, fl: FileLocation)(implicit ec: ExecutionContext, timeout: Timeout): Future[Avatar] = {
+  def scaleAvatar(fr: FileRecord, fc: ActorRef, fl: models.FileLocation)
+                 (implicit ec: ExecutionContext, timeout: Timeout): Future[models.Avatar] = {
     for (
       fullImageBytes   <- fr.getFile(fl.fileId.toInt);
       (fiw, fih)       <- dimensions(fullImageBytes);
@@ -50,8 +51,8 @@ object AvatarUtils extends RandomService {
       smallImageHash   <- fr.getAccessHash(smallImageId);
       largeImageHash   <- fr.getAccessHash(largeImageId);
 
-      smallImageLoc    = FileLocation(smallImageId, smallImageHash);
-      largeImageLoc    = FileLocation(largeImageId, largeImageHash);
+      smallImageLoc    = models.FileLocation(smallImageId, smallImageHash);
+      largeImageLoc    = models.FileLocation(largeImageId, largeImageHash);
 
       smallImageBytes <- AvatarUtils.resizeToSmall(fullImageBytes);
       largeImageBytes <- AvatarUtils.resizeToLarge(fullImageBytes);
@@ -59,11 +60,11 @@ object AvatarUtils extends RandomService {
       _               <- fr.write(smallImageLoc.fileId.toInt, 0, smallImageBytes);
       _               <- fr.write(largeImageLoc.fileId.toInt, 0, largeImageBytes);
 
-      smallAvatarImage = AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length);
-      largeAvatarImage = AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
-      fullAvatarImage  = AvatarImage(fl, fiw, fih, fullImageBytes.length);
+      smallAvatarImage = models.AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length);
+      largeAvatarImage = models.AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
+      fullAvatarImage  = models.AvatarImage(fl, fiw, fih, fullImageBytes.length);
 
-      avatar           = Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
+      avatar           = models.Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
 
     ) yield avatar
   }

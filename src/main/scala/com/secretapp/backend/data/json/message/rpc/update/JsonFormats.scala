@@ -1,7 +1,5 @@
 package com.secretapp.backend.data.json.message.rpc.update
 
-import java.util.UUID
-
 import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.UnitFormat
 import com.secretapp.backend.data.message.rpc.update._

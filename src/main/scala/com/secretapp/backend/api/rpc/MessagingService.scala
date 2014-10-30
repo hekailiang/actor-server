@@ -5,7 +5,7 @@ import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.struct.{ Avatar, FileLocation, UserKey, WrongReceiversErrorData }
+import com.secretapp.backend.data.message.struct.{UserKey, WrongReceiversErrorData}
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
@@ -308,7 +308,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   protected def handleRequestEditGroupAvatar(
-    groupId: Int, accessHash: Long, fileLocation: FileLocation
+    groupId: Int, accessHash: Long, fileLocation: models.FileLocation
   ): Future[RpcResponse] = {
     withGroup(groupId, accessHash) { group =>
       val sizeLimit: Long = 1024 * 1024 // TODO: configurable

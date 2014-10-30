@@ -1,7 +1,8 @@
-package com.secretapp.backend.data.message.struct
+package com.secretapp.backend.models
 
 @SerialVersionUID(1L)
 case class Avatar(
   smallImage: Option[AvatarImage],
   largeImage: Option[AvatarImage],
-  fullImage: Option[AvatarImage])
+  fullImage: Option[AvatarImage]
+)

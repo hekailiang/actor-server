@@ -3,7 +3,8 @@ package com.secretapp.backend.data.json.message.rpc.file
 import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
-import com.secretapp.backend.data.message.struct.FileLocation
+import com.secretapp.backend.data.json.CommonJsonFormats._
+import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
 import com.secretapp.backend.data.message.rpc.file._
 import play.api.libs.json._
@@ -120,7 +121,7 @@ object JsonFormatsSpec {
     val accessHash = Random.nextLong()
 
     (
-      FileLocation(fileId, accessHash),
+      models.FileLocation(fileId, accessHash),
       Json.obj(
         "fileId" -> fileId.toString,
         "accessHash" -> accessHash.toString

@@ -1,17 +1,14 @@
 package com.secretapp.backend.services.rpc.files
 
-import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
 import com.secretapp.backend.api.counters.CounterProtocol
-import com.secretapp.backend.Configuration
-import com.secretapp.backend.data.message.struct.FileLocation
+import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.persist.LocationInvalid
 import com.secretapp.backend.persist.FileRecordError
 import com.secretapp.backend.services.GeneratorService
-import com.secretapp.backend.services.common.PackageCommon._
 import java.nio.ByteBuffer
 import java.util.zip.CRC32
 import play.api.libs.iteratee._
@@ -25,9 +22,7 @@ import scodec.codecs.{ int32 => int32codec }
 trait HandlerService extends GeneratorService {
   this: Handler =>
 
-  import context.system
   import context.dispatcher
-  import Configuration._
 
   implicit val timeout = Timeout(5.seconds)
 
@@ -85,7 +80,7 @@ trait HandlerService extends GeneratorService {
             val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
               if (crc32 == realcrc32) {
                 val f = faccessHash map { accessHash =>
-                  val rsp = ResponseUploadCompleted(FileLocation(fileId, accessHash))
+                  val rsp = ResponseUploadCompleted(models.FileLocation(fileId, accessHash))
                   Ok(rsp)
                 }
                 f onFailure {
@@ -117,7 +112,7 @@ trait HandlerService extends GeneratorService {
     }
   }
 
-  protected def handleRequestGetFile(location: FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
+  protected def handleRequestGetFile(location: models.FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
     // TODO: Int vs Long
     val f = fileRecord.getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
       if (realAccessHash != location.accessHash) {

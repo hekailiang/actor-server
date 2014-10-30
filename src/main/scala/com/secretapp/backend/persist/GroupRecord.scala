@@ -130,7 +130,7 @@ object GroupRecord extends GroupRecord with DBConnector {
     update.where(_.id eqs id).modify(_.title setTo title).future()
   }
 
-  def updateAvatar(id: Int, avatar: Avatar)(implicit session: Session) =
+  def updateAvatar(id: Int, avatar: models.Avatar)(implicit session: Session) =
     update.where(_.id eqs id)
       .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
       .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
