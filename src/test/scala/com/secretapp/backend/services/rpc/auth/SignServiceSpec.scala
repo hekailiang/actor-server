@@ -280,8 +280,8 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
         val userId = rand.nextInt()
-        val user = models.User.build(uid = userId, authId = authId, publicKey = publicKey, accessSalt = userSalt,
-          phoneNumber = phoneNumber, name = name)
+        val pkHash = ec.PublicKey.keyHash(publicKey)
+        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
         addUser(authId, session.id, user, phoneNumber)
 
         val newPublicKey = genPublicKey

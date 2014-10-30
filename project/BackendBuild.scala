@@ -34,11 +34,8 @@ object BackendBuild extends Build {
         mainClass in Revolver.reStart := Some(appClassMock),
         autoCompilerPlugins := true,
         scalacOptions in (Compile,doc) := Seq("-groups", "-implicits", "-diagrams")
-        //wartremoverExcluded ++= Seq("com.secretapp.backend.ApiKernel"),
-        //wartremoverErrors in (Compile, compile) ++= Warts.all
       )
-  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff)
-  // .settings(atmosSettings: _*).configs(Atmos)
+  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff).dependsOn(actorModels)
 
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := Organization,
@@ -81,4 +78,9 @@ object BackendBuild extends Build {
       resolvers ++= Resolvers.seq
     )
   ).dependsOn(root)
+
+  lazy val actorModels = Project(
+    id = "actor-models",
+    base = file("actor-models")
+  )
 }

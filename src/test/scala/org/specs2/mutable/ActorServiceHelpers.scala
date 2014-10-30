@@ -45,6 +45,7 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 import java.net.InetSocketAddress
+import com.secretapp.backend.crypto.ec
 
 trait ActorServiceImplicits {
   def codecRes2BS(res: String \/ BitVector): ByteString = ByteString(res.toOption.get.toByteBuffer)
@@ -356,8 +357,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
                      (implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): models.User = blocking {
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
-    val user = models.User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",
-      phoneNumber = phoneNumber, name = name)
+    val pkHash = ec.PublicKey.keyHash(publicKey)
+    val user = models.User(uid, authId, pkHash, publicKey, phoneNumber, "salt", name, models.NoSex, keyHashes = immutable.Set(pkHash))
     authUser(user, phoneNumber)
   }
 
@@ -394,8 +395,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val publicKey = BitVector(rand.nextString(100).getBytes)
     val salt = rand.nextString(25)
     val name = s"Timothy$userId Klim$userId"
-    val userStruct = models.User.build(uid = userId, authId = scope.authId, publicKey = publicKey, accessSalt = salt,
-      phoneNumber = phoneNumber, name = name)
+    val pkHash = ec.PublicKey.keyHash(publicKey)
+    val userStruct = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, salt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
     val user = authUser(userStruct, phoneNumber)
     scope.copy(userOpt = user.some)
   }
@@ -435,10 +436,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong()
-      val newUser = models.User.build(
-        uid = uid, authId = authId, publicKey = BitVector.fromLong(rand.nextLong()), accessSalt = "salt",
-        phoneNumber = phone, name = s"Timothy$uid Klim$uid"
-      )
+      val publicKey = BitVector.fromLong(rand.nextLong())
+      val pkHash = ec.PublicKey.keyHash(publicKey)
+      val newUser = models.User(uid, authId, pkHash, publicKey, phone, "salt", s"Timothy$uid Klim$uid", models.NoSex, keyHashes = immutable.Set(pkHash))
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
     }

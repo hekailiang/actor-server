@@ -1,10 +1,7 @@
 package com.secretapp.backend.models
 
 import scala.collection.immutable
-import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
-import scalaz._
-import Scalaz._
 
 @SerialVersionUID(1L)
 case class User(
@@ -55,24 +52,9 @@ case class User(
 
   lazy val avatar =
     if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
-      Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
+      Some(Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage))
     else
       None
 }
 
-object User {
-  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String, sex: Sex = NoSex) = {
-    val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-    User(
-      uid,
-      authId,
-      publicKeyHash,
-      publicKey,
-      phoneNumber,
-      accessSalt,
-      name,
-      sex,
-      keyHashes = immutable.Set(publicKeyHash)
-    )
-  }
-}
+

@@ -56,16 +56,16 @@ class RpcMessagingSpec extends RpcSpec {
       val publicKey = hex"ac1d".bits
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
-      val user = models.User.build(uid = userId, authId = mockAuthId, publicKey = publicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, name = name)
+      val pkHash = ec.PublicKey.keyHash(publicKey)
+      val user = models.User(userId, mockAuthId, pkHash, publicKey, defaultPhoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
       val accessHash = ACL.userAccessHash(scope.user.authId, userId, userSalt)
       authUser(user, defaultPhoneNumber)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
-      val secondUser = models.User.build(uid = sndUID, authId = 333L, publicKey = sndPublicKey, accessSalt = userSalt,
-        phoneNumber = defaultPhoneNumber, name = name)
+      val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
+      val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(sndPkHash))
       UserRecord.insertEntityWithPhoneAndPK(secondUser).sync()
 
       /**
