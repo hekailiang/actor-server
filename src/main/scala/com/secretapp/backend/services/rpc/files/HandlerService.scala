@@ -11,6 +11,7 @@ import com.secretapp.backend.persist.FileRecordError
 import com.secretapp.backend.services.GeneratorService
 import java.nio.ByteBuffer
 import java.util.zip.CRC32
+import com.secretapp.backend.util.ACL
 import play.api.libs.iteratee._
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -23,6 +24,7 @@ trait HandlerService extends GeneratorService {
   this: Handler =>
 
   import context.dispatcher
+  import context.system
 
   implicit val timeout = Timeout(5.seconds)
 
@@ -73,7 +75,7 @@ trait HandlerService extends GeneratorService {
         log.warning(s"Cannot parse serverData $e")
         Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
       case \/-(fileId) =>
-        val faccessHash = fileRecord.getAccessHash(fileId)
+        val faccessHash = ACL.fileAccessHash(fileRecord, fileId)
 
         val f = fileRecord.countSourceBlocks(fileId) flatMap { sourceBlocksCount =>
           if (blocksCount == sourceBlocksCount) {
@@ -114,7 +116,7 @@ trait HandlerService extends GeneratorService {
 
   protected def handleRequestGetFile(location: models.FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
     // TODO: Int vs Long
-    val f = fileRecord.getAccessHash(location.fileId.toInt) flatMap { realAccessHash =>
+    val f = ACL.fileAccessHash(fileRecord, location.fileId.toInt) flatMap { realAccessHash =>
       if (realAccessHash != location.accessHash) {
         throw new LocationInvalid
       }

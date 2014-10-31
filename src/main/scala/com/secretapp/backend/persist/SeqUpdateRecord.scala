@@ -12,17 +12,15 @@ import scodec.Codec
 import scodec.bits._
 
 sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
-  override lazy val tableName = "seq_updates"
+  override val tableName = "seq_updates"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"
   }
   object uuid extends TimeUUIDColumn(this) with PrimaryKey[UUID]
-
   object header extends IntColumn(this) {
     override lazy val name = "header"
   }
-
   object protobufBody extends BlobColumn(this) {
     override lazy val name = "protobuf_column"
   }
@@ -41,71 +39,30 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
     }
 
     header(row) match {
-      case updateProto.Message.header =>
-        decode(row, MessageCodec)
-      case updateProto.NewDevice.header =>
-        decode(row, NewDeviceCodec)
-      case updateProto.NewFullDevice.header =>
-        decode(row, NewFullDeviceCodec)
-      case updateProto.RemoveDevice.header =>
-        decode(row, RemoveDeviceCodec)
-      case updateProto.MessageSent.header =>
-        decode(row, MessageSentCodec)
-      case updateProto.AvatarChanged.header =>
-        decode(row, AvatarChangedCodec)
-      case updateProto.NameChanged.header =>
-        decode(row, NameChangedCodec)
-      case updateProto.ContactRegistered.header =>
-        decode(row, ContactRegisteredCodec)
-      case updateProto.MessageReceived.header =>
-        decode(row, MessageReceivedCodec)
-      case updateProto.MessageRead.header =>
-        decode(row, MessageReadCodec)
-      case updateProto.GroupInvite.header =>
-        decode(row, GroupInviteCodec)
-      case updateProto.GroupMessage.header =>
-        decode(row, GroupMessageCodec)
-      case updateProto.GroupUserAdded.header =>
-        decode(row, GroupUserAddedCodec)
-      case updateProto.GroupUserLeave.header =>
-        decode(row, GroupUserLeaveCodec)
-      case updateProto.GroupUserKick.header =>
-        decode(row, GroupUserKickCodec)
-      case updateProto.GroupCreated.header =>
-        decode(row, GroupCreatedCodec)
-      case updateProto.GroupTitleChanged.header =>
-        decode(row, GroupTitleChangedCodec)
-      case updateProto.GroupAvatarChanged.header =>
-        decode(row, GroupAvatarChangedCodec)
+      case updateProto.Message.header            => decode(row, MessageCodec)
+      case updateProto.NewDevice.header          => decode(row, NewDeviceCodec)
+      case updateProto.NewFullDevice.header      => decode(row, NewFullDeviceCodec)
+      case updateProto.RemoveDevice.header       => decode(row, RemoveDeviceCodec)
+      case updateProto.MessageSent.header        => decode(row, MessageSentCodec)
+      case updateProto.AvatarChanged.header      => decode(row, AvatarChangedCodec)
+      case updateProto.NameChanged.header        => decode(row, NameChangedCodec)
+      case updateProto.ContactRegistered.header  => decode(row, ContactRegisteredCodec)
+      case updateProto.MessageReceived.header    => decode(row, MessageReceivedCodec)
+      case updateProto.MessageRead.header        => decode(row, MessageReadCodec)
+      case updateProto.GroupInvite.header        => decode(row, GroupInviteCodec)
+      case updateProto.GroupMessage.header       => decode(row, GroupMessageCodec)
+      case updateProto.GroupUserAdded.header     => decode(row, GroupUserAddedCodec)
+      case updateProto.GroupUserLeave.header     => decode(row, GroupUserLeaveCodec)
+      case updateProto.GroupUserKick.header      => decode(row, GroupUserKickCodec)
+      case updateProto.GroupCreated.header       => decode(row, GroupCreatedCodec)
+      case updateProto.GroupTitleChanged.header  => decode(row, GroupTitleChangedCodec)
+      case updateProto.GroupAvatarChanged.header => decode(row, GroupAvatarChangedCodec)
     }
 
   }
 }
 
 object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
-  /*
-  def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: PersistenceMessage => Any)(implicit session: Session) = {
-    def process(sequenceNr: Long): Unit = {
-      val baseQuery = select
-        .where(_.processorId eqs processorId).and(_.partitionNr eqs partitionNr)
-        .and(_.sequenceNr eqs sequenceNr)
-      val query = optMarker match {
-        case Some(marker) =>
-          baseQuery.and(_.marker eqs marker)
-        case None => baseQuery
-      }
-      println(query.queryString)
-      query.one() map {
-        case Some(message) =>
-          f(message)
-          process(sequenceNr + 1)
-        case None =>
-          println(s"stopped at $sequenceNr")
-      }
-    }
-
-    process(1)
-  }*/
 
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]] = {
     val query = state match {
@@ -147,10 +104,8 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
   def getState(authId: Long)(implicit session: Session): Future[Option[UUID]] =
     SeqUpdateRecord.select(_.uuid).where(_.authId eqs authId).orderBy(_.uuid.desc).one
 
-  def push(authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] = {
-    val uuid = UUIDs.timeBased
-    push(uuid, authId, update)
-  }
+  def push(authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] =
+    push(UUIDs.timeBased, authId, update)
 
   def push(uuid: UUID, authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] = {
     val q = update match {
@@ -213,9 +168,7 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
         throw new Exception("Unknown UpdateMessage")
     }
 
-    val f = q.consistencyLevel_=(ConsistencyLevel.ALL).future
-
-    f map (_ => uuid)
+    q.consistencyLevel_=(ConsistencyLevel.ALL).future().map(_ => uuid)
   }
 
 }

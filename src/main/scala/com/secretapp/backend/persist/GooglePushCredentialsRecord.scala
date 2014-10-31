@@ -1,25 +1,19 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{Session, ResultSet, Row}
 import com.secretapp.backend.models
-import com.websudos.phantom.CassandraTable
 import com.websudos.phantom.Implicits._
-import com.websudos.phantom.keys.{PrimaryKey, PartitionKey}
-
 import scala.concurrent.Future
 
 sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCredentialsRecord, models.GooglePushCredentials] {
 
-  override lazy val tableName = "google_push_credentials"
+  override val tableName = "google_push_credentials"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"
   }
-
   object projectId extends LongColumn(this) {
     override lazy val name = "project_id"
   }
-
   object regId extends StringColumn(this) with Index[String] {
     override lazy val name = "reg_id"
   }

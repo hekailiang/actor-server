@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ResultSet, Session, Row}
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 

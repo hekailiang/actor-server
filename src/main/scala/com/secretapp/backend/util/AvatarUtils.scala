@@ -37,7 +37,7 @@ object AvatarUtils extends RandomService {
     AsyncImage(imgBytes) map { i => (i.width, i.height) }
 
   def scaleAvatar(fr: FileRecord, fc: ActorRef, fl: models.FileLocation)
-                 (implicit ec: ExecutionContext, timeout: Timeout): Future[models.Avatar] = {
+                 (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[models.Avatar] =
     for (
       fullImageBytes   <- fr.getFile(fl.fileId.toInt);
       (fiw, fih)       <- dimensions(fullImageBytes);
@@ -48,8 +48,8 @@ object AvatarUtils extends RandomService {
       _                <- fr.createFile(smallImageId, rand.nextString(30)); // TODO: genAccessSalt makes specs
       _                <- fr.createFile(largeImageId, rand.nextString(30)); // fail
 
-      smallImageHash   <- fr.getAccessHash(smallImageId);
-      largeImageHash   <- fr.getAccessHash(largeImageId);
+      smallImageHash   <- ACL.fileAccessHash(fr, smallImageId);
+      largeImageHash   <- ACL.fileAccessHash(fr, largeImageId);
 
       smallImageLoc    = models.FileLocation(smallImageId, smallImageHash);
       largeImageLoc    = models.FileLocation(largeImageId, largeImageHash);
@@ -67,5 +67,4 @@ object AvatarUtils extends RandomService {
       avatar           = models.Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
 
     ) yield avatar
-  }
 }

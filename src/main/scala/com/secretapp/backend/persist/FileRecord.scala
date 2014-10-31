@@ -1,9 +1,6 @@
 package com.secretapp.backend.persist
 
-import java.security.MessageDigest
-import com.secretapp.backend.Configuration
 import com.websudos.phantom.Implicits._
-import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
@@ -18,9 +15,6 @@ class LimitInvalid extends FileRecordError("LIMIT_INVALID", false)
 class FileLost extends FileRecordError("FILE_LOST", false)
 
 class FileRecord(implicit session: Session, context: ExecutionContext with Executor) {
-
-  import Configuration._
-
   private lazy val blockRecord = new FileBlockRecord
   private lazy val sourceBlockRecord = new FileSourceBlockRecord
 
@@ -82,12 +76,4 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
   def blocksByFileId(fileId: Int) = blockRecord.blocksByFileId(fileId)
 
   def countSourceBlocks(fileId: Int) = sourceBlockRecord.countBlocks(fileId)
-
-  def getAccessHash(fileId: Int): Future[Long] = {
-    getFileAccessSalt(fileId) map { accessSalt =>
-      val str = s"$fileId:$accessSalt:$secretKey"
-      val res = MessageDigest.getInstance("MD5").digest(str.getBytes)
-      ByteBuffer.wrap(res).getLong
-    }
-  }
 }
