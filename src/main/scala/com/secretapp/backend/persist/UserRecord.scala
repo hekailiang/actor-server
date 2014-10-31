@@ -1,17 +1,14 @@
 package com.secretapp.backend.persist
 
-import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
-import scalaz._
-import Scalaz._
 import scodec.bits.BitVector
 
 sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
-  override lazy val tableName = "users"
+  override val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
   object authId extends LongColumn(this) with PrimaryKey[Long] {
@@ -70,7 +67,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
     override lazy val name = "full_avatar_height"
   }
 
-  override def fromRow(row: Row): models.User = {
+  override def fromRow(row: Row): models.User =
     models.User(
       uid                 = uid(row),
       authId              = authId(row),
@@ -93,7 +90,6 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
       fullAvatarWidth     = fullAvatarWidth(row),
       fullAvatarHeight    = fullAvatarHeight(row)
     )
-  }
 }
 
 object UserRecord extends UserRecord with DBConnector {
@@ -133,46 +129,39 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.fullAvatarFileSize, entity.fullAvatarFileSize)
       .value(_.fullAvatarWidth, entity.fullAvatarWidth)
       .value(_.fullAvatarHeight, entity.fullAvatarHeight)
-      .future().
-      flatMap(_ => PhoneRecord.insertEntity(phone)).
-      flatMap(_ => UserPublicKeyRecord.insertEntity(userPK)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, entity.uid.some)))
+      .future()
+      .flatMap(_ => PhoneRecord.insertEntity(phone))
+      .flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
   }
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long)
-                                    (implicit session: Session): Future[ResultSet] = {
-    val publicKeyHash = PublicKey.keyHash(publicKey)
-
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long)
+                                    (implicit session: Session): Future[ResultSet] =
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
-      .future().
-      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
-  }
+      .future()
+      .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
+      .flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, Some(uid))))
 
-  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
-                                    (implicit session: Session): Future[ResultSet] = {
-    val publicKeyHash = PublicKey.keyHash(publicKey)
-
+  def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
+                                    (implicit session: Session): Future[ResultSet] =
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.name, name)
       .value(_.sex, sex.toInt)
-      .future().
-      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some))).
-      flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
-  }
+      .future()
+      .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
+      .flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, Some(uid))))
+      .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
 
-  private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
+  private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
     update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).future()
-  }
 
   /**
     * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
@@ -182,7 +171,7 @@ object UserRecord extends UserRecord with DBConnector {
     * @param publicKeyHash user public key hash
     * @return a Future containing Some(authId) if removal succeeded and None if keyHash was not found
     */
-  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] = {
+  def removeKeyHash(uid: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[Long]] =
     UserPublicKeyRecord.setDeleted(uid, publicKeyHash) flatMap {
       case Some(authId) =>
         Future.sequence(
@@ -196,11 +185,9 @@ object UserRecord extends UserRecord with DBConnector {
       case None =>
         Future.successful(None)
     }
-  }
 
-  def removeKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
+  def removeKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
     update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future()
-  }
 
   def updateAvatar(uid: Int, avatar: models.Avatar)(implicit session: Session) =
     update.where(_.uid eqs uid)
@@ -222,13 +209,11 @@ object UserRecord extends UserRecord with DBConnector {
       .modify(_.name setTo name)
       .future
 
-  def getEntity(uid: Int)(implicit session: Session): Future[Option[models.User]] = {
+  def getEntity(uid: Int)(implicit session: Session): Future[Option[models.User]] =
     select.where(_.uid eqs uid).one()
-  }
 
-  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] = {
+  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
     select.where(_.uid eqs uid).and(_.authId eqs authId).one()
-  }
 
   def byUid(uid: Int)(implicit session: Session): Future[Seq[models.User]] =
     select.where(_.uid eqs uid).fetch()
