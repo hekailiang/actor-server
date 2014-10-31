@@ -49,7 +49,7 @@ object User {
         uid = uid,
         accessHash = accessHash,
         name = name,
-        localName = localName,
+        localName = toLocalName(localName),
         sex = sex.map(fromProto),
         keyHashes = keyHashes.toSet,
         phoneNumber = phoneNumber,
@@ -57,12 +57,17 @@ object User {
       )
   }
 
+  private def toLocalName(localName: Option[String]) = localName match {
+    case n @ Some(name) if name.nonEmpty => n
+    case _ => None
+  }
+
   def fromModel(u: models.User, senderAuthId: Long, localName: Option[String] = None) = {
     User(
       uid = u.uid,
       accessHash = ACL.userAccessHash(senderAuthId, u),
       name = u.name,
-      localName = localName,
+      localName = toLocalName(localName),
       sex = u.sex.toOption,
       keyHashes = u.keyHashes,
       phoneNumber = u.phoneNumber,

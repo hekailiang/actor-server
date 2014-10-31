@@ -36,6 +36,11 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with DBCo
   import scalaz._
   import Scalaz._
 
+  lazy val emptySHA1Hash = {
+    val digest = MessageDigest.getInstance("SHA-256")
+    BitVector(digest.digest("".getBytes)).toHex
+  }
+
   def upsertEntity(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
     val uids = contactsId.to[immutable.SortedSet].mkString(",")
     val digest = MessageDigest.getInstance("SHA-256")
@@ -51,6 +56,13 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with DBCo
     select(_.contactsId).where(_.ownerId eqs userId).one().map {
       case Some(uids) => immutable.HashSet[Int](uids.toSeq :_*)
       case _ => immutable.HashSet[Int]()
+    }
+  }
+
+  def getSHA1HashOrDefault(userId: Int)(implicit csession: CSession): Future[String] = {
+    select(_.sha1Hash).where(_.ownerId eqs userId).one().map {
+      case Some(sha1Hash) => sha1Hash
+      case _ => emptySHA1Hash
     }
   }
 }

@@ -6,6 +6,7 @@ import com.secretapp.backend.api.{UpdatesBroker, SocialProtocol, ApiBrokerServic
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.models.contact
 import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
@@ -40,10 +41,11 @@ trait ContactService {
 
   def handleRequestImportContacts(phones: immutable.Seq[PhoneToImport],
                                   emails: immutable.Seq[EmailToImport]): Future[RpcResponse] = {
+    val authId = currentAuthId
     val currentUser = getUser.get
     val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber) // TODO: remove user.get
     val phoneNumbers = filteredPhones.map(_.phoneNumber).toSet
-    val authId = currentAuthId
+    val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- PhoneRecord.getEntities(phoneNumbers)
       existsContactsId <- UserContactsListCacheRecord.getContactsId(currentUser.uid)
@@ -52,7 +54,9 @@ trait ContactService {
     } yield {
       val t = usersFutureSeq.foldLeft(immutable.Seq[struct.User](), immutable.Set[Int](), immutable.Set[Long]()) {
         case ((users, newContactsId, registeredPhones), user) =>
-          (users :+ struct.User.fromModel(user, authId), newContactsId + user.uid, registeredPhones + user.phoneNumber)
+          (users :+ struct.User.fromModel(user,authId, phonesMap(user.phoneNumber)),
+            newContactsId + user.uid,
+            registeredPhones + user.phoneNumber)
       }
       (t, existsContactsId)
     }
@@ -68,14 +72,7 @@ trait ContactService {
             UnregisteredContactRecord.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
           }
 
-          val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
-          val contacts = users.map { u =>
-            phonesMap(u.phoneNumber) match {
-              case Some(name) if !name.nonEmpty => u.copy(name = name)
-              case _ => u
-            }
-          }
-          UserContactsListRecord.insertEntities(currentUser.uid, contacts)
+          UserContactsListRecord.insertEntities(currentUser.uid, users)
           UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ newContactsId)
 
           val stateFuture = ask(
@@ -85,13 +82,30 @@ trait ContactService {
           ).mapTo[UpdatesBroker.StrictState]
 
           stateFuture map {
-            case (seq, state) => Ok(ResponseImportedContacts(contacts, seq, uuid.encodeValid(state)))
+            case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
           }
         } else Future.successful(Ok(ResponseImportedContacts(users, 0, BitVector.empty)))
     }
   }
 
   def handleRequestGetContacts(contactsHash: String): Future[RpcResponse] = {
-    Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = false)))
+    val authId = currentAuthId
+    val currentUser = getUser.get
+    UserContactsListCacheRecord.getSHA1HashOrDefault(currentUser.uid) flatMap { sha1Hash =>
+      if (contactsHash == sha1Hash)
+        Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
+      else {
+        for {
+          contactList <- UserContactsListRecord.getEntitiesWithLocalName(currentUser.uid)
+          usersFutureSeq <- Future.sequence(contactList.map { c => UserRecord.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
+        } yield {
+          val localNames = immutable.HashMap(contactList :_*)
+          val users = usersFutureSeq.map { user =>
+            struct.User.fromModel(user, authId, localNames.get(user.uid))
+          }
+          Ok(ResponseGetContacts(users.toIndexedSeq, isNotChanged = false))
+        }
+      }
+    }
   }
 }

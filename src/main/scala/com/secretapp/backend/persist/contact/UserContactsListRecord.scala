@@ -45,9 +45,13 @@ object UserContactsListRecord extends UserContactsListRecord with DBConnector {
           .value(_.ownerId, userId)
           .value(_.contactId, contact.uid)
           .value(_.phoneNumber, contact.phoneNumber)
-          .value(_.name, contact.name)
+          .value(_.name, contact.localName.getOrElse(""))
       )
     }
     batch.future()
+  }
+
+  def getEntitiesWithLocalName(userId: Int)(implicit csession: CSession): Future[Seq[(Int, String)]] = {
+    select(_.contactId, _.name).where(_.ownerId eqs userId).fetch()
   }
 }

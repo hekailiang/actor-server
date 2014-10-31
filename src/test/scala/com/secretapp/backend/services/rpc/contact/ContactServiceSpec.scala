@@ -1,11 +1,13 @@
 package com.secretapp.backend.services.rpc.contact
 
 import com.secretapp.backend.data.message.rpc.contact._
+import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.struct
 import scala.collection.immutable
 import scalaz._
 import Scalaz._
+import com.websudos.util.testing.AsyncAssertionsHelper._
 
 class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
@@ -25,7 +27,33 @@ class ContactServiceSpec extends RpcSpec {
       val (users, seq, state) = expectRpcMsgByPF(withNewSession = true) {
         case r: ResponseImportedContacts => (r.users, r.seq, r.state)
       }
-      users.should_==(Seq(struct.User.fromModel(contact, scope.authId)))
+      users.should_==(Seq(struct.User.fromModel(contact, scope.authId, contact.name.some)))
+    }
+
+    "handle RPC get contacts request" in {
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contacts = immutable.Seq(
+        genTestScopeWithUser().user,
+        genTestScopeWithUser().user,
+        genTestScopeWithUser().user,
+        genTestScopeWithUser().user,
+        genTestScopeWithUser().user
+      )
+      val contactsList = contacts.zipWithIndex.map {
+        case (c, index) => struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some)
+      }
+      UserContactsListRecord.insertEntities(currentUser.uid, contactsList).sync()
+      UserContactsListCacheRecord.upsertEntity(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      sendRpcMsg(RequestGetContacts(UserContactsListCacheRecord.emptySHA1Hash))
+
+      val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseGetContacts => (r.users, !r.isNotChanged)
+      }
+      isChanged.should_==(true)
+      users.toSet.should_==(contactsList.zipWithIndex.map {
+        case (c, index) => c.copy(localName = s"${c.name}_$index".some)
+      }.toSet)
     }
   }
 }
