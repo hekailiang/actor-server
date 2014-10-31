@@ -17,8 +17,9 @@ object AuthItem {
   ): AuthItem = {
     val appTitle = appId match {
       case 0 => "Android Official"
-      case 1 => "iOS Official"
-      case 2 => "Web Official"
+      case 1 => "Android Official"
+      case 2 => "iOS Official"
+      case 3 => "Web Official"
     }
     AuthItem(
       id = id, appId = appId, appTitle = appTitle, deviceTitle = deviceTitle, authTime = authTime,
