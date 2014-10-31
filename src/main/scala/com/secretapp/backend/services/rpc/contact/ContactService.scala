@@ -54,7 +54,7 @@ trait ContactService {
     } yield {
       val t = usersFutureSeq.foldLeft(immutable.Seq[struct.User](), immutable.Set[Int](), immutable.Set[Long]()) {
         case ((users, newContactsId, registeredPhones), user) =>
-          (users :+ struct.User.fromModel(user,authId, phonesMap(user.phoneNumber)),
+          (users :+ struct.User.fromModel(user, authId, phonesMap(user.phoneNumber)),
             newContactsId + user.uid,
             registeredPhones + user.phoneNumber)
       }
@@ -72,18 +72,21 @@ trait ContactService {
             UnregisteredContactRecord.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
           }
 
-          UserContactsListRecord.insertEntities(currentUser.uid, users)
-          UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ newContactsId)
-
+          val clFuture = UserContactsListRecord.insertEntities(currentUser.uid, users)
+          val clCacheFuture = UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ newContactsId)
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId,
               updateProto.contact.UpdateContactsAdded(newContactsId.toIndexedSeq))
-          ).mapTo[UpdatesBroker.StrictState]
-
-          stateFuture map {
+          ).mapTo[UpdatesBroker.StrictState].map {
             case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
           }
+
+          for {
+            _ <- clFuture
+            _ <- clCacheFuture
+            response <- stateFuture
+          } yield response
         } else Future.successful(Ok(ResponseImportedContacts(users, 0, BitVector.empty)))
     }
   }
