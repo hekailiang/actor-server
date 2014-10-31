@@ -99,7 +99,7 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
     new SelectQuery[GroupRecord, (models.Group, models.AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
 }
 
-object GroupRecord extends GroupRecord with DBConnector {
+object GroupRecord extends GroupRecord with TableOps {
   def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.id, entity.id)

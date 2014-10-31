@@ -91,7 +91,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
     )
 }
 
-object UserRecord extends UserRecord with DBConnector {
+object UserRecord extends UserRecord with TableOps {
 
   def insertEntityWithPhoneAndPK(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = models.Phone(

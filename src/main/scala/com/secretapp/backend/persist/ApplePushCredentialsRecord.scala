@@ -25,7 +25,7 @@ sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredenti
     models.ApplePushCredentials(authId(r), apnsKey(r), token(r))
 }
 
-object ApplePushCredentialsRecord extends ApplePushCredentialsRecord with DBConnector {
+object ApplePushCredentialsRecord extends ApplePushCredentialsRecord with TableOps {
 
   def set(c: models.ApplePushCredentials)(implicit s: Session): Future[ResultSet] = {
     @inline def doInsert() =

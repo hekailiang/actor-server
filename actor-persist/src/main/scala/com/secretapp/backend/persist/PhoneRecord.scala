@@ -27,7 +27,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, models.Phone] {
       userName = userName(row), userSex = models.Sex.fromInt(userSex(row)))
 }
 
-object PhoneRecord extends PhoneRecord with DBConnector {
+object PhoneRecord extends PhoneRecord with TableOps {
   def insertEntity(entity: models.Phone)(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.number, entity.number)

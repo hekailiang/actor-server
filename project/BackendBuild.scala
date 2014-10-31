@@ -35,7 +35,7 @@ object BackendBuild extends Build {
         autoCompilerPlugins := true,
         scalacOptions in (Compile,doc) := Seq("-groups", "-implicits", "-diagrams")
       )
-  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff).dependsOn(actorModels)
+  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff).dependsOn(actorModels, actorPersist)
 
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := Organization,
@@ -83,4 +83,9 @@ object BackendBuild extends Build {
     id = "actor-models",
     base = file("actor-models")
   )
+
+  lazy val actorPersist = Project(
+    id = "actor-persist",
+    base = file("actor-persist")
+  ).dependsOn(actorModels)
 }

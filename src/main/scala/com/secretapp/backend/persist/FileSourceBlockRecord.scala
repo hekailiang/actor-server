@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 case class FileSourceBlock(fileId: Int, offset: Int, length: Int)
 
 private[persist] class FileSourceBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileSourceBlockRecord, FileSourceBlock] with DBConnector {
+    extends CassandraTable[FileSourceBlockRecord, FileSourceBlock] with TableOps {
   override val tableName = "file_source_blocks"
 
   object fileId extends IntColumn(this) with PartitionKey[Int] {

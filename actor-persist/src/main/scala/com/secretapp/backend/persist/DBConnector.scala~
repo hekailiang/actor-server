@@ -71,3 +71,16 @@ object DBConnector {
 //  }
 
 }
+
+trait DBConnector {
+  self: CassandraTable[_, _] =>
+
+  def createTable(session: Session): Future[Unit] = {
+    create.future()(session) map (_ => ())
+  }
+
+  def truncateTable(session: Session): Future[Unit] = {
+    truncate.future()(session) map (_ => ())
+  }
+
+}

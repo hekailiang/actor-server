@@ -54,7 +54,7 @@ sealed class AuthItemRecord extends CassandraTable[AuthItemRecord, models.AuthIt
     )
 }
 
-object AuthItemRecord extends AuthItemRecord with DBConnector {
+object AuthItemRecord extends AuthItemRecord with TableOps {
   def insertEntity(item: models.AuthItem, userId: Int)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.userId, userId)

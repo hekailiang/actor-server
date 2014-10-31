@@ -62,7 +62,7 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
   }
 }
 
-object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
+object SeqUpdateRecord extends SeqUpdateRecord with TableOps {
 
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]] = {
     val query = state match {

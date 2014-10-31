@@ -22,7 +22,7 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
     models.GooglePushCredentials(authId(r), projectId(r), regId(r))
 }
 
-object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with DBConnector {
+object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with TableOps {
 
   def set(c: models.GooglePushCredentials)(implicit s: Session): Future[ResultSet] = {
     @inline def doInsert() =

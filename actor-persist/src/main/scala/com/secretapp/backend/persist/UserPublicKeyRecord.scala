@@ -43,7 +43,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, mod
     )
 }
 
-object UserPublicKeyRecord extends UserPublicKeyRecord with DBConnector {
+object UserPublicKeyRecord extends UserPublicKeyRecord with TableOps {
   import scalaz._
   import Scalaz._
 

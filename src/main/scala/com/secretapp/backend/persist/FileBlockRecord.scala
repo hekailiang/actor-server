@@ -16,7 +16,7 @@ object FileBlockRecord {
 }
 
 private[persist] class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with DBConnector {
+    extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with TableOps {
   import FileBlockRecord._
 
   override val tableName = "file_blocks"

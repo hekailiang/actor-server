@@ -16,7 +16,7 @@ sealed class UserGroupsRecord extends CassandraTable[UserGroupsRecord, Int] {
   override def fromRow(row: Row): Int = groupId(row)
 }
 
-object UserGroupsRecord extends UserGroupsRecord with DBConnector {
+object UserGroupsRecord extends UserGroupsRecord with TableOps {
   def addGroup(userId: Int, groupId: Int)(implicit session: Session): Future[ResultSet] =
     insert.value(_.userId, userId).value(_.groupId, groupId).future()
 

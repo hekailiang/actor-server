@@ -23,7 +23,7 @@ sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, models.
     models.AuthSmsCode(phoneNumber(row), smsHash(row), smsCode(row))
 }
 
-object AuthSmsCodeRecord extends AuthSmsCodeRecord with DBConnector {
+object AuthSmsCodeRecord extends AuthSmsCodeRecord with TableOps {
   def insertEntity(entity: models.AuthSmsCode)(implicit session: CSession): Future[ResultSet] =
     insert
       .value(_.phoneNumber, entity.phoneNumber)
