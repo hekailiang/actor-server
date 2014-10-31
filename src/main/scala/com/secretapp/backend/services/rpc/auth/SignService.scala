@@ -276,7 +276,16 @@ trait SignService extends SocialHelpers {
                       withValidPublicKey(publicKey) { publicKey =>
                         ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
                           val pkHash = ec.PublicKey.keyHash(publicKey)
-                          val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, genUserAccessSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
+                          val user = models.User(
+                            uid = userId,
+                            authId = authId,
+                            publicKey = publicKey,
+                            publicKeyHash = pkHash,
+                            phoneNumber = phoneNumber,
+                            accessSalt = genUserAccessSalt,
+                            name = name,
+                            sex = models.NoSex,
+                            keyHashes = immutable.Set(pkHash))
                           UserRecord.insertEntityWithChildren(user) flatMap { _ =>
                             pushContactRegisteredUpdates(user)
                             auth(user)

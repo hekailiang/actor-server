@@ -2,6 +2,8 @@ package com.secretapp.backend.protocol.codecs.message.update
 
 import scala.util.{ Try, Success, Failure }
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.update.contact._
+import com.secretapp.backend.protocol.codecs.message.update.contact._
 import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
@@ -25,8 +27,11 @@ object SeqUpdateMessageCodec {
       case u: GroupUserLeave    => GroupUserLeaveCodec.encode(u)
       case u: GroupUserKick     => GroupUserKickCodec.encode(u)
       case u: GroupCreated      => GroupCreatedCodec.encode(u)
-      case u: GroupTitleChanged => GroupTitleChangedCodec.encode(u)
-      case u: GroupAvatarChanged=> GroupAvatarChangedCodec.encode(u)
+      case u: GroupTitleChanged       => GroupTitleChangedCodec.encode(u)
+      case u: GroupAvatarChanged      => GroupAvatarChangedCodec.encode(u)
+      case u: UpdateContactRegistered => UpdateContactRegisteredCodec.encode(u)
+      case u: UpdateContactsAdded     => UpdateContactsAddedCodec.encode(u)
+      case u: UpdateContactsRemoved   => UpdateContactsRemovedCodec.encode(u)
     }
   }
 
@@ -50,6 +55,9 @@ object SeqUpdateMessageCodec {
       case GroupCreated.header      => GroupCreatedCodec.decode(buf)
       case GroupTitleChanged.header => GroupTitleChangedCodec.decode(buf)
       case GroupAvatarChanged.header=> GroupAvatarChangedCodec.decode(buf)
+      case UpdateContactRegistered.header => UpdateContactRegisteredCodec.decode(buf)
+      case UpdateContactsAdded.header     => UpdateContactsAddedCodec.decode(buf)
+      case UpdateContactsRemoved.header   => UpdateContactsRemovedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {
