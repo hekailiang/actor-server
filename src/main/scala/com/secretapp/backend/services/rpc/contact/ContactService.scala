@@ -30,6 +30,10 @@ trait ContactService {
       authorizedRequest {
         handleRequestImportContacts(phones, emails)
       }
+    case RequestGetContacts(contactsHash) =>
+      authorizedRequest {
+        handleRequestGetContacts(contactsHash)
+      }
   }
 
   def handleRequestImportContacts(phones: immutable.Seq[PhoneToImport],
@@ -67,5 +71,9 @@ trait ContactService {
           case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
         }
     }
+  }
+
+  def handleRequestGetContacts(contactsHash: String): Future[RpcResponse] = {
+    Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), false)))
   }
 }
