@@ -3,6 +3,7 @@ package com.secretapp.backend.persist
 import akka.dispatch.Dispatcher
 import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
 import java.util.concurrent.Executor
+import com.secretapp.backend.persist.contact._
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
 import com.datastax.driver.core.{ Cluster, Session }
@@ -43,6 +44,8 @@ object DBConnector {
       PhoneRecord.createTable(session),
       SeqUpdateRecord.createTable(session),
       UnregisteredContactRecord.createTable(session),
+      UserContactsListRecord.createTable(session),
+      UserContactsListCacheRecord.createTable(session),
       UserGroupsRecord.createTable(session),
       UserPublicKeyRecord.createTable(session),
       UserRecord.createTable(session),
@@ -63,6 +66,8 @@ object DBConnector {
       PhoneRecord.truncateTable(session),
       SeqUpdateRecord.truncateTable(session),
       UnregisteredContactRecord.truncateTable(session),
+      UserContactsListRecord.truncateTable(session),
+      UserContactsListCacheRecord.truncateTable(session),
       UserGroupsRecord.truncateTable(session),
       UserPublicKeyRecord.truncateTable(session),
       UserRecord.truncateTable(session)
