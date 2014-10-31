@@ -76,11 +76,16 @@ trait UserHelpers {
           }
       }
 
+      val activeAuthIdsMap = authIdsMap filter {
+        case (_, -\/(_)) => false
+        case (_, \/-(_)) => true
+      }
+
       val allKeys = skipKeyHash match {
         case Some(keyHash) =>
-          authIdsMap.keySet - keyHash
+          activeAuthIdsMap.keySet - keyHash
         case None =>
-          authIdsMap.keySet
+          activeAuthIdsMap.keySet
       }
 
       (
