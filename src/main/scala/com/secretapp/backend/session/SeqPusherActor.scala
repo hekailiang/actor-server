@@ -20,7 +20,7 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
       val fupd = u match {
         case _: ContactRegistered =>
           val fuserStructs = u.userIds map { userId =>
-            UserRecord.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)(context.system)))
+            UserRecord.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
           }
           for {
             userStructs <- Future.sequence(fuserStructs)

@@ -4,29 +4,23 @@ import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
-import com.secretapp.backend.data.message.RpcResponseBox
-import com.secretapp.backend.data.message.struct.{ Avatar, FileLocation, UserKey, WrongReceiversErrorData }
+import com.secretapp.backend.data.message.struct.{ UserKey, WrongReceiversErrorData }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
 import com.secretapp.backend.persist._
-import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.{ACL, AvatarUtils}
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.{ Failure, Success }
 import scalaz.Scalaz._
 import scalaz._
 import scodec.bits._
-import scodec.codecs.uuid
 
 trait MessagingService extends RandomService with UserHelpers with GroupHelpers {
   self: MessagingServiceActor =>
@@ -308,7 +302,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   protected def handleRequestEditGroupAvatar(
-    groupId: Int, accessHash: Long, fileLocation: FileLocation
+    groupId: Int, accessHash: Long, fileLocation: models.FileLocation
   ): Future[RpcResponse] = {
     withGroup(groupId, accessHash) { group =>
       val sizeLimit: Long = 1024 * 1024 // TODO: configurable

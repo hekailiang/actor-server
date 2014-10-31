@@ -2,7 +2,7 @@ package com.secretapp.backend.protocol.codecs.message.rpc.file
 
 import org.specs2.mutable.Specification
 import com.secretapp.backend.data.message.{ RpcRequestBox, RpcResponseBox }
-import com.secretapp.backend.data.message.struct.FileLocation
+import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.protocol.codecs._
@@ -15,7 +15,7 @@ class CodecsSpec extends Specification {
 
     "encode and decode RequestGetFile" in {
       val encoded = hex"031101000000100b0a04080110021000188008".bits
-      val fl = FileLocation(1, 2L)
+      val fl = models.FileLocation(1, 2L)
       val decoded = RpcRequestBox(Request(RequestGetFile(fl, 0, 1024)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded
@@ -72,7 +72,7 @@ class CodecsSpec extends Specification {
 
     "encode and decode FileUploaded" in {
       val encoded = hex"0400000000000000010c0100000017060a0408011002".bits
-      val location = FileLocation(1, 2L)
+      val location = models.FileLocation(1, 2L)
       val decoded = RpcResponseBox(1L, Ok(ResponseUploadCompleted(location)))
 
       protoTransportMessage.encodeValid(decoded) should_== encoded

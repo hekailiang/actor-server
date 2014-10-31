@@ -26,7 +26,7 @@ object SocialBroker {
   }
 
   private val shardResolver: ShardRegion.ShardResolver = {
-    case msg@SocialMessageBox(userId, _) => (userId % shardCount).toString
+    case msg@SocialMessageBox(userId, _) => (userId % shardCount).abs.toString
   }
 
   def startRegion()(implicit system: ActorSystem): ActorRef = ClusterSharding(system).start(

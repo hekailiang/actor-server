@@ -1,12 +1,10 @@
 package com.secretapp.backend.protocol.codecs.message.update
 
-import com.secretapp.backend.data.message.struct.Avatar
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec
-import scodec.codecs._
 import im.actor.messenger.{ api => protobuf }
 
 import scala.util.Success

@@ -1,9 +1,10 @@
 package com.secretapp.backend.data.json.message.struct
 
 import com.secretapp.backend.data.json.JsonSpec
+import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.message.rpc.file.JsonFormatsSpec._
-import com.secretapp.backend.data.message.struct._
 import com.secretapp.backend.models
+import com.secretapp.backend.data.message.struct
 import play.api.libs.json._
 import scala.util.Random
 import scalaz._
@@ -45,7 +46,7 @@ object JsonFormatsSpec {
     val accessHash = Random.nextLong()
 
     (
-      UserId(1, 2),
+      struct.UserId(1, 2),
       Json.obj(
         "uid"        -> 1,
         "accessHash" -> "2"
@@ -60,7 +61,7 @@ object JsonFormatsSpec {
     val fileSize = Random.nextInt()
 
     (
-      AvatarImage(fileLocation, width, height, fileSize),
+      models.AvatarImage(fileLocation, width, height, fileSize),
       Json.obj(
         "fileLocation" -> fileLocationJson,
         "width"        -> width,
@@ -76,7 +77,7 @@ object JsonFormatsSpec {
     val (fullImage, fullImageJson) = genAvatarImage
 
     (
-      Avatar(
+      models.Avatar(
         smallImage.some,
         largeImage.some,
         fullImage.some
@@ -97,7 +98,7 @@ object JsonFormatsSpec {
     val (avatar, avatarJson) = genAvatar
 
     (
-      User(uid, accessHash, "name", models.Male.some, Set(keyHash), phoneNumber, avatar.some),
+      struct.User(uid, accessHash, "name", models.Male.some, Set(keyHash), phoneNumber, avatar.some),
       Json.obj(
         "uid"         -> uid,
         "accessHash"  -> accessHash.toString,

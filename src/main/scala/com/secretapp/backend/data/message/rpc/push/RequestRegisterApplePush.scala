@@ -7,5 +7,5 @@ case class RequestRegisterApplePush(apnsKey: Int, token: String) extends RpcRequ
 }
 
 object RequestRegisterApplePush extends RpcRequestMessageObject {
-  override val header = 0x4C
+  val header = 0x4C
 }

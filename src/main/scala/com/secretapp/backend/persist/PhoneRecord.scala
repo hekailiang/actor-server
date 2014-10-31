@@ -65,6 +65,6 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     val q = numbers.map { number =>
       select.where(_.number eqs number).one()
     }
-    Future.sequence(q).map(_.filter(_.isDefined).map(_.get))
+    Future.sequence(q).map(_.flatten)
   }
 }

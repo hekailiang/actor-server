@@ -161,16 +161,16 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
  */
-    "encode and decode RpcRequest.RequestImportContacts" in {
-      val encoded = hex"03270100000007210a0908011089a0a5bda9020a090802108aa0a5bda9020a090803108ba0a5bda902".bits
-      val contacts = (1L to 3L).map { id =>
-        ContactToImport(id, 79853867016L + id)
-      }
-      val decoded = RpcRequestBox(Request(RequestImportContacts(contacts)))
-
-      protoTransportMessage.encode(decoded) should_== encoded.right
-      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
-    }
+//    "encode and decode RpcRequest.RequestImportContacts" in {
+//      val encoded = hex"03270100000007210a0908011089a0a5bda9020a090802108aa0a5bda9020a090803108ba0a5bda902".bits
+//      val contacts = (1L to 3L).map { id =>
+//        ContactToImport(id, 79853867016L + id)
+//      }
+//      val decoded = RpcRequestBox(Request(RequestImportContacts(contacts)))
+//
+//      protoTransportMessage.encode(decoded) should_== encoded.right
+//      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+//    }
 
     "encode and decode RpcRequest.RequestPublicKeys" in {
       val encoded = hex"032a0100000006240a0a08011088ad4b18b3f6780a0a08021089ad4b18b4f6780a0a0803108aad4b18b5f678".bits
@@ -252,17 +252,17 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
-    "encode and decode RpcResponse.ResponseImportedContacts" in {
-      val encoded = hex"0400000000000000013101000000082b0a22080110b9601a0c54696d6f746879204b6c696d28023001300230033888a0a5bda90212050889061001".bits
-      val user = User(1, 12345L, "Timothy Klim", Some(models.Male), Set(1L, 2L, 3L), 79853867016L)
-      val users = immutable.Seq(user)
-      val contact = ImportedContact(777L, user.uid)
-      val contacts = immutable.Seq(contact)
-      val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
-
-      protoTransportMessage.encode(decoded) should_== encoded.right
-      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
-    }
+//    "encode and decode RpcResponse.ResponseImportedContacts" in {
+//      val encoded = hex"0400000000000000013101000000082b0a22080110b9601a0c54696d6f746879204b6c696d28023001300230033888a0a5bda90212050889061001".bits
+//      val user = User(1, 12345L, "Timothy Klim", Some(models.Male), Set(1L, 2L, 3L), 79853867016L)
+//      val users = immutable.Seq(user)
+//      val contact = ImportedContact(777L, user.uid)
+//      val contacts = immutable.Seq(contact)
+//      val decoded = RpcResponseBox(1L, Ok(ResponseImportedContacts(users, contacts)))
+//
+//      protoTransportMessage.encode(decoded) should_== encoded.right
+//      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
+//    }
 
     "encode and decode RpcResponse.ResponsePublicKeys" in {
       val encoded = hex"0400000000000000013301000000182d0a0d08011088ad4b1a0561633164310a0d08021089ad4b1a0561633164320a0d0803108aad4b1a056163316433".bits

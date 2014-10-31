@@ -1,9 +1,9 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{ Files, Paths }
+import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.util.{ACL, AvatarUtils}
 import org.specs2.specification.BeforeExample
@@ -208,9 +208,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
   implicit val timeout = 5.seconds
 
-  private var validFileLocation: FileLocation = _
-  private var invalidFileLocation: FileLocation = _
-  private var tooLargeFileLocation: FileLocation = _
+  private var validFileLocation: models.FileLocation = _
+  private var invalidFileLocation: models.FileLocation = _
+  private var tooLargeFileLocation: models.FileLocation = _
 
   override def before = {
     validFileLocation = storeImage(42, validOrigBytes)
@@ -223,7 +223,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
 
-  private val invalidBytes = Stream.continually(Random.nextInt.toByte).take(50000).toArray
+  private val invalidBytes = Stream.continually(Random.nextInt().toByte).take(50000).toArray
 
   private val tooLargeBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/too-large-avatar.jpg").toURI))
@@ -236,14 +236,14 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
   private val validSmallDimensions = (100, 100)
 
-  private def storeImage(fileId: Int, bytes: Array[Byte]): FileLocation = {
+  private def storeImage(fileId: Int, bytes: Array[Byte]): models.FileLocation = {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
       _    <- fr.createFile(fileId, fileSalt);
       _    <- fr.write(fileId, 0, bytes);
       hash <- fr.getAccessHash(fileId);
-      fl    = FileLocation(fileId, hash)
+      fl    = models.FileLocation(fileId, hash)
     ) yield fl
 
     ffl.sync()
@@ -262,7 +262,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private def dbLargeImage(groupId: Int) = dbAvatar(groupId).largeImage.get
   private def dbSmallImage(groupId: Int) = dbAvatar(groupId).smallImage.get
 
-  private def dbImageBytes(a: AvatarImage)(implicit scope: TestScope) =
+  private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
     fr.getFile(a.fileLocation.fileId.toInt).sync()
 
   private def createGroup(ownerScope: TestScope, scope2: TestScope) = {

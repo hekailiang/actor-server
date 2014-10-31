@@ -39,6 +39,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestSendGroupMessage.header)    { case r: RequestSendGroupMessage         => r } (protoPayload(RequestSendGroupMessageCodec))
     .\(RequestImportContacts.header)      { case r: RequestImportContacts           => r } (protoPayload(RequestImportContactsCodec))
     .\(RequestPublicKeys.header)          { case r: RequestPublicKeys               => r } (protoPayload(RequestPublicKeysCodec))
+    .\(RequestGetContacts.header)         { case r: RequestGetContacts              => r } (protoPayload(RequestGetContactsCodec))
     .\(RequestGetFile.header)             { case r: RequestGetFile                  => r } (protoPayload(RequestGetFileCodec))
     .\(RequestStartUpload.header)         { case r: RequestStartUpload              => r } (protoPayload(RequestUploadStartCodec))
     .\(RequestUploadPart.header)          { case r: RequestUploadPart               => r } (protoPayload(RequestUploadFileCodec))

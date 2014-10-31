@@ -16,6 +16,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
+import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.{ Success, Failure }
 import scodec.bits.BitVector
@@ -274,8 +275,8 @@ trait SignService extends SocialHelpers {
                     case None => withValidName(req.name) { name =>
                       withValidPublicKey(publicKey) { publicKey =>
                         ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
-                          val accessSalt = genUserAccessSalt
-                          val user = models.User.build(userId, authId, publicKey, phoneNumber, accessSalt, name)
+                          val pkHash = ec.PublicKey.keyHash(publicKey)
+                          val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, genUserAccessSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
                           UserRecord.insertEntityWithChildren(user) flatMap { _ =>
                             pushContactRegisteredUpdates(user)
                             auth(user)

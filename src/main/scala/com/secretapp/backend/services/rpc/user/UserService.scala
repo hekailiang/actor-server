@@ -1,19 +1,16 @@
 package com.secretapp.backend.services.rpc.user
 
-import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.user.{ RequestEditName, RequestEditAvatar }
-import com.secretapp.backend.data.message.struct.{ Avatar, AvatarImage }
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.helpers.{ SocialHelpers, UserHelpers }
-import com.secretapp.backend.persist.{ FileRecord, UserRecord }
+import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.util.AvatarUtils
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.Random
+import com.secretapp.backend.data.message.struct._
+import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
@@ -32,7 +29,7 @@ trait UserService extends SocialHelpers with UserHelpers {
     }
   }
 
-  private def handleEditAvatar(user: User, r: RequestEditAvatar): Future[RpcResponse] = {
+  private def handleEditAvatar(user: models.User, r: RequestEditAvatar): Future[RpcResponse] = {
     val sizeLimit: Long = 1024 * 1024 // TODO: configurable
 
     fileRecord.getFileLength(r.fileLocation.fileId.toInt) flatMap { len =>
@@ -56,7 +53,7 @@ trait UserService extends SocialHelpers with UserHelpers {
     }
   }
 
-  private def handleEditName(user: User, r: RequestEditName): Future[RpcResponse] =
+  private def handleEditName(user: models.User, r: RequestEditName): Future[RpcResponse] =
     UserRecord.updateName(user.uid, r.name) map { _ =>
       withRelatedAuthIds(user.uid) { authIds =>
         authIds foreach { authId =>

@@ -2,14 +2,12 @@ package com.secretapp.backend.data.json.message.rpc.file
 
 import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.UnitFormat
-import com.secretapp.backend.data.message.struct.FileLocation
 import com.secretapp.backend.data.message.rpc.file._
 import play.api.libs.json._
 
 trait JsonFormats {
-  implicit val fileLocationFormat     = Json.format[FileLocation]
-
-  implicit val uploadConfigFormat = Json.format[UploadConfig]
+  val uploadConfigFormat: Format[UploadConfig] = Json.format[UploadConfig]
+  implicit val implicitUploadConfigFormat = uploadConfigFormat
 
   implicit val requestCompleteUploadFormat = Json.format[RequestCompleteUpload]
   implicit val requestGetFileFormat = Json.format[RequestGetFile]

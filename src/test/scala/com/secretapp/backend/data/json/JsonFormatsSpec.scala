@@ -1,27 +1,10 @@
 package com.secretapp.backend.data.json
 
-import java.util.UUID
-
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.auth.{RequestSignUp, RequestSignIn, RequestAuthCode}
-import com.secretapp.backend.data.message.rpc.contact._
-import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.presence.{UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline}
-import com.secretapp.backend.data.message.rpc.push.{RequestUnregisterPush, RequestRegisterGooglePush}
-import com.secretapp.backend.data.message.rpc.update.{RequestGetState, RequestGetDifference}
-import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
-import com.secretapp.backend.data.message.struct.{User, Avatar, AvatarImage, UserId}
 import com.secretapp.backend.data.transport.MessageBox
-import org.specs2.mutable.Specification
 import com.secretapp.backend.data.json.message._
-import play.api.libs.json
 import play.api.libs.json._
-import scodec.bits.BitVector
 import scala.collection.immutable
-import scalaz._
-import Scalaz._
 
 class JsonFormatsSpec extends JsonSpec {
 

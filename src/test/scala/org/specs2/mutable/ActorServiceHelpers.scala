@@ -11,7 +11,7 @@ import com.secretapp.backend.api.frontend.{JsonConnection, MTConnection, Transpo
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc.{Request, RpcRequestMessage, RpcResponse}
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
@@ -45,6 +45,7 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 import java.net.InetSocketAddress
+import com.secretapp.backend.crypto.ec
 
 trait ActorServiceImplicits {
   def codecRes2BS(res: String \/ BitVector): ByteString = ByteString(res.toOption.get.toByteBuffer)
@@ -150,31 +151,46 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     expectMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Unit])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
-    def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
-      def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
+  def expectRpcMsgByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[RpcResponseMessage, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    expectMsgByPF(withNewSession, duration) {
+      case RpcResponseBox(_, Ok(res)) => pf(res)
+    }
+  }
+
+  def expectRpcByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[RpcResponse, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    expectMsgByPF(withNewSession, duration) {
+      case RpcResponseBox(_, res) => pf(res)
+    }
+  }
+
+  def expectMsgByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    def f(acks: immutable.Set[Long], obj: Option[T], receivedNewSession: Boolean): (T, immutable.Set[Long]) = {
+      def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], obj: Option[T], receivedNewSession: Boolean): (T, immutable.Set[Long]) = msgs match {
         case m :: msgs =>
           Try(pf(m)) match {
-            case Success(_) => g(msgs, acks.toSet, receivedMsgByPF = true, receivedNewSession = receivedNewSession)
+            case Success(obj) => g(msgs, acks.toSet, obj.some, receivedNewSession = receivedNewSession)
             case Failure(_) => m match {
-              case MessageAck(acks) => g(msgs, acks.toSet, receivedMsgByPF, receivedNewSession)
+              case MessageAck(acks) => g(msgs, acks.toSet, obj, receivedNewSession)
               case NewSession(_, sesId) if withNewSession && !receivedNewSession && sesId == scope.session.id =>
-                g(msgs, acks, receivedMsgByPF, receivedNewSession = true)
+                g(msgs, acks, obj, receivedNewSession = true)
             }
           }
         case Nil =>
-          if (receivedMsgByPF && (!withNewSession || (withNewSession && receivedNewSession))) acks
-          else f(acks, receivedMsgByPF, receivedNewSession)
+          if (obj.isDefined && (!withNewSession || (withNewSession && receivedNewSession))) Tuple2(obj.get, acks)
+          else f(acks, obj, receivedNewSession)
       }
 
       receiveOne({ data =>
         val msgs = deserializeMsgBoxes(deserializePackage(data)).map(_.body)
-        g(msgs, acks, receivedMsgByPF, receivedNewSession)
+        g(msgs, acks, obj, receivedNewSession)
       }, { () =>
-        throw new IllegalArgumentException(s"no messages")
+        if (withNewSession && !receivedNewSession) throw new IllegalArgumentException(s"expect NewSession")
+        else throw new IllegalArgumentException(s"no messages")
       })(duration)
     }
-    sendMessageAck(f(Set(), false, false))
+    val (obj, ackIds) = f(Set(), None, false)
+    sendMessageAck(ackIds)
+    obj
   }
 
   def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Boolean])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
@@ -198,7 +214,8 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         val msgs = deserializeMsgBoxes(deserializePackage(data)).map(_.body)
         g(msgs, acks, receivedByPF, receivedNewSession)
       }, { () =>
-        throw new IllegalArgumentException(s"no messages")
+        if (withNewSession && !receivedNewSession) throw new IllegalArgumentException(s"expect NewSession")
+        else throw new IllegalArgumentException(s"no messages")
       })(duration)
     }
     sendMessageAck(f(Set(), false, false))
@@ -275,11 +292,16 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         if (!remain.isEmpty) f(remain, acks)
         else acks
       }, { () =>
-        throw new IllegalArgumentException(s"unreceived messages: $messages")
+        if (withNewSession && !receivedNewSession) throw new IllegalArgumentException(s"expect NewSession")
+        else throw new IllegalArgumentException(s"unreceived messages: $messages")
       })(duration)
     }
     sendMessageAck(f(msgs, Set()))
   }
+
+//  private def expectUpdatePush() = {
+//    ???
+//  }
 
   private def deserializePackage(data: ByteString)(implicit scope: TestScopeNew, transport: TransportConnection) = {
     val p = transport match {
@@ -356,8 +378,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
                      (implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): models.User = blocking {
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
-    val user = models.User.build(uid = uid, authId = authId, publicKey = publicKey, accessSalt = "salt",
-      phoneNumber = phoneNumber, name = name)
+    val pkHash = ec.PublicKey.keyHash(publicKey)
+    val user = models.User(uid, authId, pkHash, publicKey, phoneNumber, "salt", name, models.NoSex, keyHashes = immutable.Set(pkHash))
     authUser(user, phoneNumber)
   }
 
@@ -394,8 +416,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val publicKey = BitVector(rand.nextString(100).getBytes)
     val salt = rand.nextString(25)
     val name = s"Timothy$userId Klim$userId"
-    val userStruct = models.User.build(uid = userId, authId = scope.authId, publicKey = publicKey, accessSalt = salt,
-      phoneNumber = phoneNumber, name = name)
+    val pkHash = ec.PublicKey.keyHash(publicKey)
+    val userStruct = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, salt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
     val user = authUser(userStruct, phoneNumber)
     scope.copy(userOpt = user.some)
   }
@@ -435,10 +457,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong()
-      val newUser = models.User.build(
-        uid = uid, authId = authId, publicKey = BitVector.fromLong(rand.nextLong()), accessSalt = "salt",
-        phoneNumber = phone, name = s"Timothy$uid Klim$uid"
-      )
+      val publicKey = BitVector.fromLong(rand.nextLong())
+      val pkHash = ec.PublicKey.keyHash(publicKey)
+      val newUser = models.User(uid, authId, pkHash, publicKey, phone, "salt", s"Timothy$uid Klim$uid", models.NoSex, keyHashes = immutable.Set(pkHash))
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
     }

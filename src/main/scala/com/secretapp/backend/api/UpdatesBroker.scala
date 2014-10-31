@@ -47,10 +47,10 @@ object UpdatesBroker {
 
   private val shardCount = 2 // TODO: configurable
 
-  private val shardResolver: ShardRegion.ShardResolver = msg => msg match {
-    case msg @ NewUpdatePush(authId, _) => (authId % shardCount).toString
-    case msg @ GetSeq(authId) => (authId % shardCount).toString
-    case msg @ GetSeqAndState(authId) => (authId % shardCount).toString
+  private val shardResolver: ShardRegion.ShardResolver = {
+    case msg@NewUpdatePush(authId, _) => (authId % shardCount).abs.toString
+    case msg@GetSeq(authId) => (authId % shardCount).abs.toString
+    case msg@GetSeqAndState(authId) => (authId % shardCount).abs.toString
   }
 
   def startRegion(apnsService: ApnsService)(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
@@ -84,12 +84,12 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
     case UpdatesBroker.Stop => context.stop(self)
     case UpdatesBroker.GetSeq(_) =>
       sender() ! this.seq
-    case p @ NewUpdatePush(authId, update) =>
+    case NewUpdatePush(authId, update) =>
       val replyTo = sender()
       log.info(s"NewUpdatePush for $authId: $update")
       persist(SeqUpdate) { _ =>
         seq += 1
-        pushUpdate(authId, seq, update) map (replyTo.!)
+        pushUpdate(authId, seq, update) map replyTo.!
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>

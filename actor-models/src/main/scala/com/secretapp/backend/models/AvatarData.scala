@@ -1,22 +1,8 @@
 package com.secretapp.backend.models
 
-import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
 import scala.collection.immutable
-import com.secretapp.backend.crypto.ec
-import scodec.bits.BitVector
-import scalaz._
-import Scalaz._
 
-@SerialVersionUID(1L)
-case class User(
-  uid: Int,
-  authId: Long,
-  publicKeyHash: Long,
-  publicKey: BitVector,
-  phoneNumber: Long,
-  accessSalt: String,
-  name: String,
-  sex: Sex,
+case class AvatarData(
   smallAvatarFileId: Option[Int] = None,
   smallAvatarFileHash: Option[Long] = None,
   smallAvatarFileSize: Option[Int] = None,
@@ -27,10 +13,8 @@ case class User(
   fullAvatarFileHash: Option[Long] = None,
   fullAvatarFileSize: Option[Int] = None,
   fullAvatarWidth: Option[Int] = None,
-  fullAvatarHeight: Option[Int] = None,
-  keyHashes: immutable.Set[Long] = immutable.Set()
+  fullAvatarHeight: Option[Int] = None
 ) {
-
   lazy val smallAvatarImage =
     for (
       id <- smallAvatarFileId;
@@ -56,24 +40,7 @@ case class User(
 
   lazy val avatar =
     if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
-      Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
+      Some(Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage))
     else
       None
-}
-
-object User {
-  def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String, sex: Sex = NoSex) = {
-    val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-    User(
-      uid,
-      authId,
-      publicKeyHash,
-      publicKey,
-      phoneNumber,
-      accessSalt,
-      name,
-      sex,
-      keyHashes = immutable.Set(publicKeyHash)
-    )
-  }
 }

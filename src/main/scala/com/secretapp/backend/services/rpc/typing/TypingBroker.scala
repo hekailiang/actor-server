@@ -66,8 +66,8 @@ object TypingBroker {
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(userId, msg) => (userId % shardCount).toString
-    case GroupEnvelope(groupId, msg) => (groupId % shardCount).toString
+    case Envelope(userId, msg) => (userId % shardCount).abs.toString
+    case GroupEnvelope(groupId, msg) => (groupId % shardCount).abs.toString
   }
 
   def startRegion()(implicit system: ActorSystem, session: CSession) =

@@ -1,8 +1,7 @@
 package com.secretapp.backend.data.message.struct
 
-import akka.actor.ActorSystem
 import com.secretapp.backend.util.ACL
-
+import com.secretapp.backend.proto
 import scala.language.implicitConversions
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.ProtobufMessage
@@ -17,7 +16,8 @@ case class User(uid: Int,
                 sex: Option[models.Sex],
                 keyHashes: Set[Long],
                 phoneNumber: Long,
-                avatar: Option[Avatar] = None) extends ProtobufMessage {
+                avatar: Option[models.Avatar] = None,
+                localName: Option[String] = None) extends ProtobufMessage {
 
   protected def sexToProto(s: models.Sex): protobuf.Sex.EnumVal = s match {
     case models.Male => protobuf.Sex.MALE
@@ -29,10 +29,11 @@ case class User(uid: Int,
     uid,
     accessHash,
     name,
+    localName,
     sex.map(sexToProto),
     keyHashes.toIndexedSeq,
     phoneNumber,
-    avatar.map(_.toProto))
+    avatar map proto.toProto[models.Avatar, protobuf.Avatar])
 }
 
 object User {
@@ -43,12 +44,29 @@ object User {
   }
 
   def fromProto(u: protobuf.User): User = u match {
-    case protobuf.User(uid, accessHash, name, sex, keyHashes, phoneNumber, avatar) =>
-      User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
+    case protobuf.User(uid, accessHash, name, localName, sex, keyHashes, phoneNumber, avatar) =>
+      User(
+        uid = uid,
+        accessHash = accessHash,
+        name = name,
+        localName = localName,
+        sex = sex.map(fromProto),
+        keyHashes = keyHashes.toSet,
+        phoneNumber = phoneNumber,
+        avatar = avatar map proto.fromProto[models.Avatar, protobuf.Avatar]
+      )
   }
 
-  def fromModel(u: models.User, senderAuthId: Long)(implicit s: ActorSystem) = {
-    val hash = ACL.userAccessHash(senderAuthId, u)
-    User(u.uid, hash, u.name, u.sex.toOption, u.keyHashes, u.phoneNumber, u.avatar)
+  def fromModel(u: models.User, senderAuthId: Long, localName: Option[String] = None) = {
+    User(
+      uid = u.uid,
+      accessHash = ACL.userAccessHash(senderAuthId, u),
+      name = u.name,
+      localName = localName,
+      sex = u.sex.toOption,
+      keyHashes = u.keyHashes,
+      phoneNumber = u.phoneNumber,
+      avatar = u.avatar
+    )
   }
 }

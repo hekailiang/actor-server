@@ -33,12 +33,16 @@ object SessionProtocol {
   @SerialVersionUID(1L)
   case class HandleJsonMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
 
+  @SerialVersionUID(1L)
   case class AuthorizeUser(user: User) extends SessionMessage
   case class SendRpcResponseBox(connector: ActorRef, rpcBox: RpcResponseBox) extends SessionMessage
+  @SerialVersionUID(1L)
   case object SubscribeToUpdates extends SessionMessage
+  @SerialVersionUID(1L)
   case class SubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
 
   // TODO: remove in preference to UnsubscribeFromPresences
+  @SerialVersionUID(1L)
   case class UnsubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
 
   @SerialVersionUID(1L)
@@ -63,17 +67,20 @@ object SessionActor {
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
+    case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
+  }
+
+  def props(singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) = {
+    Props(new SessionActor(singletons, clusterProxies, session))
   }
 
   def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(Props(new SessionActor(singletons, clusterProxies, session))),
+      entryProps = Some(SessionActor.props(singletons, clusterProxies, session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
-
 }
 
 class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
@@ -109,6 +116,17 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
     log.info(s"$authId, $sessionId#queueNewSession $messageId, $sessionId")
     val mb = MessageBox(getMessageId(TransportMsgId), NewSession(messageId, sessionId))
     registerSentMessage(mb, serializeMessageBox(mb))
+  }
+
+  override def preStart(): Unit = {
+    log.debug(s"$authId, $sessionId#preStart")
+    super.preStart()
+  }
+
+  override def postStop(): Unit = {
+    log.debug(s"$authId, $sessionId#postStop")
+    connectors foreach (_ ! SilentClose)
+    super.postStop()
   }
 
   def checkNewConnection(connector: ActorRef) = {
@@ -183,9 +201,11 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
       log.debug(s"$authId, $sessionId#$authId#$msg")
-      persist(msg) { _ =>
-        currentUser = Some(user)
-        apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+      if (!currentUser.exists(_ == user)) {
+        persist(msg) { _ =>
+          currentUser = Some(user)
+          apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+        }
       }
     case msg @ SubscribeToUpdates =>
       persist(msg) { _ =>
@@ -227,6 +247,8 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
 
   val receiveRecover: Receive = {
     case RecoveryCompleted =>
+      log.info(s"$authId, $sessionId#RecoveryCompleted")
+
       if (subscribingToUpdates) {
         subscribeToUpdates()
       }
@@ -253,6 +275,5 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
       subscribedToPresencesGroupIds = subscribedToPresencesGroupIds ++ groupIds
     case UnsubscribeFromGroupPresences(groupIds) =>
       subscribedToPresencesGroupIds = subscribedToPresencesGroupIds -- groupIds
-    case _ =>
   }
 }

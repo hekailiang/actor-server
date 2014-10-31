@@ -3,7 +3,6 @@ package com.secretapp.backend.services.rpc.user
 import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.struct.{ AvatarImage, FileLocation }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.util.{ACL, AvatarUtils}
@@ -140,9 +139,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   implicit val timeout = 5.seconds
 
   private implicit var scope: TestScope = _
-  private var validFileLocation: FileLocation = _
-  private var invalidFileLocation: FileLocation = _
-  private var tooLargeFileLocation: FileLocation = _
+  private var validFileLocation: models.FileLocation = _
+  private var invalidFileLocation: models.FileLocation = _
+  private var tooLargeFileLocation: models.FileLocation = _
 
   override def before = {
     scope = TestScope()
@@ -170,14 +169,14 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
   private val validSmallDimensions = (100, 100)
 
-  private def storeImage(fileId: Int, bytes: Array[Byte]): FileLocation = {
+  private def storeImage(fileId: Int, bytes: Array[Byte]): models.FileLocation = {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
       _    <- fr.createFile(fileId, fileSalt);
       _    <- fr.write(fileId, 0, bytes);
       hash <- fr.getAccessHash(fileId);
-      fl    = FileLocation(fileId, hash)
+      fl    = models.FileLocation(fileId, hash)
     ) yield fl
 
     ffl.sync()
@@ -196,7 +195,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   private def dbLargeImage = dbAvatar.largeImage.get
   private def dbSmallImage = dbAvatar.smallImage.get
 
-  private def dbImageBytes(a: AvatarImage)(implicit scope: TestScope) =
+  private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
     fr.getFile(a.fileLocation.fileId.toInt).sync()
 
   private def connectWithUser(u: models.User)(implicit scope: TestScope) = {

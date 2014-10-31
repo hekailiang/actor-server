@@ -6,9 +6,9 @@ import play.api.libs.json._
 import com.secretapp.backend.data.json.message.struct._
 
 trait JsonFormats {
+  implicit val phoneToImportFormat  = Json.format[PhoneToImport]
+  implicit val emailToImportFormat = Json.format[EmailToImport]
 
-  implicit val contactToImportFormat  = Json.format[ContactToImport]
-  implicit val importedContactFormat = Json.format[ImportedContact]
   implicit val publicKeyRequestFormat = Json.format[PublicKeyRequest]
   implicit val publicKeyResponseFormat = Json.format[PublicKeyResponse]
 
@@ -17,5 +17,4 @@ trait JsonFormats {
 
   implicit val responseImportedContactsFormat = Json.format[ResponseImportedContacts]
   implicit val responsePublicKeysFormat = Json.format[ResponsePublicKeys]
-
 }

@@ -35,7 +35,7 @@ object PresenceBroker {
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(id, msg) => (id % shardCount).toString
+    case Envelope(id, msg) => (id % shardCount).abs.toString
   }
 
   def startRegion()(implicit system: ActorSystem) =
