@@ -51,16 +51,16 @@ trait ContactService {
       usersFutureSeq <- Future.sequence(uniquePhones map (p => UserRecord.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
       val t = usersFutureSeq.foldLeft(immutable.Seq[struct.User](), immutable.Set[Int](), immutable.Set[Long]()) {
-        case ((users, uids, registeredPhones), user) =>
-          (users :+ struct.User.fromModel(user, authId), uids + user.uid, registeredPhones + user.phoneNumber)
+        case ((users, newContactsId, registeredPhones), user) =>
+          (users :+ struct.User.fromModel(user, authId), newContactsId + user.uid, registeredPhones + user.phoneNumber)
       }
       (t, existsContactsId)
     }
 
     usersSeq flatMap {
-      case ((users, uids, registeredPhones), existsContactsId) =>
+      case ((users, newContactsId, registeredPhones), existsContactsId) =>
         if (users.nonEmpty) {
-          uids foreach {
+          newContactsId foreach {
             socialBrokerRegion ! SocialMessageBox(_, RelationsNoted(Set(currentUser.uid))) // TODO: wrap as array!
           }
 
@@ -76,11 +76,12 @@ trait ContactService {
             }
           }
           UserContactsListRecord.insertEntities(currentUser.uid, contacts)
-          UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ uids)
+          UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ newContactsId)
 
           val stateFuture = ask(
             updatesBrokerRegion,
-            UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.UpdateContactsAdded(uids.toIndexedSeq))
+            UpdatesBroker.NewUpdatePush(currentUser.authId,
+              updateProto.contact.UpdateContactsAdded(newContactsId.toIndexedSeq))
           ).mapTo[UpdatesBroker.StrictState]
 
           stateFuture map {
