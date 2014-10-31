@@ -123,7 +123,7 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.name, entity.name)
-      .value(_.sex, entity.sex.toInt)
+      .value(_.sex, entity.sex.value)
       .value(_.smallAvatarFileId, entity.smallAvatarFileId)
       .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
       .value(_.smallAvatarFileSize, entity.smallAvatarFileSize)
@@ -149,10 +149,10 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
-      .future().
-      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
+      .future()
+      .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
+      .flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
   }
 
   def insertPartEntityWithPhoneAndPK(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
@@ -164,12 +164,12 @@ object UserRecord extends UserRecord with DBConnector {
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.name, name)
-      .value(_.sex, sex.toInt)
-      .future().
-      flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber)).
-      flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId)).
-      flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some))).
-      flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
+      .value(_.sex, sex.value)
+      .future()
+      .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
+      .flatMap(_ => UserPublicKeyRecord.insertPartEntity(uid, publicKeyHash, publicKey, authId))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
+      .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
   }
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {

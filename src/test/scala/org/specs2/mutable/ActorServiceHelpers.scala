@@ -11,7 +11,7 @@ import com.secretapp.backend.api.frontend.{JsonConnection, MTConnection, Transpo
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.{ ClusterProxies, Singletons }
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.message.rpc.{Request, RpcRequestMessage, RpcResponse}
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist.{ AuthIdRecord, UserRecord }
@@ -150,31 +150,45 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     expectMsgs(Set(msg), withNewSession, duration)
   }
 
-  def expectMsgByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Unit])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
-    def f(acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = {
-      def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], receivedMsgByPF: Boolean, receivedNewSession: Boolean): immutable.Set[Long] = msgs match {
+  def expectRpcMsgByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[RpcResponseMessage, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    expectMsgByPF(withNewSession, duration) {
+      case RpcResponseBox(_, Ok(res)) => pf(res)
+    }
+  }
+
+  def expectRpcByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[RpcResponse, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    expectMsgByPF(withNewSession, duration) {
+      case RpcResponseBox(_, res) => pf(res)
+    }
+  }
+
+  def expectMsgByPF[T](withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, T])(implicit scope: TestScopeNew, transport: TransportConnection): T = {
+    def f(acks: immutable.Set[Long], obj: Option[T], receivedNewSession: Boolean): (T, immutable.Set[Long]) = {
+      def g(msgs: Seq[TransportMessage], acks: immutable.Set[Long], obj: Option[T], receivedNewSession: Boolean): (T, immutable.Set[Long]) = msgs match {
         case m :: msgs =>
           Try(pf(m)) match {
-            case Success(_) => g(msgs, acks.toSet, receivedMsgByPF = true, receivedNewSession = receivedNewSession)
+            case Success(obj) => g(msgs, acks.toSet, obj.some, receivedNewSession = receivedNewSession)
             case Failure(_) => m match {
-              case MessageAck(acks) => g(msgs, acks.toSet, receivedMsgByPF, receivedNewSession)
+              case MessageAck(acks) => g(msgs, acks.toSet, obj, receivedNewSession)
               case NewSession(_, sesId) if withNewSession && !receivedNewSession && sesId == scope.session.id =>
-                g(msgs, acks, receivedMsgByPF, receivedNewSession = true)
+                g(msgs, acks, obj, receivedNewSession = true)
             }
           }
         case Nil =>
-          if (receivedMsgByPF && (!withNewSession || (withNewSession && receivedNewSession))) acks
-          else f(acks, receivedMsgByPF, receivedNewSession)
+          if (obj.isDefined && (!withNewSession || (withNewSession && receivedNewSession))) Tuple2(obj.get, acks)
+          else f(acks, obj, receivedNewSession)
       }
 
       receiveOne({ data =>
         val msgs = deserializeMsgBoxes(deserializePackage(data)).map(_.body)
-        g(msgs, acks, receivedMsgByPF, receivedNewSession)
+        g(msgs, acks, obj, receivedNewSession)
       }, { () =>
         throw new IllegalArgumentException(s"no messages")
       })(duration)
     }
-    sendMessageAck(f(Set(), false, false))
+    val (obj, ackIds) = f(Set(), None, false)
+    sendMessageAck(ackIds)
+    obj
   }
 
   def expectMsgsWhileByPF(withNewSession: Boolean = false, duration: Duration = defaultTimeout)(pf: PartialFunction[TransportMessage, Boolean])(implicit scope: TestScopeNew, transport: TransportConnection): Unit = {
@@ -280,6 +294,10 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
     }
     sendMessageAck(f(msgs, Set()))
   }
+
+//  private def expectUpdatePush() = {
+//    ???
+//  }
 
   private def deserializePackage(data: ByteString)(implicit scope: TestScopeNew, transport: TransportConnection) = {
     val p = transport match {

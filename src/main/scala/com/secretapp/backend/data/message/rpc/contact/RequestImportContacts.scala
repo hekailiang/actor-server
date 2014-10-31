@@ -4,7 +4,8 @@ import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
-case class RequestImportContacts(contacts: immutable.Seq[ContactToImport]) extends RpcRequestMessage {
+case class RequestImportContacts(phones: immutable.Seq[PhoneToImport],
+                                 emails: immutable.Seq[EmailToImport]) extends RpcRequestMessage {
   val header = RequestImportContacts.header
 }
 

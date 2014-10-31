@@ -34,7 +34,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
       .value(_.userId, entity.userId)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.userName, entity.userName)
-      .value(_.userSex, entity.userSex.toInt)
+      .value(_.userSex, entity.userSex.value)
       .future()
   }
 
@@ -53,7 +53,7 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     update.
       where(_.number eqs phoneNumber).
       modify(_.userName setTo user.name).
-      and(_.userSex setTo user.sex.toInt).
+      and(_.userSex setTo user.sex.value).
       future()
   }
 
@@ -65,6 +65,6 @@ object PhoneRecord extends PhoneRecord with DBConnector {
     val q = numbers.map { number =>
       select.where(_.number eqs number).one()
     }
-    Future.sequence(q).map(_.filter(_.isDefined).map(_.get))
+    Future.sequence(q).map(_.flatten)
   }
 }

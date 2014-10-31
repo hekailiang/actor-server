@@ -89,6 +89,12 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
         decode(row, GroupTitleChangedCodec)
       case updateProto.GroupAvatarChanged.header =>
         decode(row, GroupAvatarChangedCodec)
+      case updateProto.contact.UpdateContactRegistered.header =>
+        decode(row, contact.UpdateContactRegisteredCodec)
+      case updateProto.contact.UpdateContactsAdded.header =>
+        decode(row, contact.UpdateContactsAddedCodec)
+      case updateProto.contact.UpdateContactsRemoved.header =>
+        decode(row, contact.UpdateContactsRemovedCodec)
     }
 
   }
@@ -221,6 +227,24 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.GroupAvatarChanged =>
         val body = GroupAvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupAvatarChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.contact.UpdateContactRegistered =>
+        val body = contact.UpdateContactRegisteredCodec.encode(u)
+        insert
+          .value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.header, updateProto.contact.UpdateContactRegistered.header)
+          .value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.contact.UpdateContactsAdded =>
+        val body = contact.UpdateContactsAddedCodec.encode(u)
+        insert
+          .value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.header, updateProto.contact.UpdateContactsAdded.header)
+          .value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.contact.UpdateContactsRemoved =>
+        val body = contact.UpdateContactsRemovedCodec.encode(u)
+        insert
+          .value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.header, updateProto.contact.UpdateContactsRemoved.header)
+          .value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

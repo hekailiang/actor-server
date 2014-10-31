@@ -1,6 +1,8 @@
 package com.secretapp.backend.models
 
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.struct.{ AvatarImage, Avatar, FileLocation }
+import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import com.secretapp.backend.crypto.ec
 import scodec.bits.BitVector
@@ -59,20 +61,32 @@ case class User(
       Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage).some
     else
       None
+
+  def toStruct(senderAuthId: Long) = {
+    struct.User(
+      uid = uid,
+      accessHash = ACL.userAccessHash(senderAuthId, this),
+      name = name,
+      sex = sex.toOption,
+      keyHashes = keyHashes,
+      phoneNumber = phoneNumber,
+      avatar = avatar,
+      localName = None /* TODO */)
+  }
 }
 
 object User {
   def build(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, accessSalt: String, name: String, sex: Sex = NoSex) = {
     val publicKeyHash = ec.PublicKey.keyHash(publicKey)
     User(
-      uid,
-      authId,
-      publicKeyHash,
-      publicKey,
-      phoneNumber,
-      accessSalt,
-      name,
-      sex,
+      uid = uid,
+      authId = authId,
+      publicKeyHash = publicKeyHash,
+      publicKey = publicKey,
+      phoneNumber = phoneNumber,
+      accessSalt = accessSalt,
+      name = name,
+      sex = sex,
       keyHashes = immutable.Set(publicKeyHash)
     )
   }

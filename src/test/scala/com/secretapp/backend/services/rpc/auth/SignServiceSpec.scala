@@ -1,12 +1,10 @@
 package com.secretapp.backend.services.rpc.auth
 
 import com.secretapp.backend.crypto.ec
-import com.secretapp.backend.data.message.rpc.ResponseVoid
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.rpc.update.{ResponseSeq, RequestGetState}
-import com.secretapp.backend.data.message.rpc.{Error, Ok}
-import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox}
-import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct}
+import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist._
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -22,7 +20,6 @@ class SignServiceSpec extends RpcSpec {
   import system.dispatcher
 
   transportForeach { implicit transport =>
-
     "auth code" should {
       "send sms code" in {
         implicit val scope = genTestScope()
@@ -51,7 +48,8 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+          case RpcResponseBox(_, Ok(
+            ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None) ))) =>
         }
       }
 
@@ -68,7 +66,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None) ))) =>
         }
 
         Thread.sleep(2000) // let database save user
@@ -138,7 +136,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None) ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None) ))) =>
         }
       }
 
@@ -314,7 +312,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val keyHashes = Set(newPublicKeyHash)
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, struct.User(_, _, _, _, `keyHashes`, _, _) ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, struct.User(_, _, _, _, `keyHashes`, _, _, _) ))) =>
         }
       }
 

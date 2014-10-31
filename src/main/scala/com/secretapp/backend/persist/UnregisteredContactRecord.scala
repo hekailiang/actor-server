@@ -7,7 +7,6 @@ import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 
 sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContactRecord, models.UnregisteredContact] {
-
   override val tableName = "unregistered_contacts"
 
   object phoneNumber extends LongColumn(this) with PartitionKey[Long] {

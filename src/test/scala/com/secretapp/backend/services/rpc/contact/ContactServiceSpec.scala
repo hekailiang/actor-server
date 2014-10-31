@@ -1,46 +1,30 @@
 package com.secretapp.backend.services.rpc.contact
 
 import com.secretapp.backend.data.message.rpc.contact._
-import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
+import scalaz._
+import Scalaz._
 
 class ContactServiceSpec extends RpcSpec {
+  implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
+
   "ContactService" should {
-
     "handle RPC import contacts request" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
-      catchNewSession(scope1)
-      catchNewSession(scope2)
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contact = genTestScopeWithUser().user
+      val phones = immutable.Seq(
+        PhoneToImport(contact.phoneNumber, contact.name.some),
+        PhoneToImport(currentUser.phoneNumber, currentUser.name.some) /* check for filtered own phone number */
+      )
+      val emails = immutable.Seq[EmailToImport]()
+      sendRpcMsg(RequestImportContacts(phones, emails))
 
-      {
-        implicit val scope = scope1
-        val contacts = immutable.Seq(ContactToImport(42, scope2.user.phoneNumber))
-        val (response, _) = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
-
-        response should_== ResponseImportedContacts(
-          immutable.Seq(struct.User.fromModel(scope2.user, scope.user.authId)),
-          immutable.Seq(ImportedContact(42, scope2.user.uid)))
+      val (users, seq, state) = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseImportedContacts => (r.users, r.seq, r.state)
       }
+      users.should_==(Seq(contact.toStruct(scope.authId)))
     }
-
-    "filter out self number" in {
-      val (scope1, scope2) = TestScope.pair(1, 2)
-      catchNewSession(scope1)
-      catchNewSession(scope2)
-
-      {
-        implicit val scope = scope1
-        val contacts = immutable.Seq(
-          ContactToImport(42, scope2.user.phoneNumber),
-          ContactToImport(43, scope1.user.phoneNumber))
-        val (response, _) = RequestImportContacts(contacts) :~> <~:[ResponseImportedContacts]
-
-        response should_== ResponseImportedContacts(
-          immutable.Seq(struct.User.fromModel(scope2.user, scope.user.authId)),
-          immutable.Seq(ImportedContact(42, scope2.user.uid)))
-      }
-    }
-
   }
 }

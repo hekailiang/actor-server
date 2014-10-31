@@ -1,20 +1,21 @@
 package com.secretapp.backend.services.rpc.contact
 
 import akka.actor._
-import com.secretapp.backend.api.SocialProtocol
+import akka.pattern.ask
+import com.secretapp.backend.api.{UpdatesBroker, SocialProtocol, ApiBrokerService}
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.api.ApiBrokerService
+import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord, UserRecord}
 import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
+import scodec.codecs.uuid
 
 trait ContactService {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
@@ -25,53 +26,46 @@ trait ContactService {
   import SocialProtocol._
 
   def handleRpcContact: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case RequestImportContacts(contacts) =>
+    case RequestImportContacts(phones, emails) =>
       authorizedRequest {
-        handleRequestImportContacts(contacts.toSet)
+        handleRequestImportContacts(phones, emails)
       }
   }
 
-  def handleRequestImportContacts(rawContacts: Set[ContactToImport]): Future[RpcResponse] = {
-    val contacts = rawContacts.filter(_.phoneNumber != currentUser.get.phoneNumber)
-    val clientPhoneMap = contacts.map(c => c.phoneNumber -> c.clientPhoneId).toMap
+  def handleRequestImportContacts(phones: immutable.Seq[PhoneToImport],
+                                  emails: immutable.Seq[EmailToImport]): Future[RpcResponse] = {
+    val currentUser = getUser.get
+    val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber) // TODO: remove user.get
+    val phoneNumbers = filteredPhones.map(_.phoneNumber).toSet
     val authId = currentAuthId
-    val res = for {
-      phones <- PhoneRecord.getEntities(contacts.map(_.phoneNumber))
+    val usersSeq = for {
+      phones <- PhoneRecord.getEntities(phoneNumbers)
+//      newPhones <- UserContactsListCacheRecord.getPhoneNumbers()
       // TODO: log warning on None result from UserRecord.getEntity
-      users <- Future.sequence(phones map (p => UserRecord.getEntity(p.userId))) map (_.flatten)
+      usersFutureSeq <- Future.sequence(phones map (p => UserRecord.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
-      users.foldLeft(
-        (immutable.Seq[struct.User](), immutable.Seq[ImportedContact](), immutable.Set[Int](), immutable.Set[Long]())) {
-        case ((userStructs, impContacts, uids, registeredPhones), user) =>
-          val u = struct.User(
-            user.uid,
-            ACL.userAccessHash(authId, user),
-            user.name,
-            user.sex.toOption,
-            user.keyHashes,
-            user.phoneNumber,
-            user.avatar
-          )
-          val c = ImportedContact(clientPhoneMap(user.phoneNumber), user.uid)
-
-          (u +: userStructs, c +: impContacts, uids + user.uid, registeredPhones + user.phoneNumber)
+      usersFutureSeq.foldLeft(immutable.Seq[struct.User](), immutable.Set[Int](), immutable.Set[Long]()) {
+        case ((users, uids, registeredPhones), user) =>
+          (users :+ user.toStruct(authId), uids + user.uid, registeredPhones + user.phoneNumber)
       }
     }
 
-    res flatMap {
-      case (userStructs, impContacts, uids, registeredPhones) => {
-        uids foreach { uid =>
-          socialBrokerRegion ! SocialMessageBox(uid, RelationsNoted(Set(currentUser.get.uid)))
+    usersSeq flatMap {
+      case (users, uids, registeredPhones) =>
+        uids foreach { socialBrokerRegion ! SocialMessageBox(_, RelationsNoted(Set(currentUser.uid))) } // TODO: wrap as array!
+
+        (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
+          UnregisteredContactRecord.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
         }
 
-        val unregisteredPhones = contacts.map(_.phoneNumber) &~ registeredPhones
-        val unregisteredContacts = unregisteredPhones.map(models.UnregisteredContact(_, currentUser.get.uid))
+        val stateFuture = ask(
+          updatesBrokerRegion,
+          UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.UpdateContactsAdded(uids.toIndexedSeq))
+        ).mapTo[UpdatesBroker.StrictState]
 
-        Future.sequence(unregisteredContacts.map(UnregisteredContactRecord.insertEntity)) map { _ =>
-          Ok(ResponseImportedContacts(userStructs, impContacts))
+        stateFuture map {
+          case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
         }
-      }
     }
-
   }
 }

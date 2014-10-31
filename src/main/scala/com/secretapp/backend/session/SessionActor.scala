@@ -63,7 +63,7 @@ object SessionActor {
 
   private val shardResolver: ShardRegion.ShardResolver = {
     // TODO: better balancing
-    case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).toString
+    case Envelope(authId, sessionId, msg) => (authId * sessionId % shardCount).abs.toString
   }
 
   def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) =

@@ -17,34 +17,26 @@ case class User(uid: Int,
                 sex: Option[models.Sex],
                 keyHashes: Set[Long],
                 phoneNumber: Long,
-                avatar: Option[Avatar] = None) extends ProtobufMessage {
-
-  protected def sexToProto(s: models.Sex): protobuf.Sex.EnumVal = s match {
-    case models.Male => protobuf.Sex.MALE
-    case models.Female => protobuf.Sex.FEMALE
-    case models.NoSex => protobuf.Sex.UNKNOWN
-  }
+                avatar: Option[Avatar] = None,
+                localName: Option[String] = None) extends ProtobufMessage {
 
   lazy val toProto = protobuf.User(
     uid,
     accessHash,
     name,
-    sex.map(sexToProto),
+    localName,
+    sex.map(_.toProto),
     keyHashes.toIndexedSeq,
     phoneNumber,
-    avatar.map(_.toProto))
+    avatar.map(_.toProto)
+  )
 }
 
 object User {
-  protected def fromProto(pb: protobuf.Sex.EnumVal): models.Sex = pb match {
-    case protobuf.Sex.MALE => models.Male
-    case protobuf.Sex.FEMALE => models.Female
-    case _ => models.NoSex
-  }
-
   def fromProto(u: protobuf.User): User = u match {
-    case protobuf.User(uid, accessHash, name, sex, keyHashes, phoneNumber, avatar) =>
-      User(uid, accessHash, name, sex.map(fromProto(_)), keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto))
+    case protobuf.User(uid, accessHash, name, localName, sex, keyHashes, phoneNumber, avatar) =>
+      User(uid, accessHash, name, sex.map(models.Sex.fromProto),
+        keyHashes.toSet, phoneNumber, avatar.map(Avatar.fromProto), localName)
   }
 
   def fromModel(u: models.User, senderAuthId: Long)(implicit s: ActorSystem) = {

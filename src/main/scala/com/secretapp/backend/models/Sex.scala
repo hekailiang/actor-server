@@ -1,32 +1,41 @@
 package com.secretapp.backend.models
 
+import im.actor.messenger.{ api => protobuf }
+
 sealed trait Sex {
+  def toProto: protobuf.Sex.EnumVal
+  def value: Int = toProto.id
   def toOption: Option[Sex]
-  def toInt: Int
 }
 
 @SerialVersionUID(1L)
 case object NoSex extends Sex {
-  val toOption = None
-  val toInt = 1
+  def toProto = protobuf.Sex.UNKNOWN
+  def toOption = None
 }
 
 @SerialVersionUID(1L)
 case object Male extends Sex {
-  val toOption = Some(Male)
-  val toInt = 2
+  def toProto = protobuf.Sex.MALE
+  def toOption = Some(Male)
 }
 
 @SerialVersionUID(1L)
 case object Female extends Sex {
-  val toOption = Some(Female)
-  val toInt = 3
+  def toProto = protobuf.Sex.FEMALE
+  def toOption = Some(Female)
 }
 
 object Sex {
   def fromInt(i: Int): Sex = i match {
-    case 1 => NoSex
-    case 2 => Male
-    case 3 => Female
+    case protobuf.Sex.MALE.id => Male
+    case protobuf.Sex.FEMALE.id => Female
+    case _ => NoSex
+  }
+
+  def fromProto(e: protobuf.Sex.EnumVal): Sex = e match {
+    case protobuf.Sex.MALE => Male
+    case protobuf.Sex.FEMALE => Female
+    case protobuf.Sex.UNKNOWN => NoSex
   }
 }
