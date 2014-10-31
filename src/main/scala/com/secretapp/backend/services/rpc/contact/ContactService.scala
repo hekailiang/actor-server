@@ -76,7 +76,7 @@ trait ContactService {
             }
           }
           UserContactsListRecord.insertEntities(currentUser.uid, contacts)
-          UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId, uids)
+          UserContactsListCacheRecord.upsertEntity(currentUser.uid, existsContactsId ++ uids)
 
           val stateFuture = ask(
             updatesBrokerRegion,

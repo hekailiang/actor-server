@@ -36,14 +36,14 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with DBCo
   import scalaz._
   import Scalaz._
 
-  def upsertEntity(userId: Int, oldContactsId: immutable.Set[Int], newContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
-    val uids = (oldContactsId ++ newContactsId).toSeq.sorted.mkString(",")
+  def upsertEntity(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
+    val uids = contactsId.to[immutable.SortedSet].mkString(",")
     val digest = MessageDigest.getInstance("SHA-256")
     val sha1Hash = BitVector(digest.digest(uids.getBytes)).toHex
     insert
       .value(_.ownerId, userId)
       .value(_.sha1Hash, sha1Hash)
-      .value(_.contactsId, newContactsId)
+      .value(_.contactsId, contactsId)
       .future()
   }
 
