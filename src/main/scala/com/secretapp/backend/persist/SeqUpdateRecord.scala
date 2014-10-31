@@ -1,6 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.protocol.codecs.message.update._
+import com.secretapp.backend.protocol.codecs.message.update.contact._
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.core.utils.UUIDs
 import com.secretapp.backend.data.message.{ update => updateProto }
@@ -78,11 +79,11 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
       case updateProto.GroupAvatarChanged.header =>
         decode(row, GroupAvatarChangedCodec)
       case updateProto.contact.UpdateContactRegistered.header =>
-        decode(row, contact.UpdateContactRegisteredCodec)
+        decode(row, UpdateContactRegisteredCodec)
       case updateProto.contact.UpdateContactsAdded.header =>
-        decode(row, contact.UpdateContactsAddedCodec)
+        decode(row, UpdateContactsAddedCodec)
       case updateProto.contact.UpdateContactsRemoved.header =>
-        decode(row, contact.UpdateContactsRemovedCodec)
+        decode(row, UpdateContactsRemovedCodec)
     }
 
   }
@@ -216,19 +217,19 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
         val body = GroupAvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupAvatarChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.contact.UpdateContactRegistered =>
-        val body = contact.UpdateContactRegisteredCodec.encode(u)
+        val body = UpdateContactRegisteredCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
           .value(_.header, updateProto.contact.UpdateContactRegistered.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.contact.UpdateContactsAdded =>
-        val body = contact.UpdateContactsAddedCodec.encode(u)
+        val body = UpdateContactsAddedCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
           .value(_.header, updateProto.contact.UpdateContactsAdded.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.contact.UpdateContactsRemoved =>
-        val body = contact.UpdateContactsRemovedCodec.encode(u)
+        val body = UpdateContactsRemovedCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
           .value(_.header, updateProto.contact.UpdateContactsRemoved.header)
