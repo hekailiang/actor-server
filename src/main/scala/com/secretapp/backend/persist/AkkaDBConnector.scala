@@ -1,14 +1,11 @@
 package com.secretapp.backend.persist
 
-import akka.dispatch.Dispatcher
 import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
-import java.util.concurrent.Executor
-import scala.concurrent. { blocking, Future }
+import scala.concurrent.blocking
 import scala.collection.JavaConversions._
-import com.datastax.driver.core.{ Cluster, Session }
+import com.datastax.driver.core.Cluster
 import com.websudos.phantom.Implicits._
 import com.typesafe.config._
-import scala.concurrent.ExecutionContext
 
 object AkkaDBConnector {
   val dbConfig = ConfigFactory.load().getConfig("cassandra-journal")

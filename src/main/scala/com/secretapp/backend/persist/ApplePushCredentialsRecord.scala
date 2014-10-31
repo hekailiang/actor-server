@@ -1,16 +1,13 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{Session, ResultSet, Row}
 import com.secretapp.backend.models
-import com.websudos.phantom.CassandraTable
 import com.websudos.phantom.Implicits._
-import com.websudos.phantom.keys.{PrimaryKey, PartitionKey}
 
 import scala.concurrent.Future
 
 sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredentialsRecord, models.ApplePushCredentials] {
 
-  override lazy val tableName = "apple_push_credentials"
+  override val tableName = "apple_push_credentials"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"

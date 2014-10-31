@@ -1,13 +1,11 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
-import com.secretapp.backend.models.User
 import scala.concurrent.Future
 
 sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, models.AuthId] {
-  override lazy val tableName = "auth_ids"
+  override val tableName = "auth_ids"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
     override lazy val name = "auth_id"
@@ -26,17 +24,15 @@ object AuthIdRecord extends AuthIdRecord with DBConnector {
       .value(_.userId, item.userId)
       .future()
 
-  def getEntity(authId: Long)(implicit session: Session): Future[Option[models.AuthId]] = {
+  def getEntity(authId: Long)(implicit session: Session): Future[Option[models.AuthId]] =
     select.where(_.authId eqs authId).one()
-  }
 
-  def deleteEntity(authId: Long)(implicit session: Session): Future[ResultSet] = {
+  def deleteEntity(authId: Long)(implicit session: Session): Future[ResultSet] =
     delete.where(_.authId eqs authId).future()
-  }
 
   def getEntityWithUser(authId: Long)
                        (implicit session: Session): Future[Option[(models.AuthId, Option[models.User])]] = {
-    def user(a: models.AuthId): Future[Option[User]] =
+    def user(a: models.AuthId): Future[Option[models.User]] =
       a.userId match {
         case Some(uid) => UserRecord.getEntity(uid, a.authId)
         case None => Future.successful(None)

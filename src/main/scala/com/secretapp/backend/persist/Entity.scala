@@ -9,7 +9,6 @@ package com.secretapp.backend.persist
   * @param key the entity key
   * @param value the Scala record representation
   */
-
 trait KeyedEntity[Key]{
   val key: Key
 }
