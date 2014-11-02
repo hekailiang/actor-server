@@ -4,6 +4,7 @@ import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.json.JsonSpec._
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.data.json.message.struct.JsonFormatsSpec._
 import scalaz._
 import Scalaz._
@@ -60,7 +61,7 @@ class JsonFormatsSpec extends JsonSpec {
     "(de)serialize ContactRegistered" in {
       val v = ContactRegistered(1)
       val j = withHeader(ContactRegistered.header)(
-        "userId" -> 1
+        "uid" -> 1
       )
       testToAndFromJson[SeqUpdateMessage](j, v)
     }

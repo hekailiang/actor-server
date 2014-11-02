@@ -10,12 +10,15 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object UpdateContactsAddedCodec extends Codec[UpdateContactsAdded] with utils.ProtobufCodec {
-  def encode(u: UpdateContactsAdded) = encodeToBitVector(u.toProto)
+object ContactsRemovedCodec extends Codec[ContactsRemoved] with utils.ProtobufCodec {
+  def encode(u: ContactsRemoved) = {
+    val boxed = protobuf.UpdateContactsRemoved(u.uids)
+    encodeToBitVector(boxed)
+  }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.UpdateContactsAdded.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateContactsAdded(uids)) => UpdateContactsAdded(uids)
+    decodeProtobuf(protobuf.UpdateContactsRemoved.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.UpdateContactsRemoved(uids)) => ContactsRemoved(uids)
     }
   }
 }

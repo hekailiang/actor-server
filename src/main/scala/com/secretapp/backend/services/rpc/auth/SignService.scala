@@ -11,7 +11,8 @@ import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.message.update.{ ContactRegistered, NewDevice, NewFullDevice, RemoveDevice }
+import com.secretapp.backend.data.message.update.{ NewDevice, NewFullDevice, RemoveDevice }
+import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.persist._

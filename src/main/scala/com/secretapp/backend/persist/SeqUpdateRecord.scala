@@ -56,8 +56,6 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
         decode(row, AvatarChangedCodec)
       case updateProto.NameChanged.header =>
         decode(row, NameChangedCodec)
-      case updateProto.ContactRegistered.header =>
-        decode(row, ContactRegisteredCodec)
       case updateProto.MessageReceived.header =>
         decode(row, MessageReceivedCodec)
       case updateProto.MessageRead.header =>
@@ -78,12 +76,14 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
         decode(row, GroupTitleChangedCodec)
       case updateProto.GroupAvatarChanged.header =>
         decode(row, GroupAvatarChangedCodec)
-      case updateProto.contact.UpdateContactRegistered.header =>
-        decode(row, UpdateContactRegisteredCodec)
-      case updateProto.contact.UpdateContactsAdded.header =>
-        decode(row, UpdateContactsAddedCodec)
-      case updateProto.contact.UpdateContactsRemoved.header =>
-        decode(row, UpdateContactsRemovedCodec)
+      case updateProto.contact.ContactRegistered.header =>
+        decode(row, ContactRegisteredCodec)
+      case updateProto.contact.ContactsAdded.header =>
+        decode(row, ContactsAddedCodec)
+      case updateProto.contact.ContactsRemoved.header =>
+        decode(row, ContactsRemovedCodec)
+      case updateProto.contact.LocalNameChanged.header =>
+        decode(row, LocalNameChangedCodec)
     }
 
   }
@@ -183,9 +183,6 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.NameChanged =>
         val body = NameChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.NameChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
-      case u: updateProto.ContactRegistered =>
-        val body = ContactRegisteredCodec.encode(u)
-        insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.ContactRegistered.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
       case u: updateProto.MessageReceived =>
         val body = MessageReceivedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.MessageReceived.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
@@ -216,23 +213,23 @@ object SeqUpdateRecord extends SeqUpdateRecord with DBConnector {
       case u: updateProto.GroupAvatarChanged =>
         val body = GroupAvatarChangedCodec.encode(u)
         insert.value(_.authId, authId).value(_.uuid, uuid).value(_.header, updateProto.GroupAvatarChanged.header).value(_.protobufBody, body.toOption.get.toByteBuffer)
-      case u: updateProto.contact.UpdateContactRegistered =>
-        val body = UpdateContactRegisteredCodec.encode(u)
+      case u: updateProto.contact.ContactRegistered =>
+        val body = ContactRegisteredCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
-          .value(_.header, updateProto.contact.UpdateContactRegistered.header)
+          .value(_.header, updateProto.contact.ContactRegistered.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
-      case u: updateProto.contact.UpdateContactsAdded =>
-        val body = UpdateContactsAddedCodec.encode(u)
+      case u: updateProto.contact.ContactsAdded =>
+        val body = ContactsAddedCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
-          .value(_.header, updateProto.contact.UpdateContactsAdded.header)
+          .value(_.header, updateProto.contact.ContactsAdded.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
-      case u: updateProto.contact.UpdateContactsRemoved =>
-        val body = UpdateContactsRemovedCodec.encode(u)
+      case u: updateProto.contact.ContactsRemoved =>
+        val body = ContactsRemovedCodec.encode(u)
         insert
           .value(_.authId, authId).value(_.uuid, uuid)
-          .value(_.header, updateProto.contact.UpdateContactsRemoved.header)
+          .value(_.header, updateProto.contact.ContactsRemoved.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")

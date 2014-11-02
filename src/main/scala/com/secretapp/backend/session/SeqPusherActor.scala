@@ -3,7 +3,8 @@ package com.secretapp.backend.session
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
-import com.secretapp.backend.data.message.update.{ ContactRegistered, FatSeqUpdate, SeqUpdate }
+import com.secretapp.backend.data.message.update.{ FatSeqUpdate, SeqUpdate }
+import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID

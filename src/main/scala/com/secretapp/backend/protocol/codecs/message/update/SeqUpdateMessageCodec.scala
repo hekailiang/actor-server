@@ -18,7 +18,6 @@ object SeqUpdateMessageCodec {
       case n: RemoveDevice      => RemoveDeviceCodec.encode(n)
       case u: AvatarChanged     => AvatarChangedCodec.encode(u)
       case u: NameChanged       => NameChangedCodec.encode(u)
-      case u: ContactRegistered => ContactRegisteredCodec.encode(u)
       case u: MessageReceived   => MessageReceivedCodec.encode(u)
       case u: MessageRead       => MessageReadCodec.encode(u)
       case u: GroupInvite       => GroupInviteCodec.encode(u)
@@ -27,11 +26,12 @@ object SeqUpdateMessageCodec {
       case u: GroupUserLeave    => GroupUserLeaveCodec.encode(u)
       case u: GroupUserKick     => GroupUserKickCodec.encode(u)
       case u: GroupCreated      => GroupCreatedCodec.encode(u)
-      case u: GroupTitleChanged       => GroupTitleChangedCodec.encode(u)
-      case u: GroupAvatarChanged      => GroupAvatarChangedCodec.encode(u)
-      case u: UpdateContactRegistered => UpdateContactRegisteredCodec.encode(u)
-      case u: UpdateContactsAdded     => UpdateContactsAddedCodec.encode(u)
-      case u: UpdateContactsRemoved   => UpdateContactsRemovedCodec.encode(u)
+      case u: GroupTitleChanged => GroupTitleChangedCodec.encode(u)
+      case u: GroupAvatarChanged=> GroupAvatarChangedCodec.encode(u)
+      case u: ContactRegistered => ContactRegisteredCodec.encode(u)
+      case u: ContactsAdded     => ContactsAddedCodec.encode(u)
+      case u: ContactsRemoved   => ContactsRemovedCodec.encode(u)
+      case u: LocalNameChanged  => LocalNameChangedCodec.encode(u)
     }
   }
 
@@ -44,7 +44,6 @@ object SeqUpdateMessageCodec {
       case RemoveDevice.header      => RemoveDeviceCodec.decode(buf)
       case AvatarChanged.header     => AvatarChangedCodec.decode(buf)
       case NameChanged.header       => NameChangedCodec.decode(buf)
-      case ContactRegistered.header => ContactRegisteredCodec.decode(buf)
       case MessageReceived.header   => MessageReceivedCodec.decode(buf)
       case MessageRead.header       => MessageReadCodec.decode(buf)
       case GroupInvite.header       => GroupInviteCodec.decode(buf)
@@ -55,9 +54,10 @@ object SeqUpdateMessageCodec {
       case GroupCreated.header      => GroupCreatedCodec.decode(buf)
       case GroupTitleChanged.header => GroupTitleChangedCodec.decode(buf)
       case GroupAvatarChanged.header=> GroupAvatarChangedCodec.decode(buf)
-      case UpdateContactRegistered.header => UpdateContactRegisteredCodec.decode(buf)
-      case UpdateContactsAdded.header     => UpdateContactsAddedCodec.decode(buf)
-      case UpdateContactsRemoved.header   => UpdateContactsRemovedCodec.decode(buf)
+      case ContactRegistered.header => ContactRegisteredCodec.decode(buf)
+      case ContactsAdded.header     => ContactsAddedCodec.decode(buf)
+      case ContactsRemoved.header   => ContactsRemovedCodec.decode(buf)
+      case LocalNameChanged.header   => LocalNameChangedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

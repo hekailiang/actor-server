@@ -5,7 +5,7 @@ import com.secretapp.backend.data.json._
 import com.secretapp.backend.data.json.JsonSpec
 import com.secretapp.backend.data.message.rpc.{RpcResponseMessage, RpcRequestMessage}
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.update.ContactRegistered
+import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import play.api.libs.json.Json
 import scala.collection.immutable
 import scala.util.Random
@@ -85,7 +85,7 @@ object JsonFormatsSpec extends JsonSpec {
       DifferenceUpdate(ContactRegistered(userId)),
       Json.obj(
         "body" -> withHeader(ContactRegistered.header)(
-          "userId" -> userId
+          "uid" -> userId
         )
       )
     )

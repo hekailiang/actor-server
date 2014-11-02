@@ -4,6 +4,7 @@ import com.secretapp.backend.data.json.CommonJsonFormats._
 import com.secretapp.backend.data.json.{UnitFormat, MessageWithHeader}
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.update.contact._
 import com.secretapp.backend.data.transport._
 import play.api.libs.json._
 import com.secretapp.backend.data.json.message.rpc._

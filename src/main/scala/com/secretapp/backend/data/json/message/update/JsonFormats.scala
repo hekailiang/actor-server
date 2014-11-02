@@ -2,6 +2,7 @@ package com.secretapp.backend.data.json.message.update
 
 import com.secretapp.backend.data.json.UnitFormat
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.data.message.update.contact._
 import com.secretapp.backend.data.json.message.struct._
 import com.secretapp.backend.data.json.CommonJsonFormats._
 import play.api.libs.json.Json

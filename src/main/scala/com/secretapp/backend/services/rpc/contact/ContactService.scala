@@ -77,7 +77,7 @@ trait ContactService {
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId,
-              updateProto.contact.UpdateContactsAdded(newContactsId.toIndexedSeq))
+              updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
           ).mapTo[UpdatesBroker.StrictState].map {
             case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
           }
