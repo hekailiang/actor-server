@@ -23,7 +23,7 @@ sealed class GroupUserRecord extends CassandraTable[GroupUserRecord, Int] {
   }
 }
 
-object GroupUserRecord extends GroupUserRecord with DBConnector {
+object GroupUserRecord extends GroupUserRecord with TableOps {
   def addUser(groupId: Int, userId: Int)(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.groupId, groupId).value(_.userId, userId).future()

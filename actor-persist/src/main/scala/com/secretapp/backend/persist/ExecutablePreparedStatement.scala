@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist
 
-import akka.dispatch.Dispatcher
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.{ ResultSet, Session, Statement }
 import com.google.common.util.concurrent.{ FutureCallback, Futures }

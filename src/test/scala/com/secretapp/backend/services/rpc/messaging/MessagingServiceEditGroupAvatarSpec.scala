@@ -242,7 +242,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     val ffl = for (
       _    <- fr.createFile(fileId, fileSalt);
       _    <- fr.write(fileId, 0, bytes);
-      hash <- fr.getAccessHash(fileId);
+      hash <- ACL.fileAccessHash(fr, fileId);
       fl    = models.FileLocation(fileId, hash)
     ) yield fl
 

@@ -2,7 +2,7 @@ package com.secretapp.backend.persist.contact
 
 import com.datastax.driver.core.{ ResultSet, Row, Session => CSession }
 import com.secretapp.backend.models.{ contact => models }
-import com.secretapp.backend.persist.DBConnector
+import com.secretapp.backend.persist.TableOps
 import com.websudos.phantom.Implicits._
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -32,7 +32,7 @@ sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsList
   }
 }
 
-object UserContactsListCacheRecord extends UserContactsListCacheRecord with DBConnector {
+object UserContactsListCacheRecord extends UserContactsListCacheRecord with TableOps {
   import scalaz._
   import Scalaz._
 

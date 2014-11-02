@@ -14,6 +14,7 @@ import scodec.codecs.{ uuid => uuidCodec }
 private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
                                      (implicit val session: CSession) extends Actor with ActorLogging {
   import context.dispatcher
+  import context.system
 
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.SeqUpdateMessage) =>

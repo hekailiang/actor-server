@@ -5,27 +5,27 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class User(
-                 uid: Int,
-                 authId: Long,
-                 publicKeyHash: Long,
-                 publicKey: BitVector,
-                 phoneNumber: Long,
-                 accessSalt: String,
-                 name: String,
-                 sex: Sex,
-                 smallAvatarFileId: Option[Int] = None,
-                 smallAvatarFileHash: Option[Long] = None,
-                 smallAvatarFileSize: Option[Int] = None,
-                 largeAvatarFileId: Option[Int] = None,
-                 largeAvatarFileHash: Option[Long] = None,
-                 largeAvatarFileSize: Option[Int] = None,
-                 fullAvatarFileId: Option[Int] = None,
-                 fullAvatarFileHash: Option[Long] = None,
-                 fullAvatarFileSize: Option[Int] = None,
-                 fullAvatarWidth: Option[Int] = None,
-                 fullAvatarHeight: Option[Int] = None,
-                 keyHashes: immutable.Set[Long] = immutable.Set()
-                 ) {
+  uid: Int,
+  authId: Long,
+  publicKeyHash: Long,
+  publicKey: BitVector,
+  phoneNumber: Long,
+  accessSalt: String,
+  name: String,
+  sex: Sex,
+  smallAvatarFileId: Option[Int] = None,
+  smallAvatarFileHash: Option[Long] = None,
+  smallAvatarFileSize: Option[Int] = None,
+  largeAvatarFileId: Option[Int] = None,
+  largeAvatarFileHash: Option[Long] = None,
+  largeAvatarFileSize: Option[Int] = None,
+  fullAvatarFileId: Option[Int] = None,
+  fullAvatarFileHash: Option[Long] = None,
+  fullAvatarFileSize: Option[Int] = None,
+  fullAvatarWidth: Option[Int] = None,
+  fullAvatarHeight: Option[Int] = None,
+  keyHashes: immutable.Set[Long] = immutable.Set()
+) {
 
   lazy val smallAvatarImage =
     for (
@@ -56,3 +56,5 @@ case class User(
     else
       None
 }
+
+

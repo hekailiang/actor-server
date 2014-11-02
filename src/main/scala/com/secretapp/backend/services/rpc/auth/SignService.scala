@@ -174,7 +174,7 @@ trait SignService extends SocialHelpers {
 
       @inline
       def updateUserRecord(name: String): Unit = {
-        UserRecord.insertEntityRowWithChildren(userId, authId, publicKey, phoneNumber, name) onSuccess {
+        UserRecord.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
           case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
         }
       }

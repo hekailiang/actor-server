@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ResultSet, Session, Row}
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 
@@ -21,7 +20,7 @@ sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContac
     models.UnregisteredContact(phoneNumber(row), ownerUserId(row))
 }
 
-object UnregisteredContactRecord extends UnregisteredContactRecord with DBConnector {
+object UnregisteredContactRecord extends UnregisteredContactRecord with TableOps {
   def insertEntity(uc: models.UnregisteredContact)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.phoneNumber, uc.phoneNumber)

@@ -1,12 +1,11 @@
 package com.secretapp.backend.persist
 
-import akka.dispatch.Dispatcher
 import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
 import java.util.concurrent.Executor
 import com.secretapp.backend.persist.contact._
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
-import com.datastax.driver.core.{ Cluster, Session }
+import com.datastax.driver.core.Cluster
 import com.websudos.phantom.Implicits._
 import com.typesafe.config._
 import scala.concurrent.ExecutionContext
@@ -77,18 +76,5 @@ object DBConnector {
 //  def dumpKeySpace() = blocking {
 //    session.execute(s"DESCRIBE KEYSPACE $secret;")
 //  }
-
-}
-
-trait DBConnector {
-  self: CassandraTable[_, _] =>
-
-  def createTable(session: Session): Future[Unit] = {
-    create.future()(session) map (_ => ())
-  }
-
-  def truncateTable(session: Session): Future[Unit] = {
-    truncate.future()(session) map (_ => ())
-  }
 
 }

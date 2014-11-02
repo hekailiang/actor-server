@@ -8,10 +8,9 @@ import scala.concurrent.Future
 import scodec.bits.BitVector
 
 sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
-  override lazy val tableName = "groups"
+  override val tableName = "groups"
 
   object id extends IntColumn(this) with PartitionKey[Int]
-
   object creatorUserId extends IntColumn(this) {
     override lazy val name = "creator_user_id"
   }
@@ -25,7 +24,6 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
   object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
-
   object smallAvatarFileId extends OptionalIntColumn(this) {
     override lazy val name = "small_avatar_file_id"
   }
@@ -101,8 +99,8 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
     new SelectQuery[GroupRecord, (models.Group, models.AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
 }
 
-object GroupRecord extends GroupRecord with DBConnector {
-  def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] = {
+object GroupRecord extends GroupRecord with TableOps {
+  def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.id, entity.id)
       .value(_.creatorUserId, entity.creatorUserId)
@@ -111,20 +109,16 @@ object GroupRecord extends GroupRecord with DBConnector {
       .value(_.keyHash, entity.keyHash.toByteBuffer)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
       .future()
-  }
 
-  def getEntity(groupId: Int)(implicit session: Session): Future[Option[models.Group]] = {
+  def getEntity(groupId: Int)(implicit session: Session): Future[Option[models.Group]] =
     select.where(_.id eqs groupId).one()
-  }
 
   def getEntityWithAvatar(groupId: Int)
-                         (implicit session: Session): Future[Option[(models.Group, models.AvatarData)]] = {
+                         (implicit session: Session): Future[Option[(models.Group, models.AvatarData)]] =
     selectWithAvatar.where(_.id eqs groupId).one()
-  }
 
-  def updateTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] = {
+  def updateTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] =
     update.where(_.id eqs id).modify(_.title setTo title).future()
-  }
 
   def updateAvatar(id: Int, avatar: models.Avatar)(implicit session: Session) =
     update.where(_.id eqs id)

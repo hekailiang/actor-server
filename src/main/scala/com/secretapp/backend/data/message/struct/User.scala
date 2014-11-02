@@ -1,5 +1,6 @@
 package com.secretapp.backend.data.message.struct
 
+import akka.actor.ActorSystem
 import com.secretapp.backend.util.ACL
 import com.secretapp.backend.proto
 import scala.language.implicitConversions
@@ -62,7 +63,7 @@ object User {
     case _ => None
   }
 
-  def fromModel(u: models.User, senderAuthId: Long, localName: Option[String] = None) = {
+  def fromModel(u: models.User, senderAuthId: Long, localName: Option[String] = None)(implicit s: ActorSystem) = {
     User(
       uid = u.uid,
       accessHash = ACL.userAccessHash(senderAuthId, u),

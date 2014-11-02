@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ ResultSet, Row, Session }
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
 import java.nio.ByteBuffer
@@ -96,7 +95,7 @@ sealed class DeletedAuthItemRecord extends AbstractAuthItemRecord[DeletedAuthIte
   }
 }
 
-object DeletedAuthItemRecord extends DeletedAuthItemRecord with DBConnector {
+object DeletedAuthItemRecord extends DeletedAuthItemRecord with TableOps {
   private def insertQuery(item: models.AuthItem, userId: Int) = {
     insert.value(_.userId, userId).value(_.id, item.id)
       .value(_.deviceHash, item.deviceHash.toByteBuffer)
@@ -116,7 +115,7 @@ object DeletedAuthItemRecord extends DeletedAuthItemRecord with DBConnector {
   }
 }
 
-object AuthItemRecord extends AuthItemRecord with DBConnector {
+object AuthItemRecord extends AuthItemRecord with TableOps {
   private def insertQuery(item: models.AuthItem, userId: Int) = {
     insert.value(_.userId, userId).value(_.id, item.id)
       .value(_.deviceHash, item.deviceHash.toByteBuffer)
@@ -131,9 +130,8 @@ object AuthItemRecord extends AuthItemRecord with DBConnector {
     AuthItemRecord.insertQuery(item, userId).future()
   }
 
-  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[models.AuthItem]] = {
+  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[models.AuthItem]] =
     select.where(_.userId eqs userId).and(_.id eqs id).one()
-  }
 
   def getEntityByUserIdAndPublicKeyHash(userId: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[models.AuthItem]] = {
     select.where(_.userId eqs userId).and(_.publicKeyHash eqs publicKeyHash).one()
@@ -147,9 +145,8 @@ object AuthItemRecord extends AuthItemRecord with DBConnector {
     select.where(_.userId eqs userId).and(_.deviceHash eqs deviceHash.toByteBuffer).fetch()
   }
 
-  def getEntities(userId: Int)(implicit session: Session): Future[Seq[models.AuthItem]] = {
+  def getEntities(userId: Int)(implicit session: Session): Future[Seq[models.AuthItem]] =
     select.where(_.userId eqs userId).fetch()
-  }
 
   def setDeleted(userId: Int, id: Int)(implicit session: Session): Future[Option[Long]] = {
     select.where(_.userId eqs userId).and(_.id eqs id).one() flatMap {

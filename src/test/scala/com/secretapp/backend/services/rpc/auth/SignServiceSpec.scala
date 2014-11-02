@@ -286,7 +286,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
         AuthIdRecord.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
-        UserRecord.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, phoneNumber, name).sync()
+        UserRecord.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name).sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
         val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
