@@ -210,6 +210,9 @@ object UserRecord extends UserRecord with TableOps {
   def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
     select.where(_.uid eqs uid).and(_.authId eqs authId).one()
 
+  def getAccessSaltAndPhone(uid: Int)(implicit session: Session): Future[Option[(String, Long)]] =
+    select(_.accessSalt, _.phoneNumber).where(_.uid eqs uid).one()
+
   def byUid(uid: Int)(implicit session: Session): Future[Seq[models.User]] =
     select.where(_.uid eqs uid).fetch()
 }

@@ -152,11 +152,11 @@ trait ContactService {
   def handleRequestEditContactName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    UserContactsListRecord.getContact(currentUser.uid, contactId) flatMap {
-      case Some(contact) =>
-        if (accessHash == ACL.userAccessHash(authId, contactId, contact.accessSalt)) {
+    UserRecord.getAccessSaltAndPhone(contactId) flatMap {
+      case Some((accessSalt, phoneNumber)) =>
+        if (accessHash == ACL.userAccessHash(authId, contactId, accessSalt)) {
           withValidName(name) { name =>
-            val clFuture = UserContactsListRecord.updateContactName(currentUser.uid, contactId, name)
+            val clFuture = UserContactsListRecord.insertContact(currentUser.uid, contactId, phoneNumber, name, accessSalt)
             val stateFuture = ask(
               updatesBrokerRegion,
               UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.LocalNameChanged(contactId, name.some))

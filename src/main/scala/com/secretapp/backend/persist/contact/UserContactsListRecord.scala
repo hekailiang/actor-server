@@ -1,7 +1,7 @@
 package com.secretapp.backend.persist.contact
 
 import com.datastax.driver.core.{ ResultSet, Row, Session => CSession }
-import com.secretapp.backend.models.{ contact => models }
+import com.secretapp.backend.models
 import com.secretapp.backend.persist.TableOps
 import com.secretapp.backend.data.message.struct
 import com.websudos.phantom.Implicits._
@@ -9,7 +9,7 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
 
-sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecord, models.UserContactsList] {
+sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecord, models.contact.UserContactsList] {
   override lazy val tableName = "user_contacts_lists"
 
   object ownerId extends IntColumn(this) with PartitionKey[Int] {
@@ -26,8 +26,8 @@ sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecor
     override lazy val name = "access_salt"
   }
 
-  override def fromRow(row: Row): models.UserContactsList = {
-    models.UserContactsList(
+  override def fromRow(row: Row): models.contact.UserContactsList = {
+    models.contact.UserContactsList(
       ownerId = ownerId(row),
       contactId = contactId(row),
       phoneNumber = phoneNumber(row),
@@ -56,6 +56,17 @@ object UserContactsListRecord extends UserContactsListRecord with TableOps {
     batch.future()
   }
 
+  def insertContact(userId: Int, contactId: Int, phoneNumber: Long, localName: String, accessSalt: String)
+                   (implicit csession: CSession): Future[ResultSet] = {
+    insert
+      .value(_.ownerId, userId)
+      .value(_.contactId, contactId)
+      .value(_.phoneNumber, phoneNumber)
+      .value(_.name, localName)
+      .value(_.accessSalt, accessSalt)
+      .future()
+  }
+
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Unit] = {
     for {
       _ <- delete.where(_.ownerId eqs userId).and(_.contactId eqs contactId).future()
@@ -71,7 +82,7 @@ object UserContactsListRecord extends UserContactsListRecord with TableOps {
       future()
   }
 
-  def getContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Option[models.UserContactsList]] = {
+  def getContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Option[models.contact.UserContactsList]] = {
     select.
       where(_.ownerId eqs userId).
       and(_.contactId eqs contactId).
