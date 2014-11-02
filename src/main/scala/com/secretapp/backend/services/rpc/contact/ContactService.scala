@@ -83,7 +83,7 @@ trait ContactService {
           }
 
           val clFuture = UserContactsListRecord.insertNewContacts(currentUser.uid, usersTuple)
-          val clCacheFuture = UserContactsListCacheRecord.updateContactsId(currentUser.uid, newContactsId)
+          val clCacheFuture = UserContactsListCacheRecord.addContactsId(currentUser.uid, newContactsId)
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId,
@@ -111,10 +111,8 @@ trait ContactService {
         for {
           contactList <- UserContactsListRecord.getEntitiesWithLocalName(currentUser.uid)
           usersFutureSeq <- Future.sequence(contactList.map { c => UserRecord.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
+          _ <- UserContactsListCacheRecord.insertContactsId(currentUser.uid, usersFutureSeq.map(_.uid).toSet) // rebuild cache
         } yield {
-          println(s"\n\ncontactList: $contactList\n\n")
-          println(s"\n\nusersFutureSeq: $usersFutureSeq\n\n")
-
           val localNames = immutable.HashMap(contactList :_*)
           val users = usersFutureSeq.map { user =>
             struct.User.fromModel(user, authId, localNames.get(user.uid))

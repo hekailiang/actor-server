@@ -48,7 +48,7 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
 
   lazy val emptySHA1Hash = getSHA1Hash(Set())
 
-  def updateContactsId(userId: Int, newContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
+  def addContactsId(userId: Int, newContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
     select(_.contactsId).where(_.ownerId eqs userId).one().flatMap {
       case Some(oldContactsId) =>
         update
@@ -63,6 +63,14 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
           .value(_.contactsId, newContactsId)
           .future()
     }
+  }
+
+  def insertContactsId(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
+    insert
+      .value(_.ownerId, userId)
+      .value(_.sha1Hash, getSHA1Hash(contactsId))
+      .value(_.contactsId, contactsId)
+      .future()
   }
 
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[ResultSet] = {

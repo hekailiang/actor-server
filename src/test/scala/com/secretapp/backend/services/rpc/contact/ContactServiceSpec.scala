@@ -49,7 +49,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestGetContacts(UserContactsListCacheRecord.emptySHA1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
@@ -76,7 +76,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       val uids = contactsList.map(_.uid).to[immutable.SortedSet].mkString(",")
       val digest = MessageDigest.getInstance("SHA-256")
       val sha1Hash = BitVector(digest.digest(uids.getBytes)).toHex
@@ -99,7 +99,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestEditContactName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
       // TODO
@@ -124,7 +124,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 
       // TODO
