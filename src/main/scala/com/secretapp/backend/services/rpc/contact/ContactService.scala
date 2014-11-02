@@ -59,21 +59,20 @@ trait ContactService {
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- PhoneRecord.getEntities(phoneNumbers)
-      (existsContactsId, deletedContactsId) <- UserContactsListCacheRecord.getContactsIdAndDeleted(currentUser.uid)
-      uniquePhones = phones.filter(p => !existsContactsId.contains(p.userId) && !deletedContactsId.contains(p.userId))
+      ignoredContactsId <- UserContactsListCacheRecord.getContactsAndDeletedId(currentUser.uid)
+      uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
       usersFutureSeq <- Future.sequence(uniquePhones map (p => UserRecord.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
-      val t = usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
+      usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
         case ((usersTuple, newContactsId, registeredPhones), user) =>
           (usersTuple :+ (struct.User.fromModel(user, authId, phonesMap(user.phoneNumber)), user.accessSalt),
             newContactsId + user.uid,
             registeredPhones + user.phoneNumber)
       }
-      (t, existsContactsId)
     }
 
     usersSeq flatMap {
-      case ((usersTuple, newContactsId, registeredPhones), existsContactsId) =>
+      case (usersTuple, newContactsId, registeredPhones) =>
         if (usersTuple.nonEmpty) {
           newContactsId foreach {
             socialBrokerRegion ! SocialMessageBox(_, RelationsNoted(Set(currentUser.uid))) // TODO: wrap as array!
@@ -84,7 +83,7 @@ trait ContactService {
           }
 
           val clFuture = UserContactsListRecord.insertNewContacts(currentUser.uid, usersTuple)
-          val clCacheFuture = UserContactsListCacheRecord.updateContactsId(currentUser.uid, existsContactsId ++ newContactsId)
+          val clCacheFuture = UserContactsListCacheRecord.updateContactsId(currentUser.uid, newContactsId)
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId,

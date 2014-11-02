@@ -48,22 +48,31 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
 
   lazy val emptySHA1Hash = getSHA1Hash(Set())
 
-  def updateContactsId(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
-    insert
-      .value(_.ownerId, userId)
-      .value(_.sha1Hash, getSHA1Hash(contactsId))
-      .value(_.contactsId, contactsId)
-      .future()
+  def updateContactsId(userId: Int, newContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
+    select(_.contactsId).where(_.ownerId eqs userId).one().flatMap {
+      case Some(oldContactsId) =>
+        update
+          .where(_.ownerId eqs userId)
+          .modify(_.contactsId addAll newContactsId)
+          .and(_.sha1Hash setTo getSHA1Hash(oldContactsId ++ newContactsId))
+          .future()
+      case None =>
+        insert
+          .value(_.ownerId, userId)
+          .value(_.sha1Hash, getSHA1Hash(newContactsId))
+          .value(_.contactsId, newContactsId)
+          .future()
+    }
   }
 
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[ResultSet] = {
     getContactsId(userId) flatMap { contactsId =>
-      update.
-        where(_.ownerId eqs userId).
-        modify(_.contactsId remove contactId).
-        and(_.deletedContactsId add contactId).
-        and(_.sha1Hash setTo getSHA1Hash(contactsId - contactId)).
-        future()
+      update
+        .where(_.ownerId eqs userId)
+        .modify(_.contactsId remove contactId)
+        .and(_.deletedContactsId add contactId)
+        .and(_.sha1Hash setTo getSHA1Hash(contactsId - contactId))
+        .future()
     }
   }
 
@@ -78,11 +87,10 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
     }
   }
 
-  def getContactsIdAndDeleted(userId: Int)(implicit csession: CSession): Future[(immutable.HashSet[Int], immutable.HashSet[Int])] = {
+  def getContactsAndDeletedId(userId: Int)(implicit csession: CSession): Future[immutable.HashSet[Int]] = {
     select(_.contactsId, _.deletedContactsId).where(_.ownerId eqs userId).one().map {
-      case Some((contactsId, deletedContactsId)) =>
-        (contactsId.to[immutable.HashSet], deletedContactsId.to[immutable.HashSet])
-      case _ => (immutable.HashSet[Int](), immutable.HashSet[Int]())
+      case Some((contactsId, deletedContactsId)) => (contactsId ++ deletedContactsId).to[immutable.HashSet]
+      case _ => immutable.HashSet[Int]()
     }
   }
 
