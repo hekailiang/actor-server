@@ -182,6 +182,12 @@ object SeqUpdateRecord extends SeqUpdateRecord with TableOps {
           .value(_.authId, authId).value(_.uuid, uuid)
           .value(_.header, updateProto.contact.ContactsRemoved.header)
           .value(_.protobufBody, body.toOption.get.toByteBuffer)
+      case u: updateProto.contact.LocalNameChanged =>
+        val body = LocalNameChangedCodec.encode(u)
+        insert
+          .value(_.authId, authId).value(_.uuid, uuid)
+          .value(_.header, updateProto.contact.LocalNameChanged.header)
+          .value(_.protobufBody, body.toOption.get.toByteBuffer)
       case _ =>
         throw new Exception("Unknown UpdateMessage")
     }

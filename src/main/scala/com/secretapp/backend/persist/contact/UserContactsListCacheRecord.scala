@@ -1,6 +1,6 @@
 package com.secretapp.backend.persist.contact
 
-import com.datastax.driver.core.{ ResultSet, Row, Session => CSession }
+import com.datastax.driver.core.{Session => CSession, ResultSet, Row}
 import com.secretapp.backend.models.{ contact => models }
 import com.secretapp.backend.persist.TableOps
 import com.websudos.phantom.Implicits._
@@ -22,12 +22,16 @@ sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsList
   object contactsId extends SetColumn[UserContactsListCacheRecord, models.UserContactsListCache, Int](this) {
     override lazy val name = "contacts_id"
   }
+  object deletedContactsId extends SetColumn[UserContactsListCacheRecord, models.UserContactsListCache, Int](this) {
+    override lazy val name = "deleted_contacts_id"
+  }
 
   override def fromRow(row: Row): models.UserContactsListCache = {
     models.UserContactsListCache(
       ownerId = ownerId(row),
       sha1Hash = sha1Hash(row),
-      contactsId = contactsId(row)
+      contactsId = contactsId(row),
+      deletedContactsId = deletedContactsId(row)
     )
   }
 }
@@ -36,26 +40,49 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
   import scalaz._
   import Scalaz._
 
-  lazy val emptySHA1Hash = {
+  private def getSHA1Hash(ids: immutable.Set[Int]): String = {
+    val uids = ids.to[immutable.SortedSet].mkString(",")
     val digest = MessageDigest.getInstance("SHA-256")
-    BitVector(digest.digest("".getBytes)).toHex
+    BitVector(digest.digest(uids.getBytes)).toHex
   }
 
-  def upsertEntity(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
-    val uids = contactsId.to[immutable.SortedSet].mkString(",")
-    val digest = MessageDigest.getInstance("SHA-256")
-    val sha1Hash = BitVector(digest.digest(uids.getBytes)).toHex
+  lazy val emptySHA1Hash = getSHA1Hash(Set())
+
+  def updateContactsId(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
     insert
       .value(_.ownerId, userId)
-      .value(_.sha1Hash, sha1Hash)
+      .value(_.sha1Hash, getSHA1Hash(contactsId))
       .value(_.contactsId, contactsId)
       .future()
   }
 
+  def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[ResultSet] = {
+    getContactsId(userId) flatMap { contactsId =>
+      update.
+        where(_.ownerId eqs userId).
+        modify(_.contactsId remove contactId).
+        and(_.deletedContactsId add contactId).
+        and(_.sha1Hash setTo getSHA1Hash(contactsId - contactId)).
+        future()
+    }
+  }
+
+  def getEntity(userId: Int)(implicit csession: CSession): Future[Option[models.UserContactsListCache]] = {
+    select.where(_.ownerId eqs userId).one()
+  }
+
   def getContactsId(userId: Int)(implicit csession: CSession): Future[immutable.HashSet[Int]] = {
     select(_.contactsId).where(_.ownerId eqs userId).one().map {
-      case Some(uids) => immutable.HashSet[Int](uids.toSeq :_*)
+      case Some(contactsId) => contactsId.to[immutable.HashSet]
       case _ => immutable.HashSet[Int]()
+    }
+  }
+
+  def getContactsIdAndDeleted(userId: Int)(implicit csession: CSession): Future[(immutable.HashSet[Int], immutable.HashSet[Int])] = {
+    select(_.contactsId, _.deletedContactsId).where(_.ownerId eqs userId).one().map {
+      case Some((contactsId, deletedContactsId)) =>
+        (contactsId.to[immutable.HashSet], deletedContactsId.to[immutable.HashSet])
+      case _ => (immutable.HashSet[Int](), immutable.HashSet[Int]())
     }
   }
 

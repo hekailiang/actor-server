@@ -22,13 +22,17 @@ sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecor
     override lazy val name = "phone_number"
   }
   object name extends StringColumn(this)
+  object accessSalt extends StringColumn(this) {
+    override lazy val name = "access_salt"
+  }
 
   override def fromRow(row: Row): models.UserContactsList = {
     models.UserContactsList(
       ownerId = ownerId(row),
       contactId = contactId(row),
       phoneNumber = phoneNumber(row),
-      name = name(row)
+      name = name(row),
+      accessSalt = accessSalt(row)
     )
   }
 }
@@ -37,21 +41,46 @@ object UserContactsListRecord extends UserContactsListRecord with TableOps {
   import scalaz._
   import Scalaz._
 
-  def insertEntities(userId: Int, contacts: immutable.Seq[struct.User])(implicit csession: CSession): Future[ResultSet] = {
+  def insertNewContacts(userId: Int, contacts: immutable.Seq[(struct.User, String)])(implicit csession: CSession): Future[ResultSet] = {
     val batch = new BatchStatement()
-    contacts foreach { contact =>
-      batch.add(
+    contacts foreach {
+      case (contact, accessSalt) => batch.add(
         UserContactsListRecord.insert.ifNotExists()
           .value(_.ownerId, userId)
           .value(_.contactId, contact.uid)
           .value(_.phoneNumber, contact.phoneNumber)
           .value(_.name, contact.localName.getOrElse(""))
+          .value(_.accessSalt, accessSalt)
       )
     }
     batch.future()
   }
 
+  def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Unit] = {
+    for {
+      _ <- delete.where(_.ownerId eqs userId).and(_.contactId eqs contactId).future()
+      _ <- UserContactsListCacheRecord.removeContact(userId, contactId)
+    } yield ()
+  }
+
+  def updateContactName(userId: Int, contactId: Int, localName: String)(implicit csession: CSession): Future[ResultSet] = {
+    update.
+      where(_.ownerId eqs userId).
+      and(_.contactId eqs contactId).
+      modify(_.name setTo localName).
+      future()
+  }
+
+  def getContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Option[models.UserContactsList]] = {
+    select.
+      where(_.ownerId eqs userId).
+      and(_.contactId eqs contactId).
+      one()
+  }
+
   def getEntitiesWithLocalName(userId: Int)(implicit csession: CSession): Future[Seq[(Int, String)]] = {
-    select(_.contactId, _.name).where(_.ownerId eqs userId).fetch()
+    select(_.contactId, _.name).
+      where(_.ownerId eqs userId).
+      fetch()
   }
 }

@@ -1,15 +1,17 @@
 package com.secretapp.backend.persist
 
+import com.secretapp.backend.crypto.ec.PublicKey
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
-import scala.concurrent.Future
+import java.util.concurrent.Executor
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
-import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
+import scodec.bits.BitVector
 
 sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
-  override val tableName = "users"
+  override lazy val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
   object authId extends LongColumn(this) with PrimaryKey[Long] {
@@ -68,7 +70,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
     override lazy val name = "full_avatar_height"
   }
 
-  override def fromRow(row: Row): models.User =
+  override def fromRow(row: Row): models.User = {
     models.User(
       uid                 = uid(row),
       authId              = authId(row),
@@ -91,9 +93,10 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
       fullAvatarWidth     = fullAvatarWidth(row),
       fullAvatarHeight    = fullAvatarHeight(row)
     )
+  }
 }
 
-object UserRecord extends UserRecord with TableOps {
+object UserRecord extends UserRecord with DBConnector {
 
   def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = models.Phone(
@@ -133,11 +136,13 @@ object UserRecord extends UserRecord with TableOps {
       .future()
       .flatMap(_ => PhoneRecord.insertEntity(phone))
       .flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
-      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
+      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, entity.uid.some)))
   }
 
-  def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
-                                    (implicit session: Session): Future[ResultSet] =
+  def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
+                                    (implicit session: Session): Future[ResultSet] = {
+    val publicKeyHash = PublicKey.keyHash(publicKey)
+
     insert.value(_.uid, uid)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
@@ -149,9 +154,11 @@ object UserRecord extends UserRecord with TableOps {
       .flatMap(_ => UserPublicKeyRecord.insertEntityRow(uid, publicKeyHash, publicKey, authId))
       .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
       .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
+  }
 
-  private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
+  private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) = {
     update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).future()
+  }
 
   /**
     * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
@@ -204,12 +211,51 @@ object UserRecord extends UserRecord with TableOps {
       .modify(_.name setTo name)
       .future
 
-  def getEntity(uid: Int)(implicit session: Session): Future[Option[models.User]] =
+  def getEntity(uid: Int)(implicit session: Session): Future[Option[models.User]] = {
     select.where(_.uid eqs uid).one()
+  }
 
-  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
+  def getEntity(uid: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] = {
     select.where(_.uid eqs uid).and(_.authId eqs authId).one()
+  }
 
   def byUid(uid: Int)(implicit session: Session): Future[Seq[models.User]] =
     select.where(_.uid eqs uid).fetch()
+
+  def fixAvatars()(implicit session: Session, context: ExecutionContext with Executor) = {
+    val fileRecord = new FileRecord
+
+    for {
+      users <- select.fetch()
+    } yield {
+      users map { user =>
+        user.smallAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.smallAvatarFileHash.get != hash) {
+              println(s"fixing small ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.smallAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+
+        user.largeAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.largeAvatarFileHash.get != hash) {
+              println(s"fixing large ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.largeAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+
+        user.fullAvatarFileId map { id =>
+          fileRecord.getAccessHash(id) map { hash =>
+            if (user.fullAvatarFileHash.get != hash) {
+              println(s"fixing full ${user.uid}")
+              UserRecord.update.where(u => u.uid eqs user.uid).modify(_.fullAvatarFileHash setTo Some(hash)).future()
+            }
+          }
+        }
+      }
+    }
+  }
 }

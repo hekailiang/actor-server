@@ -1,9 +1,11 @@
 package com.secretapp.backend.services.rpc.contact
 
 import com.secretapp.backend.data.message.rpc.contact._
+import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.util.ACL
 import scodec.bits.BitVector
 import scala.collection.immutable
 import scalaz._
@@ -42,11 +44,12 @@ class ContactServiceSpec extends RpcSpec {
         genTestScopeWithUser().user,
         genTestScopeWithUser().user
       )
-      val contactsList = contacts.zipWithIndex.map {
-        case (c, index) => struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some)
+      val contactsListTuple = contacts.zipWithIndex.map {
+        case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
-      UserContactsListRecord.insertEntities(currentUser.uid, contactsList).sync()
-      UserContactsListCacheRecord.upsertEntity(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      val contactsList = contactsListTuple.map(_._1)
+      UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestGetContacts(UserContactsListCacheRecord.emptySHA1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
@@ -68,11 +71,12 @@ class ContactServiceSpec extends RpcSpec {
         genTestScopeWithUser().user,
         genTestScopeWithUser().user
       )
-      val contactsList = contacts.zipWithIndex.map {
-        case (c, index) => struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some)
+      val contactsListTuple = contacts.zipWithIndex.map {
+        case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
-      UserContactsListRecord.insertEntities(currentUser.uid, contactsList).sync()
-      UserContactsListCacheRecord.upsertEntity(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      val contactsList = contactsListTuple.map(_._1)
+      UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       val uids = contactsList.map(_.uid).to[immutable.SortedSet].mkString(",")
       val digest = MessageDigest.getInstance("SHA-256")
       val sha1Hash = BitVector(digest.digest(uids.getBytes)).toHex
@@ -83,6 +87,63 @@ class ContactServiceSpec extends RpcSpec {
       }
       isChanged.should_==(false)
       users.isEmpty.should_==(true)
+    }
+
+    "handle RPC edit name contact request" in {
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contact = genTestScopeWithUser().user
+      val contacts = immutable.Seq(contact)
+      val contactsListTuple = contacts.map { c =>
+        (struct.User.fromModel(c, scope.authId, s"default_local_name".some), c.accessSalt)
+      }
+      val contactsList = contactsListTuple.map(_._1)
+      UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      sendRpcMsg(RequestEditContactName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
+
+      // TODO
+      val reqSeq = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq => r
+      }
+
+      sendRpcMsg(RequestGetContacts(UserContactsListCacheRecord.emptySHA1Hash))
+      val userLocalName = expectRpcMsgByPF() {
+        case r: ResponseGetContacts => r.users.headOption.map(_.localName).flatten
+      }
+      userLocalName.should_==("new_local_name".some)
+    }
+
+    "handle RPC delete contact request" in {
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contact = genTestScopeWithUser().user
+      val contacts = immutable.Seq(contact)
+      val contactsListTuple = contacts.map { c =>
+        (struct.User.fromModel(c, scope.authId), c.accessSalt)
+      }
+      val contactsList = contactsListTuple.map(_._1)
+      UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      UserContactsListCacheRecord.updateContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+
+      // TODO
+      val reqSeq = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq => r
+      }
+
+      sendRpcMsg(RequestGetContacts(UserContactsListCacheRecord.emptySHA1Hash))
+      val (users, isChanged) = expectRpcMsgByPF() {
+        case r: ResponseGetContacts => (r.users, !r.isNotChanged)
+      }
+      isChanged.should_==(false)
+      users.isEmpty.should_==(true)
+
+      sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), immutable.Seq()))
+      val importedUsers = expectRpcMsgByPF() {
+        case r: ResponseImportedContacts => users
+      }
+      importedUsers.isEmpty.should_==(true)
     }
   }
 }
