@@ -31,7 +31,7 @@ sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageR
     )
 }
 
-object PersistenceMessageRecord extends PersistenceMessageRecord with AkkaDBConnector {
+object PersistenceMessageRecord extends PersistenceMessageRecord {
   def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: PersistenceMessage => Any)(implicit session: Session) = {
     def process(sequenceNr: Long): Unit = {
       val baseQuery = select

@@ -4,7 +4,6 @@ import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRe
 import scala.concurrent.blocking
 import scala.collection.JavaConversions._
 import com.datastax.driver.core.Cluster
-import com.websudos.phantom.Implicits._
 import com.typesafe.config._
 
 object AkkaDBConnector {
@@ -23,8 +22,4 @@ object AkkaDBConnector {
   lazy val session = blocking {
     cluster.connect(keySpace)
   }
-}
-
-trait AkkaDBConnector {
-  self: CassandraTable[_, _] =>
 }
