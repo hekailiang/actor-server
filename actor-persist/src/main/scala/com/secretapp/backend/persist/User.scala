@@ -34,7 +34,9 @@ sealed class User extends CassandraTable[User, models.User] {
     override lazy val name = "first_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
-  object countryCode extends StringColumn(this) with StaticColumn[String]
+  object countryCode extends StringColumn(this) with StaticColumn[String] {
+    override lazy val name = "country_code"
+  }
   object smallAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "small_avatar_file_id"
   }

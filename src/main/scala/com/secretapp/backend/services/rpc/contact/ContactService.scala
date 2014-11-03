@@ -62,7 +62,7 @@ trait ContactService {
     val authId = currentAuthId
     val currentUser = getUser.get // TODO: remove user.get
     val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber)
-    val phoneNumbers = filteredPhones.map(_.phoneNumber).map(PhoneNumber.normalize).flatten.toSet
+    val phoneNumbers = filteredPhones.map(_.phoneNumber).map(PhoneNumber.normalizeLong(_, currentUser.countryCode)).flatten.toSet
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- persist.Phone.getEntities(phoneNumbers)
@@ -178,12 +178,48 @@ trait ContactService {
   }
 
   def handleRequestFindContacts(request: String): Future[RpcResponse] = {
-
-    ???
+    val authId = currentAuthId
+    val currentUser = getUser.get
+    PhoneNumber.normalizeStr(request, currentUser.countryCode) match {
+      case None => Future.successful(Ok(ResponseFindContacts(immutable.Seq[struct.User]())))
+      case Some(phoneNumber) =>
+        val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
+        for {
+          phones <- persist.Phone.getEntities(filteredPhones)
+          users <- Future.sequence(phones map (p => persist.User.getEntity(p.userId))).map(_.flatten)
+        } yield Ok(ResponseFindContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
+    }
   }
 
   def handleRequestAddContact(uid: Int, accessHash: Long): Future[RpcResponse] = {
+    val authId = currentAuthId
+    val currentUser = getUser.get
+    if (uid == currentUser.uid) {
+      Future.successful(RpcErrors.cantAddSelf)
+    } else {
+      persist.User.getEntity(uid) flatMap {
+        case Some(user) =>
+          if (accessHash == ACL.userAccessHash(authId, uid, user.accessSalt)) {
+            val newContactsId = Set(uid)
+            val users = immutable.Seq(user).map(struct.User.fromModel(_, authId))
+            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, uid, user.phoneNumber, "", user.accessSalt)
+            val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
+            val stateFuture = ask(
+              updatesBrokerRegion,
+              UpdatesBroker.NewUpdatePush(currentUser.authId,
+                updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
+            ).mapTo[UpdatesBroker.StrictState].map {
+              case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
+            }
 
-    ???
+            for {
+              _ <- clFuture
+              _ <- clCacheFuture
+              response <- stateFuture
+            } yield response
+          } else Future.successful(RpcErrors.invalidAccessHash)
+        case None => Future.successful(RpcErrors.entityNotFound("USER"))
+      }
+    }
   }
 }

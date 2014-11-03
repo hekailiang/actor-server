@@ -113,7 +113,7 @@ trait SignService extends SocialHelpers {
   }
 
   def handleRequestAuthCode(phoneNumberRaw: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
-    PhoneNumber.normalize(phoneNumberRaw) match {
+    PhoneNumber.normalizeLong(phoneNumberRaw) match {
       case None =>
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>

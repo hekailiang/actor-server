@@ -12,6 +12,8 @@ import scalaz._
 import Scalaz._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import java.security.MessageDigest
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
@@ -168,6 +170,43 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseImportedContacts => users
       }
       importedUsers.isEmpty.should_==(true)
+    }
+
+    "handle RPC find contacts request" in {
+      implicit val scope = genTestScopeWithUser()
+      val contact = genTestScopeWithUser().user
+      val phoneUtil = PhoneNumberUtil.getInstance()
+      val phone = phoneUtil.parse(contact.phoneNumber.toString, "RU")
+      Set(PhoneNumberFormat.INTERNATIONAL, PhoneNumberFormat.NATIONAL, PhoneNumberFormat.E164).zipWithIndex.foreach {
+        case (format, index) =>
+          val searchString = phoneUtil.format(phone, format)
+          sendRpcMsg(RequestFindContacts(searchString))
+
+          val users = expectRpcMsgByPF(withNewSession = index == 0) {
+            case r: ResponseFindContacts => r.users
+          }
+          users.should_==(Seq(struct.User.fromModel(contact, scope.authId)))
+      }
+    }
+
+    "handle RPC add contacts request" in {
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contact = genTestScopeWithUser().user
+      persist.contact.UserContactsListCache.insertEntity(currentUser.uid, Set(), Set(contact.uid)).sync()
+
+      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      val users = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseImportedContacts => r.users
+      }
+      val responseContacts = Seq(struct.User.fromModel(contact, scope.authId))
+      users.should_==(responseContacts)
+
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      val importedContacts = expectRpcMsgByPF() {
+        case r: ResponseGetContacts => r.users
+      }
+      importedContacts.should_==(responseContacts)
     }
   }
 }

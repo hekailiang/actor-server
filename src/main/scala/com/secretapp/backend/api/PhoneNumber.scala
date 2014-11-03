@@ -5,9 +5,9 @@ import scala.util.{ Try, Success }
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 
 object PhoneNumber {
-  def normalize(number: Long): Option[Long] = {
+  def normalizeStr(number: String, defaultCountry: String = ""): Option[Long] = {
     val phoneUtil = PhoneNumberUtil.getInstance()
-    Try(phoneUtil.parse(s"+$number", "")) match {
+    Try(phoneUtil.parse(number, defaultCountry)) match {
       case Success(p) =>
         val phoneNumber = p.getCountryCode * Math.pow(10L, sizeOf(p.getNationalNumber) + 1).longValue + p.getNationalNumber
         Some(phoneNumber)
@@ -15,9 +15,11 @@ object PhoneNumber {
     }
   }
 
-  def normalizeWithCountry(number: Long): Option[(Long, String)] = {
+  def normalizeLong(number: Long, defaultCountry: String = ""): Option[Long] = normalizeStr(s"+$number", defaultCountry)
+
+  def normalizeWithCountry(number: Long, defaultCountry: String = ""): Option[(Long, String)] = {
     val phoneUtil = PhoneNumberUtil.getInstance()
-    Try(phoneUtil.parse(s"+$number", "")) match {
+    Try(phoneUtil.parse(s"+$number", defaultCountry)) match {
       case Success(p) =>
         val phoneNumber = p.getCountryCode * Math.pow(10L, sizeOf(p.getNationalNumber) + 1).longValue + p.getNationalNumber
         Some(phoneNumber, phoneUtil.getRegionCodeForCountryCode(p.getCountryCode))

@@ -48,8 +48,17 @@ object UserContactsListCache extends UserContactsListCache with TableOps {
       update
         .where(_.ownerId eqs userId)
         .modify(_.contactsId addAll newContactsId)
+        .and(_.deletedContactsId removeAll newContactsId)
         .future()
     }
+  }
+
+  def insertEntity(userId: Int, contactsId: immutable.Set[Int], deletedContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
+    insert
+      .value(_.ownerId, userId)
+      .value(_.contactsId, contactsId)
+      .value(_.deletedContactsId, deletedContactsId)
+      .future()
   }
 
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[ResultSet] = {
