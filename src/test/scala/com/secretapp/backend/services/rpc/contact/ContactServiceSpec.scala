@@ -34,6 +34,32 @@ class ContactServiceSpec extends RpcSpec {
       users.should_==(Seq(struct.User.fromModel(contact, scope.authId, s"${contact.name}_wow1".some)))
     }
 
+    "handle RPC import contacts requests" in {
+      implicit val scope = genTestScopeWithUser()
+      val currentUser = scope.user
+      val contacts = (1 to 100).toList.map { _ =>
+        genTestScopeWithUser().user
+      }
+      val emails = immutable.Seq[EmailToImport]()
+      contacts foreach { contact =>
+        sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), emails))
+      }
+
+      val users = contacts.zipWithIndex.map {
+        case (_, index) =>
+          expectRpcMsgByPF(withNewSession = index == 0) {
+            case r: ResponseImportedContacts => r.users
+          }
+      }.flatten
+
+      val sortedContactsId = contacts.map(_.uid).to[immutable.SortedSet]
+      users.map(_.uid).to[immutable.SortedSet].should_==(sortedContactsId)
+
+      val cacheEntity = UserContactsListCacheRecord.getEntity(currentUser.uid).sync().get
+      cacheEntity.contactsId.size.should_==(sortedContactsId.size)
+      cacheEntity.contactsId.to[immutable.SortedSet].should_==(sortedContactsId)
+    }
+
     "handle RPC get contacts request" in {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
@@ -77,9 +103,7 @@ class ContactServiceSpec extends RpcSpec {
       val contactsList = contactsListTuple.map(_._1)
       UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      val uids = contactsList.map(_.uid).to[immutable.SortedSet].mkString(",")
-      val digest = MessageDigest.getInstance("SHA-256")
-      val sha1Hash = BitVector(digest.digest(uids.getBytes)).toHex
+      val sha1Hash = UserContactsListCacheRecord.getSHA1Hash(contactsList.map(_.uid).toSet)
       sendRpcMsg(RequestGetContacts(sha1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {

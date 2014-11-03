@@ -104,14 +104,13 @@ trait ContactService {
   def handleRequestGetContacts(contactsHash: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    UserContactsListCacheRecord.getSHA1HashOrDefault(currentUser.uid) flatMap { sha1Hash =>
-      if (contactsHash == sha1Hash) {
+    UserContactsListCacheRecord.getContactsId(currentUser.uid) flatMap { contactsId =>
+      if (contactsHash == UserContactsListCacheRecord.getSHA1Hash(contactsId)) {
         Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
       } else {
         for {
           contactList <- UserContactsListRecord.getEntitiesWithLocalName(currentUser.uid)
           usersFutureSeq <- Future.sequence(contactList.map { c => UserRecord.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
-          _ <- UserContactsListCacheRecord.insertContactsId(currentUser.uid, usersFutureSeq.map(_.uid).toSet) // rebuild cache
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
           val users = usersFutureSeq.map { user =>

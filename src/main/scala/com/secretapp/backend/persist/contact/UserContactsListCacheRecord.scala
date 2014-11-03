@@ -16,9 +16,6 @@ sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsList
   object ownerId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "owner_id"
   }
-  object sha1Hash extends StringColumn(this) {
-    override lazy val name = "sha_hash"
-  }
   object contactsId extends SetColumn[UserContactsListCacheRecord, models.UserContactsListCache, Int](this) {
     override lazy val name = "contacts_id"
   }
@@ -29,7 +26,6 @@ sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsList
   override def fromRow(row: Row): models.UserContactsListCache = {
     models.UserContactsListCache(
       ownerId = ownerId(row),
-      sha1Hash = sha1Hash(row),
       contactsId = contactsId(row),
       deletedContactsId = deletedContactsId(row)
     )
@@ -40,7 +36,7 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
   import scalaz._
   import Scalaz._
 
-  private def getSHA1Hash(ids: immutable.Set[Int]): String = {
+  def getSHA1Hash(ids: immutable.Set[Int]): String = {
     val uids = ids.to[immutable.SortedSet].mkString(",")
     val digest = MessageDigest.getInstance("SHA-256")
     BitVector(digest.digest(uids.getBytes)).toHex
@@ -49,28 +45,12 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
   lazy val emptySHA1Hash = getSHA1Hash(Set())
 
   def addContactsId(userId: Int, newContactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
-    select(_.contactsId).where(_.ownerId eqs userId).one().flatMap {
-      case Some(oldContactsId) =>
-        update
-          .where(_.ownerId eqs userId)
-          .modify(_.contactsId addAll newContactsId)
-          .and(_.sha1Hash setTo getSHA1Hash(oldContactsId ++ newContactsId))
-          .future()
-      case None =>
-        insert
-          .value(_.ownerId, userId)
-          .value(_.sha1Hash, getSHA1Hash(newContactsId))
-          .value(_.contactsId, newContactsId)
-          .future()
+    getContactsId(userId).flatMap { oldContactsId =>
+      update
+        .where(_.ownerId eqs userId)
+        .modify(_.contactsId addAll newContactsId)
+        .future()
     }
-  }
-
-  def insertContactsId(userId: Int, contactsId: immutable.Set[Int])(implicit csession: CSession): Future[ResultSet] = {
-    insert
-      .value(_.ownerId, userId)
-      .value(_.sha1Hash, getSHA1Hash(contactsId))
-      .value(_.contactsId, contactsId)
-      .future()
   }
 
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[ResultSet] = {
@@ -79,7 +59,6 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
         .where(_.ownerId eqs userId)
         .modify(_.contactsId remove contactId)
         .and(_.deletedContactsId add contactId)
-        .and(_.sha1Hash setTo getSHA1Hash(contactsId - contactId))
         .future()
     }
   }
@@ -99,13 +78,6 @@ object UserContactsListCacheRecord extends UserContactsListCacheRecord with Tabl
     select(_.contactsId, _.deletedContactsId).where(_.ownerId eqs userId).one().map {
       case Some((contactsId, deletedContactsId)) => (contactsId ++ deletedContactsId).to[immutable.HashSet]
       case _ => immutable.HashSet[Int]()
-    }
-  }
-
-  def getSHA1HashOrDefault(userId: Int)(implicit csession: CSession): Future[String] = {
-    select(_.sha1Hash).where(_.ownerId eqs userId).one().map {
-      case Some(sha1Hash) => sha1Hash
-      case _ => emptySHA1Hash
     }
   }
 }
