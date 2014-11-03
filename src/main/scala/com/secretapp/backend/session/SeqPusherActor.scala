@@ -5,7 +5,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
 import com.secretapp.backend.data.message.update.{ FatSeqUpdate, SeqUpdate }
 import com.secretapp.backend.data.message.update.contact._
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID
 import scala.concurrent.Future
