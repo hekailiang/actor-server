@@ -3,7 +3,7 @@ package com.secretapp.backend.services.rpc.contact
 import akka.actor._
 import akka.pattern.ask
 import com.secretapp.backend.api.rpc.RpcErrors
-import com.secretapp.backend.api.{UpdatesBroker, SocialProtocol, ApiBrokerService}
+import com.secretapp.backend.api.{UpdatesBroker, SocialProtocol, ApiBrokerService, PhoneNumber}
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.struct
@@ -47,14 +47,22 @@ trait ContactService {
       authorizedRequest {
         handleRequestEditContactName(contactId, accessHash, localName)
       }
+    case RequestFindContacts(request) =>
+      authorizedRequest {
+        handleRequestFindContacts(request)
+      }
+    case RequestAddContact(uid, accessHash) =>
+      authorizedRequest {
+        handleRequestAddContact(uid, accessHash)
+      }
   }
 
   def handleRequestImportContacts(phones: immutable.Seq[PhoneToImport],
                                   emails: immutable.Seq[EmailToImport]): Future[RpcResponse] = {
     val authId = currentAuthId
-    val currentUser = getUser.get
-    val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber) // TODO: remove user.get
-    val phoneNumbers = filteredPhones.map(_.phoneNumber).toSet
+    val currentUser = getUser.get // TODO: remove user.get
+    val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber)
+    val phoneNumbers = filteredPhones.map(_.phoneNumber).map(PhoneNumber.normalize).flatten.toSet
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- persist.Phone.getEntities(phoneNumbers)
@@ -167,5 +175,15 @@ trait ContactService {
         } else Future.successful(RpcErrors.invalidAccessHash)
       case _ => Future.successful(RpcErrors.entityNotFound("CONTACT"))
     }
+  }
+
+  def handleRequestFindContacts(request: String): Future[RpcResponse] = {
+
+    ???
+  }
+
+  def handleRequestAddContact(uid: Int, accessHash: Long): Future[RpcResponse] = {
+
+    ???
   }
 }

@@ -36,6 +36,7 @@ object OkCodec extends Codec[Ok] {
     .\(ResponseVoid.header) { case r: ResponseVoid => r } (protoPayload(ResponseVoidCodec))
     .\(ResponseCreateGroup.header) { case r: ResponseCreateGroup => r } (protoPayload(ResponseCreateGroupCodec))
     .\(ResponseGetContacts.header) { case r: ResponseGetContacts => r } (protoPayload(ResponseGetContactsCodec))
+    .\(ResponseFindContacts.header) { case r: ResponseFindContacts => r } (protoPayload(ResponseFindContactsCodec))
     .\(0, _ => true) { case a: Any => a }(new DiscriminatedErrorCodec("RpcOk"))
 
   private val codec = rpcResponseMessageCodec.pxmap[Ok](Ok.apply, Ok.unapply)

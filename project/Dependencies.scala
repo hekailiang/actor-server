@@ -49,7 +49,8 @@ object Dependencies {
     "org.typelevel"              %% "scodec-core"                   % "1.2.0",
     "org.typelevel"              %% "shapeless-scalacheck"          % V.shapelessContrib,
     "org.typelevel"              %% "shapeless-scalaz"              % V.shapelessContrib,
-    "org.typelevel"              %% "shapeless-spire"               % V.shapelessContrib
+    "org.typelevel"              %% "shapeless-spire"               % V.shapelessContrib,
+    "com.googlecode.libphonenumber" % "libphonenumber"              % "7.0"
   )
 
   val deployDependencies = Seq(

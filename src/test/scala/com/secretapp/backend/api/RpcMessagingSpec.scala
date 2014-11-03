@@ -57,7 +57,7 @@ class RpcMessagingSpec extends RpcSpec {
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val user = models.User(userId, mockAuthId, pkHash, publicKey, defaultPhoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
+      val user = models.User(userId, mockAuthId, pkHash, publicKey, defaultPhoneNumber, userSalt, name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
       val accessHash = ACL.userAccessHash(scope.user.authId, userId, userSalt)
       authUser(user, defaultPhoneNumber)
 
@@ -65,7 +65,7 @@ class RpcMessagingSpec extends RpcSpec {
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
       val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
-      val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(sndPkHash))
+      val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, models.NoSex, "RU", keyHashes = immutable.Set(sndPkHash))
       persist.User.insertEntityWithChildren(secondUser).sync()
 
       /**

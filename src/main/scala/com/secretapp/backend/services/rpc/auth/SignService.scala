@@ -4,7 +4,7 @@ import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.CounterProtocol
-import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService}
+import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService, PhoneNumber}
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
@@ -112,166 +112,174 @@ trait SignService extends SocialHelpers {
     }
   }
 
-  def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
-    //    TODO: validate phone number
-    for {
-      smsR <- persist.AuthSmsCode.getEntity(phoneNumber)
-      phoneR <- persist.Phone.getEntity(phoneNumber)
-    } yield {
-      val (smsHash, smsCode) = smsR match {
-        case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
-        case None =>
-          val smsHash = genSmsHash
-          val smsCode = phoneNumber.toString match {
-            case strNumber if strNumber.startsWith("7555") =>
-              strNumber { 4 }.toString * 4
-            case _ => genSmsCode
+  def handleRequestAuthCode(phoneNumberRaw: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
+    PhoneNumber.normalize(phoneNumberRaw) match {
+      case None =>
+        Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
+      case Some(phoneNumber) =>
+        for {
+          smsR <- persist.AuthSmsCode.getEntity(phoneNumber)
+          phoneR <- persist.Phone.getEntity(phoneNumber)
+        } yield {
+          val (smsHash, smsCode) = smsR match {
+            case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
+            case None =>
+              val smsHash = genSmsHash
+              val smsCode = phoneNumber.toString match {
+                case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
+                case _ => genSmsCode
+              }
+              persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
+              (smsHash, smsCode)
           }
-          persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
-          (smsHash, smsCode)
-      }
 
-      singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
-      Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
+          singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
+          Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
+        }
     }
   }
 
   private def handleSign(
-    phoneNumber: Long, smsHash: String, smsCode: String, publicKey: BitVector,
+    phoneNumberRaw: Long, smsHash: String, smsCode: String, publicKey: BitVector,
     deviceHash: BitVector, deviceTitle: String, appId: Int, appKey: String
   )(m: RequestSignIn \/ RequestSignUp): Future[RpcResponse] = {
     val authId = currentAuthId // TODO
+    PhoneNumber.normalizeWithCountry(phoneNumberRaw) match {
+      case None =>
+        Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
+      case Some((phoneNumber, countryCode)) =>
+        @inline
+        def auth(u: models.User): Future[RpcResponse] = {
+          persist.AuthSmsCode.dropEntity(phoneNumber)
+          log.info(s"Authenticate currentUser=$u")
+          this.currentUser = Some(u)
 
-    @inline
-    def auth(u: models.User): Future[RpcResponse] = {
-      persist.AuthSmsCode.dropEntity(phoneNumber)
-      log.info(s"Authenticate currentUser=$u")
-      this.currentUser = Some(u)
+          persist.AuthItem.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+            for (authItem <- authItems) {
+              logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
+            }
 
-      persist.AuthItem.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
-        for (authItem <- authItems) {
-          logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
-        }
+            nextAuthItemId() map { id =>
+              persist.AuthItem.insertEntity(
+                models.AuthItem.build(
+                  id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
+                  authLocation = "", latitude = None, longitude = None,
+                  authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
+                ), u.uid
+              )
 
-        nextAuthItemId() map { id =>
-          persist.AuthItem.insertEntity(
-            models.AuthItem.build(
-              id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-              authLocation = "", latitude = None, longitude = None,
-              authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
-            ), u.uid
-          )
-
-          Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
-        }
-      }
-    }
-
-    @inline
-    def signIn(userId: Int): Future[RpcResponse] = {
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-
-      @inline
-      def updateUserRecord(name: String): Unit = {
-        persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
-          case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
-        }
-      }
-
-      @inline
-      def getUserName(name: String) = m match {
-        case \/-(req) => req.name
-        case _ => name
-      }
-
-      // TODO: use sequence from shapeless-contrib
-
-      val (fuserAuthR, fuserR) = (
-        persist.User.getEntity(userId, authId),
-        persist.User.getEntity(userId) // remove it when it cause bottleneck
-      )
-
-      fuserAuthR flatMap { userAuthR =>
-        fuserR flatMap { userR =>
-          if (userR.isEmpty) Future.successful(Error(400, "INTERNAL_ERROR", "", true))
-          else userAuthR match {
-            case None =>
-              val user = userR.get
-              val userName = getUserName(user.name)
-              updateUserRecord(userName)
-              val keyHashes = user.keyHashes + publicKeyHash
-              val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
-                keyHashes = keyHashes, name = userName)
-              auth(newUser)
-            case Some(userAuth) =>
-              val userName = getUserName(userAuth.name)
-              if (userAuth.publicKey != publicKey) {
-                //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
-                updateUserRecord(userName)
-                val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-                val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
-                  name = userName)
-                auth(newUser)
-              } else {
-                if (userAuth.name != userName) {
-                  persist.User.updateName(userAuth.uid, userName)
-                  auth(userAuth.copy(name = userName))
-                } else auth(userAuth)
-              }
+              Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
+            }
           }
         }
-      }
-    }
 
-    if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false))
-    else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
-    else {
-      val f = for {
-        smsCodeR <- persist.AuthSmsCode.getEntity(phoneNumber)
-        phoneR <- persist.Phone.getEntity(phoneNumber)
-      } yield (smsCodeR, phoneR)
-      f flatMap tupled {
-        (smsCodeR, phoneR) =>
-          if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
-          else smsCodeR.get match {
-            case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
-            case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
-            case _ =>
-              m match {
-                case -\/(_: RequestSignIn) => phoneR match {
-                  case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
-                  case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
-                }
-                case \/-(req: RequestSignUp) =>
-                  persist.AuthSmsCode.dropEntity(phoneNumber)
-                  phoneR match {
-                    case None => withValidName(req.name) { name =>
-                      withValidPublicKey(publicKey) { publicKey =>
-                        ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
-                          val pkHash = ec.PublicKey.keyHash(publicKey)
-                          val user = models.User(
-                            uid = userId,
-                            authId = authId,
-                            publicKey = publicKey,
-                            publicKeyHash = pkHash,
-                            phoneNumber = phoneNumber,
-                            accessSalt = genUserAccessSalt,
-                            name = name,
-                            sex = models.NoSex,
-                            keyHashes = immutable.Set(pkHash))
-                          persist.User.insertEntityWithChildren(user) flatMap { _ =>
-                            pushContactRegisteredUpdates(user)
-                            auth(user)
+        @inline
+        def signIn(userId: Int): Future[RpcResponse] = {
+          val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+
+          @inline
+          def updateUserRecord(name: String): Unit = {
+            persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
+              case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+            }
+          }
+
+          @inline
+          def getUserName(name: String) = m match {
+            case \/-(req) => req.name
+            case _ => name
+          }
+
+          // TODO: use sequence from shapeless-contrib
+
+          val (fuserAuthR, fuserR) = (
+            persist.User.getEntity(userId, authId),
+            persist.User.getEntity(userId) // remove it when it cause bottleneck
+            )
+
+          fuserAuthR flatMap { userAuthR =>
+            fuserR flatMap { userR =>
+              if (userR.isEmpty) Future.successful(Error(400, "INTERNAL_ERROR", "", true))
+              else userAuthR match {
+                case None =>
+                  val user = userR.get
+                  val userName = getUserName(user.name)
+                  updateUserRecord(userName)
+                  val keyHashes = user.keyHashes + publicKeyHash
+                  val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
+                    keyHashes = keyHashes, name = userName)
+                  auth(newUser)
+                case Some(userAuth) =>
+                  val userName = getUserName(userAuth.name)
+                  if (userAuth.publicKey != publicKey) {
+                    //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
+                    updateUserRecord(userName)
+                    val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
+                    val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                      name = userName)
+                    auth(newUser)
+                  } else {
+                    if (userAuth.name != userName) {
+                      persist.User.updateName(userAuth.uid, userName)
+                      auth(userAuth.copy(name = userName))
+                    } else auth(userAuth)
+                  }
+              }
+            }
+          }
+        }
+
+        if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false))
+        else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
+        else {
+          val f = for {
+            smsCodeR <- persist.AuthSmsCode.getEntity(phoneNumber)
+            phoneR <- persist.Phone.getEntity(phoneNumber)
+          } yield (smsCodeR, phoneR)
+          f flatMap tupled {
+            (smsCodeR, phoneR) =>
+              if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", s"$phoneNumber $phoneNumberRaw", false))
+              else smsCodeR.get match {
+                case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
+                case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
+                case _ =>
+                  m match {
+                    case -\/(_: RequestSignIn) => phoneR match {
+                      case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
+                      case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
+                    }
+                    case \/-(req: RequestSignUp) =>
+                      persist.AuthSmsCode.dropEntity(phoneNumber)
+                      phoneR match {
+                        case None => withValidName(req.name) { name =>
+                          withValidPublicKey(publicKey) { publicKey =>
+                            ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
+                              val pkHash = ec.PublicKey.keyHash(publicKey)
+                              val user = models.User(
+                                uid = userId,
+                                authId = authId,
+                                publicKey = publicKey,
+                                publicKeyHash = pkHash,
+                                phoneNumber = phoneNumber,
+                                accessSalt = genUserAccessSalt,
+                                name = name,
+                                sex = models.NoSex,
+                                countryCode = countryCode,
+                                keyHashes = immutable.Set(pkHash))
+                              persist.User.insertEntityWithChildren(user) flatMap { _ =>
+                                pushContactRegisteredUpdates(user)
+                                auth(user)
+                              }
+                            }
                           }
                         }
+                        case Some(rec) =>
+                          signIn(rec.userId)
                       }
-                    }
-                    case Some(rec) =>
-                      signIn(rec.userId)
                   }
               }
           }
-      }
+        }
     }
   }
 

@@ -13,6 +13,7 @@ case class User(
   accessSalt: String,
   name: String,
   sex: Sex,
+  countryCode: String,
   smallAvatarFileId: Option[Int] = None,
   smallAvatarFileHash: Option[Long] = None,
   smallAvatarFileSize: Option[Int] = None,

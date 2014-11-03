@@ -34,6 +34,7 @@ sealed class User extends CassandraTable[User, models.User] {
     override lazy val name = "first_name"
   }
   object sex extends IntColumn(this) with StaticColumn[Int]
+  object countryCode extends StringColumn(this) with StaticColumn[String]
   object smallAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "small_avatar_file_id"
   }
@@ -79,6 +80,7 @@ sealed class User extends CassandraTable[User, models.User] {
       phoneNumber         = phoneNumber(row),
       name                = name(row),
       sex                 = models.Sex.fromInt(sex(row)),
+      countryCode         = countryCode(row),
       smallAvatarFileId   = smallAvatarFileId(row),
       smallAvatarFileHash = smallAvatarFileHash(row),
       smallAvatarFileSize = smallAvatarFileSize(row),
@@ -119,6 +121,7 @@ object User extends User with TableOps {
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.name, entity.name)
       .value(_.sex, entity.sex.toInt)
+      .value(_.countryCode, entity.countryCode)
       .value(_.smallAvatarFileId, entity.smallAvatarFileId)
       .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
       .value(_.smallAvatarFileSize, entity.smallAvatarFileSize)

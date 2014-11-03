@@ -41,6 +41,8 @@ object RequestCodec extends Codec[Request] {
     .\(RequestPublicKeys.header)          { case r: RequestPublicKeys               => r } (protoPayload(RequestPublicKeysCodec))
     .\(RequestGetContacts.header)         { case r: RequestGetContacts              => r } (protoPayload(RequestGetContactsCodec))
     .\(RequestDeleteContact.header)       { case r: RequestDeleteContact            => r } (protoPayload(RequestDeleteContactCodec))
+    .\(RequestAddContact.header)          { case r: RequestAddContact               => r } (protoPayload(RequestAddContactCodec))
+    .\(RequestFindContacts.header)        { case r: RequestFindContacts             => r } (protoPayload(RequestFindContactsCodec))
     .\(RequestEditContactName.header)     { case r: RequestEditContactName          => r } (protoPayload(RequestEditContactNameCodec))
     .\(RequestGetFile.header)             { case r: RequestGetFile                  => r } (protoPayload(RequestGetFileCodec))
     .\(RequestStartUpload.header)         { case r: RequestStartUpload              => r } (protoPayload(RequestUploadStartCodec))
