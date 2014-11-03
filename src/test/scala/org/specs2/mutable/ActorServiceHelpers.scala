@@ -14,7 +14,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.persist.{ AuthId, User }
+import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
@@ -360,17 +360,17 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   }
 
   def insertAuthId(authId: Long, userId: Option[Int] = None): Unit = blocking {
-    AuthId.insertEntity(models.AuthId(authId, userId)).sync()
+    persist.AuthId.insertEntity(models.AuthId(authId, userId)).sync()
   }
 
   def addUser(authId: Long, sessionId: Long, u: models.User, phoneNumber: Long): Unit = blocking {
-    AuthId.insertEntity(models.AuthId(authId, None)).sync()
-    User.insertEntityWithChildren(u).sync()
+    persist.AuthId.insertEntity(models.AuthId(authId, None)).sync()
+    persist.User.insertEntityWithChildren(u).sync()
   }
 
   def authUser(u: models.User, phoneNumber: Long): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    User.insertEntityWithChildren(u).sync()
+    persist.User.insertEntityWithChildren(u).sync()
     u
   }
 

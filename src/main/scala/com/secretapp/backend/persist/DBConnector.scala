@@ -2,7 +2,6 @@ package com.secretapp.backend.persist
 
 import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
 import java.util.concurrent.Executor
-import com.secretapp.backend.persist.contact._
 import scala.concurrent. { blocking, Future }
 import scala.collection.JavaConversions._
 import com.datastax.driver.core.Cluster
@@ -43,8 +42,8 @@ object DBConnector {
       Phone.createTable(session),
       SeqUpdate.createTable(session),
       UnregisteredContact.createTable(session),
-      UserContactsListRecord.createTable(session),
-      UserContactsListCacheRecord.createTable(session),
+      contact.UserContactsListRecord.createTable(session),
+      contact.UserContactsListCacheRecord.createTable(session),
       UserGroups.createTable(session),
       UserPublicKey.createTable(session),
       User.createTable(session),
@@ -52,7 +51,7 @@ object DBConnector {
     ))
   }
 
-  def truncateTables(session: Session) = {
+  def truncateTables(session: Session) =
     Future.sequence(List(
       ApplePushCredentials.truncateTable(session),
       AuthId.truncateTable(session),
@@ -65,13 +64,12 @@ object DBConnector {
       Phone.truncateTable(session),
       SeqUpdate.truncateTable(session),
       UnregisteredContact.truncateTable(session),
-      UserContactsListRecord.truncateTable(session),
-      UserContactsListCacheRecord.truncateTable(session),
+      contact.UserContactsListRecord.truncateTable(session),
+      contact.UserContactsListCacheRecord.truncateTable(session),
       UserGroups.truncateTable(session),
       UserPublicKey.truncateTable(session),
       User.truncateTable(session)
     ))
-  }
 
 //  def dumpKeySpace() = blocking {
 //    session.execute(s"DESCRIBE KEYSPACE $secret;")

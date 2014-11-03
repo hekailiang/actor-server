@@ -6,16 +6,12 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.{ RpcRequestMessage, RpcResponse }
 import com.secretapp.backend.data.message.rpc.file._
-import com.secretapp.backend.persist.File
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
 trait FilesService {
   this: ApiBrokerService =>
-
-  import context.dispatcher
-  import context.system
 
   lazy val filesHandler = context.actorOf(Props(new Handler(currentUser.get, fileRecord, clusterProxies.filesCounterProxy)), "files")
 

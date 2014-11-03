@@ -1,27 +1,14 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import akka.contrib.pattern.ClusterSingletonProxy
-import akka.io.Tcp._
 import akka.testkit._
-import akka.util.{ ByteString, Timeout }
-import akka.pattern.ask
-import com.secretapp.backend.data._
-import com.secretapp.backend.data.message._
-import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.persist.CassandraSpecification
-import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.protocol.codecs.message._
+import akka.util.Timeout
 import com.secretapp.backend.api.counters._
-import org.specs2.time.NoDurationConversions
-import scala.collection.immutable
-import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import org.specs2.mutable.ActorSpecification
 
 class CounterActorSpec extends ActorSpecification with ImplicitSender {
-  import system.dispatcher
   import CounterProtocol._
 
   override lazy val actorSystemName = "api"
@@ -58,7 +45,7 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       val name = s"incrementer-failover-${System.nanoTime()}"
       val counter = getCounterActor(name)
 
-      val selection = system.actorSelection(s"/user/${name}")
+      val selection = system.actorSelection(s"/user/$name")
 
       selection ! GetNext
       selection ! GetNext

@@ -20,7 +20,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact._
-import com.secretapp.backend.persist._
+import com.secretapp.backend.persist
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.services.GeneratorService

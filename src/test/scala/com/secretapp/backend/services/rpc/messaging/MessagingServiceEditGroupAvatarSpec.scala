@@ -12,7 +12,7 @@ import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
-import com.secretapp.backend.persist.{ Group, File }
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
@@ -218,7 +218,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
-  private val fr = new File
+  private val fr = new persist.File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
@@ -255,7 +255,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbGroup(groupId: Int) =
-    Group.getEntityWithAvatar(groupId).sync().get
+    persist.Group.getEntityWithAvatar(groupId).sync().get
 
   private def dbAvatar(groupId: Int) = dbGroup(groupId)._2.avatar.get
   private def dbFullImage(groupId: Int) = dbAvatar(groupId).fullImage.get

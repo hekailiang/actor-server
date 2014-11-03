@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.persist.{ GroupUser, UserGroups }
+import com.secretapp.backend.persist
 import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
@@ -58,7 +58,7 @@ trait HandlerService {
     presenceBrokerRegion ! Envelope(currentUser.uid, message)
 
     for {
-      groupIds <- UserGroups.getGroups(currentUser.uid)
+      groupIds <- persist.UserGroups.getGroups(currentUser.uid)
     } yield {
       groupIds foreach { groupId =>
         val message = if (isOnline) {

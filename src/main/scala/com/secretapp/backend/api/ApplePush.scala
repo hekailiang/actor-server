@@ -4,8 +4,7 @@ import akka.actor.ActorLogging
 import com.datastax.driver.core.{ Session => CSession }
 import com.notnoop.apns.{ APNS, ApnsService }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.ApplePushCredentials
-import com.typesafe.config.ConfigFactory
+import com.secretapp.backend.persist
 import dispatch._
 import dispatch.Defaults._
 import scala.concurrent.Future
@@ -34,7 +33,7 @@ trait ApplePush {
     } none Future.successful()
 
   def deliverApplePush(authId: Long, seq: Int)(implicit s: CSession): Future[Unit] =
-    ApplePushCredentials.get(authId) flatMap {
+    persist.ApplePushCredentials.get(authId) flatMap {
       deliverApplePush(_, seq)
     }
 

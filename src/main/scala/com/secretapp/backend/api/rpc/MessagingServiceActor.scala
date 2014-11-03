@@ -1,19 +1,19 @@
 package com.secretapp.backend.api.rpc
 
 import akka.actor._
-import akka.pattern.{ ask, pipe }
+import akka.pattern.pipe
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
-import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
+import com.secretapp.backend.data.message.rpc.Error
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.models.User
-import com.secretapp.backend.persist.File
+import com.secretapp.backend.persist
 import scala.concurrent.duration._
 
 class MessagingServiceActor(
   val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef,
-  val fileRecord: File, val filesCounterProxy: ActorRef, val currentUser: User
+  val fileRecord: persist.File, val filesCounterProxy: ActorRef, val currentUser: User
 )(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.{ system, become, dispatcher }
 

@@ -11,7 +11,7 @@ import scodec.bits.BitVector
 import java.security.MessageDigest
 
 sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsListCacheRecord, models.UserContactsListCache] {
-  override lazy val tableName = "user_contacts_list_cache"
+  override val tableName = "user_contacts_list_cache"
 
   object ownerId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "owner_id"
@@ -23,13 +23,12 @@ sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsList
     override lazy val name = "deleted_contacts_id"
   }
 
-  override def fromRow(row: Row): models.UserContactsListCache = {
+  override def fromRow(row: Row): models.UserContactsListCache =
     models.UserContactsListCache(
       ownerId = ownerId(row),
       contactsId = contactsId(row),
       deletedContactsId = deletedContactsId(row)
     )
-  }
 }
 
 object UserContactsListCacheRecord extends UserContactsListCacheRecord with TableOps {

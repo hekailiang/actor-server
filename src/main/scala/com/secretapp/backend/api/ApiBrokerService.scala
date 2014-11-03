@@ -7,9 +7,7 @@ import com.secretapp.backend.api.UpdatesBroker.NewUpdatePush
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import com.secretapp.backend.models.User
-import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.{ CassandraRecords, UserPublicKey }
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
@@ -19,7 +17,6 @@ import com.secretapp.backend.services.rpc.push.PushService
 import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
-import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 import scala.concurrent.Future
@@ -31,7 +28,7 @@ import Scalaz._
 trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
-trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with CassandraRecords with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
+trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with persist.CassandraRecords with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
 with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
@@ -127,7 +124,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   }
 
   protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
-    UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
+    persist.UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
       case Success(authIds) =>
         log.debug(s"Fetched authIds for uid=$userId $authIds")
         f(authIds)

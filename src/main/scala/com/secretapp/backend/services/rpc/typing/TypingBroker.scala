@@ -6,7 +6,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.persist.GroupUser
+import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -117,7 +117,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
         case BrokerType.Group =>
           log.debug(s"Publishing UserTypingGroup ${userId}")
-          GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
+          persist.GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
             xs foreach {
               case (userId, keyHashes) =>
                 keyHashes foreach { keyHash =>

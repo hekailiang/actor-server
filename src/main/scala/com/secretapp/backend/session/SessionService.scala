@@ -7,7 +7,7 @@ import com.secretapp.backend.api.ApiBrokerProtocol
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.AuthId
+import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.transport._
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.common.PackageCommon
