@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.SeqUpdateRecord
+import com.secretapp.backend.persist.SeqUpdate
 import com.secretapp.backend.services._
 import com.secretapp.backend.protocol.transport._
 import java.util.UUID

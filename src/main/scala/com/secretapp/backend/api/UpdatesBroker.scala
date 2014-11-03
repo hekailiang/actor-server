@@ -6,15 +6,12 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence._
-import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
-import com.secretapp.backend.data.message.rpc.messaging.EncryptedRSAPackage
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
-import com.secretapp.backend.models.User
-import com.secretapp.backend.persist.SeqUpdateRecord
+import com.secretapp.backend.{persist => p}
 import java.util.UUID
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -37,7 +34,7 @@ object UpdatesBroker {
   type StrictState = (Int, UUID) // seq mid state
 
   def topicFor(authId: Long): String = s"updates-${authId.toString}"
-  def topicFor(authId: String): String = s"updates-${authId}"
+  def topicFor(authId: String): String = s"updates-$authId"
 
   private val idExtractor: ShardRegion.IdExtractor = {
     case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
@@ -113,7 +110,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
     // FIXME: Handle errors!
     val uuid = UUIDs.timeBased
 
-    SeqUpdateRecord.push(uuid, authId, update)(session) map { _ =>
+    p.SeqUpdate.push(uuid, authId, update)(session) map { _ =>
       log.debug(s"Wrote update authId=$authId seq=$updateSeq state=$uuid update=$update")
 
       update match {
@@ -126,9 +123,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
           }
 
           mediator ! Publish(topic, (updateSeq, uuid, update))
-          log.info(
-            s"Published update authId=$authId seq=$updateSeq state=$uuid update=$update"
-          )
+          log.info(s"Published update authId=$authId seq=$updateSeq state=$uuid update=$update")
       }
 
       (updateSeq, uuid)
@@ -137,7 +132,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
 
   private def maybeSnapshot(): Unit = {
     if (seq - lastSnapshottedAtSeq >= minSnapshotStep) {
-      log.debug(s"Saving snapshot seq=${seq} lastSnapshottedAtSeq=${lastSnapshottedAtSeq}")
+      log.debug(s"Saving snapshot seq=$seq lastSnapshottedAtSeq=$lastSnapshottedAtSeq")
       lastSnapshottedAtSeq = seq
       saveSnapshot(seq)
     }

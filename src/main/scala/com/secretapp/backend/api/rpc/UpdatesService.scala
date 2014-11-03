@@ -60,7 +60,7 @@ sealed trait UpdatesService {
 
     for {
       seq <- getSeq(authId)
-      difference <- persist.SeqUpdateRecord.getDifference(
+      difference <- persist.SeqUpdate.getDifference(
         authId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
@@ -109,7 +109,7 @@ sealed trait UpdatesService {
   @inline
   protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     val fseq = getSeq(authId)
-    val fstate = persist.SeqUpdateRecord.getState(authId)
+    val fstate = persist.SeqUpdate.getState(authId)
     for {
       seq <- fseq
       muuid <- fstate
