@@ -6,7 +6,7 @@ import com.secretapp.backend.models
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, models.AuthSmsCode] {
+sealed class AuthSmsCode extends CassandraTable[AuthSmsCode, models.AuthSmsCode] {
   override val tableName = "auth_sms_codes"
 
   object phoneNumber extends LongColumn(this) with PartitionKey[Long] {
@@ -23,7 +23,7 @@ sealed class AuthSmsCodeRecord extends CassandraTable[AuthSmsCodeRecord, models.
     models.AuthSmsCode(phoneNumber(row), smsHash(row), smsCode(row))
 }
 
-object AuthSmsCodeRecord extends AuthSmsCodeRecord with TableOps {
+object AuthSmsCode extends AuthSmsCode with TableOps {
   def insertEntity(entity: models.AuthSmsCode)(implicit session: CSession): Future[ResultSet] =
     insert
       .value(_.phoneNumber, entity.phoneNumber)

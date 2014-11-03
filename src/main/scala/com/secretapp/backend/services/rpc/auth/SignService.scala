@@ -115,7 +115,7 @@ trait SignService extends SocialHelpers {
   def handleRequestAuthCode(phoneNumber: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
     //    TODO: validate phone number
     for {
-      smsR <- AuthSmsCodeRecord.getEntity(phoneNumber)
+      smsR <- AuthSmsCode.getEntity(phoneNumber)
       phoneR <- PhoneRecord.getEntity(phoneNumber)
     } yield {
       val (smsHash, smsCode) = smsR match {
@@ -127,7 +127,7 @@ trait SignService extends SocialHelpers {
               strNumber { 4 }.toString * 4
             case _ => genSmsCode
           }
-          AuthSmsCodeRecord.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
+          AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
           (smsHash, smsCode)
       }
 
@@ -144,7 +144,7 @@ trait SignService extends SocialHelpers {
 
     @inline
     def auth(u: models.User): Future[RpcResponse] = {
-      AuthSmsCodeRecord.dropEntity(phoneNumber)
+      AuthSmsCode.dropEntity(phoneNumber)
       log.info(s"Authenticate currentUser=$u")
       this.currentUser = Some(u)
 
@@ -227,7 +227,7 @@ trait SignService extends SocialHelpers {
     else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
     else {
       val f = for {
-        smsCodeR <- AuthSmsCodeRecord.getEntity(phoneNumber)
+        smsCodeR <- AuthSmsCode.getEntity(phoneNumber)
         phoneR <- PhoneRecord.getEntity(phoneNumber)
       } yield (smsCodeR, phoneR)
       f flatMap tupled {
@@ -243,7 +243,7 @@ trait SignService extends SocialHelpers {
                   case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
                 }
                 case \/-(req: RequestSignUp) =>
-                  AuthSmsCodeRecord.dropEntity(phoneNumber)
+                  AuthSmsCode.dropEntity(phoneNumber)
                   phoneR match {
                     case None => withValidName(req.name) { name =>
                       withValidPublicKey(publicKey) { publicKey =>
