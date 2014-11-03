@@ -74,7 +74,7 @@ class ContactServiceSpec extends RpcSpec {
         case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
 
@@ -101,7 +101,7 @@ class ContactServiceSpec extends RpcSpec {
         case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       val sha1Hash = persist.contact.UserContactsListCache.getSHA1Hash(contactsList.map(_.uid).toSet)
       sendRpcMsg(RequestGetContacts(sha1Hash))
@@ -122,7 +122,7 @@ class ContactServiceSpec extends RpcSpec {
         (struct.User.fromModel(c, scope.authId, s"default_local_name".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestEditContactName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
@@ -147,7 +147,7 @@ class ContactServiceSpec extends RpcSpec {
         (struct.User.fromModel(c, scope.authId), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
+      persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 

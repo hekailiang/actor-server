@@ -9,7 +9,7 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
 
-sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecord, models.contact.UserContactsList] {
+sealed class UserContactsList extends CassandraTable[UserContactsList, models.contact.UserContactsList] {
   override lazy val tableName = "user_contacts_lists"
 
   object ownerId extends IntColumn(this) with PartitionKey[Int] {
@@ -37,7 +37,7 @@ sealed class UserContactsListRecord extends CassandraTable[UserContactsListRecor
   }
 }
 
-object UserContactsListRecord extends UserContactsListRecord with TableOps {
+object UserContactsList extends UserContactsList with TableOps {
   import scalaz._
   import Scalaz._
 
@@ -45,7 +45,7 @@ object UserContactsListRecord extends UserContactsListRecord with TableOps {
     val batch = new BatchStatement()
     contacts foreach {
       case (contact, accessSalt) => batch.add(
-        UserContactsListRecord.insert.ifNotExists()
+        UserContactsList.insert.ifNotExists()
           .value(_.ownerId, userId)
           .value(_.contactId, contact.uid)
           .value(_.phoneNumber, contact.phoneNumber)

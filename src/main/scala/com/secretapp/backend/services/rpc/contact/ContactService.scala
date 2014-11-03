@@ -81,7 +81,7 @@ trait ContactService {
             persist.UnregisteredContact.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
           }
 
-          val clFuture = persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, usersTuple)
+          val clFuture = persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
           val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
           val stateFuture = ask(
             updatesBrokerRegion,
@@ -108,7 +108,7 @@ trait ContactService {
         Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
       } else {
         for {
-          contactList <- persist.contact.UserContactsListRecord.getEntitiesWithLocalName(currentUser.uid)
+          contactList <- persist.contact.UserContactsList.getEntitiesWithLocalName(currentUser.uid)
           usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
@@ -124,10 +124,10 @@ trait ContactService {
   def handleRequestDeleteContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.contact.UserContactsListRecord.getContact(currentUser.uid, contactId) flatMap {
+    persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
       case Some(contact) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, contact.accessSalt)) {
-          val clFuture = persist.contact.UserContactsListRecord.removeContact(currentUser.uid, contactId)
+          val clFuture = persist.contact.UserContactsList.removeContact(currentUser.uid, contactId)
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.ContactsRemoved(immutable.Seq(contactId)))
@@ -151,7 +151,7 @@ trait ContactService {
       case Some((accessSalt, phoneNumber)) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, accessSalt)) {
           withValidName(name) { name =>
-            val clFuture = persist.contact.UserContactsListRecord.insertContact(currentUser.uid, contactId, phoneNumber, name, accessSalt)
+            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, contactId, phoneNumber, name, accessSalt)
             val stateFuture = ask(
               updatesBrokerRegion,
               UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.LocalNameChanged(contactId, name.some))
