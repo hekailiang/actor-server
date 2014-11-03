@@ -37,7 +37,7 @@ class ContactServiceSpec extends RpcSpec {
     "handle RPC import contacts requests" in {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
-      val contacts = (1 to 100).toList.map { _ =>
+      val contacts = (1 to 10).toList.map { _ =>
         genTestScopeWithUser().user
       }
       val emails = immutable.Seq[EmailToImport]()
