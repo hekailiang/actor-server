@@ -3,7 +3,7 @@ package com.secretapp.backend.api
 import akka.actor.ActorLogging
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.GooglePushCredentialsRecord
+import com.secretapp.backend.persist.GooglePushCredentials
 import com.typesafe.config.ConfigFactory
 import dispatch._
 import dispatch.Defaults._
@@ -51,7 +51,7 @@ trait GooglePush {
 
   def deliverGooglePush(authId: Long, seq: Int)
                        (implicit s: CSession): Future[Unit] =
-    GooglePushCredentialsRecord.get(authId) flatMap {
+    GooglePushCredentials.get(authId) flatMap {
       deliverGooglePush(_, authId, seq)
     }
 
