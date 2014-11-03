@@ -58,8 +58,9 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
       case updateProto.GroupTitleChanged.header         => decode(row, GroupTitleChangedCodec)
       case updateProto.GroupAvatarChanged.header        => decode(row, GroupAvatarChangedCodec)
       case updateProto.contact.ContactRegistered.header => decode(row, ContactRegisteredCodec)
-      case updateProto.contact.ContactsAdded.header      => decode(row, ContactRegisteredCodec)
-      case updateProto.contact.ContactsRemoved.header    => decode(row, ContactRegisteredCodec)
+      case updateProto.contact.ContactsAdded.header     => decode(row, ContactsAddedCodec)
+      case updateProto.contact.ContactsRemoved.header   => decode(row, ContactsRemovedCodec)
+      case updateProto.contact.LocalNameChanged.header  => decode(row, LocalNameChangedCodec)
     }
 
   }
