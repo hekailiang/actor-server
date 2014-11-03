@@ -221,7 +221,7 @@ class RpcMessagingSpec extends RpcSpec {
       catchNewSession(scope2)
       catchNewSession(scope2_2)
 
-      Await.result(UserPublicKeyRecord.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
+      Await.result(UserPublicKey.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
 
       {
         implicit val scope = scope1

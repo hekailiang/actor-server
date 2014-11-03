@@ -307,7 +307,7 @@ trait SignService extends SocialHelpers {
 
   private def pushNewDeviceUpdates(authId: Long, userId: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
     // Push NewFullDevice updates
-    UserPublicKeyRecord.fetchAuthIdsByUserId(userId) onComplete {
+    UserPublicKey.fetchAuthIdsByUserId(userId) onComplete {
       case Success(authIds) =>
         log.debug(s"Fetched authIds for uid=$userId $authIds")
         for (targetAuthId <- authIds) {
@@ -326,7 +326,7 @@ trait SignService extends SocialHelpers {
       case Success(userIds) =>
         log.debug(s"Got relations for ${userId} -> ${userIds}")
         for (targetUserId <- userIds) {
-          UserPublicKeyRecord.fetchAuthIdsByUserId(targetUserId) onComplete {
+          UserPublicKey.fetchAuthIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
               log.debug(s"Fetched authIds for uid=${targetUserId} ${authIds}")
               for (targetAuthId <- authIds) {

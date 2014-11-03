@@ -382,10 +382,10 @@ class SignServiceSpec extends RpcSpec {
         deletedAuthItems.length should_== 1
         deletedAuthItems.head.deviceTitle should_== "app1"
 
-        val pkeys = UserPublicKeyRecord.getEntitiesByUserId(userId).sync()
+        val pkeys = UserPublicKey.getEntitiesByUserId(userId).sync()
         pkeys.length should_== 1
 
-        val deletedPkeys = UserPublicKeyRecord.getDeletedEntitiesByUserId(userId).sync()
+        val deletedPkeys = UserPublicKey.getDeletedEntitiesByUserId(userId).sync()
         deletedPkeys.length should_== 0
       }
 
@@ -442,11 +442,11 @@ class SignServiceSpec extends RpcSpec {
         deletedAuthItems.length should_== 1
         deletedAuthItems.head.deviceTitle should_== "app1"
 
-        val pkeys = UserPublicKeyRecord.getEntitiesByUserId(userId).sync()
+        val pkeys = UserPublicKey.getEntitiesByUserId(userId).sync()
         pkeys.length should_== 1
         pkeys.head.publicKeyHash should_== newPkHash
 
-        val deletedPKeys = UserPublicKeyRecord.getDeletedEntitiesByUserId(userId).sync()
+        val deletedPKeys = UserPublicKey.getDeletedEntitiesByUserId(userId).sync()
         deletedPKeys.length should_== 1
         deletedPKeys.head.publicKeyHash should_== pkHash
       }

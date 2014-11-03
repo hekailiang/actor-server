@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist.{ CassandraRecords, UserPublicKeyRecord }
+import com.secretapp.backend.persist.{ CassandraRecords, UserPublicKey }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
@@ -127,7 +127,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   }
 
   protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
-    UserPublicKeyRecord.fetchAuthIdsByUserId(userId)(session) onComplete {
+    UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
       case Success(authIds) =>
         log.debug(s"Fetched authIds for uid=$userId $authIds")
         f(authIds)

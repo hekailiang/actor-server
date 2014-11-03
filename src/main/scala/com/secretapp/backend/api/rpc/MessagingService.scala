@@ -121,7 +121,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     groupUserIds: immutable.Seq[Int]
     ): Future[Seq[Error \/ NewUpdatePush]] = {
       val futures = keys.keys map { encryptedAESKey =>
-        UserPublicKeyRecord.getAuthIdAndSalt(keys.userId, encryptedAESKey.keyHash) flatMap {
+        UserPublicKey.getAuthIdAndSalt(keys.userId, encryptedAESKey.keyHash) flatMap {
           case Some((authId, accessSalt)) =>
             if (ACL.userAccessHash(currentUser.authId, keys.userId, accessSalt) != keys.accessHash) {
               Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false).left)

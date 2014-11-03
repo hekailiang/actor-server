@@ -46,7 +46,7 @@ object DBConnector {
       UserContactsListRecord.createTable(session),
       UserContactsListCacheRecord.createTable(session),
       UserGroups.createTable(session),
-      UserPublicKeyRecord.createTable(session),
+      UserPublicKey.createTable(session),
       UserRecord.createTable(session),
       fileRecord.createTable(session)
     ))
@@ -68,7 +68,7 @@ object DBConnector {
       UserContactsListRecord.truncateTable(session),
       UserContactsListCacheRecord.truncateTable(session),
       UserGroups.truncateTable(session),
-      UserPublicKeyRecord.truncateTable(session),
+      UserPublicKey.truncateTable(session),
       UserRecord.truncateTable(session)
     ))
   }

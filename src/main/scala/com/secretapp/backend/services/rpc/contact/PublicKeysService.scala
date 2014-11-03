@@ -6,7 +6,7 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, PublicKeyResponse, RequestPublicKeys, ResponsePublicKeys}
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
-import com.secretapp.backend.persist.UserPublicKeyRecord
+import com.secretapp.backend.persist.UserPublicKey
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -31,7 +31,7 @@ trait PublicKeysService {
     val authId = currentAuthId
     val keysMap = keys.map(k => k.uid * k.keyHash -> k.accessHash).toMap
     for {
-      pkeys <- UserPublicKeyRecord.getEntitiesByPublicKeyHash(keys.map(k => (k.uid, k.keyHash)))
+      pkeys <- UserPublicKey.getEntitiesByPublicKeyHash(keys.map(k => (k.uid, k.keyHash)))
     } yield {
       val items = pkeys.filter { k =>
         val hkey = k.uid * k.publicKeyHash

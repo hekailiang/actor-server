@@ -6,7 +6,7 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct.{ UserId, UserKey }
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models.User
-import com.secretapp.backend.persist.UserPublicKeyRecord
+import com.secretapp.backend.persist.UserPublicKey
 import com.secretapp.backend.persist.UserRecord
 import com.secretapp.backend.util.ACL
 import scala.collection.concurrent.TrieMap
@@ -50,7 +50,7 @@ trait UserHelpers {
   }
 
   def getAuthIds(userId: Int): Future[Seq[Long]] = {
-    UserPublicKeyRecord.fetchAuthIdsByUserId(userId)
+    UserPublicKey.fetchAuthIdsByUserId(userId)
   }
 
   /**
@@ -63,7 +63,7 @@ trait UserHelpers {
   def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
     case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
 
-    UserPublicKeyRecord.fetchAllAuthIdsMap(userId) map { authIdsMap =>
+    UserPublicKey.fetchAllAuthIdsMap(userId) map { authIdsMap =>
       val withoutNew = keys.foldLeft(WithRemovedAndInvalid(Seq.empty, Seq.empty, Seq.empty)) {
         case (res, key) =>
           authIdsMap.get(key.keyHash) match {
@@ -99,10 +99,10 @@ trait UserHelpers {
 
   // fetchAuthIdsMap
   def getAuthIdsAndKeyHashes(userId: Int): Future[Map[Long, Long]] = {
-    UserPublicKeyRecord.fetchAuthIdsMap(userId)
+    UserPublicKey.fetchAuthIdsMap(userId)
   }
 
   def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
-    UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
+    UserPublicKey.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
   }
 }
