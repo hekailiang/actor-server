@@ -8,7 +8,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
+sealed class User extends CassandraTable[User, models.User] {
   override val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
@@ -21,7 +21,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
   object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
-  object keyHashes extends SetColumn[UserRecord, models.User, Long](this) with StaticColumn[Set[Long]] {
+  object keyHashes extends SetColumn[User, models.User, Long](this) with StaticColumn[Set[Long]] {
     override lazy val name = "key_hashes"
   }
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
@@ -93,7 +93,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
     )
 }
 
-object UserRecord extends UserRecord with TableOps {
+object User extends User with TableOps {
 
   def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = models.Phone(

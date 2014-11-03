@@ -13,7 +13,7 @@ import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
-import com.secretapp.backend.persist.{ UserRecord, File }
+import com.secretapp.backend.persist.{ User, File }
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
@@ -188,7 +188,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbUser =
-    UserRecord.getEntity(scope.user.uid, scope.user.authId).sync().get
+    User.getEntity(scope.user.uid, scope.user.authId).sync().get
 
   private def dbAvatar = dbUser.avatar.get
   private def dbFullImage = dbAvatar.fullImage.get

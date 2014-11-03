@@ -13,9 +13,9 @@ import com.secretapp.backend.data.message.{ struct, update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.SeqUpdate
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.data.transport.MTPackage
-import com.secretapp.backend.persist._
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
@@ -36,7 +36,7 @@ class UpdatesServiceActor(
 )(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
-  log.info(s"Starting UpdatesService for uid=${uid} authId=${authId}")
+  log.info(s"Starting UpdatesService for uid=$uid authId=$authId")
 
   def receive = {
     case RpcProtocol.Request(updateRpcProto.RequestGetDifference(seq, state)) =>
@@ -60,7 +60,7 @@ sealed trait UpdatesService {
 
     for {
       seq <- getSeq(authId)
-      difference <- SeqUpdateRecord.getDifference(
+      difference <- persist.SeqUpdateRecord.getDifference(
         authId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
       //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
@@ -80,7 +80,7 @@ sealed trait UpdatesService {
     }
   }
 
-  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[Difference] = {
+  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[Difference] = {
     val needMore = allUpdates.length > differenceSize
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val users = mkUsers(authId, updates)
@@ -89,10 +89,10 @@ sealed trait UpdatesService {
       updates map { u => DifferenceUpdate(u.value) }, needMore))
   }
 
-  protected def mkUsers(authId: Long, updates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
+  protected def mkUsers(authId: Long, updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     @inline
     def getUserStruct(uid: Int): Future[Option[struct.User]] =
-      UserRecord.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
+      persist.User.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
 
     if (updates.length > 0) {
       val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
@@ -109,7 +109,7 @@ sealed trait UpdatesService {
   @inline
   protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
     val fseq = getSeq(authId)
-    val fstate = SeqUpdateRecord.getState(authId)
+    val fstate = persist.SeqUpdateRecord.getState(authId)
     for {
       seq <- fseq
       muuid <- fstate

@@ -25,11 +25,11 @@ class UserRecordSpec extends Specification with CassandraSpecification with NoCo
         "Wayne Brain",
         models.Male,
         keyHashes = immutable.Set(pkHash))
-      val insertFuture = UserRecord.insertEntityWithChildren(entity)
+      val insertFuture = User.insertEntityWithChildren(entity)
 
       val chain = for {
         insertDone <- insertFuture
-        oneSelect <- UserRecord.getEntity(entity.uid)
+        oneSelect <- User.getEntity(entity.uid)
       } yield oneSelect
 
       chain must be_== (entity.some).await

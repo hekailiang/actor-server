@@ -6,7 +6,7 @@ import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDiff
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.persist.User
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
 import com.websudos.util.testing.AsyncAssertionsHelper._
@@ -24,7 +24,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
     "update user name" in {
       editNameShouldBeOk
 
-      UserRecord.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
+      User.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
     }
 
     "append update to chain" in {

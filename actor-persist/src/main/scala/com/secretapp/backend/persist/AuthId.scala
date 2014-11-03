@@ -34,7 +34,7 @@ object AuthId extends AuthId with TableOps {
                        (implicit session: Session): Future[Option[(models.AuthId, Option[models.User])]] = {
     def user(a: models.AuthId): Future[Option[models.User]] =
       a.userId match {
-        case Some(uid) => UserRecord.getEntity(uid, a.authId)
+        case Some(uid) => User.getEntity(uid, a.authId)
         case None => Future.successful(None)
       }
 

@@ -173,7 +173,7 @@ trait SignService extends SocialHelpers {
 
       @inline
       def updateUserRecord(name: String): Unit = {
-        UserRecord.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
+        User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
           case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
         }
       }
@@ -187,8 +187,8 @@ trait SignService extends SocialHelpers {
       // TODO: use sequence from shapeless-contrib
 
       val (fuserAuthR, fuserR) = (
-        UserRecord.getEntity(userId, authId),
-        UserRecord.getEntity(userId) // remove it when it cause bottleneck
+        User.getEntity(userId, authId),
+        User.getEntity(userId) // remove it when it cause bottleneck
       )
 
       fuserAuthR flatMap { userAuthR =>
@@ -214,7 +214,7 @@ trait SignService extends SocialHelpers {
                 auth(newUser)
               } else {
                 if (userAuth.name != userName) {
-                  UserRecord.updateName(userAuth.uid, userName)
+                  User.updateName(userAuth.uid, userName)
                   auth(userAuth.copy(name = userName))
                 } else auth(userAuth)
               }
@@ -259,7 +259,7 @@ trait SignService extends SocialHelpers {
                             name = name,
                             sex = models.NoSex,
                             keyHashes = immutable.Set(pkHash))
-                          UserRecord.insertEntityWithChildren(user) flatMap { _ =>
+                          User.insertEntityWithChildren(user) flatMap { _ =>
                             pushContactRegisteredUpdates(user)
                             auth(user)
                           }
@@ -363,7 +363,7 @@ trait SignService extends SocialHelpers {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
       AuthId.deleteEntity(authItem.authId),
-      UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
+      User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
       AuthItem.setDeleted(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
@@ -379,7 +379,7 @@ trait SignService extends SocialHelpers {
     }
 
     val frmKeyHash = if (currentUser.publicKeyHash != authItem.publicKeyHash) {
-      UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId))
+      User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId))
     } else {
       Future.successful()
     }

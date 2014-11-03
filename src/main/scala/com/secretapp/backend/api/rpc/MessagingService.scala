@@ -592,7 +592,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   )(f: models.User => Future[RpcResponse])(
     implicit session: CSession
   ): Future[RpcResponse] = {
-    UserRecord.getEntity(destUserId) flatMap {
+    User.getEntity(destUserId) flatMap {
       case Some(destUserEntity) =>
         if (ACL.userAccessHash(currentUser.authId, destUserEntity) != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))

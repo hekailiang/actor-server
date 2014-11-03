@@ -115,7 +115,7 @@ class SignServiceSpec extends RpcSpec {
 
         def sortU(users: Seq[models.User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
-        val users = UserRecord.byUid(scope.user.uid).map(usrs => sortU(usrs))
+        val users = User.byUid(scope.user.uid).map(usrs => sortU(usrs))
         val expectUsers = sortU(immutable.Seq(scope.user, newUser))
         users must be_== (expectUsers).await
       }
@@ -286,7 +286,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
         AuthId.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
-        UserRecord.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name).sync()
+        User.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name).sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
         val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))

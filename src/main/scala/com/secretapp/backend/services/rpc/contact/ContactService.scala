@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.persist.{UnregisteredContact, Phone, UserRecord}
+import com.secretapp.backend.persist.{UnregisteredContact, Phone, User}
 import com.secretapp.backend.models
 import com.secretapp.backend.api.rpc.RpcValidators._
 import com.datastax.driver.core.{ Session => CSession }
@@ -61,7 +61,7 @@ trait ContactService {
       phones <- Phone.getEntities(phoneNumbers)
       ignoredContactsId <- UserContactsListCacheRecord.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
-      usersFutureSeq <- Future.sequence(uniquePhones map (p => UserRecord.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
+      usersFutureSeq <- Future.sequence(uniquePhones map (p => User.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
       usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
         case ((usersTuple, newContactsId, registeredPhones), user) =>
@@ -110,7 +110,7 @@ trait ContactService {
       } else {
         for {
           contactList <- UserContactsListRecord.getEntitiesWithLocalName(currentUser.uid)
-          usersFutureSeq <- Future.sequence(contactList.map { c => UserRecord.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
+          usersFutureSeq <- Future.sequence(contactList.map { c => User.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
           val users = usersFutureSeq.map { user =>
@@ -148,7 +148,7 @@ trait ContactService {
   def handleRequestEditContactName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    UserRecord.getAccessSaltAndPhone(contactId) flatMap {
+    User.getAccessSaltAndPhone(contactId) flatMap {
       case Some((accessSalt, phoneNumber)) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, accessSalt)) {
           withValidName(name) { name =>
