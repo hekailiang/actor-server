@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 import scala.concurrent.Future
 import scodec.bits._
 
-trait AbstractAuthItemRecord[T <: CassandraTable[T, R], R] extends CassandraTable[T, R] {
+trait AbstractAuthItem[T <: CassandraTable[T, R], R] extends CassandraTable[T, R] {
   object userId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "user_id"
   }
@@ -39,8 +39,8 @@ trait AbstractAuthItemRecord[T <: CassandraTable[T, R], R] extends CassandraTabl
   object longitude extends OptionalDoubleColumn(this)
 }
 
-sealed class AuthItemRecord extends AbstractAuthItemRecord[AuthItemRecord, models.AuthItem] {
-  override lazy val tableName = "auth_items"
+sealed class AuthItem extends AbstractAuthItem[AuthItem, models.AuthItem] {
+  override val tableName = "auth_items"
 
   object deviceHash extends BlobColumn(this) with Index[ByteBuffer] {
     override lazy val name = "device_hash"
@@ -54,19 +54,16 @@ sealed class AuthItemRecord extends AbstractAuthItemRecord[AuthItemRecord, model
     override lazy val name = "public_key_hash"
   }
 
-  override def fromRow(row: Row): models.AuthItem = {
-    (
-      models.AuthItem(
-        id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-        authLocation(row), latitude(row), longitude(row),
-        authId(row), publicKeyHash(row), BitVector(deviceHash(row))
-      )
+  override def fromRow(row: Row): models.AuthItem =
+    models.AuthItem(
+      id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
+      authLocation(row), latitude(row), longitude(row),
+      authId(row), publicKeyHash(row), BitVector(deviceHash(row))
     )
-  }
 }
 
-sealed class DeletedAuthItemRecord extends AbstractAuthItemRecord[DeletedAuthItemRecord, models.AuthItem] {
-  override lazy val tableName = "deleted_auth_items"
+sealed class DeletedAuthItem extends AbstractAuthItem[DeletedAuthItem, models.AuthItem] {
+  override val tableName = "deleted_auth_items"
 
   object deviceHash extends BlobColumn(this) with Index[ByteBuffer] {
     override lazy val name = "device_hash_"
@@ -84,18 +81,15 @@ sealed class DeletedAuthItemRecord extends AbstractAuthItemRecord[DeletedAuthIte
     override lazy val name = "deleted_at"
   }
 
-  override def fromRow(row: Row): models.AuthItem = {
-    (
-      models.AuthItem(
-        id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-        authLocation(row), latitude(row), longitude(row),
-        authId(row), publicKeyHash(row), BitVector(deviceHash(row))
-      )
+  override def fromRow(row: Row): models.AuthItem =
+    models.AuthItem(
+      id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
+      authLocation(row), latitude(row), longitude(row),
+      authId(row), publicKeyHash(row), BitVector(deviceHash(row))
     )
-  }
 }
 
-object DeletedAuthItemRecord extends DeletedAuthItemRecord with TableOps {
+object DeletedAuthItem extends DeletedAuthItem with TableOps {
   private def insertQuery(item: models.AuthItem, userId: Int) = {
     insert.value(_.userId, userId).value(_.id, item.id)
       .value(_.deviceHash, item.deviceHash.toByteBuffer)
@@ -115,7 +109,7 @@ object DeletedAuthItemRecord extends DeletedAuthItemRecord with TableOps {
   }
 }
 
-object AuthItemRecord extends AuthItemRecord with TableOps {
+object AuthItem extends AuthItem with TableOps {
   private def insertQuery(item: models.AuthItem, userId: Int) = {
     insert.value(_.userId, userId).value(_.id, item.id)
       .value(_.deviceHash, item.deviceHash.toByteBuffer)
@@ -127,7 +121,7 @@ object AuthItemRecord extends AuthItemRecord with TableOps {
   }
 
   def insertEntity(item: models.AuthItem, userId: Int)(implicit session: Session): Future[ResultSet] = {
-    AuthItemRecord.insertQuery(item, userId).future()
+    AuthItem.insertQuery(item, userId).future()
   }
 
   def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[models.AuthItem]] =
@@ -151,7 +145,7 @@ object AuthItemRecord extends AuthItemRecord with TableOps {
   def setDeleted(userId: Int, id: Int)(implicit session: Session): Future[Option[Long]] = {
     select.where(_.userId eqs userId).and(_.id eqs id).one() flatMap {
       case Some(authItem) =>
-        DeletedAuthItemRecord.insertEntity(authItem, userId) flatMap { _ =>
+        DeletedAuthItem.insertEntity(authItem, userId) flatMap { _ =>
           delete.where(_.userId eqs userId).and(_.id eqs id).future() map (_ => Some(authItem.authId))
         }
       case None =>

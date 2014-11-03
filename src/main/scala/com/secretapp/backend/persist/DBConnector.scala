@@ -34,8 +34,8 @@ object DBConnector {
     Future.sequence(List(
       ApplePushCredentials.createTable(session),
       AuthId.createTable(session),
-      AuthItemRecord.createTable(session),
-      DeletedAuthItemRecord.createTable(session),
+      AuthItem.createTable(session),
+      DeletedAuthItem.createTable(session),
       AuthSmsCodeRecord.createTable(session),
       GooglePushCredentialsRecord.createTable(session),
       GroupRecord.createTable(session),
@@ -56,8 +56,8 @@ object DBConnector {
     Future.sequence(List(
       ApplePushCredentials.truncateTable(session),
       AuthId.truncateTable(session),
-      AuthItemRecord.truncateTable(session),
-      DeletedAuthItemRecord.truncateTable(session),
+      AuthItem.truncateTable(session),
+      DeletedAuthItem.truncateTable(session),
       AuthSmsCodeRecord.truncateTable(session),
       GooglePushCredentialsRecord.truncateTable(session),
       GroupRecord.truncateTable(session),

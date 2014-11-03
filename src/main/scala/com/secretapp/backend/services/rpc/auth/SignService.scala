@@ -71,14 +71,14 @@ trait SignService extends SocialHelpers {
 
   def handleRequestGetAuth(): Future[RpcResponse] = {
     for {
-      authItems <- AuthItemRecord.getEntities(currentUser.get.uid)
+      authItems <- AuthItem.getEntities(currentUser.get.uid)
     } yield {
       Ok(ResponseGetAuth(authItems.toVector map (struct.AuthItem.fromModel(_, currentUser.get.authId))))
     }
   }
 
   def handleRequestLogout(): Future[RpcResponse] = {
-    AuthItemRecord.getEntityByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
+    AuthItem.getEntityByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -89,7 +89,7 @@ trait SignService extends SocialHelpers {
   }
 
   def handleRequestRemoveAuth(id: Int): Future[RpcResponse] = {
-    AuthItemRecord.getEntity(currentUser.get.uid, id) flatMap {
+    AuthItem.getEntity(currentUser.get.uid, id) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -100,7 +100,7 @@ trait SignService extends SocialHelpers {
   }
 
   def handleRequestRemoveAllOtherAuths(): Future[RpcResponse] = {
-    AuthItemRecord.getEntities(currentUser.get.uid) map { authItems =>
+    AuthItem.getEntities(currentUser.get.uid) map { authItems =>
       authItems foreach {
         case authItem =>
           if (authItem.authId != currentUser.get.authId) {
@@ -148,13 +148,13 @@ trait SignService extends SocialHelpers {
       log.info(s"Authenticate currentUser=$u")
       this.currentUser = Some(u)
 
-      AuthItemRecord.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+      AuthItem.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
         for (authItem <- authItems) {
           logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
         }
 
         nextAuthItemId() map { id =>
-          AuthItemRecord.insertEntity(
+          AuthItem.insertEntity(
             models.AuthItem.build(
               id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
               authLocation = "", latitude = None, longitude = None,
@@ -364,7 +364,7 @@ trait SignService extends SocialHelpers {
     Future.sequence(Seq(
       AuthId.deleteEntity(authItem.authId),
       UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
-      AuthItemRecord.setDeleted(currentUser.uid, authItem.id)
+      AuthItem.setDeleted(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemoveDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
@@ -388,7 +388,7 @@ trait SignService extends SocialHelpers {
     Future.sequence(Seq(
       frmKeyHash,
       frmAuthId,
-      AuthItemRecord.setDeleted(currentUser.uid, authItem.id)
+      AuthItem.setDeleted(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemoveDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
