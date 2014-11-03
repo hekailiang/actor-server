@@ -44,7 +44,7 @@ class File(implicit session: Session, context: ExecutionContext with Executor) {
     if (isSourceBlock) {
       f onSuccess {
         case _ =>
-          sourceBlockRecord.insertEntity(FileSourceBlock(id, offset, bytes.length))
+          sourceBlockRecord.insertEntity(models.FileSourceBlock(id, offset, bytes.length))
       }
     }
     f

@@ -3,11 +3,10 @@ package com.secretapp.backend.persist
 import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
 import scala.concurrent.{ExecutionContext, Future}
-
-case class FileSourceBlock(fileId: Int, offset: Int, length: Int)
+import com.secretapp.backend.models
 
 private[persist] class FileSourceBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileSourceBlockRecord, FileSourceBlock] with TableOps {
+    extends CassandraTable[FileSourceBlockRecord, models.FileSourceBlock] with TableOps {
   override val tableName = "file_source_blocks"
 
   object fileId extends IntColumn(this) with PartitionKey[Int] {
@@ -16,10 +15,10 @@ private[persist] class FileSourceBlockRecord(implicit session: Session, context:
   object offset extends IntColumn(this) with PrimaryKey[Int]
   object length extends IntColumn(this)
 
-  override def fromRow(row: Row): FileSourceBlock =
-    FileSourceBlock(fileId(row), offset(row), length(row))
+  override def fromRow(row: Row): models.FileSourceBlock =
+    models.FileSourceBlock(fileId(row), offset(row), length(row))
 
-  def insertEntity(block: FileSourceBlock): Future[ResultSet] =
+  def insertEntity(block: models.FileSourceBlock): Future[ResultSet] =
     insert
       .value(_.fileId, block.fileId)
       .value(_.offset, block.offset)
