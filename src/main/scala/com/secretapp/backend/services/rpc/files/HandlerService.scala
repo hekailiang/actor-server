@@ -7,7 +7,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.persist.LocationInvalid
-import com.secretapp.backend.persist.FileRecordError
+import com.secretapp.backend.persist.FileError
 import com.secretapp.backend.services.GeneratorService
 import java.nio.ByteBuffer
 import java.util.zip.CRC32
@@ -49,7 +49,7 @@ trait HandlerService extends GeneratorService {
             Ok(rsp)
           }
         } catch {
-          case e: FileRecordError =>
+          case e: FileError =>
             Future.successful(Error(400, e.tag, "", e.canTryAgain))
         }
     }
@@ -125,7 +125,7 @@ trait HandlerService extends GeneratorService {
         val rsp = ResponseFilePart(BitVector(bytes))
         Ok(rsp)
     } recover {
-      case e: FileRecordError =>
+      case e: FileError =>
         Error(400, e.tag, "", e.canTryAgain)
     }
     f onFailure {

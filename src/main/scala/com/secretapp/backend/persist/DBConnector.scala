@@ -29,7 +29,7 @@ object DBConnector {
   }
 
   def createTables(session: Session)(implicit context: ExecutionContext with Executor) = {
-    val fileRecord = new FileRecord()(session, context)
+    val fileRecord = new File()(session, context)
 
     Future.sequence(List(
       ApplePushCredentials.createTable(session),

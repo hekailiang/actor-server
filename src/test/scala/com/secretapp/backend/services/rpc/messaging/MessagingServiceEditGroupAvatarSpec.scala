@@ -12,7 +12,7 @@ import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
-import com.secretapp.backend.persist.{ GroupRecord, FileRecord }
+import com.secretapp.backend.persist.{ GroupRecord, File }
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
@@ -218,7 +218,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
-  private val fr = new FileRecord
+  private val fr = new File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))

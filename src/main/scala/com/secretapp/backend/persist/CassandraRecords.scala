@@ -9,5 +9,5 @@ trait CassandraRecords {
 
   import context._
 
-  val fileRecord = new FileRecord
+  val fileRecord = new File
 }

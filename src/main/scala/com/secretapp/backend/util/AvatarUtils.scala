@@ -7,7 +7,7 @@ import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.services.common.RandomService
 import com.sksamuel.scrimage.{ AsyncImage, Format, Position }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.FileRecord
+import com.secretapp.backend.persist.File
 import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
 import Scalaz._
@@ -36,7 +36,7 @@ object AvatarUtils extends RandomService {
     (implicit ec: ExecutionContext): Future[(Int, Int)] =
     AsyncImage(imgBytes) map { i => (i.width, i.height) }
 
-  def scaleAvatar(fr: FileRecord, fc: ActorRef, fl: models.FileLocation)
+  def scaleAvatar(fr: File, fc: ActorRef, fl: models.FileLocation)
                  (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[models.Avatar] =
     for (
       fullImageBytes   <- fr.getFile(fl.fileId.toInt);
