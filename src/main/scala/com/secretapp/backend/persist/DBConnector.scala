@@ -32,7 +32,7 @@ object DBConnector {
     val fileRecord = new FileRecord()(session, context)
 
     Future.sequence(List(
-      ApplePushCredentialsRecord.createTable(session),
+      ApplePushCredentials.createTable(session),
       AuthIdRecord.createTable(session),
       AuthItemRecord.createTable(session),
       DeletedAuthItemRecord.createTable(session),
@@ -54,7 +54,7 @@ object DBConnector {
 
   def truncateTables(session: Session) = {
     Future.sequence(List(
-      ApplePushCredentialsRecord.truncateTable(session),
+      ApplePushCredentials.truncateTable(session),
       AuthIdRecord.truncateTable(session),
       AuthItemRecord.truncateTable(session),
       DeletedAuthItemRecord.truncateTable(session),
