@@ -15,7 +15,7 @@ class FileLost extends FileError("FILE_LOST", false)
 
 class File(implicit session: Session, context: ExecutionContext with Executor) {
   private lazy val blockRecord = new FileBlock
-  private lazy val sourceBlockRecord = new FileSourceBlockRecord
+  private lazy val sourceBlockRecord = new FileSourceBlock
 
   def createTable(session: Session): Future[Unit] = {
     val b = blockRecord.createTable(session)

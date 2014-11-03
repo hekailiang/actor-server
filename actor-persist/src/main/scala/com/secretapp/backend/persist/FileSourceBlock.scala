@@ -5,8 +5,8 @@ import java.util.concurrent.Executor
 import scala.concurrent.{ExecutionContext, Future}
 import com.secretapp.backend.models
 
-private[persist] class FileSourceBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileSourceBlockRecord, models.FileSourceBlock] with TableOps {
+private[persist] class FileSourceBlock(implicit session: Session, context: ExecutionContext with Executor)
+    extends CassandraTable[FileSourceBlock, models.FileSourceBlock] with TableOps {
   override val tableName = "file_source_blocks"
 
   object fileId extends IntColumn(this) with PartitionKey[Int] {
