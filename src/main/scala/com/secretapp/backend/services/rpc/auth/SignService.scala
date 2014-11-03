@@ -179,7 +179,7 @@ trait SignService extends SocialHelpers {
 
           @inline
           def updateUserRecord(name: String): Unit = {
-            persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name) onSuccess {
+            persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name, countryCode) onSuccess {
               case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
             }
           }

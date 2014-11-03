@@ -12,8 +12,8 @@ case class User(
   phoneNumber: Long,
   accessSalt: String,
   name: String,
-  sex: Sex,
   countryCode: String,
+  sex: Sex,
   smallAvatarFileId: Option[Int] = None,
   smallAvatarFileHash: Option[Long] = None,
   smallAvatarFileSize: Option[Int] = None,
@@ -57,5 +57,3 @@ case class User(
     else
       None
 }
-
-

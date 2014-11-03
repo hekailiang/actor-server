@@ -141,7 +141,7 @@ object User extends User with TableOps {
       .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
   }
 
-  def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
+  def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, countryCode: String, sex: models.Sex = models.NoSex)
                                  (implicit session: Session): Future[ResultSet] =
     insert.value(_.uid, uid)
       .value(_.authId, authId)
@@ -149,6 +149,7 @@ object User extends User with TableOps {
       .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.name, name)
       .value(_.sex, sex.toInt)
+      .value(_.countryCode, countryCode)
       .future()
       .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
       .flatMap(_ => UserPublicKey.insertEntityRow(uid, publicKeyHash, publicKey, authId))
