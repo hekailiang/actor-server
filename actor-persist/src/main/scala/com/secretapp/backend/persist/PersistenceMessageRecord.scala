@@ -3,10 +3,9 @@ package com.secretapp.backend.persist
 import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 import scodec.bits._
+import com.secretapp.backend.models
 
-case class PersistenceMessage(processorId: String, partitionNr: Long, sequenceNr: Long, marker: String, message: BitVector)
-
-sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageRecord, PersistenceMessage] {
+sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageRecord, models.PersistenceMessage] {
   override val tableName = "messages"
 
   object processorId extends StringColumn(this) with PartitionKey[String] {
@@ -21,8 +20,8 @@ sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageR
   object marker extends StringColumn(this) with PrimaryKey[String]
   object message extends BlobColumn(this)
 
-  override def fromRow(row: Row): PersistenceMessage =
-    PersistenceMessage(
+  override def fromRow(row: Row): models.PersistenceMessage =
+    models.PersistenceMessage(
       processorId(row),
       partitionNr(row),
       sequenceNr(row),
@@ -32,7 +31,7 @@ sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageR
 }
 
 object PersistenceMessageRecord extends PersistenceMessageRecord {
-  def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: PersistenceMessage => Any)(implicit session: Session) = {
+  def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: models.PersistenceMessage => Any)(implicit session: Session) = {
     def process(sequenceNr: Long): Unit = {
       val baseQuery = select
         .where(_.processorId eqs processorId).and(_.partitionNr eqs partitionNr)
@@ -55,7 +54,7 @@ object PersistenceMessageRecord extends PersistenceMessageRecord {
     process(1)
   }
 
-  def upsertMessage(m: PersistenceMessage)(implicit session: Session): Future[ResultSet] =
+  def upsertMessage(m: models.PersistenceMessage)(implicit session: Session): Future[ResultSet] =
     update
       .where(_.processorId eqs m.processorId)
       .and(_.partitionNr eqs m.partitionNr)
