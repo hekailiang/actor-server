@@ -6,11 +6,10 @@ import java.util.concurrent.Executor
 import play.api.libs.iteratee._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
-
-case class FileBlock(blockId: Int, bytes: Array[Byte])
+import com.secretapp.backend.models
 
 object FileBlockRecord {
-  type EntityType = Entity[Int, FileBlock]
+  type EntityType = Entity[Int, models.FileBlock]
 
   val blockSize = 8 * 1024 // 8kB
 }
@@ -35,7 +34,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   override def fromRow(row: Row): EntityType =
     Entity(
       fileId(row),
-      FileBlock(
+      models.FileBlock(
         blockId = blockId(row),
         bytes = BitVector(bytes(row)).toByteArray
       )
@@ -62,7 +61,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
     val firstBlockId = offset / blockSize
     val finserts = bytes.grouped(blockSize).zipWithIndex map {
       case (blockBytes, i) =>
-        val e = Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
+        val e = Entity(fileId, models.FileBlock(firstBlockId + i, blockBytes))
         e
     } map insertEntity
     Future.sequence(finserts)
