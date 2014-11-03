@@ -133,7 +133,7 @@ object UserRecord extends UserRecord with TableOps {
       .future()
       .flatMap(_ => PhoneRecord.insertEntity(phone))
       .flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
-      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
+      .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
   }
 
   def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
@@ -147,7 +147,7 @@ object UserRecord extends UserRecord with TableOps {
       .future()
       .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
       .flatMap(_ => UserPublicKeyRecord.insertEntityRow(uid, publicKeyHash, publicKey, authId))
-      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
+      .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, uid.some)))
       .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =

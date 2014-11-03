@@ -3,7 +3,7 @@ package com.secretapp.backend.api.frontend
 import akka.actor._
 import com.secretapp.backend.data.message.{ RequestAuthId, ResponseAuthId, Drop }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.AuthIdRecord
+import com.secretapp.backend.persist.AuthId
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.services.common.RandomService
 import com.datastax.driver.core.{ Session => CSession }
@@ -41,7 +41,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit
               dropClient(message.messageId, "sessionId must equal to 0", p.sessionId)
             case RequestAuthId() =>
               val newAuthId = rand.nextLong()
-              AuthIdRecord.insertEntity(models.AuthId(newAuthId, None))
+              AuthId.insertEntity(models.AuthId(newAuthId, None))
               val pkg = transport.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
               connection ! ResponseToClient(pkg.encode)
             case _ =>

@@ -33,7 +33,7 @@ object DBConnector {
 
     Future.sequence(List(
       ApplePushCredentials.createTable(session),
-      AuthIdRecord.createTable(session),
+      AuthId.createTable(session),
       AuthItemRecord.createTable(session),
       DeletedAuthItemRecord.createTable(session),
       AuthSmsCodeRecord.createTable(session),
@@ -55,7 +55,7 @@ object DBConnector {
   def truncateTables(session: Session) = {
     Future.sequence(List(
       ApplePushCredentials.truncateTable(session),
-      AuthIdRecord.truncateTable(session),
+      AuthId.truncateTable(session),
       AuthItemRecord.truncateTable(session),
       DeletedAuthItemRecord.truncateTable(session),
       AuthSmsCodeRecord.truncateTable(session),

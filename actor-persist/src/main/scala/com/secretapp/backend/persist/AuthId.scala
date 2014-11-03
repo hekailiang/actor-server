@@ -4,7 +4,7 @@ import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
 import scala.concurrent.Future
 
-sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, models.AuthId] {
+sealed class AuthId extends CassandraTable[AuthId, models.AuthId] {
   override val tableName = "auth_ids"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
@@ -17,7 +17,7 @@ sealed class AuthIdRecord extends CassandraTable[AuthIdRecord, models.AuthId] {
   override def fromRow(row: Row): models.AuthId = models.AuthId(authId(row), userId(row))
 }
 
-object AuthIdRecord extends AuthIdRecord with TableOps {
+object AuthId extends AuthId with TableOps {
   def insertEntity(item: models.AuthId)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.authId, item.authId)

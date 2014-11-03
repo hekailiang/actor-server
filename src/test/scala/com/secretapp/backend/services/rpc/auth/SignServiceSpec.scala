@@ -105,7 +105,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = SessionIdentifier()
         implicit val newScope = scope.copy(authId = newAuthId, session = newSessionId)
-        AuthIdRecord.insertEntity(models.AuthId(newAuthId, scope.user.uid.some)).sync()
+        AuthId.insertEntity(models.AuthId(newAuthId, scope.user.uid.some)).sync()
         sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey, BitVector.empty, "app", 0, "key"))
 
         val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
@@ -285,7 +285,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
-        AuthIdRecord.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
+        AuthId.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
         UserRecord.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name).sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))

@@ -362,7 +362,7 @@ trait SignService extends SocialHelpers {
   private def logout(authItem: models.AuthItem, currentUser: models.User)(implicit session: CSession) = {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
-      AuthIdRecord.deleteEntity(authItem.authId),
+      AuthId.deleteEntity(authItem.authId),
       UserRecord.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
       AuthItemRecord.setDeleted(currentUser.uid, authItem.id)
     )) andThen {
@@ -373,7 +373,7 @@ trait SignService extends SocialHelpers {
 
   private def logoutKeepingCurrentAuthIdAndPK(authItem: models.AuthItem, currentUser: models.User)(implicit session: CSession) = {
     val frmAuthId = if (currentUser.authId != authItem.authId) {
-      AuthIdRecord.deleteEntity(authItem.authId)
+      AuthId.deleteEntity(authItem.authId)
     } else {
       Future.successful()
     }
