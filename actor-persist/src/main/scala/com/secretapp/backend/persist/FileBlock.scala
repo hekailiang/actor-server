@@ -6,18 +6,17 @@ import java.util.concurrent.Executor
 import play.api.libs.iteratee._
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
+import com.secretapp.backend.models
 
-case class FileBlock(blockId: Int, bytes: Array[Byte])
-
-object FileBlockRecord {
-  type EntityType = Entity[Int, FileBlock]
+object FileBlock {
+  type EntityType = Entity[Int, models.FileBlock]
 
   val blockSize = 8 * 1024 // 8kB
 }
 
-private[persist] class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with TableOps {
-  import FileBlockRecord._
+private[persist] class FileBlock(implicit session: Session, context: ExecutionContext with Executor)
+    extends CassandraTable[FileBlock, FileBlock.EntityType] with TableOps {
+  import FileBlock._
 
   override val tableName = "file_blocks"
 
@@ -35,7 +34,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
   override def fromRow(row: Row): EntityType =
     Entity(
       fileId(row),
-      FileBlock(
+      models.FileBlock(
         blockId = blockId(row),
         bytes = BitVector(bytes(row)).toByteArray
       )
@@ -62,7 +61,7 @@ private[persist] class FileBlockRecord(implicit session: Session, context: Execu
     val firstBlockId = offset / blockSize
     val finserts = bytes.grouped(blockSize).zipWithIndex map {
       case (blockBytes, i) =>
-        val e = Entity(fileId, FileBlock(firstBlockId + i, blockBytes))
+        val e = Entity(fileId, models.FileBlock(firstBlockId + i, blockBytes))
         e
     } map insertEntity
     Future.sequence(finserts)

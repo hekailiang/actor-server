@@ -5,7 +5,7 @@ import com.secretapp.backend.models
 import scala.collection.immutable
 import scala.concurrent.Future
 
-sealed class PhoneRecord extends CassandraTable[PhoneRecord, models.Phone] {
+sealed class Phone extends CassandraTable[Phone, models.Phone] {
   override val tableName = "phones"
 
   object number extends LongColumn(this) with PartitionKey[Long]
@@ -27,7 +27,7 @@ sealed class PhoneRecord extends CassandraTable[PhoneRecord, models.Phone] {
       userName = userName(row), userSex = models.Sex.fromInt(userSex(row)))
 }
 
-object PhoneRecord extends PhoneRecord with TableOps {
+object Phone extends Phone with TableOps {
   def insertEntity(entity: models.Phone)(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.number, entity.number)

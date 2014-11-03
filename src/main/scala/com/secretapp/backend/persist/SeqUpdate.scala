@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scodec.Codec
 import scodec.bits._
 
-sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
+sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
   override val tableName = "seq_updates"
 
   object authId extends LongColumn(this) with PartitionKey[Long] {
@@ -66,15 +66,15 @@ sealed class SeqUpdateRecord extends CassandraTable[SeqUpdateRecord, (Entity[UUI
   }
 }
 
-object SeqUpdateRecord extends SeqUpdateRecord with TableOps {
+object SeqUpdate extends SeqUpdate with TableOps {
 
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]] = {
     val query = state match {
       case Some(uuid) =>
-        SeqUpdateRecord.select.orderBy(_.uuid.asc)
+        SeqUpdate.select.orderBy(_.uuid.asc)
           .where(_.authId eqs authId).and(_.uuid gt uuid)
       case None =>
-        SeqUpdateRecord.select.orderBy(_.uuid.asc)
+        SeqUpdate.select.orderBy(_.uuid.asc)
           .where(_.authId eqs authId)
     }
 
@@ -106,7 +106,7 @@ object SeqUpdateRecord extends SeqUpdateRecord with TableOps {
   }
 
   def getState(authId: Long)(implicit session: Session): Future[Option[UUID]] =
-    SeqUpdateRecord.select(_.uuid).where(_.authId eqs authId).orderBy(_.uuid.desc).one
+    SeqUpdate.select(_.uuid).where(_.authId eqs authId).orderBy(_.uuid.desc).one
 
   def push(authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] =
     push(UUIDs.timeBased, authId, update)

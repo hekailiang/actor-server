@@ -13,7 +13,7 @@ import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
-import com.secretapp.backend.persist.{ UserRecord, FileRecord }
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
@@ -151,7 +151,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
-  private val fr = new FileRecord
+  private val fr = new persist.File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
@@ -188,7 +188,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbUser =
-    UserRecord.getEntity(scope.user.uid, scope.user.authId).sync().get
+    persist.User.getEntity(scope.user.uid, scope.user.authId).sync().get
 
   private def dbAvatar = dbUser.avatar.get
   private def dbFullImage = dbAvatar.fullImage.get

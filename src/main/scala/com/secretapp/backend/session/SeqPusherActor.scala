@@ -5,7 +5,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
 import com.secretapp.backend.data.message.update.{ FatSeqUpdate, SeqUpdate }
 import com.secretapp.backend.data.message.update.contact.ContactRegistered
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon._
 import java.util.UUID
 import scala.concurrent.Future
@@ -22,7 +22,7 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
       val fupd = u match {
         case _: ContactRegistered =>
           val fuserStructs = u.userIds map { userId =>
-            UserRecord.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
+            persist.User.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
           }
           for {
             userStructs <- Future.sequence(fuserStructs)

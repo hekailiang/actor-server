@@ -8,7 +8,7 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 import scodec.bits.BitVector
 
-sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, models.UserPublicKey] {
+sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPublicKey] {
   override val tableName = "user_public_keys"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
@@ -43,7 +43,7 @@ sealed class UserPublicKeyRecord extends CassandraTable[UserPublicKeyRecord, mod
     )
 }
 
-object UserPublicKeyRecord extends UserPublicKeyRecord with TableOps {
+object UserPublicKey extends UserPublicKey with TableOps {
   import scalaz._
   import Scalaz._
 

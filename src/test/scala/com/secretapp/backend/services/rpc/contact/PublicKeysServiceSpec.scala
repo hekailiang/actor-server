@@ -4,7 +4,7 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
 import scala.language.{ postfixOps, higherKinds }
 import scala.collection.immutable
-import com.secretapp.backend.persist._
+import com.secretapp.backend.persist
 import com.secretapp.backend.data.message.RpcRequestBox
 import com.secretapp.backend.data.message.rpc.{Ok, Request}
 import com.secretapp.backend.data.message.rpc.contact._
@@ -30,7 +30,7 @@ class PublicKeysServiceSpec extends RpcSpec {
         authUser(user, phoneNumber)
         val secondUser = models.User(userId + 1, scope.authId + 1, pkHash, publicKey, phoneNumber + 1, userSalt, name, models.NoSex, keyHashes = immutable.Set(pkHash))
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
-        UserRecord.insertEntityWithChildren(secondUser).sync()
+        persist.User.insertEntityWithChildren(secondUser).sync()
 
         val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
         val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))

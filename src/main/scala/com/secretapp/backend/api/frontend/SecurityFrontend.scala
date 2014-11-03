@@ -4,12 +4,11 @@ import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message.Drop
-import com.secretapp.backend.persist.AuthIdRecord
+import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.session.SessionProtocol.{HandleMTMessageBox, HandleJsonMessageBox, Envelope}
+import com.secretapp.backend.session.SessionProtocol.Envelope
 import scala.collection.JavaConversions._
 import scala.util.Success
-import scodec.bits._
 import scalaz._
 import Scalaz._
 
@@ -26,7 +25,7 @@ with ActorLogging
   import context.system
 
   val receiveBuffer = new java.util.LinkedList[Any]()
-  val authRecF = AuthIdRecord.getEntityWithUser(authId)
+  val authRecF = persist.AuthId.getEntityWithUser(authId)
 
   override def preStart(): Unit = {
     super.preStart()

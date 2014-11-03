@@ -4,19 +4,18 @@ import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
+import com.secretapp.backend.models
 
-case class File(fileId: Int, sourceBlocksCount: Int)
+abstract class FileError(val tag: String, val canTryAgain: Boolean) extends Exception
+class LocationInvalid extends FileError("LOCATION_INVALID", false)
+class OffsetInvalid extends FileError("OFFSET_INVALID", false)
+class OffsetTooLarge extends FileError("OFFSET_TOO_LARGE", false)
+class LimitInvalid extends FileError("LIMIT_INVALID", false)
+class FileLost extends FileError("FILE_LOST", false)
 
-abstract class FileRecordError(val tag: String, val canTryAgain: Boolean) extends Exception
-class LocationInvalid extends FileRecordError("LOCATION_INVALID", false)
-class OffsetInvalid extends FileRecordError("OFFSET_INVALID", false)
-class OffsetTooLarge extends FileRecordError("OFFSET_TOO_LARGE", false)
-class LimitInvalid extends FileRecordError("LIMIT_INVALID", false)
-class FileLost extends FileRecordError("FILE_LOST", false)
-
-class FileRecord(implicit session: Session, context: ExecutionContext with Executor) {
-  private lazy val blockRecord = new FileBlockRecord
-  private lazy val sourceBlockRecord = new FileSourceBlockRecord
+class File(implicit session: Session, context: ExecutionContext with Executor) {
+  private lazy val blockRecord = new FileBlock
+  private lazy val sourceBlockRecord = new FileSourceBlock
 
   def createTable(session: Session): Future[Unit] = {
     val b = blockRecord.createTable(session)
@@ -45,7 +44,7 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     if (isSourceBlock) {
       f onSuccess {
         case _ =>
-          sourceBlockRecord.insertEntity(FileSourceBlock(id, offset, bytes.length))
+          sourceBlockRecord.insertEntity(models.FileSourceBlock(id, offset, bytes.length))
       }
     }
     f
@@ -63,7 +62,7 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     } yield {
       // FIXME: don't use BitVector here
       val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
-      bytes.drop(offset % FileBlockRecord.blockSize).take(limit).toArray
+      bytes.drop(offset % FileBlock.blockSize).take(limit).toArray
     }
   }
 

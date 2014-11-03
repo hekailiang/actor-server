@@ -5,9 +5,8 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct.{ UserId, UserKey }
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
-import com.secretapp.backend.models.User
-import com.secretapp.backend.persist.UserPublicKeyRecord
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.models
+import com.secretapp.backend.persist
 import com.secretapp.backend.util.ACL
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
@@ -23,17 +22,17 @@ trait UserHelpers {
   import context.dispatcher
 
   // Caches userId -> accessHash associations
-  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[(Long, User)]]
+  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[(Long, models.User)]]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
   // TODO: optimize this helpers
 
-  def getUsers(uid: Int): Future[Seq[(Long, User)]] = {
+  def getUsers(uid: Int): Future[Seq[(Long, models.User)]] = {
     Option(usersCache.get(uid)) match {
       case Some(users) =>
         Future.successful(users)
       case None =>
-        UserRecord.byUid(uid) map (
+        persist.User.byUid(uid) map (
           _ map {user => (user.publicKeyHash, user) }
         )
     }
@@ -50,7 +49,7 @@ trait UserHelpers {
   }
 
   def getAuthIds(userId: Int): Future[Seq[Long]] = {
-    UserPublicKeyRecord.fetchAuthIdsByUserId(userId)
+    persist.UserPublicKey.fetchAuthIdsByUserId(userId)
   }
 
   /**
@@ -63,7 +62,7 @@ trait UserHelpers {
   def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
     case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
 
-    UserPublicKeyRecord.fetchAllAuthIdsMap(userId) map { authIdsMap =>
+    persist.UserPublicKey.fetchAllAuthIdsMap(userId) map { authIdsMap =>
       val withoutNew = keys.foldLeft(WithRemovedAndInvalid(Seq.empty, Seq.empty, Seq.empty)) {
         case (res, key) =>
           authIdsMap.get(key.keyHash) match {
@@ -99,10 +98,10 @@ trait UserHelpers {
 
   // fetchAuthIdsMap
   def getAuthIdsAndKeyHashes(userId: Int): Future[Map[Long, Long]] = {
-    UserPublicKeyRecord.fetchAuthIdsMap(userId)
+    persist.UserPublicKey.fetchAuthIdsMap(userId)
   }
 
   def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
-    UserPublicKeyRecord.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
+    persist.UserPublicKey.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
   }
 }

@@ -8,7 +8,7 @@ import scodec.bits.BitVector
 import scalaz._
 import Scalaz._
 
-sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
+sealed class User extends CassandraTable[User, models.User] {
   override val tableName = "users"
 
   object uid extends IntColumn(this) with PartitionKey[Int]
@@ -21,7 +21,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
   object publicKey extends BlobColumn(this) {
     override lazy val name = "public_key"
   }
-  object keyHashes extends SetColumn[UserRecord, models.User, Long](this) with StaticColumn[Set[Long]] {
+  object keyHashes extends SetColumn[User, models.User, Long](this) with StaticColumn[Set[Long]] {
     override lazy val name = "key_hashes"
   }
   object accessSalt extends StringColumn(this) with StaticColumn[String] {
@@ -93,7 +93,7 @@ sealed class UserRecord extends CassandraTable[UserRecord, models.User] {
     )
 }
 
-object UserRecord extends UserRecord with TableOps {
+object User extends User with TableOps {
 
   def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[ResultSet] = {
     val phone = models.Phone(
@@ -131,9 +131,9 @@ object UserRecord extends UserRecord with TableOps {
       .value(_.fullAvatarWidth, entity.fullAvatarWidth)
       .value(_.fullAvatarHeight, entity.fullAvatarHeight)
       .future()
-      .flatMap(_ => PhoneRecord.insertEntity(phone))
-      .flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
-      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
+      .flatMap(_ => Phone.insertEntity(phone))
+      .flatMap(_ => UserPublicKey.insertEntity(userPK))
+      .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
   }
 
   def insertEntityRowWithChildren(uid: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, sex: models.Sex = models.NoSex)
@@ -146,16 +146,16 @@ object UserRecord extends UserRecord with TableOps {
       .value(_.sex, sex.toInt)
       .future()
       .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
-      .flatMap(_ => UserPublicKeyRecord.insertEntityRow(uid, publicKeyHash, publicKey, authId))
-      .flatMap(_ => AuthIdRecord.insertEntity(models.AuthId(authId, uid.some)))
-      .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
+      .flatMap(_ => UserPublicKey.insertEntityRow(uid, publicKeyHash, publicKey, authId))
+      .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, uid.some)))
+      .flatMap(_ => Phone.updateUserName(phoneNumber, name))
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
     update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).future()
 
   /**
-   * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
-   * removes keyHash from the following records: [[UserPublicKeyRecord]], [[PhoneRecord]], [[GroupUserRecord]].
+   * Marks keyHash as deleted in [[UserPublicKey]] and, if result is success,
+   * removes keyHash from the following records: [[UserPublicKey]], [[Phone]], [[GroupUser]].
    *
    * @param uid user id
    * @param publicKeyHash user public key hash
@@ -163,7 +163,7 @@ object UserRecord extends UserRecord with TableOps {
    * @return a Future containing Some(authId) if removal succeeded and None if keyHash was not found
    */
   def removeKeyHash(uid: Int, publicKeyHash: Long, optKeepAuthId: Option[Long])(implicit session: Session): Future[Option[Long]] = {
-    UserPublicKeyRecord.setDeleted(uid, publicKeyHash) flatMap {
+    UserPublicKey.setDeleted(uid, publicKeyHash) flatMap {
       case Some(authId) =>
         val frmUser = optKeepAuthId match {
           case Some(keepAuthId) if keepAuthId == authId =>
@@ -176,7 +176,7 @@ object UserRecord extends UserRecord with TableOps {
           Vector(
             update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
             frmUser,
-            GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
+            GroupUser.removeUserKeyHash(uid, publicKeyHash)
           )
         ) map (_ => Some(authId))
       case None =>

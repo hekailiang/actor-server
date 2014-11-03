@@ -4,7 +4,7 @@ import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 
-sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCredentialsRecord, models.GooglePushCredentials] {
+sealed class GooglePushCredentials extends CassandraTable[GooglePushCredentials, models.GooglePushCredentials] {
 
   override val tableName = "google_push_credentials"
 
@@ -22,7 +22,7 @@ sealed class GooglePushCredentialsRecord extends CassandraTable[GooglePushCreden
     models.GooglePushCredentials(authId(r), projectId(r), regId(r))
 }
 
-object GooglePushCredentialsRecord extends GooglePushCredentialsRecord with TableOps {
+object GooglePushCredentials extends GooglePushCredentials with TableOps {
 
   def set(c: models.GooglePushCredentials)(implicit s: Session): Future[ResultSet] = {
     @inline def doInsert() =

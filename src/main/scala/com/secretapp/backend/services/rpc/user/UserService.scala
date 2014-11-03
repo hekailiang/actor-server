@@ -7,9 +7,8 @@ import com.secretapp.backend.data.message.rpc.user.{ RequestEditName, RequestEdi
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers.{ SocialHelpers, UserHelpers }
-import com.secretapp.backend.persist.UserRecord
+import com.secretapp.backend.persist
 import com.secretapp.backend.util.AvatarUtils
-import com.secretapp.backend.data.message.struct._
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
@@ -37,7 +36,7 @@ trait UserService extends SocialHelpers with UserHelpers {
         Future successful Error(400, "FILE_TOO_BIG", "", false)
       else
         AvatarUtils.scaleAvatar(fileRecord, clusterProxies.filesCounterProxy, r.fileLocation) flatMap { a =>
-          UserRecord.updateAvatar(user.uid, a) map { _ =>
+          persist.User.updateAvatar(user.uid, a) map { _ =>
             withRelatedAuthIds(user.uid) { authIds =>
               authIds foreach { authId =>
                 updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
@@ -54,7 +53,7 @@ trait UserService extends SocialHelpers with UserHelpers {
   }
 
   private def handleEditName(user: models.User, r: RequestEditName): Future[RpcResponse] =
-    UserRecord.updateName(user.uid, r.name) map { _ =>
+    persist.User.updateName(user.uid, r.name) map { _ =>
       withRelatedAuthIds(user.uid) { authIds =>
         authIds foreach { authId =>
           updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, NameChanged(user.uid, Some(r.name)))

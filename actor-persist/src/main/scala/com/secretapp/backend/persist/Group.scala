@@ -7,7 +7,7 @@ import com.websudos.phantom.query.SelectQuery
 import scala.concurrent.Future
 import scodec.bits.BitVector
 
-sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
+sealed class Group extends CassandraTable[Group, models.Group] {
   override val tableName = "groups"
 
   object id extends IntColumn(this) with PartitionKey[Int]
@@ -95,11 +95,11 @@ sealed class GroupRecord extends CassandraTable[GroupRecord, models.Group] {
     )
   }
 
-  def selectWithAvatar: SelectQuery[GroupRecord, (models.Group, models.AvatarData)] =
-    new SelectQuery[GroupRecord, (models.Group, models.AvatarData)](this.asInstanceOf[GroupRecord], QueryBuilder.select().from(tableName), this.asInstanceOf[GroupRecord].fromRowWithAvatar)
+  def selectWithAvatar: SelectQuery[Group, (models.Group, models.AvatarData)] =
+    new SelectQuery[Group, (models.Group, models.AvatarData)](this.asInstanceOf[Group], QueryBuilder.select().from(tableName), this.asInstanceOf[Group].fromRowWithAvatar)
 }
 
-object GroupRecord extends GroupRecord with TableOps {
+object Group extends Group with TableOps {
   def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.id, entity.id)

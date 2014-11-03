@@ -12,7 +12,6 @@ import com.secretapp.backend.session.SessionActor
 import spray.can.Http
 import spray.can.server.UHttp
 import scala.util.Try
-import com.secretapp.backend.persist.DBConnector
 
 class ApiKernel extends Bootable {
   import Tcp._
@@ -28,8 +27,8 @@ class ApiKernel extends Bootable {
 
   def startup = {
     // C* initialize
-    implicit val session = DBConnector.session
-    DBConnector.createTables(session)
+    implicit val session = persist.DBConnector.session
+    persist.DBConnector.createTables(session)
 
     // Session bootstrap
     val clusterProxies = new ClusterProxies
@@ -55,7 +54,7 @@ class ApiKernel extends Bootable {
     system.actorOf(Props(new WSHeatingUpActor(hostname, wsPort)), "ws-heat-service")
   }
 
-  def shutdown = {
+  def shutdown() = {
     system.shutdown()
   }
 }

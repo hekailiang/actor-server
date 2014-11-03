@@ -17,7 +17,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 
-class SeqUpdateRecordSpec extends CassandraSpecification {
+class SeqUpdateSpec extends CassandraSpecification {
   "SeqUpdateRecord" should {
     "get push" in {
       val authId = 123L
@@ -34,9 +34,9 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
       val updateMessageSent = updateProto.MessageSent(destUID, randomId = 5L)
 
       val efs = for {
-        x <- SeqUpdateRecord.push(authId, updateMessage)
-        y <- SeqUpdateRecord.push(authId, updateMessageSent)
-        f <- SeqUpdateRecord.select.orderBy(_.uuid.asc).where(_.authId eqs authId).fetch
+        x <- SeqUpdate.push(authId, updateMessage)
+        y <- SeqUpdate.push(authId, updateMessageSent)
+        f <- SeqUpdate.select.orderBy(_.uuid.asc).where(_.authId eqs authId).fetch
       } yield {
         f
       }
@@ -73,13 +73,13 @@ class SeqUpdateRecordSpec extends CassandraSpecification {
       )
 
       1 to 1003 foreach { i =>
-        Await.result(SeqUpdateRecord.push(authId, updateMessage), Timeout(5000000).duration)
+        Await.result(SeqUpdate.push(authId, updateMessage), Timeout(5000000).duration)
       }
 
       val fDiffOne = for {
-        first <- SeqUpdateRecord.select.where(_.authId eqs authId).orderBy(_.uuid asc).one.map(_.get); firstState = first._1.key
-        diff1 <- SeqUpdateRecord.getDifference(authId, Some(firstState), 1); secondState = diff1(0).key
-        diff500 <- SeqUpdateRecord.getDifference(authId, Some(secondState), 500)
+        first <- SeqUpdate.select.where(_.authId eqs authId).orderBy(_.uuid asc).one.map(_.get); firstState = first._1.key
+        diff1 <- SeqUpdate.getDifference(authId, Some(firstState), 1); secondState = diff1(0).key
+        diff500 <- SeqUpdate.getDifference(authId, Some(secondState), 500)
       } yield {
         val firstts = firstState.timestamp()
         diff1.length must equalTo(1)

@@ -1,7 +1,7 @@
 package com.secretapp.backend.services.rpc.push
 
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.GooglePushCredentialsRecord
+import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
@@ -45,7 +45,7 @@ class PushServiceSpec extends RpcSpec with BeforeExample {
   private def googleCreds(implicit scope: TestScope) = models.GooglePushCredentials(scope.user.authId, 42, "reg id")
   private def appleCreds(implicit scope: TestScope) = models.ApplePushCredentials(scope.user.authId, 42, "token")
 
-  private def storedGoogleCreds(implicit scope: TestScope) = GooglePushCredentialsRecord.get(googleCreds.authId).sync()
+  private def storedGoogleCreds(implicit scope: TestScope) = persist.GooglePushCredentials.get(googleCreds.authId).sync()
 
   private def registerGoogleShouldBeOk(implicit scope: TestScope) =
     RequestRegisterGooglePush(googleCreds.projectId, googleCreds.regId) :~> <~:[ResponseVoid]

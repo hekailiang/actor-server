@@ -5,7 +5,7 @@ import com.websudos.phantom.Implicits._
 
 import scala.concurrent.Future
 
-sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredentialsRecord, models.ApplePushCredentials] {
+sealed class ApplePushCredentials extends CassandraTable[ApplePushCredentials, models.ApplePushCredentials] {
 
   override val tableName = "apple_push_credentials"
 
@@ -25,7 +25,7 @@ sealed class ApplePushCredentialsRecord extends CassandraTable[ApplePushCredenti
     models.ApplePushCredentials(authId(r), apnsKey(r), token(r))
 }
 
-object ApplePushCredentialsRecord extends ApplePushCredentialsRecord with TableOps {
+object ApplePushCredentials extends ApplePushCredentials with TableOps {
 
   def set(c: models.ApplePushCredentials)(implicit s: Session): Future[ResultSet] = {
     @inline def doInsert() =

@@ -13,7 +13,7 @@ import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageRead }
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
-import com.secretapp.backend.persist._
+import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import java.util.UUID
@@ -66,7 +66,7 @@ class RpcMessagingSpec extends RpcSpec {
       val sndUID = 3000
       val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
       val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, models.NoSex, keyHashes = immutable.Set(sndPkHash))
-      UserRecord.insertEntityWithChildren(secondUser).sync()
+      persist.User.insertEntityWithChildren(secondUser).sync()
 
       /**
         * This sleep is needed to let sharding things to initialize
@@ -221,7 +221,7 @@ class RpcMessagingSpec extends RpcSpec {
       catchNewSession(scope2)
       catchNewSession(scope2_2)
 
-      Await.result(UserPublicKeyRecord.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
+      Await.result(persist.UserPublicKey.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
 
       {
         implicit val scope = scope1

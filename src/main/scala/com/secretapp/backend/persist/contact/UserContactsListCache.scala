@@ -10,29 +10,28 @@ import scala.language.postfixOps
 import scodec.bits.BitVector
 import java.security.MessageDigest
 
-sealed class UserContactsListCacheRecord extends CassandraTable[UserContactsListCacheRecord, models.UserContactsListCache] {
-  override lazy val tableName = "user_contacts_list_cache"
+sealed class UserContactsListCache extends CassandraTable[UserContactsListCache, models.UserContactsListCache] {
+  override val tableName = "user_contacts_list_cache"
 
   object ownerId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "owner_id"
   }
-  object contactsId extends SetColumn[UserContactsListCacheRecord, models.UserContactsListCache, Int](this) {
+  object contactsId extends SetColumn[UserContactsListCache, models.UserContactsListCache, Int](this) {
     override lazy val name = "contacts_id"
   }
-  object deletedContactsId extends SetColumn[UserContactsListCacheRecord, models.UserContactsListCache, Int](this) {
+  object deletedContactsId extends SetColumn[UserContactsListCache, models.UserContactsListCache, Int](this) {
     override lazy val name = "deleted_contacts_id"
   }
 
-  override def fromRow(row: Row): models.UserContactsListCache = {
+  override def fromRow(row: Row): models.UserContactsListCache =
     models.UserContactsListCache(
       ownerId = ownerId(row),
       contactsId = contactsId(row),
       deletedContactsId = deletedContactsId(row)
     )
-  }
 }
 
-object UserContactsListCacheRecord extends UserContactsListCacheRecord with TableOps {
+object UserContactsListCache extends UserContactsListCache with TableOps {
   import scalaz._
   import Scalaz._
 

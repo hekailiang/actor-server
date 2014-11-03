@@ -2,7 +2,7 @@ package com.secretapp.backend.services.rpc.push
 
 import com.secretapp.backend.data.message.rpc.{ Ok, ResponseVoid, RpcResponse }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.{ ApplePushCredentialsRecord, GooglePushCredentialsRecord }
+import com.secretapp.backend.persist
 import scala.concurrent.Future
 
 trait HandlerService {
@@ -11,19 +11,19 @@ trait HandlerService {
   import context.dispatcher
 
   protected def handleRequestRegisterGooglePush(projectId: Long, regId: String): Future[RpcResponse] =
-    GooglePushCredentialsRecord.set(models.GooglePushCredentials(currentAuthId, projectId, regId)) map { _ =>
+    persist.GooglePushCredentials.set(models.GooglePushCredentials(currentAuthId, projectId, regId)) map { _ =>
       Ok(ResponseVoid())
     }
 
   protected def handleRequestRegisterApplePush(apnsKey: Int, token: String): Future[RpcResponse] =
-    ApplePushCredentialsRecord.set(models.ApplePushCredentials(currentAuthId, apnsKey, token)) map { _ =>
+    persist.ApplePushCredentials.set(models.ApplePushCredentials(currentAuthId, apnsKey, token)) map { _ =>
       Ok(ResponseVoid())
     }
 
   protected def handleRequestUnregisterPush: Future[RpcResponse] =
     Future.sequence(Seq(
-      GooglePushCredentialsRecord.remove(currentAuthId),
-      ApplePushCredentialsRecord.remove(currentAuthId)
+      persist.GooglePushCredentials.remove(currentAuthId),
+      persist.ApplePushCredentials.remove(currentAuthId)
     )) map { _ =>
       Ok(ResponseVoid())
     }
