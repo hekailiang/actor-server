@@ -8,15 +8,15 @@ import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
 import com.secretapp.backend.models
 
-object FileBlockRecord {
+object FileBlock {
   type EntityType = Entity[Int, models.FileBlock]
 
   val blockSize = 8 * 1024 // 8kB
 }
 
-private[persist] class FileBlockRecord(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileBlockRecord, FileBlockRecord.EntityType] with TableOps {
-  import FileBlockRecord._
+private[persist] class FileBlock(implicit session: Session, context: ExecutionContext with Executor)
+    extends CassandraTable[FileBlock, FileBlock.EntityType] with TableOps {
+  import FileBlock._
 
   override val tableName = "file_blocks"
 

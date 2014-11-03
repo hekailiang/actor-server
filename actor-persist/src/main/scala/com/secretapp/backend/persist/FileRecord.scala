@@ -15,7 +15,7 @@ class LimitInvalid extends FileRecordError("LIMIT_INVALID", false)
 class FileLost extends FileRecordError("FILE_LOST", false)
 
 class FileRecord(implicit session: Session, context: ExecutionContext with Executor) {
-  private lazy val blockRecord = new FileBlockRecord
+  private lazy val blockRecord = new FileBlock
   private lazy val sourceBlockRecord = new FileSourceBlockRecord
 
   def createTable(session: Session): Future[Unit] = {
@@ -63,7 +63,7 @@ class FileRecord(implicit session: Session, context: ExecutionContext with Execu
     } yield {
       // FIXME: don't use BitVector here
       val bytes = blocks.foldLeft(Vector.empty[Byte])((a, b) => a ++ BitVector(b).toByteArray)
-      bytes.drop(offset % FileBlockRecord.blockSize).take(limit).toArray
+      bytes.drop(offset % FileBlock.blockSize).take(limit).toArray
     }
   }
 
