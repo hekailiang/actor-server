@@ -364,6 +364,7 @@ trait SignService extends SocialHelpers {
           }
         }
       }
+      persist.UnregisteredContact.removeEntity(u.phoneNumber)
     }
   }
 

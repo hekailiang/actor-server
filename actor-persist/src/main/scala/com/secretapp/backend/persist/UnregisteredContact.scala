@@ -29,4 +29,7 @@ object UnregisteredContact extends UnregisteredContact with TableOps {
 
   def byNumber(phoneNumber: Long)(implicit session: Session): Future[Set[models.UnregisteredContact]] =
     select.where(_.phoneNumber eqs phoneNumber).fetch().map(_.toSet)
+
+  def removeEntity(phoneNumber: Long)(implicit session: Session): Future[ResultSet] =
+    delete.where(_.phoneNumber eqs phoneNumber).future()
 }
