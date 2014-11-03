@@ -226,7 +226,7 @@ class SignServiceSpec extends RpcSpec {
 
         {
           implicit val scope = registered
-          UnregisteredContactRecord.insertEntity(models.UnregisteredContact(unregPhone, scope.user.uid)).sync()
+          UnregisteredContact.insertEntity(models.UnregisteredContact(unregPhone, scope.user.uid)).sync()
 
           sendRpcMsg(RequestGetState())
 

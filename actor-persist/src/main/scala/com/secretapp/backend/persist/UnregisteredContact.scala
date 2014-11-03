@@ -5,7 +5,7 @@ import com.websudos.phantom.Implicits._
 
 import scala.concurrent.Future
 
-sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContactRecord, models.UnregisteredContact] {
+sealed class UnregisteredContact extends CassandraTable[UnregisteredContact, models.UnregisteredContact] {
   override val tableName = "unregistered_contacts"
 
   object phoneNumber extends LongColumn(this) with PartitionKey[Long] {
@@ -20,7 +20,7 @@ sealed class UnregisteredContactRecord extends CassandraTable[UnregisteredContac
     models.UnregisteredContact(phoneNumber(row), ownerUserId(row))
 }
 
-object UnregisteredContactRecord extends UnregisteredContactRecord with TableOps {
+object UnregisteredContact extends UnregisteredContact with TableOps {
   def insertEntity(uc: models.UnregisteredContact)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.phoneNumber, uc.phoneNumber)

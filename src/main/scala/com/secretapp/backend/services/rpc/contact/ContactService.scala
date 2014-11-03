@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.persist.{UnregisteredContactRecord, Phone, UserRecord}
+import com.secretapp.backend.persist.{UnregisteredContact, Phone, UserRecord}
 import com.secretapp.backend.models
 import com.secretapp.backend.api.rpc.RpcValidators._
 import com.datastax.driver.core.{ Session => CSession }
@@ -79,7 +79,7 @@ trait ContactService {
           }
 
           (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
-            UnregisteredContactRecord.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
+            UnregisteredContact.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
           }
 
           val clFuture = UserContactsListRecord.insertNewContacts(currentUser.uid, usersTuple)
