@@ -131,7 +131,7 @@ object UserRecord extends UserRecord with TableOps {
       .value(_.fullAvatarWidth, entity.fullAvatarWidth)
       .value(_.fullAvatarHeight, entity.fullAvatarHeight)
       .future()
-      .flatMap(_ => PhoneRecord.insertEntity(phone))
+      .flatMap(_ => Phone.insertEntity(phone))
       .flatMap(_ => UserPublicKeyRecord.insertEntity(userPK))
       .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
   }
@@ -148,14 +148,14 @@ object UserRecord extends UserRecord with TableOps {
       .flatMap(_ => addKeyHash(uid, publicKeyHash, phoneNumber))
       .flatMap(_ => UserPublicKeyRecord.insertEntityRow(uid, publicKeyHash, publicKey, authId))
       .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, uid.some)))
-      .flatMap(_ => PhoneRecord.updateUserName(phoneNumber, name))
+      .flatMap(_ => Phone.updateUserName(phoneNumber, name))
 
   private def addKeyHash(uid: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
     update.where(_.uid eqs uid).modify(_.keyHashes add publicKeyHash).future()
 
   /**
    * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
-   * removes keyHash from the following records: [[UserPublicKeyRecord]], [[PhoneRecord]], [[GroupUser]].
+   * removes keyHash from the following records: [[UserPublicKeyRecord]], [[Phone]], [[GroupUser]].
    *
    * @param uid user id
    * @param publicKeyHash user public key hash

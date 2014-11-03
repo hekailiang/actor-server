@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.persist.contact._
 import com.secretapp.backend.services.{UserManagerService, GeneratorService}
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.persist.{UnregisteredContactRecord, PhoneRecord, UserRecord}
+import com.secretapp.backend.persist.{UnregisteredContactRecord, Phone, UserRecord}
 import com.secretapp.backend.models
 import com.secretapp.backend.api.rpc.RpcValidators._
 import com.datastax.driver.core.{ Session => CSession }
@@ -58,7 +58,7 @@ trait ContactService {
     val phoneNumbers = filteredPhones.map(_.phoneNumber).toSet
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
-      phones <- PhoneRecord.getEntities(phoneNumbers)
+      phones <- Phone.getEntities(phoneNumbers)
       ignoredContactsId <- UserContactsListCacheRecord.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
       usersFutureSeq <- Future.sequence(uniquePhones map (p => UserRecord.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!

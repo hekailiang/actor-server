@@ -116,7 +116,7 @@ trait SignService extends SocialHelpers {
     //    TODO: validate phone number
     for {
       smsR <- AuthSmsCode.getEntity(phoneNumber)
-      phoneR <- PhoneRecord.getEntity(phoneNumber)
+      phoneR <- Phone.getEntity(phoneNumber)
     } yield {
       val (smsHash, smsCode) = smsR match {
         case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
@@ -228,7 +228,7 @@ trait SignService extends SocialHelpers {
     else {
       val f = for {
         smsCodeR <- AuthSmsCode.getEntity(phoneNumber)
-        phoneR <- PhoneRecord.getEntity(phoneNumber)
+        phoneR <- Phone.getEntity(phoneNumber)
       } yield (smsCodeR, phoneR)
       f flatMap tupled {
         (smsCodeR, phoneR) =>

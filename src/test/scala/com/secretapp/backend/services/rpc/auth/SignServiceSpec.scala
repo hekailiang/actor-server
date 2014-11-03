@@ -130,7 +130,7 @@ class SignServiceSpec extends RpcSpec {
         val name = "Тимоти Клим"
         insertAuthId(scope.authId)
         AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-        PhoneRecord.dropEntity(phoneNumber)
+        Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -169,7 +169,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-        PhoneRecord.dropEntity(phoneNumber)
+        Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "   ", publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -182,7 +182,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-        PhoneRecord.dropEntity(phoneNumber)
+        Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey, BitVector.empty, "app", 0, "key"))
 
@@ -195,7 +195,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
-        PhoneRecord.dropEntity(phoneNumber)
+        Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key"))
 
