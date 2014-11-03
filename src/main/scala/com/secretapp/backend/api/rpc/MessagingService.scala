@@ -247,12 +247,12 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
               case (userId, keyHashes) =>
                 Future.sequence(immutable.Seq(
                   GroupUser.addUser(group.id, userId, keyHashes),
-                  UserGroupsRecord.addGroup(userId, group.id)
+                  UserGroups.addGroup(userId, group.id)
                 ))
             }) flatMap { _ =>
               Future.sequence(immutable.Seq(
                 GroupUser.addUser(group.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
-                UserGroupsRecord.addGroup(currentUser.uid, group.id)
+                UserGroups.addGroup(currentUser.uid, group.id)
               ))
             } flatMap { _ =>
               Future.sequence(broadcast.ownKeys map { key =>
@@ -392,7 +392,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                     for {
                       _ <- Future.sequence(immutable.Seq(
                         GroupUser.removeUser(groupId, userId),
-                        UserGroupsRecord.removeGroup(userId, groupId)
+                        UserGroups.removeGroup(userId, groupId)
                       ))
                       s <- getState(currentUser.authId)
                     } yield {
@@ -436,7 +436,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           for {
             _ <- Future.sequence(immutable.Seq(
               GroupUser.removeUser(groupId, currentUser.uid),
-              UserGroupsRecord.removeGroup(currentUser.uid, groupId)
+              UserGroups.removeGroup(currentUser.uid, groupId)
             ))
             groupUserIds <- GroupUser.getUsers(groupId)
             s <- getState(currentUser.authId)

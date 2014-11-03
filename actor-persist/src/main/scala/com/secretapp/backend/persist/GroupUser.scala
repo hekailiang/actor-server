@@ -57,7 +57,7 @@ object GroupUser extends GroupUser with TableOps {
   }
 
   def removeUserKeyHash(userId: Int, keyHash: Long)(implicit session: Session): Future[Seq[ResultSet]] = {
-    UserGroupsRecord.getGroups(userId) flatMap { groupIds =>
+    UserGroups.getGroups(userId) flatMap { groupIds =>
       Future.sequence(
         groupIds map { groupId =>
           update.where(_.groupId eqs groupId).and(_.userId eqs userId).modify(_.keyHashes remove keyHash).future()
