@@ -2,7 +2,7 @@ package com.secretapp.backend.helpers
 
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.persist.GroupUserRecord
+import com.secretapp.backend.persist.GroupUser
 import scala.concurrent.Future
 
 trait GroupHelpers extends UserHelpers {
@@ -12,7 +12,7 @@ trait GroupHelpers extends UserHelpers {
   import context.dispatcher
 
   def withGroupUserAuthIds(groupId: Int)(f: Seq[Long] => Any) = {
-    GroupUserRecord.getUsers(groupId) map {
+    GroupUser.getUsers(groupId) map {
       case groupUserIds =>
         groupUserIds foreach { groupUserId =>
           for {

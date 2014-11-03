@@ -161,7 +161,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   protected def handleRequestInviteUser(
     groupId: Int, accessHash: Long, randomId: Long, groupKeyHash: BitVector, broadcast: EncryptedRSABroadcast
   ): Future[RpcResponse] = {
-    val fgroupUserIds = GroupUserRecord.getUsers(groupId)
+    val fgroupUserIds = GroupUser.getUsers(groupId)
     Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
@@ -186,7 +186,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
                   Future.sequence(newUserIds map {
                     case (userId, keyHashes) =>
-                      GroupUserRecord.addUser(groupId, userId, keyHashes) map {
+                      GroupUser.addUser(groupId, userId, keyHashes) map {
                         case -\/(_) => userId.left
                         case \/-(_) => userId.right
                       }
@@ -246,12 +246,12 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             Future.sequence(newUserIds map {
               case (userId, keyHashes) =>
                 Future.sequence(immutable.Seq(
-                  GroupUserRecord.addUser(group.id, userId, keyHashes),
+                  GroupUser.addUser(group.id, userId, keyHashes),
                   UserGroupsRecord.addGroup(userId, group.id)
                 ))
             }) flatMap { _ =>
               Future.sequence(immutable.Seq(
-                GroupUserRecord.addUser(group.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
+                GroupUser.addUser(group.id, currentUser.uid, broadcast.ownKeys map (_.keyHash) toSet),
                 UserGroupsRecord.addGroup(currentUser.uid, group.id)
               ))
             } flatMap { _ =>
@@ -342,7 +342,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
         _ <- Group.updateTitle(groupId, title)
         s <- getState(currentUser.authId)
       } yield {
-        GroupUserRecord.getUsers(groupId) onSuccess {
+        GroupUser.getUsers(groupId) onSuccess {
           case groupUserIds =>
             groupUserIds foreach { groupUserId =>
               for {
@@ -387,11 +387,11 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
               if (ACL.userAccessHash(currentUser.authId, checkUser) != userAccessHash) {
                 Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false))
               } else {
-                GroupUserRecord.getUsers(groupId) flatMap { groupUserIds =>
+                GroupUser.getUsers(groupId) flatMap { groupUserIds =>
                   if (groupUserIds.contains(userId)) {
                     for {
                       _ <- Future.sequence(immutable.Seq(
-                        GroupUserRecord.removeUser(groupId, userId),
+                        GroupUser.removeUser(groupId, userId),
                         UserGroupsRecord.removeGroup(userId, groupId)
                       ))
                       s <- getState(currentUser.authId)
@@ -435,10 +435,10 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
         } else {
           for {
             _ <- Future.sequence(immutable.Seq(
-              GroupUserRecord.removeUser(groupId, currentUser.uid),
+              GroupUser.removeUser(groupId, currentUser.uid),
               UserGroupsRecord.removeGroup(currentUser.uid, groupId)
             ))
-            groupUserIds <- GroupUserRecord.getUsers(groupId)
+            groupUserIds <- GroupUser.getUsers(groupId)
             s <- getState(currentUser.authId)
           } yield {
             (groupUserIds :+ currentUser.uid) foreach { userId =>
@@ -490,7 +490,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     message: EncryptedAESMessage
   ): Future[RpcResponse] = {
 
-    val fgroupUserIds = GroupUserRecord.getUsers(groupId)
+    val fgroupUserIds = GroupUser.getUsers(groupId)
     Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {

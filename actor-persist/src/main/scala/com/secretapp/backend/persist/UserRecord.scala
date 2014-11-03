@@ -155,7 +155,7 @@ object UserRecord extends UserRecord with TableOps {
 
   /**
    * Marks keyHash as deleted in [[UserPublicKeyRecord]] and, if result is success,
-   * removes keyHash from the following records: [[UserPublicKeyRecord]], [[PhoneRecord]], [[GroupUserRecord]].
+   * removes keyHash from the following records: [[UserPublicKeyRecord]], [[PhoneRecord]], [[GroupUser]].
    *
    * @param uid user id
    * @param publicKeyHash user public key hash
@@ -176,7 +176,7 @@ object UserRecord extends UserRecord with TableOps {
           Vector(
             update.where(_.uid eqs uid).modify(_.keyHashes remove publicKeyHash).future(),
             frmUser,
-            GroupUserRecord.removeUserKeyHash(uid, publicKeyHash)
+            GroupUser.removeUserKeyHash(uid, publicKeyHash)
           )
         ) map (_ => Some(authId))
       case None =>

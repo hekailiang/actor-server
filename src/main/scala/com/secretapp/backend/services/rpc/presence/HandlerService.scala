@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.rpc.presence._
 import com.secretapp.backend.data.transport.MTPackage
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.persist.{ GroupUserRecord, UserGroupsRecord }
+import com.secretapp.backend.persist.{ GroupUser, UserGroupsRecord }
 import scala.collection.immutable
 import scala.concurrent.Future
 import scalaz._
