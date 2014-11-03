@@ -4,8 +4,7 @@ import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
 import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
-
-case class File(fileId: Int, sourceBlocksCount: Int)
+import com.secretapp.backend.models
 
 abstract class FileRecordError(val tag: String, val canTryAgain: Boolean) extends Exception
 class LocationInvalid extends FileRecordError("LOCATION_INVALID", false)
