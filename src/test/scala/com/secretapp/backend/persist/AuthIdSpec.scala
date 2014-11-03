@@ -7,7 +7,7 @@ import org.specs2.matcher.NoConcurrentExecutionContext
 import scalaz._
 import Scalaz._
 
-class AuthIdRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
+class AuthIdSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
   "AuthIdRecord" should {
     "insert/get AuthId Entity" in {
       val entity = models.AuthId(123L, None)

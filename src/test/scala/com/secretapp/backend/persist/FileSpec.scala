@@ -16,7 +16,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 
-class FileRecordSpec extends CassandraSpecification {
+class FileSpec extends CassandraSpecification {
   "FileRecord" should {
     "insert and get file" in {
       val Record = new File

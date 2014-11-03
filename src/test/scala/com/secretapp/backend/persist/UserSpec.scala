@@ -10,7 +10,7 @@ import scala.collection.immutable
 import scalaz._
 import Scalaz._
 
-class UserRecordSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
+class UserSpec extends Specification with CassandraSpecification with NoConcurrentExecutionContext {
   "UserRecord" should {
     "insert/get User Entity" in {
       val publicKey = hex"ac1d".bits

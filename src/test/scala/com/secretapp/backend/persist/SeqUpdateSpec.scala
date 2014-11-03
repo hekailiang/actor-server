@@ -17,7 +17,7 @@ import scalaz.Scalaz._
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 
-class SeqUpdateRecordSpec extends CassandraSpecification {
+class SeqUpdateSpec extends CassandraSpecification {
   "SeqUpdateRecord" should {
     "get push" in {
       val authId = 123L
