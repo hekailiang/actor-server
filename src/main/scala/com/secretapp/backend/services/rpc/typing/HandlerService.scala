@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Error, Ok, RpcResponse}
 import com.secretapp.backend.data.message.rpc.typing._
 import com.secretapp.backend.services.common.PackageCommon._
-import com.secretapp.backend.persist.GroupRecord
+import com.secretapp.backend.persist.Group
 import com.secretapp.backend.helpers.UserHelpers
 import com.secretapp.backend.util.ACL
 import scala.concurrent.Future
@@ -38,7 +38,7 @@ trait HandlerService extends UserHelpers {
 
   protected def handleRequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
     log.info(s"Handling RequestGroupTyping $groupId, $accessHash, $typingType")
-    GroupRecord.getEntity(groupId)(session) map {
+    Group.getEntity(groupId)(session) map {
       case Some(group) =>
         if (group.accessHash != accessHash) {
           Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)

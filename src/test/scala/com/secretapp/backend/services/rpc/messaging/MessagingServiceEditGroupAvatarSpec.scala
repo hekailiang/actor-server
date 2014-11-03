@@ -12,7 +12,7 @@ import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
-import com.secretapp.backend.persist.{ GroupRecord, File }
+import com.secretapp.backend.persist.{ Group, File }
 import com.secretapp.backend.services.rpc.RpcSpec
 
 class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
@@ -255,7 +255,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbGroup(groupId: Int) =
-    GroupRecord.getEntityWithAvatar(groupId).sync().get
+    Group.getEntityWithAvatar(groupId).sync().get
 
   private def dbAvatar(groupId: Int) = dbGroup(groupId)._2.avatar.get
   private def dbFullImage(groupId: Int) = dbAvatar(groupId).fullImage.get

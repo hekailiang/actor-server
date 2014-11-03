@@ -162,7 +162,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     groupId: Int, accessHash: Long, randomId: Long, groupKeyHash: BitVector, broadcast: EncryptedRSABroadcast
   ): Future[RpcResponse] = {
     val fgroupUserIds = GroupUserRecord.getUsers(groupId)
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+    Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -238,7 +238,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
     val newUserIds = broadcast.keys map (key => (key.userId, key.keys.map(_.keyHash).toSet))
 
-    GroupRecord.insertEntity(group) flatMap { _ =>
+    Group.insertEntity(group) flatMap { _ =>
       Future.sequence(broadcast.keys map (mkInvites(group, _, broadcast.encryptedMessage, (newUserIds map (_._1)) :+ currentUser.uid))) map (_.flatten) flatMap { einvites =>
         einvites.toVector.sequenceU match {
           case -\/(e) => Future.successful(e)
@@ -312,7 +312,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           Future successful Error(400, "FILE_TOO_BIG", "", false)
         else
           AvatarUtils.scaleAvatar(fileRecord, filesCounterProxy, fileLocation) flatMap { a =>
-            GroupRecord.updateAvatar(groupId, a) map { _ =>
+            Group.updateAvatar(groupId, a) map { _ =>
               withGroupUserAuthIds(groupId) { authIds =>
                 authIds foreach { authId =>
                   updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(
@@ -339,7 +339,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   ): Future[RpcResponse] = {
     withGroup(groupId, accessHash) { group =>
       for {
-        _ <- GroupRecord.updateTitle(groupId, title)
+        _ <- Group.updateTitle(groupId, title)
         s <- getState(currentUser.authId)
       } yield {
         GroupUserRecord.getUsers(groupId) onSuccess {
@@ -371,7 +371,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     userId: Int,
     userAccessHash: Long
   ): Future[RpcResponse] = {
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+    Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.creatorUserId != currentUser.uid) {
           Future.successful(Error(403, "NO_PERMISSION", "You are not creator of this group.", false))
@@ -428,7 +428,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     groupId: Int,
     accessHash: Long
   ): Future[RpcResponse] = {
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+    Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -491,7 +491,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   ): Future[RpcResponse] = {
 
     val fgroupUserIds = GroupUserRecord.getUsers(groupId)
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+    Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -553,7 +553,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
   }
 
   protected def withGroup(groupId: Int, accessHash: Long)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
-    GroupRecord.getEntity(groupId) flatMap { optGroup =>
+    Group.getEntity(groupId) flatMap { optGroup =>
       optGroup map { group =>
         if (group.accessHash != accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", s"Invalid group access hash.", false))
