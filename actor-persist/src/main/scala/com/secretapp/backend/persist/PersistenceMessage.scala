@@ -5,7 +5,7 @@ import scala.concurrent.Future
 import scodec.bits._
 import com.secretapp.backend.models
 
-sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageRecord, models.PersistenceMessage] {
+sealed class PersistenceMessage extends CassandraTable[PersistenceMessage, models.PersistenceMessage] {
   override val tableName = "messages"
 
   object processorId extends StringColumn(this) with PartitionKey[String] {
@@ -30,7 +30,7 @@ sealed class PersistenceMessageRecord extends CassandraTable[PersistenceMessageR
     )
 }
 
-object PersistenceMessageRecord extends PersistenceMessageRecord {
+object PersistenceMessage extends PersistenceMessage {
   def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: models.PersistenceMessage => Any)(implicit session: Session) = {
     def process(sequenceNr: Long): Unit = {
       val baseQuery = select
