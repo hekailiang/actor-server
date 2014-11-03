@@ -278,7 +278,7 @@ class SignServiceSpec extends RpcSpec {
         val name = "Timothy Klim"
         val userId = rand.nextInt()
         val pkHash = ec.PublicKey.keyHash(publicKey)
-        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
         addUser(authId, session.id, user, phoneNumber)
 
         val newPublicKey = genPublicKey
@@ -286,7 +286,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
         persist.AuthId.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
-        persist.User.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name).sync()
+        persist.User.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name, "RU").sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
         val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))

@@ -379,7 +379,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${uid} Klim${uid}"
     val pkHash = ec.PublicKey.keyHash(publicKey)
-    val user = models.User(uid, authId, pkHash, publicKey, phoneNumber, "salt", name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+    val user = models.User(uid, authId, pkHash, publicKey, phoneNumber, "salt", name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
     authUser(user, phoneNumber)
   }
 
@@ -417,7 +417,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val salt = rand.nextString(25)
     val name = s"Timothy$userId Klim$userId"
     val pkHash = ec.PublicKey.keyHash(publicKey)
-    val userStruct = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, salt, name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+    val userStruct = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, salt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
     val user = authUser(userStruct, phoneNumber)
     scope.copy(userOpt = user.some)
   }
@@ -459,7 +459,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       implicit val authId = rand.nextLong()
       val publicKey = BitVector.fromLong(rand.nextLong())
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val newUser = models.User(uid, authId, pkHash, publicKey, phone, "salt", s"Timothy$uid Klim$uid", models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+      val newUser = models.User(uid, authId, pkHash, publicKey, phone, "salt", s"Timothy$uid Klim$uid", "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
     }

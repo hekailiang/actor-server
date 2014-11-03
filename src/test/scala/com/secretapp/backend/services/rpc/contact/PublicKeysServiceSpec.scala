@@ -26,9 +26,9 @@ class PublicKeysServiceSpec extends RpcSpec {
         val clientPhoneId = rand.nextLong()
         val phoneNumber = genPhoneNumber()
         val pkHash = ec.PublicKey.keyHash(publicKey)
-        val user = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, userSalt, name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+        val user = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
         authUser(user, phoneNumber)
-        val secondUser = models.User(userId + 1, scope.authId + 1, pkHash, publicKey, phoneNumber + 1, userSalt, name, models.NoSex, "RU", keyHashes = immutable.Set(pkHash))
+        val secondUser = models.User(userId + 1, scope.authId + 1, pkHash, publicKey, phoneNumber + 1, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
         persist.User.insertEntityWithChildren(secondUser).sync()
 
