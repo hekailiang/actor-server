@@ -55,7 +55,7 @@ class ContactServiceSpec extends RpcSpec {
       val sortedContactsId = contacts.map(_.uid).to[immutable.SortedSet]
       users.map(_.uid).to[immutable.SortedSet].should_==(sortedContactsId)
 
-      val cacheEntity = persist.contact.UserContactsListCacheRecord.getEntity(currentUser.uid).sync().get
+      val cacheEntity = persist.contact.UserContactsListCache.getEntity(currentUser.uid).sync().get
       cacheEntity.contactsId.size.should_==(sortedContactsId.size)
       cacheEntity.contactsId.to[immutable.SortedSet].should_==(sortedContactsId)
     }
@@ -75,8 +75,8 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCacheRecord.emptySHA1Hash))
+      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
         case r: ResponseGetContacts => (r.users, !r.isNotChanged)
@@ -102,8 +102,8 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      val sha1Hash = persist.contact.UserContactsListCacheRecord.getSHA1Hash(contactsList.map(_.uid).toSet)
+      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      val sha1Hash = persist.contact.UserContactsListCache.getSHA1Hash(contactsList.map(_.uid).toSet)
       sendRpcMsg(RequestGetContacts(sha1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
@@ -123,7 +123,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestEditContactName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
       // TODO
@@ -131,7 +131,7 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseSeq => r
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCacheRecord.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
       val userLocalName = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users.headOption.map(_.localName).flatten
       }
@@ -148,7 +148,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCacheRecord.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
+      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 
       // TODO
@@ -156,7 +156,7 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseSeq => r
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCacheRecord.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
       val (users, isChanged) = expectRpcMsgByPF() {
         case r: ResponseGetContacts => (r.users, !r.isNotChanged)
       }

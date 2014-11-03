@@ -43,7 +43,7 @@ object DBConnector {
       SeqUpdate.createTable(session),
       UnregisteredContact.createTable(session),
       contact.UserContactsListRecord.createTable(session),
-      contact.UserContactsListCacheRecord.createTable(session),
+      contact.UserContactsListCache.createTable(session),
       UserGroups.createTable(session),
       UserPublicKey.createTable(session),
       User.createTable(session),
@@ -65,7 +65,7 @@ object DBConnector {
       SeqUpdate.truncateTable(session),
       UnregisteredContact.truncateTable(session),
       contact.UserContactsListRecord.truncateTable(session),
-      contact.UserContactsListCacheRecord.truncateTable(session),
+      contact.UserContactsListCache.truncateTable(session),
       UserGroups.truncateTable(session),
       UserPublicKey.truncateTable(session),
       User.truncateTable(session)

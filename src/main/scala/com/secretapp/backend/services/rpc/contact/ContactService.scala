@@ -58,7 +58,7 @@ trait ContactService {
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- persist.Phone.getEntities(phoneNumbers)
-      ignoredContactsId <- persist.contact.UserContactsListCacheRecord.getContactsAndDeletedId(currentUser.uid)
+      ignoredContactsId <- persist.contact.UserContactsListCache.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
       usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
@@ -82,7 +82,7 @@ trait ContactService {
           }
 
           val clFuture = persist.contact.UserContactsListRecord.insertNewContacts(currentUser.uid, usersTuple)
-          val clCacheFuture = persist.contact.UserContactsListCacheRecord.addContactsId(currentUser.uid, newContactsId)
+          val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
           val stateFuture = ask(
             updatesBrokerRegion,
             UpdatesBroker.NewUpdatePush(currentUser.authId,
@@ -103,8 +103,8 @@ trait ContactService {
   def handleRequestGetContacts(contactsHash: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.contact.UserContactsListCacheRecord.getContactsId(currentUser.uid) flatMap { contactsId =>
-      if (contactsHash == persist.contact.UserContactsListCacheRecord.getSHA1Hash(contactsId)) {
+    persist.contact.UserContactsListCache.getContactsId(currentUser.uid) flatMap { contactsId =>
+      if (contactsHash == persist.contact.UserContactsListCache.getSHA1Hash(contactsId)) {
         Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
       } else {
         for {

@@ -70,7 +70,7 @@ object UserContactsListRecord extends UserContactsListRecord with TableOps {
   def removeContact(userId: Int, contactId: Int)(implicit csession: CSession): Future[Unit] = {
     for {
       _ <- delete.where(_.ownerId eqs userId).and(_.contactId eqs contactId).future()
-      _ <- UserContactsListCacheRecord.removeContact(userId, contactId)
+      _ <- UserContactsListCache.removeContact(userId, contactId)
     } yield ()
   }
 
