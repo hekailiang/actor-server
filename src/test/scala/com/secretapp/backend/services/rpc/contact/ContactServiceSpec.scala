@@ -196,17 +196,33 @@ class ContactServiceSpec extends RpcSpec {
       persist.contact.UserContactsListCache.insertEntity(currentUser.uid, Set(), Set(contact.uid)).sync()
 
       sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseSeq =>
+      val reqSeq = expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq => r
       }
-
       val responseContacts = Seq(struct.User.fromModel(contact, scope.authId))
 
       sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
-      val importedContacts = expectRpcMsgByPF() {
+      val users = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users
       }
-      importedContacts.should_==(responseContacts)
+      users.should_==(responseContacts)
+
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      val importedUsers = expectRpcMsgByPF() {
+        case r: ResponseGetContacts => r.users
+      }
+      importedUsers.should_==(responseContacts)
+
+      sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      expectRpcMsgByPF() {
+        case r: ResponseSeq => r
+      }
+
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      val contactsUsers = expectRpcMsgByPF() {
+        case r: ResponseGetContacts => r.users
+      }
+      contactsUsers.isEmpty.should_==(true)
     }
   }
 }
