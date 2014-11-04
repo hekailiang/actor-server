@@ -3,7 +3,7 @@ package com.secretapp.backend.persist
 import com.datastax.driver.core.{ Cluster, Session => CSession }
 import com.typesafe.config._
 import com.typesafe.scalalogging.slf4j._
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing._
 import org.slf4j.LoggerFactory
 import org.specs2.matcher.ThrownExpectations
 import org.specs2.mutable._

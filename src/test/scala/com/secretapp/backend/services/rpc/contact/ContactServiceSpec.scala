@@ -6,11 +6,10 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.util.ACL
+import com.websudos.util.testing._
 import scodec.bits.BitVector
 import scala.collection.immutable
-import scalaz._
-import Scalaz._
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import scalaz.Scalaz._
 import java.security.MessageDigest
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat

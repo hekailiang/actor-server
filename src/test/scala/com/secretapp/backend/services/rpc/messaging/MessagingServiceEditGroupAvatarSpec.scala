@@ -10,7 +10,7 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec

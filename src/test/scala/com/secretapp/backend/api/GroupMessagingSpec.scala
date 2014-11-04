@@ -1,12 +1,12 @@
 package com.secretapp.backend.api
 
 import com.secretapp.backend.util.ACL
-import com.websudos.util.testing.AsyncAssertionsHelper._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.websudos.util.testing._
 import scala.collection.immutable
 import scala.language.higherKinds
 import scodec.bits._

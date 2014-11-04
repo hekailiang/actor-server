@@ -3,6 +3,7 @@ package com.secretapp.backend.persist
 import akka.util.Timeout
 import com.datastax.driver.core.ConsistencyLevel
 import com.websudos.phantom.Implicits._
+import com.websudos.util.testing._
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
 import scala.concurrent.Await
@@ -14,7 +15,6 @@ import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
-import com.websudos.util.testing.AsyncAssertionsHelper._
 
 class FileSpec extends CassandraSpecification {
   "FileRecord" should {

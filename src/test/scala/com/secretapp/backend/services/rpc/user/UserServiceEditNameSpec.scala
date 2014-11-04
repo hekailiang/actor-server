@@ -9,7 +9,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing._
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._

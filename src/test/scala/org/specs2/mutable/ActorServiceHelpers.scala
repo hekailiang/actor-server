@@ -20,7 +20,7 @@ import com.secretapp.backend.protocol.transport.MTPackageBoxCodec
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.session._
-import com.websudos.util.testing.AsyncAssertionsHelper
+import com.websudos.util.testing._
 import java.net.InetSocketAddress
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -43,7 +43,6 @@ import spray.can.websocket._
 
 trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with ActorCommon {
   self: TestKitBase with StandardResults with ShouldExpectations with AnyMatchers with TraversableMatchers =>
-  import AsyncAssertionsHelper._
 
   Security.addProvider(new BouncyCastleProvider())
 

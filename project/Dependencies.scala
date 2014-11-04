@@ -31,7 +31,6 @@ object Dependencies {
     "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2",
     "com.websudos"               %% "phantom-dsl"                   % V.phantom,
     "com.websudos"               %% "phantom-udt"                   % V.phantom,
-    "com.websudos"               %% "util-testing"                  % "0.2.4" % "provided" excludeAll(ExclusionRule(organization = "org.slf4j")),
     "com.wandoulabs.akka"        %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai")),
     "commons-codec"               % "commons-codec"                 % "1.3", // we need this because commons-codec 1.2 jar is broken (apns dependency)
     "io.spray"                   %% "spray-caching"                 % V.spray,
@@ -62,7 +61,8 @@ object Dependencies {
     "org.scalacheck"             %% "scalacheck"                    % "1.11.6"     % "test",
     "org.scalamock"              %% "scalamock-specs2-support"      % "3.0.1"      % "test",
     "org.specs2"                 %% "specs2"                        % "2.4.6"      % "test",
-    "org.typelevel"              %% "scalaz-specs2"                 % "0.2"        % "test"
+    "org.typelevel"              %% "scalaz-specs2"                 % "0.2"        % "test",
+    "com.websudos"               %% "util-testing"                  % "0.3.12"     % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
   )
 
   lazy val rootDependencies = compileDependencies ++ testDependencies

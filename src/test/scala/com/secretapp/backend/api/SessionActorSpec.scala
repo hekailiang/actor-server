@@ -1,32 +1,31 @@
 package com.secretapp.backend.api
 
-import com.secretapp.backend.services.rpc.RpcSpec
-import scala.language.{ postfixOps, higherKinds }
-import scala.concurrent.duration._
-import scala.collection.mutable
-import com.websudos.util.testing.AsyncAssertionsHelper._
-import akka.testkit._
 import akka.actor.{ Props, Actor }
 import akka.io.Tcp._
+import akka.testkit._
 import akka.util.ByteString
-import scodec.bits._
-import scala.util.Random
-import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
-import org.specs2.matcher.TraversableMatchers
-import com.secretapp.backend.data.transport._
-import com.secretapp.backend.protocol.codecs._
+import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.contact._
-import com.secretapp.backend.persist
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.data.transport._
+import com.secretapp.backend.persist
+import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.services.GeneratorService
-import com.datastax.driver.core.{ Session => CSession }
-import scalaz._
-import Scalaz._
+import com.secretapp.backend.services.common.RandomService
+import com.secretapp.backend.services.rpc.RpcSpec
+import com.websudos.util.testing._
+import org.specs2.matcher.TraversableMatchers
+import org.specs2.mutable.{ActorServiceHelpers, ActorLikeSpecification}
+import scala.collection.mutable
+import scala.concurrent.duration._
+import scala.language.{ postfixOps, higherKinds }
+import scala.util.Random
+import scalaz.Scalaz._
+import scodec.bits._
 
 class SessionActorSpec extends RpcSpec {
   import system.dispatcher

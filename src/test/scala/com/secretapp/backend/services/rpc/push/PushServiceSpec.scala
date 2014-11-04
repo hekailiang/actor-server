@@ -5,7 +5,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.data.message.rpc.ResponseVoid
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing._
 import org.specs2.specification.BeforeExample
 import scalaz._
 import Scalaz._

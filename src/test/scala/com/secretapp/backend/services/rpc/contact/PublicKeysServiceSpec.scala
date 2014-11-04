@@ -10,7 +10,7 @@ import com.secretapp.backend.data.message.rpc.{Ok, Request}
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.models
 import com.secretapp.backend.crypto.ec
-import com.websudos.util.testing.AsyncAssertionsHelper._
+import com.websudos.util.testing._
 import scodec.bits._
 
 class PublicKeysServiceSpec extends RpcSpec {
