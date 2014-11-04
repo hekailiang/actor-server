@@ -28,9 +28,8 @@ trait HandlerService extends GeneratorService {
   implicit val timeout = Timeout(5.seconds)
 
   protected def handleRequestUploadStart(): Future[RpcResponse] = {
-    ask(filesCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { id =>
-      fileRecord.createFile(id, genFileAccessSalt) map (_ => id)
-    } map { fileId =>
+    val fileId = rand.nextInt
+    fileRecord.createFile(fileId, genFileAccessSalt) map { _ =>
       val rsp = ResponseUploadStarted(UploadConfig(int32codec.encodeValid(fileId)))
       Ok(rsp)
     }

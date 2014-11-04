@@ -35,7 +35,7 @@ trait UserService extends SocialHelpers with UserHelpers {
       if (len > sizeLimit)
         Future successful Error(400, "FILE_TOO_BIG", "", false)
       else
-        AvatarUtils.scaleAvatar(fileRecord, clusterProxies.filesCounterProxy, r.fileLocation) flatMap { a =>
+        AvatarUtils.scaleAvatar(fileRecord, r.fileLocation) flatMap { a =>
           persist.User.updateAvatar(user.uid, a) map { _ =>
             withRelatedAuthIds(user.uid) { authIds =>
               authIds foreach { authId =>

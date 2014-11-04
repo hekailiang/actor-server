@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 class MessagingServiceActor(
   val updatesBrokerRegion: ActorRef, val socialBrokerRegion: ActorRef,
-  val fileRecord: persist.File, val filesCounterProxy: ActorRef, val currentUser: User
+  val fileRecord: persist.File, val currentUser: User
 )(implicit val session: CSession) extends Actor with ActorLogging with MessagingService {
   import context.{ system, become, dispatcher }
 

@@ -33,7 +33,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   self: ApiBrokerActor =>
   import SocialProtocol._
 
-  val clusterProxies: ClusterProxies
   val sessionActor: ActorRef
   val currentAuthId: Long
   val singletons: Singletons

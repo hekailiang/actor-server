@@ -70,20 +70,20 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) = {
-    Props(new SessionActor(singletons, clusterProxies, session))
+  def props(singletons: Singletons, session: CSession) = {
+    Props(new SessionActor(singletons, session))
   }
 
-  def startRegion()(implicit system: ActorSystem, singletons: Singletons, clusterProxies: ClusterProxies, session: CSession) =
+  def startRegion()(implicit system: ActorSystem, singletons: Singletons, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(SessionActor.props(singletons, clusterProxies, session)),
+      entryProps = Some(SessionActor.props(singletons, session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxies, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
+class SessionActor(val singletons: Singletons, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -110,7 +110,7 @@ class SessionActor(val singletons: Singletons, val clusterProxies: ClusterProxie
   var lastConnector: Option[ActorRef] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, clusterProxies, subscribedToUpdates, session)), "api-broker")
+  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, subscribedToUpdates, session)), "api-broker")
 
   def queueNewSession(messageId: Long): Unit = {
     log.info(s"$authId, $sessionId#queueNewSession $messageId, $sessionId")

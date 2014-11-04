@@ -10,7 +10,7 @@ import com.secretapp.backend.persist
 
 class Handler(
   val currentUser: models.User,
-  val fileRecord: persist.File, val filesCounterProxy: ActorRef)(implicit val session: CSession)
+  val fileRecord: persist.File)(implicit val session: CSession)
   extends Actor with ActorLogging with HandlerService {
 
   import context._

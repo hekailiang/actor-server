@@ -13,7 +13,7 @@ import Scalaz._
 trait FilesService {
   this: ApiBrokerService =>
 
-  lazy val filesHandler = context.actorOf(Props(new Handler(currentUser.get, fileRecord, clusterProxies.filesCounterProxy)), "files")
+  lazy val filesHandler = context.actorOf(Props(new Handler(currentUser.get, fileRecord)), "files")
 
   def handleRpcFiles: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case rq: RequestStartUpload =>

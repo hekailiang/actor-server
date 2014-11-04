@@ -31,9 +31,8 @@ class ApiKernel extends Bootable {
     persist.DBConnector.createTables(session)
 
     // Session bootstrap
-    val clusterProxies = new ClusterProxies
     val singletons = new Singletons
-    val sessionRegion = SessionActor.startRegion()(system, singletons, clusterProxies, session)
+    val sessionRegion = SessionActor.startRegion()(system, singletons, session)
 
     // TCP transport bootstrap
     val tcpPort = Try(serverConfig.getInt("tcp-port")).getOrElse(8080)

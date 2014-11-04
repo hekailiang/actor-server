@@ -21,7 +21,7 @@ object ApiBrokerProtocol {
 }
 
 class ApiBrokerActor(
-  val currentAuthId: Long, val currentSessionId: Long, val singletons: Singletons, val clusterProxies: ClusterProxies,
+  val currentAuthId: Long, val currentSessionId: Long, val singletons: Singletons,
   val subscribedToUpdates: Boolean, val session: CSession) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 

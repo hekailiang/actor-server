@@ -154,22 +154,20 @@ trait SignService extends SocialHelpers {
           log.info(s"Authenticate currentUser=$u")
           this.currentUser = Some(u)
 
-          persist.AuthItem.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+          persist.AuthItem.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) map { authItems =>
             for (authItem <- authItems) {
               logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
             }
 
-            nextAuthItemId() map { id =>
-              persist.AuthItem.insertEntity(
-                models.AuthItem.build(
-                  id = id, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-                  authLocation = "", latitude = None, longitude = None,
-                  authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
-                ), u.uid
-              )
+            persist.AuthItem.insertEntity(
+              models.AuthItem.build(
+                id = rand.nextInt, appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
+                authLocation = "", latitude = None, longitude = None,
+                authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
+              ), u.uid
+            )
 
-              Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
-            }
+            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
           }
         }
 
@@ -253,23 +251,21 @@ trait SignService extends SocialHelpers {
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
-                            ask(clusterProxies.usersCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] flatMap { userId =>
-                              val pkHash = ec.PublicKey.keyHash(publicKey)
-                              val user = models.User(
-                                uid = userId,
-                                authId = authId,
-                                publicKey = publicKey,
-                                publicKeyHash = pkHash,
-                                phoneNumber = phoneNumber,
-                                accessSalt = genUserAccessSalt,
-                                name = name,
-                                sex = models.NoSex,
-                                countryCode = countryCode,
-                                keyHashes = immutable.Set(pkHash))
-                              persist.User.insertEntityWithChildren(user) flatMap { _ =>
-                                pushContactRegisteredUpdates(user)
-                                auth(user)
-                              }
+                            val pkHash = ec.PublicKey.keyHash(publicKey)
+                            val user = models.User(
+                              uid = rand.nextInt,
+                              authId = authId,
+                              publicKey = publicKey,
+                              publicKeyHash = pkHash,
+                              phoneNumber = phoneNumber,
+                              accessSalt = genUserAccessSalt,
+                              name = name,
+                              sex = models.NoSex,
+                              countryCode = countryCode,
+                              keyHashes = immutable.Set(pkHash))
+                            persist.User.insertEntityWithChildren(user) flatMap { _ =>
+                              pushContactRegisteredUpdates(user)
+                              auth(user)
                             }
                           }
                         }
@@ -280,14 +276,6 @@ trait SignService extends SocialHelpers {
               }
           }
         }
-    }
-  }
-
-  private def nextAuthItemId(): Future[Int] = {
-    ask(clusterProxies.authItemsCounterProxy, CounterProtocol.GetNext).mapTo[CounterProtocol.StateType] andThen {
-      case Failure(e) =>
-        log.error("Failed to get next auth item id")
-        throw e
     }
   }
 

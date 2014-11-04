@@ -311,7 +311,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
         if (len > sizeLimit)
           Future successful Error(400, "FILE_TOO_BIG", "", false)
         else
-          AvatarUtils.scaleAvatar(fileRecord, filesCounterProxy, fileLocation) flatMap { a =>
+          AvatarUtils.scaleAvatar(fileRecord, fileLocation) flatMap { a =>
             persist.Group.updateAvatar(groupId, a) map { _ =>
               withGroupUserAuthIds(groupId) { authIds =>
                 authIds foreach { authId =>

@@ -5,7 +5,7 @@ import akka.io.Tcp.{ Close, Received, Write }
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.{ ClusterProxies, Singletons }
+import com.secretapp.backend.api.Singletons
 import com.secretapp.backend.api.frontend.{ JsonConnection, MTConnection, TransportConnection }
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.frontend.ws.WSFrontend
@@ -52,8 +52,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   protected var incMessageId = 0L
 
   val counters = new Singletons
-  val clusterProxies = new ClusterProxies
-  val sessionRegion = SessionActor.startRegion()(system, counters, clusterProxies, csession)
+  val sessionRegion = SessionActor.startRegion()(system, counters, csession)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
