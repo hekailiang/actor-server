@@ -196,11 +196,11 @@ class ContactServiceSpec extends RpcSpec {
       persist.contact.UserContactsListCache.insertEntity(currentUser.uid, Set(), Set(contact.uid)).sync()
 
       sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      val users = expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseImportedContacts => r.users
+      expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq =>
       }
+
       val responseContacts = Seq(struct.User.fromModel(contact, scope.authId))
-      users.should_==(responseContacts)
 
       sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
       val importedContacts = expectRpcMsgByPF() {

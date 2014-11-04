@@ -201,7 +201,6 @@ trait ContactService {
         case Some(user) =>
           if (accessHash == ACL.userAccessHash(authId, uid, user.accessSalt)) {
             val newContactsId = Set(uid)
-            val users = immutable.Seq(user).map(struct.User.fromModel(_, authId))
             val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, uid, user.phoneNumber, "", user.accessSalt)
             val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
             val stateFuture = ask(
@@ -209,7 +208,7 @@ trait ContactService {
               UpdatesBroker.NewUpdatePush(currentUser.authId,
                 updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
             ).mapTo[UpdatesBroker.StrictState].map {
-              case (seq, state) => Ok(ResponseImportedContacts(users, seq, uuid.encodeValid(state)))
+              case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
             }
 
             for {
