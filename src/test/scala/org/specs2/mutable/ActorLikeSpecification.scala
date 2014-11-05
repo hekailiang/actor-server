@@ -1,10 +1,11 @@
 package org.specs2.mutable
 
 import akka.actor._
-import akka.cluster.Cluster
 import akka.io.Tcp._
 import akka.testkit._
 import com.secretapp.backend.api.counters._
+import com.typesafe.config._
+import java.net.InetAddress
 import org.specs2._
 import org.specs2.control._
 import org.specs2.execute._
@@ -34,9 +35,11 @@ with TestKitBase
 {
   sequential
 
-  lazy val actorSystemName = "secret-api-server"
+  lazy val systemName: String = "secret-api-server"
 
-  implicit lazy val system = ActorSystem(actorSystemName)
+  lazy val config: Config = createConfig
+
+  implicit lazy val system: ActorSystem = ActorSystem(systemName, config)
 
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)
@@ -50,6 +53,21 @@ with TestKitBase
       t
       success
     }
+  }
+
+  private def createConfig: Config = {
+    val maxPort = 65535
+    val minPort = 1025
+    val port = util.Random.nextInt(maxPort - minPort + 1) + minPort
+
+    val host = InetAddress.getLocalHost.getHostAddress
+
+    ConfigFactory.parseString(s"""
+        akka.remote.netty.tcp.port = $port
+        akka.remote.netty.tcp.hostname = "$host"
+        akka.cluster.seed-nodes = [ "akka.tcp://$systemName@$host:$port" ]
+      """).
+      withFallback(ConfigFactory.load())
   }
 }
 
