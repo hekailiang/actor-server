@@ -21,8 +21,6 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
   import system.dispatcher
   import AckTrackerProtocol._
 
-  override lazy val actorSystemName = "api"
-
   val probe = TestProbe()
   val message = MessageBox(messageId = 123L, RequestAuthId())
   val bytes = MessageBoxCodec.encode(message).toOption.get

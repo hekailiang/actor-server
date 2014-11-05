@@ -11,8 +11,6 @@ import org.specs2.mutable.ActorSpecification
 class CounterActorSpec extends ActorSpecification with ImplicitSender {
   import CounterProtocol._
 
-  override lazy val actorSystemName = "api"
-
   def getCounterActor(name: String) = system.actorOf(Props(new CounterActor(name)), name)
 
   implicit val timeout = Timeout(15.seconds)

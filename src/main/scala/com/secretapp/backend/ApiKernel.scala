@@ -18,9 +18,6 @@ class ApiKernel extends Bootable {
 
   implicit val system = ActorSystem("secret-api-server")
 
-  val joinAddress = Cluster(system).selfAddress
-  Cluster(system).join(joinAddress)
-
   import system.dispatcher
 
   import Configuration._

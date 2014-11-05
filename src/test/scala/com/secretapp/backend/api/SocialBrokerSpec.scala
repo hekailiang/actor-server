@@ -25,8 +25,6 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
 
   import SocialProtocol._
 
-  override lazy val actorSystemName = "api"
-
   implicit val timeout = Timeout(Duration(20, "seconds"))
 
   "SocialBroker" should {

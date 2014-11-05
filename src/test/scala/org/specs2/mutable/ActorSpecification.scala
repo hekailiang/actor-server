@@ -34,12 +34,9 @@ with TestKitBase
 {
   sequential
 
-  lazy val actorSystemName = "test-actor-system"
+  lazy val actorSystemName = "secret-api-server"
 
   implicit lazy val system = ActorSystem(actorSystemName)
-
-  val joinAddress = Cluster(system).selfAddress
-  Cluster(system).join(joinAddress)
 
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)

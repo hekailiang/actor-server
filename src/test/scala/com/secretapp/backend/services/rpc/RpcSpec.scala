@@ -13,6 +13,4 @@ import org.specs2.mutable.{ActorReceiveHelpers, ActorLikeSpecification, ActorSer
 import scala.util.Random
 
 trait RpcSpec extends ActorLikeSpecification with ActorReceiveHelpers with CassandraSpecification
-  with ActorServiceHelpers with RpcSpecHelpers {
-  override lazy val actorSystemName = "api"
-}
+  with ActorServiceHelpers with RpcSpecHelpers
