@@ -9,6 +9,7 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
+import scala.concurrent.duration._
 import spray.can.Http
 import spray.can.server.UHttp
 import scala.util.Try
@@ -29,7 +30,9 @@ class ApiKernel extends Bootable {
 
     // Session bootstrap
     val singletons = new Singletons
-    val sessionRegion = SessionActor.startRegion()(system, singletons, session)
+
+    val sessionReceiveTimeout = singletons.appConfig.getDuration("session.receiveTimeout", MILLISECONDS)
+    val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, session)
 
     // TCP transport bootstrap
     val tcpPort = Try(serverConfig.getInt("tcp-port")).getOrElse(8080)

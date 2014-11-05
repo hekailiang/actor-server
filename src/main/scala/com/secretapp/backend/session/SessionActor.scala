@@ -70,20 +70,20 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, session: CSession) = {
-    Props(new SessionActor(singletons, session))
+  def props(singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) = {
+    Props(new SessionActor(singletons, receiveTimeout, session))
   }
 
-  def startRegion()(implicit system: ActorSystem, singletons: Singletons, session: CSession) =
+  def startRegion(singletons: Singletons, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(SessionActor.props(singletons, session)),
+      entryProps = Some(SessionActor.props(singletons, receiveTimeout, session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class SessionActor(val singletons: Singletons, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
+class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -91,7 +91,7 @@ class SessionActor(val singletons: Singletons, session: CSession) extends Persis
 
   case object Stop
 
-  context.setReceiveTimeout(15.minutes)
+  context.setReceiveTimeout(receiveTimeout)
 
   implicit val timeout = Timeout(5.seconds)
   val maxResponseLength = 1024 // if more, register UnsentResponse for resend
