@@ -29,6 +29,7 @@ object Dependencies {
     val clinkedhashmap  = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2_jdk5"
     val phantomDsl      = "com.websudos"                  %% "phantom-dsl"                   % V.phantom
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
+    val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
 	}
 
   object Test {
@@ -58,6 +59,6 @@ object Dependencies {
 
   val persist   = Seq(scodecBits, phantomDsl, scalazCore)
 
-  val root      = Seq(akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting, scalaLoggingSlf4j)
+  val root      = Seq(akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting, scalaLoggingSlf4j, logbackClassic)
 }
 
