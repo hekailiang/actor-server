@@ -1,7 +1,5 @@
 package com.secretapp.backend.data.transport
 
-import akka.util.ByteString
-import com.secretapp.backend.data.message.TransportMessage
 import com.secretapp.backend.protocol.codecs.message.JsonMessageBoxCodec
 import com.secretapp.backend.protocol.transport.JsonPackageCodec
 import scodec.bits._

@@ -5,14 +5,10 @@ import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBoo
 import spray.revolver.RevolverPlugin._
 import scalabuff.ScalaBuffPlugin._
 
-//import com.typesafe.sbt.SbtAtmos.{atmosSettings, Atmos}
-
 object BackendBuild extends Build {
   val Organization = "Actor IM"
   val Version = "0.1-SNAPSHOT"
   val ScalaVersion = "2.10.4"
-
-  import Dependencies._
 
   val appName = "backend"
   val appClass = "com.secretapp.backend.ApiKernel"
@@ -21,71 +17,71 @@ object BackendBuild extends Build {
   lazy val root = Project(
     appName,
     file("."),
-    settings = defaultSettings ++
+    settings =
+      defaultSettings               ++
       AkkaKernelPlugin.distSettings ++
-      Revolver.settings ++
+      Revolver.settings             ++
       Seq(
-        libraryDependencies ++= rootDependencies,
-        resolvers ++= Resolvers.seq,
-        distJvmOptions in Dist := "-server -Xms256M -Xmx1024M",
-        distBootClass in Dist := appClass,
-        outputDirectory in Dist := file("target/dist"),
-        Revolver.reStartArgs := Seq(appClassMock),
-        mainClass in Revolver.reStart := Some(appClassMock),
-        autoCompilerPlugins := true,
-        scalacOptions in (Compile,doc) := Seq("-groups", "-implicits", "-diagrams")
+        libraryDependencies                       ++= Dependencies.root,
+        resolvers                                 ++= Resolvers.seq,
+        distJvmOptions       in Dist              :=  "-server -Xms256M -Xmx1024M",
+        distBootClass        in Dist              :=  appClass,
+        outputDirectory      in Dist              :=  file("target/dist"),
+        Revolver.reStartArgs                      :=  Seq(appClassMock),
+        mainClass            in Revolver.reStart  :=  Some(appClassMock),
+        autoCompilerPlugins                       :=  true,
+        scalacOptions        in (Compile,doc)     :=  Seq("-groups", "-implicits", "-diagrams")
       )
-  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*).configs(ScalaBuff).dependsOn(actorModels, actorPersist)
+  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+   .dependsOn(actorApi, actorModels, actorPersist)
 
-  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
-    organization := Organization,
-    version := Version,
-    scalaVersion := ScalaVersion,
-    crossPaths := false,
-    organizationName := Organization,
-    organizationHomepage := Some(url("https://actor.im"))
-  )
-
-  lazy val defaultSettings = buildSettings ++ scalabuffSettings ++ Seq(
-    resolvers ++= Resolvers.seq,
-    scalacOptions ++= Seq(
-      "-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation",
-      "-unchecked", "-feature", "-language:higherKinds"), //, "-Xprint:typer"
-    javaOptions ++= Seq(
-      "-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"
-    ),
-    javacOptions ++= Seq(
-      "-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"
-    ),
-    parallelExecution in Test := false,
-    fork in Test := true
-  )
-
-  lazy val export2JS = Project(
-    "export2js",
-    file("projects/export2js"),
-    settings = Revolver.settings ++ Seq(
-      libraryDependencies ++= rootDependencies,
-      resolvers ++= Resolvers.seq
+  lazy val buildSettings =
+    Defaults.defaultSettings ++ 
+    Seq(
+      organization         := Organization,
+      version              := Version,
+      scalaVersion         := ScalaVersion,
+      crossPaths           := false,
+      organizationName     := Organization,
+      organizationHomepage := Some(url("https://actor.im"))
     )
-  ).dependsOn(root, export2JSMacros)
 
-  lazy val export2JSMacros = Project(
-    "export2JSMacros",
-    file("projects/export2js/macros"),
-    settings = Revolver.settings ++ Seq(
-      libraryDependencies ++= rootDependencies,
-      resolvers ++= Resolvers.seq
+  lazy val defaultSettings = 
+    buildSettings ++ 
+    Seq(
+      resolvers                 ++= Resolvers.seq,
+      scalacOptions             ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
+      javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),
+      javacOptions              ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
+      parallelExecution in Test :=  false,
+      fork              in Test :=  true
     )
+
+  lazy val actorExport2Js = Project(
+    id       = "actor-export2js",
+    base     = file("actor-export2js"),
+    settings = Revolver.settings
+  ).dependsOn(actorExport2JsMacros)
+
+  lazy val actorExport2JsMacros = Project(
+    id       = "actor-export2js-macros",
+    base     = file("actor-export2js-macros"),
+    settings = Revolver.settings
   ).dependsOn(root)
 
   lazy val actorModels = Project(
-    id = "actor-models",
+    id   = "actor-models",
     base = file("actor-models")
   )
 
   lazy val actorPersist = Project(
-    id = "actor-persist",
+    id   = "actor-persist",
     base = file("actor-persist")
   ).dependsOn(actorModels)
+
+  lazy val actorApi = Project(
+    id       = "actor-api",
+    base     = file("actor-api"),
+    settings = Defaults.defaultSettings ++ scalabuffSettings
+  ).dependsOn(actorPersist).configs(ScalaBuff)
 }

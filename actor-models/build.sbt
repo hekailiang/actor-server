@@ -1,1 +1,1 @@
-libraryDependencies ++= Seq("org.typelevel"              %% "scodec-bits"                   % "1.0.2")
+libraryDependencies ++= Dependencies.models

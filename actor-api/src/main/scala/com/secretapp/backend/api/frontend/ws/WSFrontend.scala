@@ -1,15 +1,10 @@
 package com.secretapp.backend.api.frontend.ws
 
 import akka.actor._
-import akka.util.ByteString
-import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.frontend._
-import scodec.bits.BitVector
 import spray.can.websocket
 import spray.can.websocket.frame._
-import spray.can.websocket.Send
-import spray.http.HttpRequest
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
 import com.secretapp.backend.protocol.transport.{JsonPackageCodec, Frontend}
