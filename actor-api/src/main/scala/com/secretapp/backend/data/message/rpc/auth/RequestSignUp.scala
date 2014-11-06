@@ -13,7 +13,8 @@ case class RequestSignUp(
   deviceHash: BitVector,
   deviceTitle: String,
   appId: Int,
-  appKey: String
+  appKey: String,
+  isSilent: Boolean
 ) extends RpcRequestMessage {
   val header = RequestSignUp.header
 }

@@ -6,7 +6,7 @@ import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.Singletons
-import com.secretapp.backend.api.frontend.{ JsonConnection, MTConnection, TransportConnection }
+import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.frontend.ws.WSFrontend
 import com.secretapp.backend.crypto.ec
@@ -134,11 +134,6 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val probe = TestProbe()
     val actor = transport match {
       case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion, csession))
-      case JsonConnection =>
-        val props = Props(new WSFrontend(probe.ref, inetAddr, sessionRegion, csession) {
-          override def receive = businessLogic orElse closeLogic
-        })
-        system.actorOf(props)
     }
     (probe, actor)
   }

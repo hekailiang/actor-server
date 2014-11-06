@@ -1,6 +1,8 @@
 package com.secretapp.backend.data.message.update
 
-case class Typing(uid: Int, typingType: Int) extends WeakUpdateMessage {
+import com.secretapp.backend.data.message.struct
+
+case class Typing(peer: struct.Peer, typingType: Int) extends WeakUpdateMessage {
   val header = Typing.header
 }
 

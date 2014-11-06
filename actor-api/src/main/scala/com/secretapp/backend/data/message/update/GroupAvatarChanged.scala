@@ -2,10 +2,10 @@ package com.secretapp.backend.data.message.update
 
 import com.secretapp.backend.models
 
-case class GroupAvatarChanged(groupId: Int, avatar: Option[models.Avatar]) extends SeqUpdateMessage {
+case class GroupAvatarChanged(groupId: Int, uid: Int, avatar: Option[models.Avatar], date: Long) extends SeqUpdateMessage {
   override val header = GroupAvatarChanged.header
 
-  def userIds: Set[Int] = Set()
+  def userIds: Set[Int] = Set(uid)
 }
 
 object GroupAvatarChanged extends SeqUpdateMessageObject {

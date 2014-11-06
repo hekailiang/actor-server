@@ -17,9 +17,9 @@ object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
   def encode(d: Difference) = {
     d.updates.map(_.toProto).toList.sequenceU match {
       case \/-(updates) =>
-        d.state map(uuid.encode(_)) getOrElse(BitVector.empty.right) match {
+        d.state map(uuid.encode) getOrElse(BitVector.empty.right) match {
           case \/-(bytesState) =>
-            val boxed = protobuf.Difference(d.seq, bytesState, d.users.map(_.toProto), updates, d.needMore)
+            val boxed = protobuf.Difference(d.seq, bytesState, d.users.map(_.toProto), d.groups.map(_.toProto), updates, d.needMore)
             encodeToBitVector(boxed)
           case l => l
         }
@@ -29,8 +29,8 @@ object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
 
   def decode(buf: BitVector) = {
     Try(protobuf.Difference.parseFrom(buf.toByteArray)) match {
-      case Success(protobuf.Difference(seq, state, users, updates, needMore)) =>
-        updates.map(DifferenceUpdate.fromProto(_)).toList.sequenceU match {
+      case Success(protobuf.Difference(seq, state, users, groups, updates, needMore)) =>
+        updates.map(DifferenceUpdate.fromProto).toList.sequenceU match {
           case \/-(updates) =>
             val decodedState = if (state == ByteString.EMPTY) {
               None.right
@@ -39,8 +39,9 @@ object DifferenceCodec extends Codec[Difference] with utils.ProtobufCodec {
             }
             decodedState match {
               case \/-(muuidState) =>
-                val unboxed = Difference(seq, muuidState, users.map(struct.User.fromProto(_)), updates, needMore)
-                  (BitVector.empty, unboxed).right
+                val unboxed = Difference(seq, muuidState, users.map(struct.User.fromProto),
+                  groups.map(struct.Group.fromProto), updates, needMore)
+                (BitVector.empty, unboxed).right
               case l @ (-\/(_)) => l
             }
           case l@(-\/(_)) => l

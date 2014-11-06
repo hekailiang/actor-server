@@ -14,14 +14,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object ResponseAuthCodec extends Codec[ResponseAuth] with utils.ProtobufCodec {
   def encode(r: ResponseAuth) = {
-    val boxed = protobuf.ResponseAuth(r.publicKeyHash, r.user.toProto)
+    val boxed = protobuf.ResponseAuth(r.publicKeyHash, r.user.toProto, r.config.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.ResponseAuth.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.ResponseAuth(publicKeyHash, user)) =>
-        ResponseAuth(publicKeyHash, struct.User.fromProto(user))
+      case Success(r) => ResponseAuth(r.publicKeyHash, struct.User.fromProto(r.user), struct.Config.fromProto(r.config))
     }
   }
 }

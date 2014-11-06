@@ -39,17 +39,17 @@ trait ContactService {
       authorizedRequest {
         handleRequestGetContacts(contactsHash)
       }
-    case RequestDeleteContact(contactId, accessHash) =>
+    case RequestRemoveContact(contactId, accessHash) =>
       authorizedRequest {
-        handleRequestDeleteContact(contactId, accessHash)
+        handleRequestRemoveContact(contactId, accessHash)
       }
-    case RequestEditContactName(contactId, accessHash, localName) =>
+    case RequestEditUserLocalName(contactId, accessHash, localName) =>
       authorizedRequest {
-        handleRequestEditContactName(contactId, accessHash, localName)
+        handleRequestEditUserLocalName(contactId, accessHash, localName)
       }
-    case RequestFindContacts(request) =>
+    case RequestSearchContacts(request) =>
       authorizedRequest {
-        handleRequestFindContacts(request)
+        handleRequestSearchContacts(request)
       }
     case RequestAddContact(uid, accessHash) =>
       authorizedRequest {
@@ -129,7 +129,7 @@ trait ContactService {
     }
   }
 
-  def handleRequestDeleteContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
+  def handleRequestRemoveContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
@@ -152,7 +152,7 @@ trait ContactService {
     }
   }
 
-  def handleRequestEditContactName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
+  def handleRequestEditUserLocalName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     persist.User.getAccessSaltAndPhone(contactId) flatMap {
@@ -177,17 +177,17 @@ trait ContactService {
     }
   }
 
-  def handleRequestFindContacts(request: String): Future[RpcResponse] = {
+  def handleRequestSearchContacts(request: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     PhoneNumber.normalizeStr(request, currentUser.countryCode) match {
-      case None => Future.successful(Ok(ResponseFindContacts(immutable.Seq[struct.User]())))
+      case None => Future.successful(Ok(ResponseSearchContacts(immutable.Seq[struct.User]())))
       case Some(phoneNumber) =>
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
           phones <- persist.Phone.getEntities(filteredPhones)
           users <- Future.sequence(phones map (p => persist.User.getEntity(p.userId))).map(_.flatten)
-        } yield Ok(ResponseFindContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
+        } yield Ok(ResponseSearchContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
     }
   }
 

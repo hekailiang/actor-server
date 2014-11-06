@@ -23,7 +23,7 @@ class AckTrackerActorSpec extends ActorSpecification with RandomService {
 
   val probe = TestProbe()
   val message = MessageBox(messageId = 123L, RequestAuthId())
-  val bytes = MessageBoxCodec.encode(message).toOption.get
+  val bytes = MessageBoxCodec.encodeValid(message)
 
   def getTrackerActor() = system.actorOf(Props(new AckTrackerActor(rand.nextLong, rand.nextLong, 19)))
 

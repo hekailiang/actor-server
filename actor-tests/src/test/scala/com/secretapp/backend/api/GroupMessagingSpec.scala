@@ -3,7 +3,7 @@ package com.secretapp.backend.api
 import com.secretapp.backend.util.ACL
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
@@ -156,8 +156,8 @@ class GroupMessagingSpec extends RpcSpec {
         val invite = diff.updates.head.body.assertInstanceOf[GroupInvite]
 
         invite.users.toSet should beEqualTo(Set(
-          UserId(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
-          UserId(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+          struct.UserOutPeer(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ))
 
         diff.updates(1).body.assertInstanceOf[GroupMessage]
@@ -223,7 +223,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         val update = diff.updates.head.body.assertInstanceOf[GroupInvite]
-        update.users should beEqualTo(Seq(UserId(scope1.user.uid, ACL.userAccessHash(scope2.user.authId, scope1.user))))
+        update.users should beEqualTo(Seq(struct.UserOutPeer(scope1.user.uid, ACL.userAccessHash(scope2.user.authId, scope1.user))))
       }
     }
 

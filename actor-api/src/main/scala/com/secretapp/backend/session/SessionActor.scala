@@ -28,8 +28,6 @@ object SessionProtocol {
   }
   @SerialVersionUID(1L)
   case class HandleMTMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
-  @SerialVersionUID(1L)
-  case class HandleJsonMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
 
   @SerialVersionUID(1L)
   case class AuthorizeUser(user: User) extends SessionMessage
@@ -153,7 +151,6 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
     case handleBox: HandleMessageBox =>
       withMDC(log.info(s"HandleMessageBox($handleBox)"))
       transport = handleBox match {
-        case _: HandleJsonMessageBox => JsonConnection.some
         case _: HandleMTMessageBox => MTConnection.some
       }
       queueNewSession(handleBox.mb.messageId)

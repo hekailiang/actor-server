@@ -13,34 +13,22 @@ import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
 object ResponseSeqCodec extends Codec[update.ResponseSeq] with utils.ProtobufCodec {
-  def encode(s: update.ResponseSeq) = {
-    s.state match {
-      case Some(state) =>
-        uuid.encode(state) match {
-          case \/-(bytesState) =>
-            val boxed = protobuf.ResponseSeq(s.seq, bytesState)
-            encodeToBitVector(boxed)
-          case l => l
-        }
-      case None =>
-        val boxed = protobuf.ResponseSeq(s.seq, BitVector.empty)
+  def encode(r: update.ResponseSeq) = {
+    protoState.encode(r.state) match {
+      case \/-(bytesState) =>
+        val boxed = protobuf.ResponseSeq(r.seq, bytesState)
         encodeToBitVector(boxed)
+      case l @ -\/(_) => l
     }
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobufEither(protobuf.ResponseSeq.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.ResponseSeq(seq, state)) =>
-        state match {
-          case ByteString.EMPTY =>
-            update.ResponseSeq(seq, None).right
-          case _ =>
-            uuid.decodeValue(state) match {
-              case \/-(uuidState) =>
-                update.ResponseSeq(seq, Some(uuidState)).right
-              case l @ -\/(_) =>
-                l
-            }
+    decodeProtobufEither(protobuf.ResponseAvatarChanged.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.ResponseAvatarChanged(avatar, seq, bytesState)) =>
+        protoState.decodeValue(bytesState) match {
+          case \/-(state) =>
+            update.ResponseSeq(seq, state).right
+          case l @ -\/(_) => l
         }
     }
   }
