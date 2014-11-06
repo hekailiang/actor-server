@@ -14,12 +14,10 @@ case class WrongReceiversErrorData(newKeys: Seq[UserKey], removedKeys: Seq[UserK
 }
 
 object WrongReceiversErrorData {
-  def fromProto(data: protobuf.WrongReceiversErrorData): WrongReceiversErrorData = data match {
-    case protobuf.WrongReceiversErrorData(newKeys, removedKeys, invalidKeys) =>
-      WrongReceiversErrorData(
-        newKeys map UserKey.fromProto,
-        removedKeys map UserKey.fromProto,
-        invalidKeys map UserKey.fromProto
-      )
-  }
+  def fromProto(data: protobuf.WrongReceiversErrorData) =
+    WrongReceiversErrorData(
+      data.newKeys map UserKey.fromProto,
+      data.removedKeys map UserKey.fromProto,
+      data.invalidKeys map UserKey.fromProto
+    )
 }

@@ -2,12 +2,12 @@ package org.specs2.mutable
 
 import akka.io.Tcp.{ Close, Received, Write }
 import akka.util.ByteString
-import com.secretapp.backend.api.frontend.{ JsonConnection, MTConnection, TransportConnection }
+import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.protocol.transport.{ JsonPackageCodec, MTPackageBoxCodec }
+import com.secretapp.backend.protocol.transport.MTPackageBoxCodec
 import com.secretapp.backend.services.common.RandomService
 import org.specs2.specification.{ Fragment, Fragments }
 import scala.annotation.tailrec
@@ -27,7 +27,7 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
   val defaultTimeout: FiniteDuration = 10.seconds
 
   def transportForeach(f: (TransportConnection) => Fragments) = {
-    Seq(MTConnection, JsonConnection) foreach { t =>
+    Seq(MTConnection) foreach { t =>
       addFragments(t.toString, f(t), "session")
     }
     success
@@ -35,7 +35,6 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
 
   def sendMsg(data: ByteString)(implicit scope: TestScopeNew, transport: TransportConnection): Unit = transport match {
     case MTConnection => scope.probe.send(scope.apiActor, Received(data))
-    case JsonConnection => scope.probe.send(scope.apiActor, TextFrame(data))
   }
 
   def sendMsgBox(msg: MessageBox)(implicit scope: TestScopeNew, transport: TransportConnection) = {
@@ -63,9 +62,6 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
       case MTConnection =>
         val p = protoPackageBox.build(packageIndex, scope.authId, scope.session.id, mb)
         codecRes2BS(p)
-      case JsonConnection =>
-        val p = JsonPackage.build(scope.authId, scope.session.id, mb)
-        p.encode
     }
   }
 
@@ -75,9 +71,6 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
         case MTConnection =>
           val p = protoPackageBox.build(packageIndex, scope.authId, scope.session.id, msg)
           scope.probe.send(scope.apiActor, Received(codecRes2BS(p)))
-        case JsonConnection =>
-          val p = JsonPackage.build(scope.authId, scope.session.id, msg)
-          scope.probe.send(scope.apiActor, TextFrame(p.encode))
       }
       packageIndex += 1
     }
@@ -254,7 +247,6 @@ trait ActorReceiveHelpers extends RandomService with ActorServiceImplicits with 
   private def deserializePackage(data: ByteString)(implicit scope: TestScopeNew, transport: TransportConnection) = {
     val p = transport match {
       case MTConnection => MTPackageBoxCodec.decodeValidValue(data).p
-      case JsonConnection => JsonPackageCodec.decode(data).toOption.get
     }
     if (p.authId != scope.authId || p.sessionId != scope.session.id)
       throw new IllegalArgumentException(s"p.authId(${p.authId}}) != authId(${scope.authId}) || p.sessionId(${p.sessionId}) != s.id(${scope.session.id})")

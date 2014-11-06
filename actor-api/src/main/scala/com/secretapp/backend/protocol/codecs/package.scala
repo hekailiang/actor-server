@@ -11,6 +11,9 @@ package object codecs {
   def protoPayload[A](payloadCodec: Codec[A]) = new common.PayloadBytesCodec[A](payloadCodec)
   val protoSex = common.SexCodec
   val protoString = common.StringCodec
+  val stateOpt = message.StateOptCodec
+
+  val protoState = common.OptionalUUIDCodec
 
   // messages
   val protoTransportMessage = message.TransportMessageCodec

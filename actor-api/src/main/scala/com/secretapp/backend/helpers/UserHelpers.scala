@@ -3,7 +3,7 @@ package com.secretapp.backend.helpers
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
-import com.secretapp.backend.data.message.struct.{ UserId, UserKey }
+import com.secretapp.backend.data.message.struct.{ UserOutPeer, UserKey }
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -38,12 +38,12 @@ trait UserHelpers {
     }
   }
 
-  def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[UserId]] = {
+  def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[UserOutPeer]] = {
     for {
       users <- getUsers(userId)
     } yield {
       users.headOption map { user =>
-        UserId(userId, ACL.userAccessHash(authId, user._2))
+        UserOutPeer(userId, ACL.userAccessHash(authId, user._2))
       }
     }
   }

@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message.struct
 case class Difference(seq: Int,
                       state: Option[UUID],
                       users: immutable.Seq[struct.User],
+                      groups: immutable.Seq[struct.Group],
                       updates: immutable.Seq[DifferenceUpdate],
                       needMore: Boolean) extends RpcResponseMessage {
   val header = Difference.header

@@ -1,5 +1,6 @@
 package com.secretapp.backend.services.rpc.user
 
+import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
@@ -36,13 +37,22 @@ trait UserService extends SocialHelpers with UserHelpers {
         Future successful Error(400, "FILE_TOO_BIG", "", false)
       else
         AvatarUtils.scaleAvatar(fileRecord, r.fileLocation) flatMap { a =>
-          persist.User.updateAvatar(user.uid, a) map { _ =>
+          persist.User.updateAvatar(user.uid, a) flatMap { _ =>
             withRelatedAuthIds(user.uid) { authIds =>
               authIds foreach { authId =>
                 updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
               }
             }
-            Ok(ResponseAvatarChanged(a))
+
+            for {
+              updateState <- ask(
+                updatesBrokerRegion,
+                UpdatesBroker.NewUpdatePush(user.authId, AvatarChanged(user.uid, Some(a)))
+              ).mapTo[UpdatesBroker.StrictState]
+            } yield {
+              val (seq, state) = updateState
+              Ok(ResponseAvatarChanged(a, seq, state))
+            }
           }
         } recover {
           case e =>

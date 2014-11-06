@@ -19,7 +19,6 @@ object Dependencies {
     val akkaRemote      = "com.typesafe.akka"             %% "akka-remote"                   % V.akka
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
     val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % "0.4"
-    val playJson        = "com.typesafe.play"             %% "play-json"                     % "2.4.0-M1"
     val sprayWebSocket  = "com.wandoulabs.akka"           %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai"))
     // we need this because commons-codec 1.2 jar is broken (apns dependency)
     val commonsCodec    = "commons-codec"                 %  "commons-codec"                 % "1.3"
@@ -56,7 +55,7 @@ object Dependencies {
   val util      = Seq(akkaActor, akkaSlf4j)
 
   val api       = common ++ Seq(
-    apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, playJson, sprayWebSocket, commonsCodec, akkaCluster,
+    apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra
   )
 

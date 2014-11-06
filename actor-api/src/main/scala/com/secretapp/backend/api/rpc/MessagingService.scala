@@ -65,7 +65,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
                   updateProto.Message(
                     currentUser.uid,
                     destUserId,
-                    EncryptedRSAPackage(
+                    MessageContent(
                       key.keyHash,
                       key.aesEncryptedKey,
                       message.encryptedMessage
@@ -94,7 +94,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
             updatesBrokerRegion,
             NewUpdatePush(
               currentUser.authId,
-              updateProto.MessageSent(destUserId, randomId)
+              updateProto.MessageSent(destUserId, randomId, System.currentTimeMillis())
             )).mapTo[UpdatesBroker.StrictState]
 
           for {
@@ -476,7 +476,7 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
     withUsers(uid, accessHash, currentUser) { users =>
       users map {
         case (_, u) =>
-          updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId))
+          updatesBrokerRegion ! NewUpdatePush(u.authId, updateProto.MessageRead(currentUser.uid, randomId, System.currentTimeMillis()))
       }
 
       Future.successful(Ok(ResponseVoid()))

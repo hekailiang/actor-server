@@ -15,14 +15,12 @@ trait TransportSerializers {
     //log.debug(s"$authId#serializeMessageBox: $message")
     transport match {
       case Some(MTConnection) => MessageBoxCodec.encodeValid(message)
-      case Some(JsonConnection) => JsonMessageBoxCodec.encodeValid(message)
       case None => throw new IllegalArgumentException("transport == None")
     }
   }
 
   def serializePackage(mb: BitVector): ResponseToClient = transport match {
     case Some(MTConnection) => ResponseToClient(MTPackage(authId, sessionId, mb).encode)
-    case Some(JsonConnection) => ResponseToClient(JsonPackage(authId, sessionId, mb).encode)
     case None => throw new IllegalArgumentException("transport == None")
   }
 

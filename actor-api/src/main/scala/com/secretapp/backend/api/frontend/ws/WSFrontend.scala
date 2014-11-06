@@ -7,7 +7,7 @@ import spray.can.websocket
 import spray.can.websocket.frame._
 import spray.can.websocket.FrameCommandFailed
 import spray.routing.HttpServiceActor
-import com.secretapp.backend.protocol.transport.{JsonPackageCodec, Frontend}
+import com.secretapp.backend.protocol.transport.Frontend
 import scalaz._
 import Scalaz._
 import java.net.InetSocketAddress
@@ -20,16 +20,17 @@ object WSFrontend {
 
 // TODO: extend NackActor
 class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker with SslConfiguration {
-  val transport = JsonConnection
+  val transport = MTConnection
   val serverConnection = connection
 
   def businessLogic: Receive = {
     case frame: TextFrame =>
       log.info(s"Frame: ${new String(frame.payload.toArray)}")
-      JsonPackageCodec.decode(frame.payload) match {
-        case \/-(p) => handlePackage(p)
-        case -\/(e) => sendDrop(e)
-      }
+//      JsonPackageCodec.decode(frame.payload) match {
+//        case \/-(p) => handlePackage(p)
+//        case -\/(e) => sendDrop(e)
+//      }
+      ???
     case x: FrameCommandFailed =>
       log.error(s"frame command failed: $x")
     case ResponseToClient(bs) =>

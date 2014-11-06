@@ -125,7 +125,7 @@ class ContactServiceSpec extends RpcSpec {
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      sendRpcMsg(RequestEditContactName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
+      sendRpcMsg(RequestEditUserLocalName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
       // TODO
       val reqSeq = expectRpcMsgByPF(withNewSession = true) {
@@ -150,7 +150,7 @@ class ContactServiceSpec extends RpcSpec {
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
       persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 
       // TODO
       val reqSeq = expectRpcMsgByPF(withNewSession = true) {
@@ -179,10 +179,10 @@ class ContactServiceSpec extends RpcSpec {
       Set(PhoneNumberFormat.INTERNATIONAL, PhoneNumberFormat.NATIONAL, PhoneNumberFormat.E164).zipWithIndex.foreach {
         case (format, index) =>
           val searchString = phoneUtil.format(phone, format)
-          sendRpcMsg(RequestFindContacts(searchString))
+          sendRpcMsg(RequestSearchContacts(searchString))
 
           val users = expectRpcMsgByPF(withNewSession = index == 0) {
-            case r: ResponseFindContacts => r.users
+            case r: ResponseSearchContacts => r.users
           }
           users.should_==(Seq(struct.User.fromModel(contact, scope.authId)))
       }
@@ -212,7 +212,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       importedUsers.should_==(responseContacts)
 
-      sendRpcMsg(RequestDeleteContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
       expectRpcMsgByPF() {
         case r: ResponseSeq => r
       }

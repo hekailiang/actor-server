@@ -15,7 +15,6 @@ object WeakUpdateMessageCodec {
       case m: UserLastSeen => UserLastSeenCodec.encode(m)
       case m: GroupOnline  => GroupOnlineCodec.encode(m)
       case m: Typing       => TypingCodec.encode(m)
-      case m: TypingGroup  => TypingGroupCodec.encode(m)
     }
   }
 
@@ -26,7 +25,6 @@ object WeakUpdateMessageCodec {
       case UserLastSeen.header => UserLastSeenCodec.decode(buf)
       case GroupOnline.header => GroupOnlineCodec.decode(buf)
       case Typing.header => TypingCodec.decode(buf)
-      case TypingGroup.header => TypingGroupCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

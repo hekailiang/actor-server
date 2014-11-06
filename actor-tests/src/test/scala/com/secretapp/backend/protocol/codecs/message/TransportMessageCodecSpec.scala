@@ -88,14 +88,6 @@ class TransportMessageCodecSpec extends Specification {
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
     }
 
-    "encode and decode Update.NewFullDevice" in {
-      val encoded = hex"05160000000d110801120018032209087b10e7071a02ac1d".bits
-      val decoded = UpdateBox(SeqUpdate(1, BitVector.empty, NewFullDevice(123, 999L, hex"ac1d".bits)))
-
-      protoTransportMessage.encode(decoded) should_== encoded.right
-      protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
-    }
-
     "encode and decode Update.SeqUpdate" in {
       val encoded = hex"05140000000d0f08011202ac1d18022205087b10e707".bits
       val decoded = UpdateBox(SeqUpdate(1, hex"ac1d".bits, NewDevice(123, 999L)))

@@ -84,10 +84,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
       case rq: RequestEditGroupAvatar =>
         handleMessaging(rq)
 
-      case rq: RequestRemoveUser =>
-        handleMessaging(rq)
-
-      case rq: RequestSendGroupMessage =>
+      case rq: RequestRemoveUsers =>
         handleMessaging(rq)
 
       case rq: RequestMessageReceived =>

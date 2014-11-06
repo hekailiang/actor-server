@@ -21,7 +21,7 @@ trait Frontend extends Actor with ActorLogging {
   val session: CSession
   val remote: InetSocketAddress
 
-  val keyFrontend: Option[ActorRef] = None
+  var keyFrontend: Option[ActorRef] = None
   val secFrontend = mutable.HashMap[Long, ActorRef]()
 
   var authId = 0L
@@ -37,6 +37,7 @@ trait Frontend extends Actor with ActorLogging {
         case None =>
           val keyRef = context.system.actorOf(KeyFrontend.props(self, transport)(session))
           context.watch(keyRef)
+          keyFrontend = keyRef.some
           keyRef
       }
       keyFrontRef ! InitDH(p)

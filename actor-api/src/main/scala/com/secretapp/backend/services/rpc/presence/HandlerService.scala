@@ -1,7 +1,7 @@
 package com.secretapp.backend.services.rpc.presence
 
 import akka.actor._
-import com.secretapp.backend.data.message.struct.{ GroupId, UserId }
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.data.message.rpc.{ResponseVoid, Error, Ok, RpcResponse}
@@ -23,22 +23,22 @@ trait HandlerService {
   import PresenceProtocol._
 
   // TODO: check accessHash
-  protected def handleSubscribeToOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    sessionActor ! SessionProtocol.SubscribeToPresences(users map (_.uid))
+  protected def handleSubscribeToOnline(users: immutable.Seq[struct.UserOutPeer]): Future[RpcResponse] = {
+    sessionActor ! SessionProtocol.SubscribeToPresences(users map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeFromOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    sessionActor ! SessionProtocol.UnsubscribeToPresences(users map (_.uid))
+  protected def handleUnsubscribeFromOnline(users: immutable.Seq[struct.UserOutPeer]): Future[RpcResponse] = {
+    sessionActor ! SessionProtocol.UnsubscribeToPresences(users map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleSubscribeToGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
+  protected def handleSubscribeToGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
     sessionActor ! SessionProtocol.SubscribeToGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
+  protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
     sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }

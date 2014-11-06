@@ -4,7 +4,7 @@ import PackageCommon._
 import akka.actor.ActorRef
 import com.secretapp.backend.data.message.UpdateBox
 import com.secretapp.backend.models.User
-import com.secretapp.backend.data.transport.{JsonPackage, TransportPackage, MessageBox, MTPackage}
+import com.secretapp.backend.data.transport.{TransportPackage, MessageBox, MTPackage}
 import scalaz._
 import scalaz.Scalaz._
 

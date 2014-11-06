@@ -20,10 +20,8 @@ case class WeakUpdate(date: Long, body: WeakUpdateMessage) extends UpdateMessage
 object WeakUpdate extends UpdateMessageObject {
   val header = 0x1A
 
-  def fromProto(u: protobuf.WeakUpdate): String \/ WeakUpdate = u match {
-    case protobuf.WeakUpdate(date, updateId, body) =>
-      for {
-        update <- WeakUpdateMessageCodec.decode(updateId, body)
-      } yield WeakUpdate(date, update)
+  def fromProto(u: protobuf.WeakUpdate) = {
+    for { update <- WeakUpdateMessageCodec.decode(u.updateId, u.update) }
+    yield WeakUpdate(u.date, update)
   }
 }

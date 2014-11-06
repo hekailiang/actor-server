@@ -9,7 +9,7 @@ import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.data.message.update.{ NewDevice, NewFullDevice, RemoveDevice }
+import com.secretapp.backend.data.message.update.{ NewDevice, RemoveDevice }
 import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers.SocialHelpers
@@ -167,7 +167,7 @@ trait SignService extends SocialHelpers {
               ), u.uid
             )
 
-            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId)))
+              Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId), struct.Config(300)))
           }
         }
 
@@ -242,13 +242,13 @@ trait SignService extends SocialHelpers {
                 case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
                 case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
                 case _ =>
+                  persist.AuthSmsCode.dropEntity(phoneNumber)
                   m match {
                     case -\/(_: RequestSignIn) => phoneR match {
                       case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
                       case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
                     }
                     case \/-(req: RequestSignUp) =>
-                      persist.AuthSmsCode.dropEntity(phoneNumber)
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
@@ -306,7 +306,7 @@ trait SignService extends SocialHelpers {
       case Success(authIds) =>
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
-            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewFullDevice(userId, publicKeyHash, publicKey))
+            updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash, publicKey.some, System.currentTimeMillis()))
           }
         }
       case Failure(e) =>
@@ -321,7 +321,7 @@ trait SignService extends SocialHelpers {
           persist.UserPublicKey.fetchAuthIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
               for (targetAuthId <- authIds) {
-                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash))
+                updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash, None, System.currentTimeMillis()))
               }
             case Failure(e) =>
               log.error(s"Failed to get authIds for authId=$authId uid=$targetUserId to push new device updates $publicKeyHash")
@@ -343,7 +343,7 @@ trait SignService extends SocialHelpers {
 
         getAuthIds(c.ownerUserId) map { authIds =>
           authIds foreach { authId =>
-            pushUpdate(authId, ContactRegistered(u.uid))
+            pushUpdate(authId, ContactRegistered(u.uid, false, System.currentTimeMillis()))
           }
         }
       }

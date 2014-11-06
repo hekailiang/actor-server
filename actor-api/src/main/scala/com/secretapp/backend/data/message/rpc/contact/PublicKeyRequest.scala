@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.contact
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import im.actor.messenger.{ api => protobuf }
+import im.actor.messenger.api.{ RequestPublicKeys => protobuf }
 
 @SerialVersionUID(1L)
 case class PublicKeyRequest(uid: Int, accessHash: Long, keyHash: Long) extends ProtobufMessage

@@ -1,6 +1,5 @@
 package com.secretapp.backend.protocol.codecs.message.update
 
-import com.secretapp.backend.data.message.struct.UserId
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
@@ -14,9 +13,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object GroupUserAddedCodec extends Codec[GroupUserAdded] with utils.ProtobufCodec {
   def encode(u: GroupUserAdded) = {
-    val boxed = protobuf.UpdateGroupUserAdded(
-      u.groupId, u.userId, u.inviterUserId
-    )
+    val boxed = protobuf.UpdateGroupUserAdded(u.groupId, u.userId, u.inviterUserId, u.date)
     encodeToBitVector(boxed)
   }
 
@@ -24,11 +21,11 @@ object GroupUserAddedCodec extends Codec[GroupUserAdded] with utils.ProtobufCode
     decodeProtobuf(protobuf.UpdateGroupUserAdded.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupUserAdded(
-          groupId, userId, inviterUserId
+          groupId, userId, inviterUserId, date
         )
       ) =>
         GroupUserAdded(
-          groupId, userId, inviterUserId
+          groupId, userId, inviterUserId, date
         )
     }
   }

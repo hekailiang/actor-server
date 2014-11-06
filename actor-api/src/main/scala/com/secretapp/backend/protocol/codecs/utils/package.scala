@@ -20,6 +20,7 @@ package object utils {
         case Failure(e) => s"parse error: ${e.getMessage}".left
       }
     }
+
     def decodeProtobufEither[T, R](res: => T)(f: PartialFunction[Success[T], String \/ R]): String \/ (BitVector, R) = {
       Try(res) match {
         case s@Success(_) => f(s) match {

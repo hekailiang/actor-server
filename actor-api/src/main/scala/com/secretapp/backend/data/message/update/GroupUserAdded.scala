@@ -1,13 +1,11 @@
 package com.secretapp.backend.data.message.update
 
-import com.secretapp.backend.data.message.struct.UserId
-import scala.collection.immutable
-import scodec.bits.BitVector
-
+@SerialVersionUID(1L)
 case class GroupUserAdded(
   groupId: Int,
   userId: Int,
-  inviterUserId: Int
+  inviterUserId: Int,
+  date: Long
 ) extends SeqUpdateMessage {
   val header = GroupUserAdded.header
 

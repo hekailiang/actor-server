@@ -44,19 +44,17 @@ object User {
     case _ => models.NoSex
   }
 
-  def fromProto(u: protobuf.User): User = u match {
-    case protobuf.User(uid, accessHash, name, localName, sex, keyHashes, phoneNumber, avatar) =>
-      User(
-        uid = uid,
-        accessHash = accessHash,
-        name = name,
-        localName = toLocalName(localName),
-        sex = sex.map(fromProto),
-        keyHashes = keyHashes.toSet,
-        phoneNumber = phoneNumber,
-        avatar = avatar map proto.fromProto[models.Avatar, protobuf.Avatar]
-      )
-  }
+  def fromProto(u: protobuf.User): User =
+    User(
+      uid = u.id,
+      accessHash = u.accessHash,
+      name = u.name,
+      localName = toLocalName(u.localName),
+      sex = u.sex.map(fromProto),
+      keyHashes = u.keyHashes.toSet,
+      phoneNumber = u.phone,
+      avatar = u.avatar map proto.fromProto[models.Avatar, protobuf.Avatar]
+    )
 
   private def toLocalName(localName: Option[String]) = localName match {
     case n @ Some(name) if name.nonEmpty => n
