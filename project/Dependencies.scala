@@ -11,9 +11,11 @@ object Dependencies {
     val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta4"
     val scrImageCore    = "com.sksamuel.scrimage"         %% "scrimage-core"                 % "1.4.1"
 		val akkaActor       = "com.typesafe.akka"             %% "akka-actor"                    % V.akka
+    val akkaCluster     = "com.typesafe.akka"             %% "akka-cluster"                  % V.akka
     val akkaContrib     = "com.typesafe.akka"             %% "akka-contrib"                  % V.akka
     val akkaKernel      = "com.typesafe.akka"             %% "akka-kernel"                   % V.akka
     val akkaPersistence = "com.typesafe.akka"             %% "akka-persistence-experimental" % V.akka
+    val akkaPersistenceCassandra = "com.github.krasserm"           %% "akka-persistence-cassandra"    % "0.3.4"
     val akkaRemote      = "com.typesafe.akka"             %% "akka-remote"                   % V.akka
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
     val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % "0.4"
@@ -49,8 +51,8 @@ object Dependencies {
   import Compile._, Test._, Deploy._
 
   val api       = Seq(
-    apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, playJson, sprayWebSocket, commonsCodec, 
-    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, logbackClassic
+    apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, playJson, sprayWebSocket, commonsCodec, akkaCluster,
+    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, logbackClassic, akkaPersistenceCassandra
   )
 
   val deploy    = Seq(traceAkka)
@@ -59,6 +61,9 @@ object Dependencies {
 
   val persist   = Seq(scodecBits, phantomDsl, scalazCore)
 
-  val root      = Seq(akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting, scalaLoggingSlf4j, logbackClassic)
+  val root      = Seq(
+    akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting, 
+    scalaLoggingSlf4j, logbackClassic
+  )
 }
 
