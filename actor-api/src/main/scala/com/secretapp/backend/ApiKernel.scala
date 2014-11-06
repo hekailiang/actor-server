@@ -31,7 +31,7 @@ class ApiKernel extends Bootable {
     // Session bootstrap
     val singletons = new Singletons
 
-    val sessionReceiveTimeout = singletons.appConfig.getDuration("session.receiveTimeout", MILLISECONDS)
+    val sessionReceiveTimeout = singletons.appConfig.getDuration("session.receive-timeout", MILLISECONDS)
     val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, session)
 
     // TCP transport bootstrap

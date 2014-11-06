@@ -7,10 +7,10 @@ object Dependencies {
     val scalaz  = "7.1.0"
   }
 
-	object Compile {
+  object Compile {
     val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta4"
     val scrImageCore    = "com.sksamuel.scrimage"         %% "scrimage-core"                 % "1.4.1"
-		val akkaActor       = "com.typesafe.akka"             %% "akka-actor"                    % V.akka
+    val akkaActor       = "com.typesafe.akka"             %% "akka-actor"                    % V.akka
     val akkaCluster     = "com.typesafe.akka"             %% "akka-cluster"                  % V.akka
     val akkaContrib     = "com.typesafe.akka"             %% "akka-contrib"                  % V.akka
     val akkaKernel      = "com.typesafe.akka"             %% "akka-kernel"                   % V.akka
@@ -32,7 +32,7 @@ object Dependencies {
     val phantomDsl      = "com.websudos"                  %% "phantom-dsl"                   % V.phantom
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
-	}
+  }
 
   object Test {
     val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka       % "test"
@@ -62,8 +62,7 @@ object Dependencies {
   val persist   = Seq(scodecBits, phantomDsl, scalazCore)
 
   val root      = Seq(
-    akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting, 
-    scalaLoggingSlf4j, logbackClassic
+    akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting,
+    scalaLoggingSlf4j, logbackClassic, akkaKernel
   )
 }
-
