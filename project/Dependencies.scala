@@ -32,6 +32,7 @@ object Dependencies {
     val phantomDsl      = "com.websudos"                  %% "phantom-dsl"                   % V.phantom
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
+    val logbackLogstash = "net.logstash.logback"          % "logstash-logback-encoder"       % "3.3"
   }
 
   object Test {
@@ -50,19 +51,21 @@ object Dependencies {
 
   import Compile._, Test._, Deploy._
 
-  val api       = Seq(
+  val common    = Seq(logbackClassic, logbackLogstash)
+
+  val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, playJson, sprayWebSocket, commonsCodec, akkaCluster,
-    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, logbackClassic, akkaPersistenceCassandra
+    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra
   )
 
   val deploy    = Seq(traceAkka)
 
-  val models    = Seq(scodecBits)
+  val models    = common ++ Seq(scodecBits)
 
-  val persist   = Seq(scodecBits, phantomDsl, scalazCore)
+  val persist   = common ++ Seq(scodecBits, phantomDsl, scalazCore)
 
-  val root      = Seq(
+  val root      = common ++ Seq(
     akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting,
-    scalaLoggingSlf4j, logbackClassic, akkaKernel
+    scalaLoggingSlf4j, akkaKernel
   )
 }
