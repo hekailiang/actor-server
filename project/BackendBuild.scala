@@ -56,6 +56,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorApi, actorModels, actorPersist)
+   .aggregate(actorTests)
 
   lazy val actorExport2Js = Project(
     id       = "actor-export2js",
@@ -86,4 +87,10 @@ object BackendBuild extends Build {
     base     = file("actor-api"),
     settings = defaultSettings ++ scalabuffSettings
   ).dependsOn(actorPersist).configs(ScalaBuff)
+  
+  lazy val actorTests = Project(
+    id       = "actor-tests",
+    base     = file("actor-tests"),
+    settings = defaultSettings
+  ).dependsOn(actorApi, actorModels, actorPersist)
 }
