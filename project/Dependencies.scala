@@ -65,9 +65,9 @@ object Dependencies {
   val persist   = common ++ Seq(scodecBits, phantomDsl, scalazCore)
 
   val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
-  
+
   val tests     = common ++ Seq(
-	akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting,
-    scalaLoggingSlf4j, akkaKernel
+    akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting,
+      scalaLoggingSlf4j, akkaKernel
   )
 }
