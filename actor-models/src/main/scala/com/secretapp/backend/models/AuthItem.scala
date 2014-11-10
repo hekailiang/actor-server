@@ -20,6 +20,7 @@ object AuthItem {
       case 1 => "Android Official"
       case 2 => "iOS Official"
       case 3 => "Web Official"
+      case 42 => "Tests"
     }
     AuthItem(
       id = id, appId = appId, appTitle = appTitle, deviceTitle = deviceTitle, authTime = authTime,
