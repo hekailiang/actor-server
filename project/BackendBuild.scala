@@ -87,7 +87,7 @@ object BackendBuild extends Build {
     base     = file("actor-api"),
     settings = defaultSettings ++ scalabuffSettings
   ).dependsOn(actorPersist).configs(ScalaBuff)
-  
+
   lazy val actorTests = Project(
     id       = "actor-tests",
     base     = file("actor-tests"),
