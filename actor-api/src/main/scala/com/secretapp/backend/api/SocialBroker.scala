@@ -47,30 +47,23 @@ class SocialBroker extends PersistentActor with ActorLogging {
 
   val receiveCommand: Actor.Receive = {
     case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
-      log.info(s"SocialMessageBox $userId $newUids")
       persist(msg) { _ =>
         uids = uids ++ newUids
         maybeSnapshot()
       }
     case SocialMessageBox(userId, GetRelations) =>
-      log.info(s"GetRelations $userId")
       sender ! uids
   }
 
   val receiveRecover: Actor.Receive = {
     case SnapshotOffer(metadata, offeredSnapshot) =>
-      log.debug(s"SnapshotOffer $metadata $offeredSnapshot")
       uids = offeredSnapshot.asInstanceOf[PersistentStateType]
     case msg @ SocialMessageBox(_, RelationsNoted(newUids)) if newUids.size > 0 =>
-      log.debug(s"Recovering $msg")
       uids = uids ++ newUids
-    case RecoveryCompleted =>
-      log.debug("Recovery completed")
   }
 
   private def maybeSnapshot(): Unit = {
     if ((uids.size - lastSnapshottedAtSize) > minSnapshotStep) {
-      log.debug("Saving snapshot")
       lastSnapshottedAtSize = uids.size
       saveSnapshot(uids)
     }

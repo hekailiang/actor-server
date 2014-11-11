@@ -81,7 +81,6 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
 
     withUser(destUserId, accessHash, currentUser) { destUserEntity =>
       // Record relation between receiver authId and sender uid
-      log.debug(s"Recording relation uid=${destUserId} -> uid=${currentUser.uid}")
       socialBrokerRegion ! SocialProtocol.SocialMessageBox(
         currentUser.uid, SocialProtocol.RelationsNoted(Set(destUserId)))
 

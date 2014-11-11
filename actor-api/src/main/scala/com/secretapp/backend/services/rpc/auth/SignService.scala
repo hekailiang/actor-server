@@ -284,11 +284,9 @@ trait SignService extends SocialHelpers {
   private def pushRemoveDeviceUpdates(userId: Int, publicKeyHash: Long): Unit = {
     getRelations(userId) onComplete {
       case Success(userIds) =>
-        log.debug(s"Got relations for $userId -> $userIds")
         for (targetUserId <- userIds) {
           getAuthIds(targetUserId) onComplete {
             case Success(authIds) =>
-              log.debug(s"Fetched authIds for userId=$targetUserId $authIds")
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, RemoveDevice(userId, publicKeyHash))
               }
@@ -307,10 +305,8 @@ trait SignService extends SocialHelpers {
     // Push NewFullDevice updates
     persist.UserPublicKey.fetchAuthIdsByUserId(userId) onComplete {
       case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=$userId $authIds")
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
-            log.debug(s"Pushing NewFullDevice for authId=$targetAuthId")
             updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewFullDevice(userId, publicKeyHash, publicKey))
           }
         }
@@ -322,11 +318,9 @@ trait SignService extends SocialHelpers {
     // Push NewDevice updates
     getRelations(userId) onComplete {
       case Success(userIds) =>
-        log.debug(s"Got relations for ${userId} -> ${userIds}")
         for (targetUserId <- userIds) {
           persist.UserPublicKey.fetchAuthIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
-              log.debug(s"Fetched authIds for uid=${targetUserId} ${authIds}")
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash))
               }

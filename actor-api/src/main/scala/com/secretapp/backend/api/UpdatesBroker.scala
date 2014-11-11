@@ -89,8 +89,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
         pushUpdate(authId, seq, update) map replyTo.!
         maybeSnapshot()
       }
-    case s: SaveSnapshotSuccess =>
-      log.debug("SaveSnapshotSuccess {}", s)
     case e: SaveSnapshotFailure =>
       log.error("SaveSnapshotFailure {}", e)
   }
@@ -98,11 +96,9 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
   val receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
     case SnapshotOffer(metadata, offeredSnapshot) =>
-      log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
       val seq = offeredSnapshot.asInstanceOf[PersistentStateType]
       this.seq = seq
     case SeqUpdate =>
-      log.debug("Recovering SeqUpdate")
       this.seq += 1
   }
 
@@ -115,7 +111,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
 
       update match {
         case _: updateProto.MessageSent =>
-          log.debug("Not pushing update MessageSent to session")
+
         case u =>
           if (u.isInstanceOf[updateProto.Message]) {
             deliverGooglePush(authId, updateSeq)
@@ -132,7 +128,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
 
   private def maybeSnapshot(): Unit = {
     if (seq - lastSnapshottedAtSeq >= minSnapshotStep) {
-      log.debug(s"Saving snapshot seq=$seq lastSnapshottedAtSeq=$lastSnapshottedAtSeq")
       lastSnapshottedAtSeq = seq
       saveSnapshot(seq)
     }
