@@ -210,12 +210,14 @@ trait SignService extends SocialHelpers {
                 case Some(userAuth) =>
                   val userName = getUserName(userAuth.name)
                   if (userAuth.publicKey != publicKey) {
-                    //UserRecord.removeKeyHash(userId, userAuth.publicKeyHash, phoneNumber)
                     updateUserRecord(userName)
-                    val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-                    val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
-                      name = userName)
-                    auth(newUser)
+                    persist.User.removeKeyHash(userAuth.uid, userAuth.publicKeyHash, Some(currentUser.get.authId)) flatMap { _ =>
+                      val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
+                      val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                        name = userName)
+                      println("nnnnnewuser", newUser)
+                      auth(newUser)
+                    }
                   } else {
                     if (userAuth.name != userName) {
                       persist.User.updateName(userAuth.uid, userName)

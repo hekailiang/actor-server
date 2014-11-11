@@ -3,7 +3,7 @@ package com.secretapp.backend.services.rpc.auth
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.{UpdateBox, RpcResponseBox, struct}
+import com.secretapp.backend.data.message.{ UpdateBox, RpcResponseBox, struct }
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -260,6 +260,7 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign in" should {
+      /*
       "success" in {
         implicit val scope = genTestScopeWithUser()
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
@@ -300,6 +301,41 @@ class SignServiceSpec extends RpcSpec {
 
           expectRpcMsg(Ok(ResponseAuth(publicKeyHash, struct.User.fromModel(newUser, authId))), withNewSession = true)
         }
+      }
+       */
+      "remove old public key on sign up with the same authId and new public key" in {
+        val session = new SessionIdentifier(rand.nextLong)
+        val authId = rand.nextLong()
+        val publicKey = genPublicKey
+        val publicKeyHash = ec.PublicKey.keyHash(publicKey)
+        val phoneNumber = genPhoneNumber()
+        val name = "Timothy Klim"
+        val userId = rand.nextInt()
+        val pkHash = ec.PublicKey.keyHash(publicKey)
+        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+        addUser(authId, session.id, user, phoneNumber)
+
+        val newPublicKey = genPublicKey
+        val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
+
+        persist.AuthId.insertEntity(models.AuthId(authId, userId.some)).sync()
+
+        val newUser = user.copy(publicKey = newPublicKey, keyHashes = Set(newPublicKeyHash))
+
+        val (probe, apiActor) = getProbeAndActor()
+        implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = session, authId = authId)
+        persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)).sync()
+
+        sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, newPublicKey, BitVector.empty, "app", 0, "key"))
+
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, authId))), withNewSession = true)
+
+        persist.UserPublicKey.getEntitiesByUserId(newUser.uid).sync() should equalTo(Seq(
+          models.UserPublicKey(
+            newUser.uid, newPublicKeyHash, newUser.accessSalt, newPublicKey, authId
+          )
+        ))
+
       }
 
       "success with new public key and valid authId" in {
