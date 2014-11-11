@@ -117,24 +117,24 @@ trait SignService extends SocialHelpers {
       case None =>
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>
-        for {
+        val smsPhoneTupleFuture = for {
           smsR <- persist.AuthSmsCode.getEntity(phoneNumber)
           phoneR <- persist.Phone.getEntity(phoneNumber)
-        } yield {
-          val (smsHash, smsCode) = smsR match {
-            case Some(models.AuthSmsCode(_, sHash, sCode)) => (sHash, sCode)
+        } yield (smsR, phoneR)
+        smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
+          smsR match {
+            case Some(models.AuthSmsCode(_, sHash, _)) =>
+              Future.successful(Ok(ResponseAuthCode(sHash, phoneR.isDefined)))
             case None =>
               val smsHash = genSmsHash
               val smsCode = phoneNumber.toString match {
                 case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
                 case _ => genSmsCode
               }
-              persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode))
-              (smsHash, smsCode)
+              singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
+              for { _ <- persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)) }
+              yield Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
           }
-
-          singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
-          Ok(ResponseAuthCode(smsHash, phoneR.isDefined))
         }
     }
   }
