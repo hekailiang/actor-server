@@ -36,8 +36,6 @@ class UpdatesServiceActor(
 )(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
-  log.info(s"Starting UpdatesService for uid=$uid authId=$authId")
-
   def receive = {
     case RpcProtocol.Request(updateRpcProto.RequestGetDifference(seq, state)) =>
       handleRequestGetDifference(seq, state) pipeTo sender

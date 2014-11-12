@@ -53,6 +53,8 @@ object Dependencies {
 
   val common    = Seq(logbackClassic, logbackLogstash)
 
+  val util      = Seq(akkaActor, akkaSlf4j)
+
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, playJson, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra

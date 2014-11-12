@@ -24,31 +24,26 @@ trait HandlerService {
 
   // TODO: check accessHash
   protected def handleSubscribeToOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    log.info(s"handling SubscribeToOnline $users")
     sessionActor ! SessionProtocol.SubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleUnsubscribeFromOnline(users: immutable.Seq[UserId]): Future[RpcResponse] = {
-    log.info(s"handling UnsubscribeFromOnline $users")
     sessionActor ! SessionProtocol.UnsubscribeToPresences(users map (_.uid))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleSubscribeToGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
-    log.info(s"handling SubscribeToGroupOnline $groups")
     sessionActor ! SessionProtocol.SubscribeToGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[GroupId]): Future[RpcResponse] = {
-    log.info(s"handling UnsubscribeFromGroupOnline $groups")
     sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.groupId))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleRequestSetOnline(isOnline: Boolean, timeout: Long): Future[RpcResponse] = {
-    log.info(s"Handling RequestSetOnline ${isOnline} ${timeout}")
     val message = if (isOnline) {
       UserOnline(timeout)
     } else {

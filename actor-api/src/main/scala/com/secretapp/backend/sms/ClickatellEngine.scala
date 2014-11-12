@@ -56,7 +56,7 @@ trait ClickatellSmsEngine {
 
     http(req).either andThen {
       case Success(v) => v match {
-        case Right(_) => log.debug(s"Sent $code to $phoneNumber")
+        case Right(_) => //log.debug(s"Sent $code to $phoneNumber")
         case Left(e)  => log.error(e, s"Failed while sending $code to $phoneNumber")
       }
       case Failure(e) => log.error(e, s"Failed while sending $code to $phoneNumber")
@@ -89,7 +89,7 @@ class ClickatellSmsEngineActor(override val config: Config) extends Actor with A
       send(phoneNumber, code)
       forgetSentCodeAfterDelay(phoneNumber, code)
     } else {
-      log.debug(s"Ignoring send $code to $phoneNumber")
+      //log.debug(s"Ignoring send $code to $phoneNumber")
     }
   }
 

@@ -1,18 +1,18 @@
 package com.secretapp.backend.api
 
-import akka.actor.ActorLogging
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.typesafe.config.ConfigFactory
 import dispatch._
 import dispatch.Defaults._
+import im.actor.util.logging.MDCActorLogging
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
 trait GooglePush {
-  self: ActorLogging =>
+  self: MDCActorLogging =>
 
   private val token = ConfigFactory.load().getString("gcm.token")
   private val dryRun = ConfigFactory.load().getBoolean("gcm.dry-run")
@@ -39,7 +39,7 @@ trait GooglePush {
 
   private def sendGooglePush(regId: String, collapseKey: String, seq: Int): Future[Unit] =
     Http(request(regId, collapseKey, seq) OK as.String).either map {
-      case Right(_) => log.debug("GCM push succeed")
+      case Right(_) =>
       case Left(e)  => log.error(s"GCM push failed: ${e.getMessage}")
     }
 

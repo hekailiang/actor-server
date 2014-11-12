@@ -31,10 +31,8 @@ class ApiBrokerActor(
 
   def receive = {
     case AuthorizeUser(user) =>
-      log.info(s"AuthorizeUser $user")
       currentUser = Some(user)
     case msg @ ApiBrokerRequest(connector, messageId, body) =>
-      log.debug(s"$msg")
       val replyTo = sender()
 
       handleRpc(messageId)(body) match {

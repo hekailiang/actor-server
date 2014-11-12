@@ -45,7 +45,7 @@ trait SessionService extends UserManagerService {
       case RpcRequestBox(body) =>
         apiBroker.tell(ApiBrokerRequest(connector, mb.messageId, body), context.self)
       case x =>
-        log.error(s"unhandled session message $x")
+        withMDC(log.error(s"unhandled session message $x"))
     }
   }
 
@@ -53,14 +53,14 @@ trait SessionService extends UserManagerService {
     userIds foreach { userId =>
       if (!subscribedToPresencesUids.contains(userId)) {
         val topic = PresenceBroker.topicFor(userId)
-        log.debug(s"Subscribing $userId $topic")
+        withMDC(log.debug(s"Subscribing $userId $topic"))
         subscribedToPresencesUids = subscribedToPresencesUids + userId
         mediator ! Subscribe(
           topic,
           weakUpdatesPusher
         )
       } else {
-        log.warning(s"Already subscribed to $userId")
+        withMDC(log.warning(s"Already subscribed to $userId"))
       }
 
       singletons.presenceBrokerRegion ! PresenceProtocol.Envelope(
@@ -72,7 +72,7 @@ trait SessionService extends UserManagerService {
 
   protected def recoverSubscribeToPresences(userIds: immutable.Seq[Int]) = {
     userIds foreach { userId =>
-      log.info(s"Subscribing $userId")
+      withMDC(log.info(s"Subscribing $userId"))
       subscribedToPresencesUids = subscribedToPresencesUids + userId
       mediator ! Subscribe(
         PresenceBroker.topicFor(userId),
@@ -99,14 +99,14 @@ trait SessionService extends UserManagerService {
   protected def subscribeToGroupPresences(groupIds: immutable.Seq[Int]) = {
     groupIds foreach { groupId =>
       if (!subscribedToPresencesGroupIds.contains(groupId)) {
-        log.info(s"Subscribing to group presences groupId=$groupId")
+        withMDC(log.info(s"Subscribing to group presences groupId=$groupId"))
         subscribedToPresencesGroupIds = subscribedToPresencesGroupIds + groupId
         mediator ! Subscribe(
           GroupPresenceBroker.topicFor(groupId),
           weakUpdatesPusher
         )
       } else {
-        log.error(s"Already subscribed to $groupId")
+        withMDC(log.error(s"Already subscribed to $groupId"))
       }
 
       singletons.groupPresenceBrokerRegion ! GroupPresenceProtocol.Envelope(
@@ -118,7 +118,7 @@ trait SessionService extends UserManagerService {
 
   protected def recoverSubscribeToGroupPresences(groupIds: immutable.Seq[Int]) = {
     groupIds foreach { groupId =>
-      log.info(s"Subscribing to group presences groupId=$groupId")
+      withMDC(log.info(s"Subscribing to group presences groupId=$groupId"))
       subscribedToPresencesGroupIds = subscribedToPresencesGroupIds + groupId
       mediator ! Subscribe(
         GroupPresenceBroker.topicFor(groupId),
@@ -144,7 +144,7 @@ trait SessionService extends UserManagerService {
 
   protected def subscribeToUpdates() = {
     subscribingToUpdates = true
-    log.info(s"Subscribing to updates authId=$authId sessionId=$sessionId")
+    withMDC(log.info(s"Subscribing to updates authId=$authId sessionId=$sessionId"))
     mediator ! Subscribe(UpdatesBroker.topicFor(authId), commonUpdatesPusher)
 
     subscribeToTypings()
@@ -160,7 +160,7 @@ trait SessionService extends UserManagerService {
         TypingProtocol.TellTypings(weakUpdatesPusher)
       )
     } else { // wait for AuthorizeUser message
-      log.debug("Waiting for AuthorizeUser and try to subscribe to typings again")
+      withMDC(log.debug("Waiting for AuthorizeUser and try to subscribe to typings again"))
       context.system.scheduler.scheduleOnce(500.milliseconds) {
         subscribeToTypings()
       }
@@ -168,7 +168,7 @@ trait SessionService extends UserManagerService {
   }
 
   protected def handleSubscribeAck(subscribe: Subscribe) = {
-    log.info(s"Handling subscribe ack $subscribe")
+    withMDC(log.info(s"Handling subscribe ack $subscribe"))
     if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == commonUpdatesPusher) {
       subscribingToUpdates = false
       subscribedToUpdates = true

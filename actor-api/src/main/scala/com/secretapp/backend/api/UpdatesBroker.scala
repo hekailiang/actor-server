@@ -4,7 +4,6 @@ import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
-import akka.event.LoggingReceive
 import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
 import com.datastax.driver.core.utils.UUIDs
@@ -13,6 +12,7 @@ import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.{persist => p}
 import java.util.UUID
+import im.actor.util.logging._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scodec.bits._
@@ -59,7 +59,8 @@ object UpdatesBroker {
 }
 
 // TODO: rename to SeqUpdatesBroker
-class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) extends PersistentActor with ActorLogging with GooglePush with ApplePush {
+class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
+    extends PersistentActor with GooglePush with ApplePush with MDCActorLogging {
   import context.dispatcher
   import ShardRegion.Passivate
   import UpdatesBroker._
@@ -76,14 +77,13 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
   var lastSnapshottedAtSeq: Int = 0
   val minSnapshotStep: Int = 200
 
-  val receiveCommand: Receive = LoggingReceive {
+  val receiveCommand: Actor.Receive = {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
     case UpdatesBroker.Stop => context.stop(self)
     case UpdatesBroker.GetSeq(_) =>
       sender() ! this.seq
     case NewUpdatePush(authId, update) =>
       val replyTo = sender()
-      log.info(s"NewUpdatePush for $authId: $update")
       persist(SeqUpdate) { _ =>
         seq += 1
         pushUpdate(authId, seq, update) map replyTo.!
@@ -102,12 +102,20 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
       this.seq += 1
   }
 
+  override protected def mdc = {
+    Map("unit" -> "UpdatesBroker")
+  }
+
   private def pushUpdate(authId: Long, updateSeq: Int, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
     val uuid = UUIDs.timeBased
 
     p.SeqUpdate.push(uuid, authId, update)(session) map { _ =>
-      log.debug(s"Wrote update authId=$authId seq=$updateSeq state=$uuid update=$update")
+      withMDC(Map(
+        "authId" -> authId
+      )) {
+        log.debug(s"Wrote update seq=$updateSeq state=$uuid update=$update")
+      }
 
       update match {
         case _: updateProto.MessageSent =>
@@ -119,7 +127,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession) ex
           }
 
           mediator ! Publish(topic, (updateSeq, uuid, update))
-          log.info(s"Published update authId=$authId seq=$updateSeq state=$uuid update=$update")
       }
 
       (updateSeq, uuid)

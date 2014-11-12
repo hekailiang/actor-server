@@ -112,7 +112,7 @@ class PresenceBroker extends PersistentActor with ActorLogging {
   }
 
   def publish(topic: String, update: updateProto.WeakUpdateMessage) = {
-    log.debug(s"Publishing to $topic $update")
+    //log.debug(s"Publishing to $topic $update")
     mediator ! Publish(topic, update)
   }
 }

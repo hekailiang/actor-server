@@ -34,7 +34,6 @@ trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
       m match {
         case _: Ping | _: Pong | _: MessageAck =>
         case _ =>
-          log.debug(s"Registering sent message $mb")
           ackTracker ! RegisterMessage(mid, b)
       }
   }
@@ -45,7 +44,7 @@ trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
         case _: MessageAck | _: Pong =>
         case _ =>
           // TODO: aggregation
-          log.info(s"Sending acknowledgement for $m to $connector")
+          //log.info(s"Sending acknowledgement for $m to $connector")
 
           val reply = serializePackage(MessageBox(getMessageId(TransportMsgId), MessageAck(Vector(mb.messageId))))
           connector ! reply

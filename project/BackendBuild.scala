@@ -70,6 +70,14 @@ object BackendBuild extends Build {
     settings = Revolver.settings
   ).dependsOn(root)
 
+  lazy val actorUtil = Project(
+    id   = "actor-util",
+    base = file("actor-util"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.util
+    )
+  )
+
   lazy val actorModels = Project(
     id   = "actor-models",
     base = file("actor-models"),
@@ -86,7 +94,7 @@ object BackendBuild extends Build {
     id       = "actor-api",
     base     = file("actor-api"),
     settings = defaultSettings ++ scalabuffSettings
-  ).dependsOn(actorPersist).configs(ScalaBuff)
+  ).dependsOn(actorPersist, actorUtil).configs(ScalaBuff)
 
   lazy val actorTests = Project(
     id       = "actor-tests",

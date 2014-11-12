@@ -11,7 +11,6 @@ class WeakPusherActor(sessionActor: ActorRef, authId: Long) extends Actor with A
 
   def receive = {
     case u: WeakUpdateMessage =>
-      log.info(s"Pushing weak update to session authId=${authId} ${u}")
       val upd = WeakUpdate(System.currentTimeMillis / 1000, u)
       val ub = UpdateBox(upd)
       sessionActor ! UpdateBoxToSend(ub)

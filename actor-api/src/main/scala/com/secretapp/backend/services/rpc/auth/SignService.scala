@@ -215,7 +215,6 @@ trait SignService extends SocialHelpers {
                       val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
                       val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
                         name = userName)
-                      println("nnnnnewuser", newUser)
                       auth(newUser)
                     }
                   } else {

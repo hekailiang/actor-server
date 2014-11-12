@@ -17,7 +17,6 @@ trait HandlerService extends UserHelpers {
   import TypingProtocol._
 
   protected def handleRequestTyping(uid: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    log.info(s"Handling RequestTyping $uid, $accessHash, $typingType")
     getUsers(uid) map {
       case users if users.isEmpty =>
         Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
@@ -34,7 +33,6 @@ trait HandlerService extends UserHelpers {
   }
 
   protected def handleRequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    log.info(s"Handling RequestGroupTyping $groupId, $accessHash, $typingType")
     persist.Group.getEntity(groupId)(session) map {
       case Some(group) =>
         if (group.accessHash != accessHash) {

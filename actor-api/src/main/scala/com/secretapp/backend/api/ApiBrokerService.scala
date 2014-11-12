@@ -125,7 +125,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
     persist.UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
       case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=$userId $authIds")
         f(authIds)
 
       case Failure(e) =>
@@ -136,7 +135,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   protected def withRelations(userId: Int)(f: Seq[Long] => Unit): Unit =
     ask(socialBrokerRegion, SocialMessageBox(userId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(userIds) =>
-        log.debug(s"Got relations for $userId -> $userIds")
         userIds.foreach(withAuthIds(_)(f))
 
       case Failure(e) =>

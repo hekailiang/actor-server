@@ -113,10 +113,10 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
 
       selfType match {
         case BrokerType.User =>
-          log.debug(s"Publishing UserTyping ${userId}")
+          //log.debug(s"Publishing UserTyping ${userId}")
           mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
         case BrokerType.Group =>
-          log.debug(s"Publishing UserTypingGroup ${userId}")
+          //log.debug(s"Publishing UserTypingGroup ${userId}")
           persist.GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
             xs foreach {
               case (userId, keyHashes) =>

@@ -50,7 +50,7 @@ trait Frontend extends Actor with ActorLogging {
           context.watch(secRef)
           secRef
         })
-        log.debug(s"$authId#secFrontRef ! RequestPackage($p)")
+        //log.debug(s"$authId#secFrontRef ! RequestPackage($p)")
         secFrontRef ! RequestPackage(p)
       }
     }
