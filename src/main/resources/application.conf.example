@@ -19,3 +19,15 @@ secret {
     }
   }
 }
+
+akka {
+  persistence{
+    journal {
+      plugin = "cassandra-journal"
+    }
+
+    snapshot-store {
+      plugin = "cassandra-snapshot-store"
+    }
+  }
+}

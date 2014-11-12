@@ -44,7 +44,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
         case Some(message) =>
           State(messages - key, messagesSize - (message.size / 8).toInt)
         case None =>
-          log.warning("Trying to remove element which is not present in undelivered things list")
+          //log.warning("Trying to remove element which is not present in undelivered things list")
           this
       }
     }

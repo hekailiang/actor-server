@@ -1,12 +1,12 @@
 package com.secretapp.backend.persist
 
+import com.datastax.driver.core.{ Cluster, HostDistance, PoolingOptions }
 import com.datastax.driver.core.policies.{ ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy }
-import java.util.concurrent.Executor
-import scala.concurrent. { blocking, Future }
-import scala.collection.JavaConversions._
-import com.datastax.driver.core.Cluster
-import com.websudos.phantom.Implicits._
 import com.typesafe.config._
+import com.websudos.phantom.Implicits._
+import java.util.concurrent.Executor
+import scala.collection.JavaConversions._
+import scala.concurrent. { blocking, Future }
 import scala.concurrent.ExecutionContext
 
 object DBConnector {
@@ -21,6 +21,11 @@ object DBConnector {
     .withoutMetrics()
     .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
     .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
+    .withPoolingOptions(new PoolingOptions()
+      .setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, dbConfig.getInt("pool.min-simutaneous-requests-per-connection-treshold"))
+      .setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, dbConfig.getInt("pool.max-simutaneous-requests-per-connection-treshold"))
+      .setCoreConnectionsPerHost(HostDistance.REMOTE, dbConfig.getInt("pool.core-connections-per-host"))
+      .setMaxConnectionsPerHost(HostDistance.REMOTE, dbConfig.getInt("pool.max-connections-per-host")))
     .build()
 
   lazy val session = blocking {
