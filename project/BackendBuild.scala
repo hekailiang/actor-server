@@ -58,18 +58,6 @@ object BackendBuild extends Build {
    .dependsOn(actorApi, actorModels, actorPersist)
    .aggregate(actorTests)
 
-  lazy val actorExport2Js = Project(
-    id       = "actor-export2js",
-    base     = file("actor-export2js"),
-    settings = Revolver.settings
-  ).dependsOn(actorExport2JsMacros)
-
-  lazy val actorExport2JsMacros = Project(
-    id       = "actor-export2js-macros",
-    base     = file("actor-export2js-macros"),
-    settings = Revolver.settings
-  ).dependsOn(root)
-
   lazy val actorUtil = Project(
     id   = "actor-util",
     base = file("actor-util"),
