@@ -7,6 +7,8 @@ case class EncryptedReadByMe(peer: struct.Peer, randomId: Long) extends SeqUpdat
   val header = EncryptedReadByMe.header
 
   def userIds: Set[Int] = Set(peer.id)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object EncryptedReadByMe extends SeqUpdateMessageObject {

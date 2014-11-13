@@ -5,6 +5,7 @@ import akka.contrib.pattern.{ ClusterSharding, DistributedPubSubExtension, Shard
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
@@ -114,7 +115,14 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
       selfType match {
         case BrokerType.User =>
           //log.debug(s"Publishing UserTyping ${userId}")
-          mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
+          mediator ! Publish(
+            TypingBroker.topicFor(selfId),
+            updateProto.Typing(
+              struct.Peer(struct.PeerType.Private, userId),
+              userId,
+              typingType
+            )
+          )
         case BrokerType.Group =>
           //log.debug(s"Publishing UserTypingGroup ${userId}")
           persist.GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
@@ -126,7 +134,12 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
                   } yield {
                     optAuthId map {
                       case \/-(authId) =>
-                        mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
+                        mediator ! Publish(
+                          TypingBroker.topicFor(userId, authId),
+                          updateProto.Typing(
+                            struct.Peer(struct.PeerType.Group, selfId),
+                            userId,
+                            typingType))
                       case _ =>
                         log.warning(s"Attempt to send to user with deleted key userId=$userId keyHash=$keyHash")
                     }
@@ -147,9 +160,9 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case ((userId, typingType), _) =>
           selfType match {
             case BrokerType.User =>
-              target ! updateProto.Typing(userId, typingType)
+              target ! updateProto.Typing(struct.Peer(struct.PeerType.Private, userId), userId, typingType)
             case BrokerType.Group =>
-              target ! updateProto.TypingGroup(selfId, userId, typingType)
+              target ! updateProto.Typing(struct.Peer(struct.PeerType.Group, selfId), userId, typingType)
           }
       }
 

@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestMessageDelete(peer: struct.OutPeer, randomId: Long) extends RpcRequestMessage {
+case class RequestMessageDelete(peer: struct.OutPeer, randomId: Long) extends RequestWithRandomId {
   val header = RequestMessageDelete.header
 }
 

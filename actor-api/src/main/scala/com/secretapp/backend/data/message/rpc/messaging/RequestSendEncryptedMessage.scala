@@ -11,7 +11,7 @@ case class RequestSendEncryptedMessage(peer: struct.OutPeer,
                                        randomId: Long,
                                        encryptedMessage: BitVector,
                                        keys: immutable.Seq[EncryptedAESKey],
-                                       ownKeys: immutable.Seq[EncryptedAESKey]) extends RpcRequestMessage {
+                                       ownKeys: immutable.Seq[EncryptedAESKey]) extends RequestWithRandomId {
   val header = RequestSendEncryptedMessage.header
 }
 

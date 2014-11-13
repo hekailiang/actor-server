@@ -51,7 +51,7 @@ trait UserService extends SocialHelpers with UserHelpers {
               ).mapTo[UpdatesBroker.StrictState]
             } yield {
               val (seq, state) = updateState
-              Ok(ResponseAvatarChanged(a, seq, state))
+              Ok(ResponseAvatarChanged(a, seq, Some(state)))
             }
           }
         } recover {

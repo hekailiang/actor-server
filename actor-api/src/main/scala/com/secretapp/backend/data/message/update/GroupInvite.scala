@@ -9,6 +9,8 @@ case class GroupInvite(
   val header = GroupInvite.header
 
   def userIds: Set[Int] = Set(inviteUid)
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupInvite extends SeqUpdateMessageObject {

@@ -8,6 +8,8 @@ case class EncryptedMessage(peer: Peer, senderUid: Int, keyHash: Long, aesEncryp
   val header = EncryptedMessage.header
 
   def userIds = Set(peer.id)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object EncryptedMessage extends SeqUpdateMessageObject {

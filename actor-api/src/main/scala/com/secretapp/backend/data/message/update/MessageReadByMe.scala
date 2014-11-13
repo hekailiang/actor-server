@@ -3,8 +3,8 @@ package com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class MessageReceived(peer: struct.Peer, date: Long, readDate: Long) extends SeqUpdateMessage {
-  val header = MessageReceived.header
+case class MessageReadByMe(peer: struct.Peer, readDate: Long) extends SeqUpdateMessage {
+  val header = MessageReadByMe.header
 
   def userIds: Set[Int] = Set(peer.id)
 
@@ -16,6 +16,6 @@ case class MessageReceived(peer: struct.Peer, date: Long, readDate: Long) extend
   }
 }
 
-object MessageReceived extends SeqUpdateMessageObject {
-  val header = 0x12
+object MessageReadByMe extends SeqUpdateMessageObject {
+  val header = 0x32
 }

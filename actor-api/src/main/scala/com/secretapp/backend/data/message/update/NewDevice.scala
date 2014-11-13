@@ -7,6 +7,8 @@ case class NewDevice(uid: Int, keyHash: Long, key: Option[BitVector], date: Long
   val header = NewDevice.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object NewDevice extends SeqUpdateMessageObject {

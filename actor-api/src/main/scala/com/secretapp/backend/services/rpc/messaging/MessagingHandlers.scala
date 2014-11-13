@@ -1,10 +1,10 @@
-package com.secretapp.backend.api.rpc
+package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
 import akka.pattern.ask
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
-import com.secretapp.backend.data.message.struct.{ UserKey, WrongReceiversErrorData }
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
@@ -22,25 +22,61 @@ import scalaz.Scalaz._
 import scalaz._
 import scodec.bits._
 
-trait MessagingService extends RandomService with UserHelpers with GroupHelpers {
-  self: MessagingServiceActor =>
+trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers {
+  self: Handler =>
 
   import context.{ dispatcher, system }
   import UpdatesBroker._
 
   implicit val session: CSession
 
-  protected def handleRequestSendMessage(destUserId: Int,
-    accessHash: Long,
+  protected def handleRequestSendMessage(
+    peer: struct.OutPeer,
     randomId: Long,
-    message: EncryptedRSAMessage
+    message: MessageContent
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestSendEncryptedMessage(
+    peer: struct.OutPeer,
+    randomId: Long,
+    encryptedMessage: BitVector,
+    keys: EncryptedAESKey,
+    ownKets: EncryptedAESKey
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestEncryptedReceived(
+    peer: struct.OutPeer,
+    randomId: Long
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestEncryptedRead(
+    peer: struct.OutPeer,
+    randomId: Long
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestMessageReceived(
+    peer: struct.OutPeer,
+    randomId: Long
+  ): Future[RpcResponse] = ???
+
+  protected def handleRequestMessageRead(
+    peer: struct.OutPeer,
+    randomId: Long
+  ): Future[RpcResponse] = ???
+
+  /*
+
+  protected def handleRequestSendEncryptedMessage(
+    peer: struct.OutPeer,
+    randomId: Long,
+    message: MessageContent
   ): Future[RpcResponse] = {
     /**
       * Makes updates for valid keys
       *
       * @return Right containing sequences of (authId, key) or Left containing new keys, removed keys and invalid keys
       */
-    def mkUpdates(): Future[(Seq[UserKey], Seq[UserKey], Seq[UserKey]) \/ Seq[NewUpdatePush]] = {
+    def mkUpdates(): Future[(Seq[struct.UserKey], Seq[struct.UserKey], Seq[struct.UserKey]) \/ Seq[NewUpdatePush]] = {
       val fown  = fetchAuthIdsAndCheckKeysFor(currentUser.uid, message.ownKeys, Some(currentUser.publicKeyHash))
       val fdest = fetchAuthIdsAndCheckKeysFor(destUserId, message.keys, None)
 
@@ -54,8 +90,6 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
           own._4 ++ dest._4  // invalid
         ) match {
           case (Nil, Nil, Nil) =>
-            randomIds.put(randomId, true)
-
             val authIdsKeys = own._1 ++ dest._1
 
             val updates = authIdsKeys map {
@@ -601,5 +635,5 @@ trait MessagingService extends RandomService with UserHelpers with GroupHelpers 
       case None =>
         Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
     }
-  }
+  }*/
 }

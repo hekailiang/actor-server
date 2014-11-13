@@ -6,6 +6,8 @@ case class GroupAvatarChanged(groupId: Int, uid: Int, avatar: Option[models.Avat
   override val header = GroupAvatarChanged.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupAvatarChanged extends SeqUpdateMessageObject {

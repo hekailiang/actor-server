@@ -5,6 +5,7 @@ package object update {
 
   trait SeqUpdateMessage extends ProtoMessageWithHeader {
     def userIds: Set[Int]
+    def groupIds: Set[Int]
   }
 
   trait WeakUpdateMessage extends ProtoMessageWithHeader

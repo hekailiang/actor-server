@@ -10,6 +10,8 @@ case class GroupUserKick(
   val header = GroupUserKick.header
 
   def userIds: Set[Int] = Set(userId)
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupUserKick extends SeqUpdateMessageObject {

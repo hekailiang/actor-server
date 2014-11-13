@@ -12,7 +12,7 @@ sealed trait MessageContent {
   val kind: Int
 
   def toProto: protobuf.MessageContent
-  
+
   def wrap(content: com.google.protobuf.GeneratedMessageLite): protobuf.MessageContent = {
     protobuf.MessageContent(kind, content.toByteString)
   }
@@ -42,8 +42,8 @@ sealed trait ServiceMessage extends MessageContent {
   val kind = ServiceMessage.header
   val text: String
   val extType: Int
-  
-  def wrap(content: com.google.protobuf.GeneratedMessageLite) = super.wrap(protobuf.ServiceMessage(text, extType, content.toByteString.some))
+
+  override def wrap(content: com.google.protobuf.GeneratedMessageLite) = super.wrap(protobuf.ServiceMessage(text, extType, content.toByteString.some))
 }
 
 object ServiceMessage {

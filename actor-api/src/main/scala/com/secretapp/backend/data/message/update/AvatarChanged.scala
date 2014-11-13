@@ -7,6 +7,8 @@ case class AvatarChanged(uid: Int, avatar: Option[models.Avatar]) extends SeqUpd
   val header = AvatarChanged.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object AvatarChanged extends SeqUpdateMessageObject {

@@ -8,6 +8,8 @@ case class ContactRegistered(uid: Int, isSilent: Boolean, date: Long) extends Se
   val header = ContactRegistered.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object ContactRegistered extends SeqUpdateMessageObject {

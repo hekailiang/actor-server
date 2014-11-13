@@ -7,6 +7,8 @@ case class ChatDelete(peer: Peer) extends SeqUpdateMessage {
   val header = ChatDelete.header
 
   def userIds: Set[Int] = Set(peer.id)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object ChatDelete extends SeqUpdateMessageObject {

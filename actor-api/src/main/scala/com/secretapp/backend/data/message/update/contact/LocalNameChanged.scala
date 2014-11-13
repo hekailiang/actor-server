@@ -8,6 +8,8 @@ case class LocalNameChanged(uid: Int, localName: Option[String]) extends SeqUpda
   val header = LocalNameChanged.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object LocalNameChanged extends SeqUpdateMessageObject {

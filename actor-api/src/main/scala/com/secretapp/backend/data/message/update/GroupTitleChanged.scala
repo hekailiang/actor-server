@@ -4,6 +4,8 @@ case class GroupTitleChanged(groupId: Int, uid: Int, title: String, date: Long) 
   val header = GroupTitleChanged.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupTitleChanged extends SeqUpdateMessageObject {

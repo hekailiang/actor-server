@@ -3,7 +3,7 @@ package com.secretapp.backend.helpers
 import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
-import com.secretapp.backend.data.message.struct.{ UserOutPeer, UserKey }
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -16,6 +16,7 @@ import scalaz._
 import Scalaz._
 
 trait UserHelpers {
+
   val context: ActorContext
   implicit val session: CSession
 
@@ -38,12 +39,15 @@ trait UserHelpers {
     }
   }
 
-  def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[UserOutPeer]] = {
+  def getUserStruct(uid: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] =
+    persist.User.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
+
+  def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.UserOutPeer]] = {
     for {
       users <- getUsers(userId)
     } yield {
       users.headOption map { user =>
-        UserOutPeer(userId, ACL.userAccessHash(authId, user._2))
+        struct.UserOutPeer(userId, ACL.userAccessHash(authId, user._2))
       }
     }
   }
@@ -59,7 +63,7 @@ trait UserHelpers {
     * @param keyHashes key hashes
     * @return tuple containing sequences of (authId, key): new keys, removed keys and invalid keys
     */
-  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[UserKey], Seq[UserKey], Seq[UserKey])] = {
+  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[struct.UserKey], Seq[struct.UserKey], Seq[struct.UserKey])] = {
     case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
 
     persist.UserPublicKey.fetchAllAuthIdsMap(userId) map { authIdsMap =>
@@ -89,9 +93,9 @@ trait UserHelpers {
 
       (
         withoutNew.good,
-        allKeys.diff(keys.map(_.keyHash).toSet).toSeq map (UserKey(userId, _)),
-        withoutNew.removed map (UserKey(userId, _)),
-        withoutNew.invalid map (UserKey(userId, _))
+        allKeys.diff(keys.map(_.keyHash).toSet).toSeq map (struct.UserKey(userId, _)),
+        withoutNew.removed map (struct.UserKey(userId, _)),
+        withoutNew.invalid map (struct.UserKey(userId, _))
       )
     }
   }

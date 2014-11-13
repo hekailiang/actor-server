@@ -4,6 +4,8 @@ case class NameChanged(uid: Int, name: Option[String]) extends SeqUpdateMessage 
   val header = NameChanged.header
 
   def userIds: Set[Int] = Set(uid)
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object NameChanged extends SeqUpdateMessageObject {

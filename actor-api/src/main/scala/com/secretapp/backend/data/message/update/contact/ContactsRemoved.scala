@@ -9,6 +9,8 @@ case class ContactsRemoved(uids: immutable.Seq[Int]) extends SeqUpdateMessage {
   val header = ContactsRemoved.header
 
   def userIds: Set[Int] = uids.toSet
+
+  def groupIds: Set[Int] = Set.empty
 }
 
 object ContactsRemoved extends SeqUpdateMessageObject {

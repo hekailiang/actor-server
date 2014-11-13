@@ -5,6 +5,8 @@ case class GroupUserLeave(groupId: Int, userId: Int, date: Long) extends SeqUpda
   val header = GroupUserLeave.header
 
   def userIds: Set[Int] = Set(userId)
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupUserLeave extends SeqUpdateMessageObject {

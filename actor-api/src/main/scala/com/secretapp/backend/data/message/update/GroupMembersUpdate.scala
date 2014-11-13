@@ -7,6 +7,8 @@ case class GroupMembersUpdate(groupId: Int, members: immutable.Seq[Int]) extends
   val header = GroupMembersUpdate.header
 
   def userIds: Set[Int] = members.toSet
+
+  def groupIds: Set[Int] = Set(groupId)
 }
 
 object GroupMembersUpdate extends SeqUpdateMessageObject {
