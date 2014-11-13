@@ -14,21 +14,16 @@ import im.actor.messenger.{ api => protobuf }
 
 object ResponseSeqCodec extends Codec[update.ResponseSeq] with utils.ProtobufCodec {
   def encode(r: update.ResponseSeq) = {
-    protoState.encode(r.state) match {
-      case \/-(bytesState) =>
-        val boxed = protobuf.ResponseSeq(r.seq, bytesState)
-        encodeToBitVector(boxed)
-      case l @ -\/(_) => l
-    }
+    val boxed = protobuf.ResponseSeq(r.seq, stateOpt.encodeValid(r.state))
+    encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobufEither(protobuf.ResponseAvatarChanged.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.ResponseAvatarChanged(avatar, seq, bytesState)) =>
-        protoState.decodeValue(bytesState) match {
-          case \/-(state) =>
-            update.ResponseSeq(seq, state).right
-          case l @ -\/(_) => l
+      case Success(r) =>
+        stateOpt.decode(r.state) match {
+          case \/-((_, state)) => update.ResponseSeq(r.seq, state).right
+          case -\/(e) => e.left
         }
     }
   }

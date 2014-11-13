@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc
 
 import com.secretapp.backend.models
-import scodec.bits.BitVector
+import java.util.UUID
 
 @SerialVersionUID(1L)
 case class ResponseAvatarChanged(avatar: models.Avatar, seq: Int, state: Option[UUID]) extends RpcResponseMessage {

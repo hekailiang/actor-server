@@ -96,7 +96,7 @@ trait ContactService {
             UpdatesBroker.NewUpdatePush(currentUser.authId,
               updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
           ).mapTo[UpdatesBroker.StrictState].map {
-            case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, uuid.encodeValid(state)))
+            case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, state.some))
           }
 
           for {
@@ -104,7 +104,7 @@ trait ContactService {
             _ <- clCacheFuture
             response <- stateFuture
           } yield response
-        } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, BitVector.empty)))
+        } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, None)))
     }
   }
 

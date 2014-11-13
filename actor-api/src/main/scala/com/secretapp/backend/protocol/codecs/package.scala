@@ -13,8 +13,6 @@ package object codecs {
   val protoString = common.StringCodec
   val stateOpt = message.StateOptCodec
 
-  val protoState = common.OptionalUUIDCodec
-
   // messages
   val protoTransportMessage = message.TransportMessageCodec
 
