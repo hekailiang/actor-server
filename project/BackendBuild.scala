@@ -4,6 +4,7 @@ import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
 import spray.revolver.RevolverPlugin._
 import scalabuff.ScalaBuffPlugin._
+import play.PlayScala
 
 object BackendBuild extends Build {
   val Organization = "Actor IM"
@@ -57,7 +58,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests)
+   .aggregate(actorTests, actorRestApi)
 
   lazy val actorUtil = Project(
     id   = "actor-util",
@@ -68,16 +69,27 @@ object BackendBuild extends Build {
   )
 
   lazy val actorModels = Project(
-    id   = "actor-models",
-    base = file("actor-models"),
+    id       = "actor-models",
+    base     = file("actor-models"),
     settings = defaultSettings
-  )
+  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
   lazy val actorPersist = Project(
-    id   = "actor-persist",
-    base = file("actor-persist"),
+    id       = "actor-persist",
+    base     = file("actor-persist"),
     settings = defaultSettings
   ).dependsOn(actorModels)
+
+  lazy val actorRestApi = Project(
+    id       = "actor-restapi",
+    base     = file("actor-restapi"),
+    settings = Seq(
+      libraryDependencies ++= Dependencies.restApi,
+      javaOptions in Test += "-Dconfig.file=conf/test.conf",
+      scalaVersion        := ScalaVersion
+    )
+  ).enablePlugins(PlayScala)
+   .dependsOn(actorModels, actorPersist)
 
   lazy val actorApi = Project(
     id       = "actor-api",
