@@ -43,6 +43,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
       handleRequestMessageReceived(outPeer, randomId)
     case RequestMessageRead(outPeer, randomId) =>
       handleRequestMessageRead(outPeer, randomId)
+    case RequestRemoveGroupAvatar(outPeer) =>
+      handleRequestRemoveGroupAvatar(outPeer)
   }
 
   protected def handleRequestSendMessage(

@@ -1,9 +1,10 @@
-package com.secretapp.backend.data.message.rpc
+package com.secretapp.backend.data.message.rpc.messaging
 
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestRemoveGroupAvatar(peer: struct.GroupOutPeer) extends RpcRequestMessage {
+case class RequestRemoveGroupAvatar(outPeer: struct.GroupOutPeer) extends RpcRequestMessage {
   val header = RequestRemoveGroupAvatar.header
 }
 
