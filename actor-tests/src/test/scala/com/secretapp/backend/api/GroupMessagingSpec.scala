@@ -44,7 +44,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
-        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.groupId should_==(respGroup.groupPeer.id)
         upd.inviterUserId should_==(scope1.user.uid)
       }
 
@@ -55,8 +55,71 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
-        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.groupId should_==(respGroup.groupPeer.id)
         upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "send invites on group invitation" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector())(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestInviteUsers(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          users = Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserAdded]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+        upd.userId should_==(scope2.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "not allow to invite user twice" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestInviteUsers(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          users = Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:(400, "USER_ALREADY_INVITED")
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        // check if there are doubled invitation updates
+        diff.updates.length should beEqualTo(1)
       }
     }
 
@@ -72,7 +135,7 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         RequestSendMessage(
-          outPeer = struct.OutPeer.group(respGroup.groupPeer.groupId, respGroup.groupPeer.accessHash),
+          outPeer = struct.OutPeer.group(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
           randomId = 1L,
           message = TextMessage("Yolo!")
         ) :~> <~:[ResponseMessageSent]
@@ -81,7 +144,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
-        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.groupId))
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.id))
       }
 
       {
@@ -91,7 +154,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[Message]
-        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.groupId))
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.id))
         upd.senderUid should_==(scope1.user.uid)
         upd.randomId should_==(1L)
         upd.message should_==(TextMessage("Yolo!"))
@@ -109,7 +172,7 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         RequestEditGroupTitle(
-          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.groupId, respGroup.groupPeer.accessHash),
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
           title = "Group 4000"
         ) :~> <~:[ResponseSeq]
 
@@ -117,7 +180,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
-        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.groupId should_==(respGroup.groupPeer.id)
         upd.title should_==("Group 4000")
       }
 
@@ -128,7 +191,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
-        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.groupId should_==(respGroup.groupPeer.id)
         upd.title should_==("Group 4000")
       }
     }

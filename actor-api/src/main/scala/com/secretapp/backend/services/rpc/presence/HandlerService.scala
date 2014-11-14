@@ -34,12 +34,12 @@ trait HandlerService {
   }
 
   protected def handleSubscribeToGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
-    sessionActor ! SessionProtocol.SubscribeToGroupPresences(groups map (_.groupId))
+    sessionActor ! SessionProtocol.SubscribeToGroupPresences(groups map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }
 
   protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
-    sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.groupId))
+    sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }
 

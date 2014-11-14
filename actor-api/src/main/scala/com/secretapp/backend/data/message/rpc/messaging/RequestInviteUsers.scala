@@ -5,7 +5,7 @@ import com.secretapp.backend.data.message.rpc._
 import scala.collection.immutable
 
 @SerialVersionUID(1L)
-case class RequestInviteUsers(groupPeer: struct.GroupOutPeer, users: immutable.Seq[struct.UserOutPeer]) extends RpcRequestMessage {
+case class RequestInviteUsers(groupOutPeer: struct.GroupOutPeer, users: immutable.Seq[struct.UserOutPeer]) extends RpcRequestMessage {
   val header = RequestInviteUsers.header
 }
 

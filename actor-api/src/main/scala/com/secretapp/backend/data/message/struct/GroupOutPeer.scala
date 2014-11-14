@@ -5,7 +5,7 @@ import shapeless._
 import Function.tupled
 
 @SerialVersionUID(1L)
-case class GroupOutPeer(groupId: Int, accessHash: Long) {
+case class GroupOutPeer(id: Int, accessHash: Long) {
   def toProto = (protobuf.GroupOutPeer.apply _).tupled(GroupOutPeer.unapply(this).get)
 }
 

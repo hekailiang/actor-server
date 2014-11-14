@@ -30,8 +30,22 @@ trait GroupHelpers extends UserHelpers {
     }
   }
 
+  def getGroupUserIds(groupId: Int): Future[Seq[Int]] = {
+    persist.GroupUser.getUserIds(groupId)
+  }
+
+  def getGroupUserIdsWithAuthIds(groupId: Int): Future[Seq[(Int, Seq[Long])]] = {
+    persist.GroupUser.getUserIds(groupId) flatMap { userIds =>
+      Future.sequence(
+        userIds map { userId =>
+          getAuthIds(userId) map ((userId, _))
+        }
+      )
+    }
+  }
+
   def getGroupUserAuthIds(groupId: Int): Future[Seq[Long]] = {
-    persist.GroupUser.getUserIds(groupId) flatMap {
+    getGroupUserIds(groupId) flatMap {
       case groupUserIds =>
         Future.sequence(
           groupUserIds map { groupUserId =>

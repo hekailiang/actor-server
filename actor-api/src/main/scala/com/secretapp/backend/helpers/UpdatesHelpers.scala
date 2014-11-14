@@ -29,12 +29,34 @@ trait UpdatesHelpers {
 
   def withNewUpdateState[A](authId: Long, update: SeqUpdateMessage)
     (f: UpdatesBroker.StrictState => A)
-    (implicit timeout: Timeout) = {
+    (implicit timeout: Timeout): Future[A] = {
     ask(
       updatesBrokerRegion,
       UpdatesBroker.NewUpdatePush(
         authId,
         update
       )).mapTo[UpdatesBroker.StrictState] map f
+  }
+
+  def withNewUpdatesState[A](authId: Long, updates: Seq[SeqUpdateMessage])
+    (f: UpdatesBroker.StrictState => A)
+    (implicit timeout: Timeout): Future[A] = {
+    if (updates.length > 0) {
+      updates.init foreach { update =>
+        updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(
+          authId,
+          update
+        )
+      }
+      ask(
+        updatesBrokerRegion,
+        UpdatesBroker.NewUpdatePush(
+          authId,
+          updates.last
+        )
+      ).mapTo[UpdatesBroker.StrictState] map f
+    } else {
+      throw new Exception("Zero updates size")
+    }
   }
 }

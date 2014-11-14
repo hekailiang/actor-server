@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
-import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers._
 import com.secretapp.backend.persist
@@ -35,6 +35,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       handleRequestCreateGroup(randomId, title, users)
     case RequestEditGroupTitle(groupPeer, title) =>
       handleRequestEditGroupTitle(groupPeer, title)
+    case RequestInviteUsers(groupOutPeer, users) =>
+      handleRequestInviteUsers(groupOutPeer, users)
   }
 
   protected def handleRequestCreateGroup(
@@ -74,7 +76,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           } yield {
             authIds foreach { authId =>
               if (authId != currentUser.authId) {
-                writeNewUpdate(authId, updateProto.GroupInvite(
+                writeNewUpdate(authId, GroupInvite(
                   groupId = group.id,
                   inviterUserId = currentUser.uid,
                   date = date
@@ -86,7 +88,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
         withNewUpdateState(
           currentUser.authId,
-          updateProto.GroupInvite(
+          GroupInvite(
             groupId = group.id,
             inviterUserId = currentUser.uid,
             date = date
@@ -94,7 +96,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
         ) { s =>
           val res = ResponseCreateGroup(
             groupPeer = struct.GroupOutPeer(
-              groupId = group.id,
+              id = group.id,
               accessHash = group.accessHash
             ),
             seq = s._1,
@@ -107,11 +109,87 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     }
   }
 
+  protected def handleRequestInviteUsers(
+    groupOutPeer: struct.GroupOutPeer,
+    users: immutable.Seq[struct.UserOutPeer]
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.id
+
+    val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupOutPeer.id) map (_.toMap)
+
+    val date = System.currentTimeMillis()
+
+    val resF = withUserOutPeers(users, currentUser) {
+      userIdsAuthIdsF flatMap { userIdsAuthIds =>
+        val userIds = userIdsAuthIds.keySet
+        val newUserIds = users map (_.id) toSet
+
+        if (newUserIds.diff(userIds) == newUserIds) {
+          val addUsersF = Future.sequence(
+            newUserIds map { userId =>
+              // TODO: use shapeless-contrib here after upgrading to scala 2.11
+              Future.sequence(Seq(
+                persist.GroupUser.addUser(groupId, userId),
+                persist.UserGroup.addGroup(userId, groupId)
+              ))
+            }
+          )
+
+          addUsersF flatMap { _ =>
+            val groupInviteUpdate = GroupInvite(
+              groupId = groupId,
+              inviterUserId = currentUser.uid,
+              date = date
+            )
+
+            newUserIds foreach { userId =>
+              for {
+                authIds <- getAuthIds(userId)
+              } yield {
+                authIds foreach (writeNewUpdate(_, groupInviteUpdate))
+              }
+            }
+
+            val groupUserAddedUpdates = newUserIds map ( userId =>
+              GroupUserAdded(
+                groupId = groupId,
+                userId = userId,
+                inviterUserId = currentUser.uid,
+                date = date
+              )
+            )
+
+            userIdsAuthIds foreach {
+              case (userId, authIds) =>
+                authIds foreach { authId =>
+                  if (authId != currentUser.authId) {
+                    groupUserAddedUpdates foreach (writeNewUpdate(authId, _))
+                  }
+                }
+            }
+
+            withNewUpdatesState(
+              currentUser.authId,
+              groupUserAddedUpdates.toSeq
+            ) { s =>
+              val res = ResponseSeq(s._1, Some(s._2))
+              Ok(res)
+            }
+          }
+        } else {
+          Future.successful(Error(400, "USER_ALREADY_INVITED", "User is already a member of the group.", false))
+        }
+      }
+    }
+
+    withGroupOutPeer(groupOutPeer, currentUser)(resF)
+  }
+
   protected def handleRequestEditGroupTitle(
     groupOutPeer: struct.GroupOutPeer,
     title: String
   ): Future[RpcResponse] = {
-    val groupId = groupOutPeer.groupId
+    val groupId = groupOutPeer.id
 
     val groupAuthIdsFuture = getGroupUserAuthIds(groupId)
 
@@ -119,7 +197,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
     withGroupOutPeer(groupOutPeer, currentUser) {
       persist.Group.updateTitle(groupId, title) flatMap { _ =>
-        val titleChangedUpdate =  updateProto.GroupTitleChanged(
+        val titleChangedUpdate =  GroupTitleChanged(
           groupId = groupId,
           userId = currentUser.uid,
           title = title,
@@ -154,11 +232,6 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
   protected def handleRequestRemoveGroupAvatar(
     groupPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = ???
-
-  protected def handleRequestInviteUsers(
-    groupPeer: struct.GroupOutPeer,
-    users: immutable.Seq[struct.UserOutPeer]
   ): Future[RpcResponse] = ???
 
   protected def handleRequestLeaveGroup(
