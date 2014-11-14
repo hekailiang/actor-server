@@ -3,10 +3,10 @@ package com.secretapp.backend.data.message.struct
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class OutPeer(kind: PeerType, id: Int, accessHash: Long) {
-  def toProto = protobuf.OutPeer(kind.toProto, id, accessHash)
+case class OutPeer(typ: PeerType, id: Int, accessHash: Long) {
+  def toProto = protobuf.OutPeer(typ.toProto, id, accessHash)
 
-  lazy val asPeer = Peer(kind, id)
+  lazy val asPeer = Peer(typ, id)
 }
 
 object OutPeer {

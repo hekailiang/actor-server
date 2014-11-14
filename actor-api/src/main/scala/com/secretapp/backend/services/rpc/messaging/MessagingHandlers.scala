@@ -10,10 +10,10 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
-import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
+import com.secretapp.backend.helpers._
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.util.{ACL, AvatarUtils}
+import com.secretapp.backend.util.{ AvatarUtils }
 import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -22,7 +22,7 @@ import scalaz.Scalaz._
 import scalaz._
 import scodec.bits._
 
-trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers {
+trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers with PeerHelpers with UpdatesHelpers {
   self: Handler =>
 
   import context.{ dispatcher, system }
@@ -50,10 +50,10 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     randomId: Long,
     message: MessageContent
   ): Future[RpcResponse] = {
-    withOutPeer(outPeer) {
+    withOutPeer(outPeer, currentUser) {
       val date = System.currentTimeMillis()
 
-      outPeer.kind match {
+      outPeer.typ match {
         case struct.PeerType.Private =>
           val peerAuthIdsFuture = getAuthIds(outPeer.id)
           val myAuthIdsFuture   = getAuthIds(currentUser.uid)
@@ -78,20 +78,14 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             }
           }
 
-          val fstate = ask(
-            updatesBrokerRegion,
-            NewUpdatePush(
-              currentUser.authId,
-              updateProto.MessageSent(
-                outPeer.asPeer,
-                randomId,
-                date
-              )
-            )).mapTo[UpdatesBroker.StrictState]
-
-          for {
-            s <- fstate
-          } yield {
+          withNewUpdateState(
+            currentUser.authId,
+            updateProto.MessageSent(
+              outPeer.asPeer,
+              randomId,
+              date
+            )
+          ) { s =>
             val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
             Ok(rsp)
           }
@@ -108,7 +102,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   ): Future[RpcResponse] = {
     val outUserId = outPeer.id
 
-    if (outPeer.kind == struct.PeerType.Group) {
+    if (outPeer.typ == struct.PeerType.Group) {
       throw new Exception("Encrypted group sending is not implemented yet.")
     }
 
@@ -122,7 +116,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
       ownPairsE +++ outPairsE
     }
 
-    withOutPeer(outPeer) {
+    withOutPeer(outPeer, currentUser) {
       // Record relation between receiver authId and sender uid
       socialBrokerRegion ! SocialProtocol.SocialMessageBox(
         currentUser.uid, SocialProtocol.RelationsNoted(Set(outUserId)))
@@ -149,20 +143,14 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
               updatesBrokerRegion ! update
           }
 
-          val fstate = ask(
-            updatesBrokerRegion,
-            NewUpdatePush(
-              currentUser.authId,
-              updateProto.MessageSent(
-                outPeer.asPeer,
-                randomId,
-                date
-              )
-            )).mapTo[UpdatesBroker.StrictState]
-
-          for {
-            s <- fstate
-          } yield {
+          withNewUpdateState(
+            currentUser.authId,
+            updateProto.MessageSent(
+              outPeer.asPeer,
+              randomId,
+              date
+            )
+          ) { s =>
             val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
             Ok(rsp)
           }
@@ -180,8 +168,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     outPeer: struct.OutPeer,
     randomId: Long
   ): Future[RpcResponse] = {
-    withOutPeer(outPeer) {
-      outPeer.kind match {
+    withOutPeer(outPeer, currentUser) {
+      outPeer.typ match {
         case struct.PeerType.Private =>
           for {
             authIds <- getAuthIds(outPeer.id)
@@ -201,8 +189,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     outPeer: struct.OutPeer,
     randomId: Long
   ): Future[RpcResponse] = {
-    withOutPeer(outPeer) {
-      outPeer.kind match {
+    withOutPeer(outPeer, currentUser) {
+      outPeer.typ match {
         case struct.PeerType.Private =>
           val peerAuthIdsFuture = getAuthIds(outPeer.id)
           val myAuthIdsFuture   = getAuthIds(currentUser.uid)
@@ -808,33 +796,4 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
         Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
     }
    }*/
-
-  protected def withOutPeer(outPeer: struct.OutPeer)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
-    // TODO: DRY
-
-    outPeer.kind match {
-      case struct.PeerType.Private =>
-        persist.User.getEntity(outPeer.id) flatMap {
-          case Some(userEntity) =>
-            if (ACL.userAccessHash(currentUser.authId, userEntity) != outPeer.accessHash) {
-              Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
-            } else {
-              f
-            }
-          case None =>
-            Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
-        }
-      case struct.PeerType.Group =>
-        persist.Group.getEntity(outPeer.id) flatMap {
-          case Some(groupEntity) =>
-            if (groupEntity.accessHash != outPeer.accessHash) {
-              Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
-            } else {
-              f
-            }
-          case None =>
-            Future.successful(Error(400, "INTERNAL_ERROR", "Destination group not found", true))
-        }
-    }
-  }
 }

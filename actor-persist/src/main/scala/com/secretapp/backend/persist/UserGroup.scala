@@ -3,8 +3,8 @@ package com.secretapp.backend.persist
 import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 
-sealed class UserGroups extends CassandraTable[UserGroups, Int] {
-  override val tableName = "user_group_groups"
+sealed class UserGroup extends CassandraTable[UserGroup, Int] {
+  override val tableName = "user_group"
 
   object userId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "user_id"
@@ -16,7 +16,7 @@ sealed class UserGroups extends CassandraTable[UserGroups, Int] {
   override def fromRow(row: Row): Int = groupId(row)
 }
 
-object UserGroups extends UserGroups with TableOps {
+object UserGroup extends UserGroup with TableOps {
   def addGroup(userId: Int, groupId: Int)(implicit session: Session): Future[ResultSet] =
     insert.value(_.userId, userId).value(_.groupId, groupId).future()
 

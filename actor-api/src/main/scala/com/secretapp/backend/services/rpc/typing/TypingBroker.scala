@@ -11,6 +11,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
@@ -125,26 +126,24 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           )
         case BrokerType.Group =>
           //log.debug(s"Publishing UserTypingGroup ${userId}")
-          persist.GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
-            xs foreach {
-              case (userId, keyHashes) =>
-                keyHashes foreach { keyHash =>
-                  for {
-                    optAuthId <- authIdFor(userId, keyHash)
-                  } yield {
-                    optAuthId map {
-                      case \/-(authId) =>
-                        mediator ! Publish(
-                          TypingBroker.topicFor(userId, authId),
-                          updateProto.Typing(
-                            struct.Peer(struct.PeerType.Group, selfId),
-                            userId,
-                            typingType))
-                      case _ =>
-                        log.warning(s"Attempt to send to user with deleted key userId=$userId keyHash=$keyHash")
-                    }
-                  }
-                }
+          for {
+            groupUserIds <- persist.GroupUser.getUserIds(selfId)
+            pairs <- Future.sequence(
+              groupUserIds map { userId =>
+                getAuthIds(userId) map (_ map ((userId, _)))
+              }
+            ) map (_.flatten)
+          } yield {
+            pairs foreach {
+              case (userId, authId) =>
+                mediator ! Publish(
+                  TypingBroker.topicFor(userId, authId),
+                  updateProto.Typing(
+                    struct.Peer(struct.PeerType.Group, selfId),
+                    userId,
+                    typingType
+                  )
+                )
             }
           }
       }

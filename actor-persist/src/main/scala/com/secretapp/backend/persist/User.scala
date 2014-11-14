@@ -11,7 +11,9 @@ import Scalaz._
 sealed class User extends CassandraTable[User, models.User] {
   override val tableName = "users"
 
-  object uid extends IntColumn(this) with PartitionKey[Int]
+  object userId extends IntColumn(this) with PartitionKey[Int] {
+    override lazy val name = "user_id"
+  }
   object authId extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "auth_id"
   }
@@ -73,7 +75,7 @@ sealed class User extends CassandraTable[User, models.User] {
 
   override def fromRow(row: Row): models.User =
     models.User(
-      uid                 = uid(row),
+      uid                 = userId(row),
       authId              = authId(row),
       publicKeyHash       = publicKeyHash(row),
       publicKey           = BitVector(publicKey(row)),
@@ -114,7 +116,7 @@ object User extends User with TableOps {
       publicKey = entity.publicKey,
       authId = entity.authId)
 
-    insert.value(_.uid, entity.uid)
+    insert.value(_.userId, entity.uid)
       .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
@@ -143,7 +145,7 @@ object User extends User with TableOps {
 
   def insertEntityRowWithChildren(userId: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, countryCode: String, sex: models.Sex = models.NoSex)
                                  (implicit session: Session): Future[ResultSet] =
-    insert.value(_.uid, userId)
+    insert.value(_.userId, userId)
       .value(_.authId, authId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
@@ -157,11 +159,11 @@ object User extends User with TableOps {
       .flatMap(_ => Phone.updateUserName(phoneNumber, name))
 
   private def addKeyHash(userId: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
-    update.where(_.uid eqs userId).modify(_.keyHashes add publicKeyHash).future()
+    update.where(_.userId eqs userId).modify(_.keyHashes add publicKeyHash).future()
 
   /**
    * Marks keyHash as deleted in [[UserPublicKey]] and, if result is success,
-   * removes keyHash from the following records: [[UserPublicKey]], [[Phone]], [[GroupUser]].
+   * removes keyHash from the following records: [[UserPublicKey]], [[Phone]].
    *
    * @param userId user id
    * @param publicKeyHash user public key hash
@@ -175,14 +177,13 @@ object User extends User with TableOps {
           case Some(keepAuthId) if keepAuthId == authId =>
             Future.successful()
           case _ =>
-            delete.where(_.uid eqs userId).and(_.authId eqs authId).future()
+            delete.where(_.userId eqs userId).and(_.authId eqs authId).future()
         }
 
         Future.sequence(
           Vector(
-            update.where(_.uid eqs userId).modify(_.keyHashes remove publicKeyHash).future(),
-            frmUser,
-            GroupUser.removeUserKeyHash(userId, publicKeyHash)
+            update.where(_.userId eqs userId).modify(_.keyHashes remove publicKeyHash).future(),
+            frmUser
           )
         ) map (_ => Some(authId))
       case None =>
@@ -191,7 +192,7 @@ object User extends User with TableOps {
   }
 
   def updateAvatar(userId: Int, avatar: models.Avatar)(implicit session: Session) =
-    update.where(_.uid eqs userId)
+    update.where(_.userId eqs userId)
       .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
       .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
       .and   (_.smallAvatarFileSize setTo avatar.smallImage.map(_.fileSize))
@@ -206,19 +207,19 @@ object User extends User with TableOps {
       .future
 
   def updateName(userId: Int, name: String)(implicit session: Session) =
-    update.where(_.uid eqs userId)
+    update.where(_.userId eqs userId)
       .modify(_.name setTo name)
       .future
 
   def getEntity(userId: Int)(implicit session: Session): Future[Option[models.User]] =
-    select.where(_.uid eqs userId).one()
+    select.where(_.userId eqs userId).one()
 
   def getEntity(userId: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
-    select.where(_.uid eqs userId).and(_.authId eqs authId).one()
+    select.where(_.userId eqs userId).and(_.authId eqs authId).one()
 
   def getAccessSaltAndPhone(userId: Int)(implicit session: Session): Future[Option[(String, Long)]] =
-    select(_.accessSalt, _.phoneNumber).where(_.uid eqs userId).one()
+    select(_.accessSalt, _.phoneNumber).where(_.userId eqs userId).one()
 
   def byUid(userId: Int)(implicit session: Session): Future[Seq[models.User]] =
-    select.where(_.uid eqs userId).fetch()
+    select.where(_.userId eqs userId).fetch()
 }

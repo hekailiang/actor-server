@@ -16,7 +16,7 @@ trait GroupHelpers extends UserHelpers {
   def getGroupStruct(groupId: Int, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.Group]] = {
     for {
       optGroupModelWithAvatar <- persist.Group.getEntityWithAvatar(groupId)
-      groupUserIds <- persist.GroupUser.getUsers(groupId)
+      groupUserIds <- persist.GroupUser.getUserIds(groupId)
     } yield {
       optGroupModelWithAvatar map {
         case (group, avatarData) =>
@@ -31,7 +31,7 @@ trait GroupHelpers extends UserHelpers {
   }
 
   def withGroupUserAuthIds(groupId: Int)(f: Seq[Long] => Any) = {
-    persist.GroupUser.getUsers(groupId) map {
+    persist.GroupUser.getUserIds(groupId) map {
       case groupUserIds =>
         groupUserIds foreach { groupUserId =>
           for {

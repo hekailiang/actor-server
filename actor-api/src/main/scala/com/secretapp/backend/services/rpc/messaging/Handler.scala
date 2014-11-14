@@ -23,7 +23,6 @@ class Handler(
 
   type RequestMatcher = PartialFunction[RpcRequestMessage, Future[RpcResponse]]
 
-  //val handleGroup: RequestMatcher = ???
   //val handleHistory: RequestMatcher = ???
 
   implicit val timeout = Timeout(5.seconds)
@@ -32,8 +31,8 @@ class Handler(
     case RpcProtocol.Request(request) =>
       val replyTo = sender()
 
-      handleMessaging(request)
-//        .orElse(handleGroup)
+      handleMessaging
+        .orElse(handleGroup)(request)
 //        .orElse(handleHistory)(request)
         .pipeTo(replyTo)
   }

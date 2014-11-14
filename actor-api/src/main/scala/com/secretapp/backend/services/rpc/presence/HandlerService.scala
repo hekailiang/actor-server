@@ -53,7 +53,7 @@ trait HandlerService {
     presenceBrokerRegion ! Envelope(currentUser.uid, message)
 
     for {
-      groupIds <- persist.UserGroups.getGroups(currentUser.uid)
+      groupIds <- persist.UserGroup.getGroups(currentUser.uid)
     } yield {
       groupIds foreach { groupId =>
         val message = if (isOnline) {
