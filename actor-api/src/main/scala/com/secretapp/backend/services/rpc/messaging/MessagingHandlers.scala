@@ -31,7 +31,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   implicit val session: CSession
 
   val handleMessaging: RequestMatcher = {
-    case RequestSendMessage(peer, randomId, message) => handleRequestSendMessage(peer, randomId, message)
+    case RequestSendMessage(peer, randomId, message) =>
+      handleRequestSendMessage(peer, randomId, message)
     case RequestSendEncryptedMessage(outPeer, randomId, encryptedMessage, keys, ownKeys) =>
       handleRequestSendEncryptedMessage(outPeer, randomId, encryptedMessage, keys, ownKeys)
     case RequestEncryptedReceived(outPeer, randomId) =>
@@ -45,10 +46,58 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   }
 
   protected def handleRequestSendMessage(
-    peer: struct.OutPeer,
+    outPeer: struct.OutPeer,
     randomId: Long,
     message: MessageContent
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = {
+    withOutPeer(outPeer) {
+      val date = System.currentTimeMillis()
+
+      outPeer.typ match {
+        case struct.PeerType.Private =>
+          val peerAuthIdsFuture = getAuthIds(outPeer.id)
+          val myAuthIdsFuture   = getAuthIds(currentUser.uid)
+
+          for {
+            peerAuthIds <- peerAuthIdsFuture
+            myAuthIds <- myAuthIdsFuture
+          } yield {
+            (peerAuthIds ++
+              (myAuthIds filterNot (_ == currentUser.authId))
+            ) foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(
+                authId,
+                updateProto.Message(
+                  peer = outPeer.asPeer,
+                  senderUid = currentUser.uid,
+                  date = date,
+                  randomId = randomId,
+                  message = message
+                )
+              )
+            }
+          }
+
+          val fstate = ask(
+            updatesBrokerRegion,
+            NewUpdatePush(
+              currentUser.authId,
+              updateProto.MessageSent(
+                outPeer.asPeer,
+                randomId,
+                date
+              )
+            )).mapTo[UpdatesBroker.StrictState]
+
+          for {
+            s <- fstate
+          } yield {
+            val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
+            Ok(rsp)
+          }
+      }
+    }
+  }
 
   protected def handleRequestSendEncryptedMessage(
     outPeer: struct.OutPeer,
@@ -155,11 +204,19 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     withOutPeer(outPeer) {
       outPeer.typ match {
         case struct.PeerType.Private =>
+          val peerAuthIdsFuture = getAuthIds(outPeer.id)
+          val myAuthIdsFuture   = getAuthIds(currentUser.uid)
+
           for {
-            authIds <- getAuthIds(outPeer.id)
+            peerAuthIds <- peerAuthIdsFuture
+            myAuthIds   <- myAuthIdsFuture
           } yield {
-            authIds foreach { authId =>
+            peerAuthIds foreach { authId =>
               updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(outPeer.asPeer, randomId))
+            }
+
+            myAuthIds foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedReadByMe(outPeer.asPeer, randomId))
             }
           }
           Future.successful(Ok(ResponseVoid()))
@@ -170,13 +227,13 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   }
 
   protected def handleRequestMessageReceived(
-    peer: struct.OutPeer,
+    outPeer: struct.OutPeer,
     randomId: Long
   ): Future[RpcResponse] = ???
 
   protected def handleRequestMessageRead(
-    peer: struct.OutPeer,
-    randomId: Long
+    outPeer: struct.OutPeer,
+    date: Long
   ): Future[RpcResponse] = ???
 
   /*
