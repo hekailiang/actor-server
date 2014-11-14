@@ -30,6 +30,20 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
 
   implicit val session: CSession
 
+  val handleMessaging: RequestMatcher = {
+    case RequestSendMessage(peer, randomId, message) => handleRequestSendMessage(peer, randomId, message)
+    case RequestSendEncryptedMessage(outPeer, randomId, encryptedMessage, keys, ownKeys) =>
+      handleRequestSendEncryptedMessage(outPeer, randomId, encryptedMessage, keys, ownKeys)
+    case RequestEncryptedReceived(outPeer, randomId) =>
+      handleRequestEncryptedReceived(outPeer, randomId)
+    case RequestEncryptedRead(outPeer, randomId) =>
+      handleRequestEncryptedRead(outPeer, randomId)
+    case RequestMessageReceived(outPeer, randomId) =>
+      handleRequestMessageReceived(outPeer, randomId)
+    case RequestMessageRead(outPeer, randomId) =>
+      handleRequestMessageRead(outPeer, randomId)
+  }
+
   protected def handleRequestSendMessage(
     peer: struct.OutPeer,
     randomId: Long,
@@ -37,22 +51,123 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   ): Future[RpcResponse] = ???
 
   protected def handleRequestSendEncryptedMessage(
-    peer: struct.OutPeer,
+    outPeer: struct.OutPeer,
     randomId: Long,
     encryptedMessage: BitVector,
-    keys: EncryptedAESKey,
-    ownKets: EncryptedAESKey
-  ): Future[RpcResponse] = ???
+    keys: immutable.Seq[EncryptedAESKey],
+    ownKeys: immutable.Seq[EncryptedAESKey]
+  ): Future[RpcResponse] = {
+    val outUserId = outPeer.id
+
+    if (outPeer.typ == struct.PeerType.Group) {
+      throw new Exception("Encrypted group sending is not implemented yet.")
+    }
+
+    val ownPairsEFuture = fetchAuthIdsForValidKeys(currentUser.uid, ownKeys)
+    val outPairsEFuture = fetchAuthIdsForValidKeys(outUserId, keys)
+
+    val pairsEFuture = for {
+      ownPairsE <- ownPairsEFuture
+      outPairsE <- outPairsEFuture
+    } yield {
+      ownPairsE +++ outPairsE
+    }
+
+    withOutPeer(outPeer) {
+      // Record relation between receiver authId and sender uid
+      socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+        currentUser.uid, SocialProtocol.RelationsNoted(Set(outUserId)))
+
+      pairsEFuture flatMap {
+        case \/-(pairs) =>
+          // TODO: get time from an actor with PinnedDispatcher
+          val date = System.currentTimeMillis()
+
+          pairs foreach {
+            case (EncryptedAESKey(keyHash, aesEncryptedKey), authId) =>
+              val update = NewUpdatePush(
+                authId,
+                updateProto.EncryptedMessage(
+                  peer = struct.Peer(struct.PeerType.Private, currentUser.uid),
+                  senderUid = currentUser.uid,
+                  keyHash = keyHash,
+                  aesEncryptedKey = aesEncryptedKey,
+                  message = encryptedMessage,
+                  date = date
+                )
+              )
+
+              updatesBrokerRegion ! update
+          }
+
+          val fstate = ask(
+            updatesBrokerRegion,
+            NewUpdatePush(
+              currentUser.authId,
+              updateProto.MessageSent(
+                outPeer.asPeer,
+                randomId,
+                date
+              )
+            )).mapTo[UpdatesBroker.StrictState]
+
+          for {
+            s <- fstate
+          } yield {
+            val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
+            Ok(rsp)
+          }
+        case -\/((newKeys, removedKeys, invalidKeys)) =>
+          val errorData = struct.WrongReceiversErrorData(newKeys.toSeq, removedKeys.toSeq, invalidKeys.toSeq)
+
+          Future.successful(
+            Error(400, "WRONG_KEYS", "", false, Some(errorData))
+          )
+      }
+    }
+  }
 
   protected def handleRequestEncryptedReceived(
-    peer: struct.OutPeer,
+    outPeer: struct.OutPeer,
     randomId: Long
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = {
+    withOutPeer(outPeer) {
+      outPeer.typ match {
+        case struct.PeerType.Private =>
+          for {
+            authIds <- getAuthIds(outPeer.id)
+          } yield {
+            authIds foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedReceived(outPeer.asPeer, randomId))
+            }
+          }
+          Future.successful(Ok(ResponseVoid()))
+        case struct.PeerType.Group =>
+          Future.successful(Error(400, "NOT_IMPLEMENTED", "Group encrypted messaging is not implemented yet.", false))
+      }
+    }
+  }
 
   protected def handleRequestEncryptedRead(
-    peer: struct.OutPeer,
+    outPeer: struct.OutPeer,
     randomId: Long
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = {
+    withOutPeer(outPeer) {
+      outPeer.typ match {
+        case struct.PeerType.Private =>
+          for {
+            authIds <- getAuthIds(outPeer.id)
+          } yield {
+            authIds foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(outPeer.asPeer, randomId))
+            }
+          }
+          Future.successful(Ok(ResponseVoid()))
+        case struct.PeerType.Group =>
+          Future.successful(Error(400, "NOT_IMPLEMENTED", "Group encrypted messaging is not implemented yet.", false))
+      }
+    }
+  }
 
   protected def handleRequestMessageReceived(
     peer: struct.OutPeer,
@@ -635,5 +750,34 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
       case None =>
         Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
     }
-  }*/
+   }*/
+
+  protected def withOutPeer(outPeer: struct.OutPeer)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+    // TODO: DRY
+
+    outPeer.typ match {
+      case struct.PeerType.Private =>
+        persist.User.getEntity(outPeer.id) flatMap {
+          case Some(userEntity) =>
+            if (ACL.userAccessHash(currentUser.authId, userEntity) != outPeer.accessHash) {
+              Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+            } else {
+              f
+            }
+          case None =>
+            Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
+        }
+      case struct.PeerType.Group =>
+        persist.Group.getEntity(outPeer.id) flatMap {
+          case Some(groupEntity) =>
+            if (groupEntity.accessHash != outPeer.accessHash) {
+              Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+            } else {
+              f
+            }
+          case None =>
+            Future.successful(Error(400, "INTERNAL_ERROR", "Destination group not found", true))
+        }
+    }
+  }
 }

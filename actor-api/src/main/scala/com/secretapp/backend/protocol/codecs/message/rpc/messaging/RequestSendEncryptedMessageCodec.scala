@@ -12,7 +12,7 @@ import scalaz.\/
 
 object RequestSendEncryptedMessageCodec extends Codec[RequestSendEncryptedMessage] with utils.ProtobufCodec {
   def encode(r: RequestSendEncryptedMessage) = {
-    val boxed = protobuf.RequestSendEncryptedMessage(r.peer.toProto, r.randomId, r.encryptedMessage,
+    val boxed = protobuf.RequestSendEncryptedMessage(r.outPeer.toProto, r.randomId, r.encryptedMessage,
       r.keys.map(_.toProto), r.ownKeys.map(_.toProto))
     encodeToBitVector(boxed)
   }

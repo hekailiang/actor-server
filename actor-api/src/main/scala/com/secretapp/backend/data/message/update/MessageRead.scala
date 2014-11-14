@@ -8,7 +8,7 @@ case class MessageRead(peer: struct.Peer, randomId: Long, readDate: Long) extend
 
   def userIds: Set[Int] = Set(peer.id)
 
-  def groupIds: Set[Int] = peer.kind match {
+  def groupIds: Set[Int] = peer.typ match {
     case struct.PeerType.Group =>
       Set(peer.id)
     case _ =>

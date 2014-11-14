@@ -9,7 +9,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageRead }
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist
@@ -80,21 +80,18 @@ class RpcMessagingSpec extends RpcSpec {
       // get initial state
       val (initialState, _) = getState
 
-      val rq = RequestSendMessage(
-        uid = secondUser.uid,
-        accessHash = ACL.userAccessHash(scope.user.authId, secondUser),
+      val rq = RequestSendEncryptedMessage(
+        struct.OutPeer.privat(secondUser.uid, ACL.userAccessHash(scope.user.authId, secondUser)),
         randomId = 555L,
-        message = EncryptedRSAMessage(
-          encryptedMessage = BitVector(1, 2, 3),
-          keys = immutable.Seq(
-            EncryptedAESKey(
-              secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
-            )
-          ),
-          ownKeys = immutable.Seq(
-            EncryptedAESKey(
-              scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
-            )
+        encryptedMessage = BitVector(1, 2, 3),
+        keys = immutable.Seq(
+          EncryptedAESKey(
+            secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
+          )
+        ),
+        ownKeys = immutable.Seq(
+          EncryptedAESKey(
+            scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
           )
         )
       )
@@ -122,23 +119,22 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         rq :~> <~:[updateProto.ResponseSeq]
 
         // subscribe to updates
@@ -148,7 +144,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageReceived(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
+        RequestEncryptedReceived(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)), 555L) :~> <~:[ResponseVoid]
       }
 
       {
@@ -157,7 +153,7 @@ class RpcMessagingSpec extends RpcSpec {
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[SeqUpdate]
-        update.body should beAnInstanceOf[MessageReceived]
+        update.body should beAnInstanceOf[EncryptedReceived]
       }
     }
 
@@ -169,23 +165,22 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         rq :~> <~:[updateProto.ResponseSeq]
 
         // subscribe to updates
@@ -197,7 +192,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageRead(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
+        RequestEncryptedRead(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)), 555L) :~> <~:[ResponseVoid]
       }
 
       {
@@ -206,7 +201,7 @@ class RpcMessagingSpec extends RpcSpec {
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[SeqUpdate]
-        update.body should beAnInstanceOf[MessageRead]
+        update.body should beAnInstanceOf[EncryptedRead]
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         diff.updates.last.body should beAnInstanceOf[MessageRead]
@@ -226,26 +221,25 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              ),
-              EncryptedAESKey(
-                111L, BitVector(1, 0, 1, 0)
-              )
+            EncryptedAESKey(
+              111L, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         val error = rq :~> <~:(400, "WRONG_KEYS")
         error.data.get should equalTo(struct.WrongReceiversErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
@@ -257,23 +251,22 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                111L, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              111L, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         val error = rq :~> <~:(400, "WRONG_KEYS")
         error.data.get should equalTo(struct.WrongReceiversErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),

@@ -56,53 +56,50 @@ trait UserHelpers {
     persist.UserPublicKey.fetchAuthIdsByUserId(userId)
   }
 
-  /**
-    * Fetches authIds for userId and his key hashes
-    *
-    * @param userId user id
-    * @param keyHashes key hashes
-    * @return tuple containing sequences of (authId, key): new keys, removed keys and invalid keys
-    */
-  def fetchAuthIdsAndCheckKeysFor(userId: Int, keys: Seq[EncryptedAESKey], skipKeyHash: Option[Long] = None): Future[(Seq[(Long, EncryptedAESKey)], Seq[struct.UserKey], Seq[struct.UserKey], Seq[struct.UserKey])] = {
-    case class WithRemovedAndInvalid(good: Seq[(Long, EncryptedAESKey)], removed: Seq[Long], invalid: Seq[Long])
+  def fetchAuthIdsForValidKeys(
+    userId: Int,
+    aesKeys: immutable.Seq[EncryptedAESKey],
+    skipKeyHash: Option[Long] = None
+  ): Future[(Vector[struct.UserKey], Vector[struct.UserKey], Vector[struct.UserKey]) \/ Vector[(EncryptedAESKey, Long)]] = {
+    val keyHashes = aesKeys map (_.keyHash) toSet
 
-    persist.UserPublicKey.fetchAllAuthIdsMap(userId) map { authIdsMap =>
-      val withoutNew = keys.foldLeft(WithRemovedAndInvalid(Seq.empty, Seq.empty, Seq.empty)) {
-        case (res, key) =>
-          authIdsMap.get(key.keyHash) match {
-            case Some(\/-(authId)) =>
-              res.copy(good = res.good :+ (authId, key))
-            case Some(-\/(authId)) =>
-              res.copy(removed = res.removed :+ key.keyHash)
-            case None =>
-              res.copy(invalid = res.invalid :+ key.keyHash)
-          }
+    val activeAuthIdsMapFuture  = persist.UserPublicKey.fetchAuthIdsOfActiveKeys(userId) map (_.toMap)
+    val deletedAuthIdsMapFuture = persist.UserPublicKey.fetchAuthIdsOfDeletedKeys(userId, keyHashes) map (_.toMap)
+
+    for {
+      activeAuthIdsMap  <- activeAuthIdsMapFuture
+      deletedAuthIdsMap <- deletedAuthIdsMapFuture
+    } yield {
+      val activeKeyHashes = activeAuthIdsMap.keySet
+      val deletedKeyHashes = deletedAuthIdsMap.keySet
+      val validKeyHashes = (activeKeyHashes ++ deletedKeyHashes)
+
+      // TODO: optimize using keyHashes.foldLeft
+      val newKeys = skipKeyHash
+        .map(kh => activeKeyHashes.filterNot(_ == kh))
+        .getOrElse(activeKeyHashes)
+        .diff(keyHashes).toVector map (struct.UserKey(userId, _))
+
+      val (goodAesKeys, removedKeys, invalidKeys) =
+        aesKeys.foldLeft((Vector.empty[(EncryptedAESKey, Long)], Vector.empty[struct.UserKey], Vector.empty[struct.UserKey])) {
+          case (res, aesKey) =>
+            activeAuthIdsMap.get(aesKey.keyHash) match {
+              case Some(authId) =>
+                res.copy(_1 = res._1 :+ (aesKey, authId))
+              case None =>
+                if (deletedKeyHashes.contains(aesKey.keyHash)) {
+                  res.copy(_2 = res._2 :+ struct.UserKey(userId, aesKey.keyHash))
+                } else {
+                  res.copy(_3 = res._3 :+ struct.UserKey(userId, aesKey.keyHash))
+                }
+            }
+        }
+
+      (newKeys, removedKeys, invalidKeys) match {
+        case (Vector(), Vector(), Vector()) => goodAesKeys.right
+        case x => x.left
       }
-
-      val activeAuthIdsMap = authIdsMap filter {
-        case (_, -\/(_)) => false
-        case (_, \/-(_)) => true
-      }
-
-      val allKeys = skipKeyHash match {
-        case Some(keyHash) =>
-          activeAuthIdsMap.keySet - keyHash
-        case None =>
-          activeAuthIdsMap.keySet
-      }
-
-      (
-        withoutNew.good,
-        allKeys.diff(keys.map(_.keyHash).toSet).toSeq map (struct.UserKey(userId, _)),
-        withoutNew.removed map (struct.UserKey(userId, _)),
-        withoutNew.invalid map (struct.UserKey(userId, _))
-      )
     }
-  }
-
-  // fetchAuthIdsMap
-  def getAuthIdsAndKeyHashes(userId: Int): Future[Map[Long, Long]] = {
-    persist.UserPublicKey.fetchAuthIdsMap(userId)
   }
 
   def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {

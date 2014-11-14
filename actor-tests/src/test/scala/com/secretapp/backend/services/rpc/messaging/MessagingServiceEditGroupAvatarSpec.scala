@@ -14,7 +14,7 @@ import com.websudos.util.testing._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
-
+/*
 class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
   "valid avatar" should {
@@ -302,3 +302,4 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     resp
   }
 }
+*/

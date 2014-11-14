@@ -108,28 +108,19 @@ object UserPublicKey extends UserPublicKey with TableOps {
         }
       }
 
-  /**
-    * Gets authIds and key hashes by userId, active only
-    *
-    * @param userId user id
-    * @return Future of map of key hashes and auth ids
-    */
-  def fetchAuthIdsMap(uid: Int)(implicit session: Session): Future[Map[Long, Long]] =
-    select(_.publicKeyHash, _.authId).where(_.uid eqs uid).and(_.isDeleted eqs false).fetch() map (_.toMap)
+  def fetchAuthIdsOfDeletedKeys(uid: Int, keyHashes: immutable.Set[Long])(implicit session: Session): Future[Seq[(Long, Long)]] = {
+      select(_.publicKeyHash, _.authId)
+        .where(_.uid eqs uid)
+        .and(_.isDeleted eqs true)
+        .and(_.publicKeyHash in keyHashes.toList).fetch()
+  }
 
-  /**
-    * Gets authIds and key hashes by userId, including deleted
-    *
-    * @param userId user id
-    * @return Future of map of key hashes and auth ids eithers
-    */
-  def fetchAllAuthIdsMap(uid: Int)(implicit session: Session): Future[Map[Long, Long \/ Long]] =
-    select(_.publicKeyHash, _.authId, _.isDeleted).where(_.uid eqs uid).fetch() map { tuples =>
-      tuples map {
-        case (keyHash, authId, false) => (keyHash, authId.right)
-        case (keyHash, authId, true) => (keyHash, authId.left)
-      } toMap
-    }
+  def fetchAuthIdsOfActiveKeys(uid: Int)(implicit session: Session): Future[Seq[(Long, Long)]] = {
+    select(_.publicKeyHash, _.authId)
+      .where(_.uid eqs uid)
+      .and(_.isDeleted eqs false)
+      .fetch()
+  }
 
   def fetchAuthIdsByUserId(uid: Int)(implicit session: Session): Future[Seq[Long]] =
     select(_.authId).where(_.uid eqs uid).and(_.isDeleted eqs false).fetch()

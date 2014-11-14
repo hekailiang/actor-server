@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object EncryptedReceivedCodec extends Codec[EncryptedReceived] with utils.ProtobufCodec {
   def encode(m: EncryptedReceived) = {
-    val boxed = protobuf.UpdateEncryptedReceived(m.peer.toProto, m.randomId)
+    val boxed = protobuf.UpdateEncryptedReceived(m.outPeer.toProto, m.randomId)
     encodeToBitVector(boxed)
   }
 

@@ -15,7 +15,7 @@ case class Message(peer: struct.Peer,
 
   def userIds: Set[Int] = Set(peer.id, senderUid)
 
-  def groupIds: Set[Int] = peer.kind match {
+  def groupIds: Set[Int] = peer.typ match {
     case struct.PeerType.Group =>
       Set(peer.id)
     case _ =>

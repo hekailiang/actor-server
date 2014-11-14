@@ -12,7 +12,7 @@ import scalaz.\/
 
 object RequestEncryptedReadCodec extends Codec[RequestEncryptedRead] with utils.ProtobufCodec {
   override def encode(r: RequestEncryptedRead): \/[String, BitVector] = {
-    val boxed = protobuf.RequestEncryptedRead(r.peer.toProto, r.randomId)
+    val boxed = protobuf.RequestEncryptedRead(r.outPeer.toProto, r.randomId)
     encodeToBitVector(boxed)
   }
 

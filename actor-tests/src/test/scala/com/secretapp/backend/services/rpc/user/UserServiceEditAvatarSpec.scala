@@ -3,6 +3,7 @@ package com.secretapp.backend.services.rpc.user
 import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.util.{ACL, AvatarUtils}
@@ -198,19 +199,16 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
     fr.getFile(a.fileLocation.fileId.toInt).sync()
 
   private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
-    val rq = RequestSendMessage(
-      u.uid,
-      ACL.userAccessHash(scope.user.authId, u),
+    val rq = RequestSendEncryptedMessage(
+      outPeer = struct.OutPeer.privat(u.uid, ACL.userAccessHash(scope.user.authId, u)),
       555L,
-      message = EncryptedRSAMessage(
-        encryptedMessage = BitVector(1, 2, 3),
-        keys = immutable.Seq(
-          EncryptedAESKey(
-            u.publicKeyHash, BitVector(1, 0, 1, 0)
-          )
-        ),
-        ownKeys = immutable.Seq.empty
-      )
+      encryptedMessage = BitVector(1, 2, 3),
+      keys = immutable.Seq(
+        EncryptedAESKey(
+          u.publicKeyHash, BitVector(1, 0, 1, 0)
+        )
+      ),
+      ownKeys = immutable.Seq.empty
     )
 
     rq :~> <~:[ResponseSeq]

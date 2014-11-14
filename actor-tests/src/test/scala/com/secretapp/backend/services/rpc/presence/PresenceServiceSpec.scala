@@ -18,7 +18,7 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scodec.bits._
-
+/*
 class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
@@ -158,3 +158,4 @@ class PresenceServiceSpec extends RpcSpec {
     }
   }
 }
+ */

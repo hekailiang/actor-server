@@ -7,7 +7,7 @@ import scodec.bits.BitVector
 import scala.collection.immutable
 
 @SerialVersionUID(1L)
-case class RequestSendEncryptedMessage(peer: struct.OutPeer,
+case class RequestSendEncryptedMessage(outPeer: struct.OutPeer,
                                        randomId: Long,
                                        encryptedMessage: BitVector,
                                        keys: immutable.Seq[EncryptedAESKey],

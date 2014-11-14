@@ -10,7 +10,7 @@ import com.websudos.util.testing._
 import scala.collection.immutable
 import scala.language.higherKinds
 import scodec.bits._
-
+/*
 class GroupMessagingSpec extends RpcSpec {
   "GroupMessaging" should {
     "send updates on name change" in {
@@ -419,3 +419,4 @@ class GroupMessagingSpec extends RpcSpec {
     }
   }
 }
+ */

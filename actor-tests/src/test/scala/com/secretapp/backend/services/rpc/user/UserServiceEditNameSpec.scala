@@ -4,6 +4,7 @@ import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -77,19 +78,16 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
     RequestEditName(newName) :~> <~:[ResponseVoid]
 
   private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
-    val rq = RequestSendMessage(
-      u.uid,
-      ACL.userAccessHash(scope.user.authId, u),
+    val rq = RequestSendEncryptedMessage(
+      struct.OutPeer.privat(u.uid, ACL.userAccessHash(scope.user.authId, u)),
       555L,
-      message = EncryptedRSAMessage(
-        encryptedMessage = BitVector(1, 2, 3),
-        keys = immutable.Seq(
-          EncryptedAESKey(
-            u.publicKeyHash, BitVector(1, 0, 1, 0)
-          )
-        ),
-        ownKeys = immutable.Seq.empty
-      )
+      encryptedMessage = BitVector(1, 2, 3),
+      keys = immutable.Seq(
+        EncryptedAESKey(
+          u.publicKeyHash, BitVector(1, 0, 1, 0)
+        )
+      ),
+      ownKeys = immutable.Seq.empty
     )
 
     rq :~> <~:[ResponseSeq]
