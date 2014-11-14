@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
@@ -24,16 +24,16 @@ import scala.language.higherKinds
 import scodec.bits._
 
 class RpcMessagingSpec extends RpcSpec {
-  def getState(implicit scope: TestScope): (updateProto.ResponseSeq, Seq[UpdateBox]) = {
+  def getState(implicit scope: TestScope): (ResponseSeq, Seq[UpdateBox]) = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
-    updateProto.RequestGetState() :~> <~:[updateProto.ResponseSeq]
+    RequestGetState() :~> <~:[ResponseSeq]
   }
 
-  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
+  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): Difference = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
-    val rq = updateProto.RequestGetDifference(seq, state)
+    val rq = RequestGetDifference(seq, state)
     val messageId = getMessageId()
     val rpcRq = RpcRequestBox(Request(rq))
     val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
@@ -44,10 +44,45 @@ class RpcMessagingSpec extends RpcSpec {
     msg
       .body.asInstanceOf[RpcResponseBox]
       .body.asInstanceOf[Ok]
-      .body.asInstanceOf[updateProto.Difference]
+      .body.asInstanceOf[Difference]
   }
 
   "RpcMessaging" should {
+    "deliver unencrypted messages" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[Message]
+        upd.peer should_==(struct.Peer.privat(scope1.user.uid))
+        upd.senderUid should_==(scope1.user.uid)
+        upd.randomId should_==(1L)
+        upd.message should_==(TextMessage("Yolo!"))
+      }
+    }
+
     "reply to SendMessage and push to sequence" in {
       //implicit val (probe, apiActor) = probeAndActor()
       //implicit val sessionId = SessionIdentifier()
@@ -96,7 +131,7 @@ class RpcMessagingSpec extends RpcSpec {
         )
       )
 
-      val (resp, _) = rq :~> <~:[updateProto.ResponseSeq]
+      val (resp, _) = rq :~> <~:[ResponseSeq]
       resp.seq should beEqualTo(initialState.seq + 2)
 
       val (state, _) = getState
@@ -105,7 +140,7 @@ class RpcMessagingSpec extends RpcSpec {
 
       {
         // same randomId
-        val (resp, _) = rq :~> <~:[updateProto.ResponseSeq]
+        val (resp, _) = rq :~> <~:[ResponseSeq]
         resp.seq should beEqualTo(initialState.seq + 2)
       }
 
@@ -138,7 +173,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[updateProto.ResponseSeq]
+        rq :~> <~:[ResponseSeq]
 
         // subscribe to updates
         getState(scope)
@@ -184,7 +219,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[updateProto.ResponseSeq]
+        rq :~> <~:[ResponseSeq]
 
         // subscribe to updates
         getState(scope)
@@ -206,7 +241,7 @@ class RpcMessagingSpec extends RpcSpec {
         val update = updBox.body.asInstanceOf[SeqUpdate]
         update.body should beAnInstanceOf[EncryptedRead]
 
-        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
         diff.updates.last.body should beAnInstanceOf[EncryptedRead]
       }
     }

@@ -53,42 +53,70 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     withOutPeer(outPeer, currentUser) {
       val date = System.currentTimeMillis()
 
-      outPeer.typ match {
+      val selfUpdateFuture = outPeer.typ match {
         case struct.PeerType.Private =>
-          val peerAuthIdsFuture = getAuthIds(outPeer.id)
           val myAuthIdsFuture   = getAuthIds(currentUser.uid)
+          val peerAuthIdsFuture = getAuthIds(outPeer.id)
 
           for {
-            peerAuthIds <- peerAuthIdsFuture
             myAuthIds <- myAuthIdsFuture
+            peerAuthIds <- peerAuthIdsFuture
           } yield {
+            val update = updateProto.Message(
+              peer = struct.Peer.privat(currentUser.uid),
+              senderUid = currentUser.uid,
+              date = date,
+              randomId = randomId,
+              message = message
+            )
+
             (peerAuthIds ++
               (myAuthIds filterNot (_ == currentUser.authId))
             ) foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(
-                authId,
-                updateProto.Message(
-                  peer = outPeer.asPeer,
-                  senderUid = currentUser.uid,
-                  date = date,
-                  randomId = randomId,
-                  message = message
-                )
-              )
+              updatesBrokerRegion ! NewUpdatePush(authId, update)
             }
           }
 
-          withNewUpdateState(
-            currentUser.authId,
+          Future.successful(
             updateProto.MessageSent(
               outPeer.asPeer,
               randomId,
               date
             )
-          ) { s =>
-            val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
-            Ok(rsp)
+          )
+        case struct.PeerType.Group =>
+          getGroupUserAuthIds(outPeer.id) map { groupAuthIds =>
+            groupAuthIds foreach { authId =>
+              if (authId != currentUser.authId) {
+                writeNewUpdate(
+                  authId,
+                  updateProto.Message(
+                    peer = struct.Peer.group(outPeer.id),
+                    senderUid = currentUser.uid,
+                    date = date,
+                    randomId = randomId,
+                    message = message
+                  )
+                )
+              }
+            }
+
+            updateProto.MessageSent(
+              outPeer.asPeer,
+              randomId,
+              date
+            )
           }
+      }
+
+      selfUpdateFuture flatMap {
+        withNewUpdateState(
+          currentUser.authId,
+          _
+        ) { s =>
+          val rsp = ResponseMessageSent(seq = s._1, state = Some(s._2), date)
+          Ok(rsp)
+        }
       }
     }
   }

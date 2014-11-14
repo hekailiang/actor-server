@@ -1,8 +1,9 @@
 package com.secretapp.backend.api
 
 import com.secretapp.backend.util.ACL
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
+import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
@@ -39,7 +40,7 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
@@ -50,12 +51,50 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
         upd.groupId should_==(respGroup.groupPeer.groupId)
         upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "deliver messages to group" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.group(respGroup.groupPeer.groupId, respGroup.groupPeer.accessHash),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.groupId))
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[Message]
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.groupId))
+        upd.senderUid should_==(scope1.user.uid)
+        upd.randomId should_==(1L)
+        upd.message should_==(TextMessage("Yolo!"))
       }
     }
 
@@ -72,9 +111,9 @@ class GroupMessagingSpec extends RpcSpec {
         RequestEditGroupTitle(
           groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.groupId, respGroup.groupPeer.accessHash),
           title = "Group 4000"
-        ) :~> <~:[updateProto.ResponseSeq]
+        ) :~> <~:[ResponseSeq]
 
-        val (diff, _) = updateProto.RequestGetDifference(respGroup.seq, respGroup.state) :~> <~:[updateProto.Difference]
+        val (diff, _) = RequestGetDifference(respGroup.seq, respGroup.state) :~> <~:[Difference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
@@ -85,7 +124,7 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
