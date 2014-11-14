@@ -46,6 +46,7 @@ trait MessagingService {
         | _: RequestEditGroupTitle
         | _: RequestInviteUsers
         | _: RequestLeaveGroup
+        | _: RequestRemoveUsers
     ) => authorizedRequest {
         ask(messagingHandler, RpcProtocol.Request(r)).mapTo[RpcResponse]
       }

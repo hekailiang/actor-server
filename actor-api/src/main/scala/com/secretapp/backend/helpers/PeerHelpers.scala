@@ -46,16 +46,26 @@ trait PeerHelpers extends UserHelpers {
     }
   }
 
-  protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
     persist.Group.getEntity(groupOutPeer.id) flatMap {
-      case Some(groupEntity) =>
-        if (groupEntity.accessHash != groupOutPeer.accessHash) {
+      case Some(group) =>
+        if (group.accessHash != groupOutPeer.accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
         } else {
-          f
+          f(group)
         }
       case None =>
         Future.successful(Error(400, "INTERNAL_ERROR", "Destination group not found", true))
+    }
+  }
+
+  protected def withOwnGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+    withGroupOutPeer(groupOutPeer, currentUser) { group =>
+      if (group.creatorUserId != currentUser.uid) {
+        Future.successful(Error(403, "NO_PERMISSION", "You are not an admin of this group.", true))
+      } else {
+        f(group)
+      }
     }
   }
 

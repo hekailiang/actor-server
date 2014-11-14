@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestRemoveUsersCodec extends Codec[RequestRemoveUsers] with utils.ProtobufCodec {
   def encode(r: RequestRemoveUsers) = {
-    val boxed = protobuf.RequestRemoveUsers(r.groupPeer.toProto, r.users.map(_.toProto))
+    val boxed = protobuf.RequestRemoveUsers(r.groupOutPeer.toProto, r.users.map(_.toProto))
     encodeToBitVector(boxed)
   }
 

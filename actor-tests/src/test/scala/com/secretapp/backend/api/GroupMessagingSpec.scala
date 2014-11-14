@@ -159,6 +159,45 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
+    "send updates on group kick" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestRemoveUsers(
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:[ResponseSeq]
+
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserKick]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+        upd.kickerUid should_==(scope.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserKick]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+        upd.kickerUid should_==(scope1.user.uid)
+      }
+    }
+
     "deliver messages into group" in {
       val (scope1, scope2) = TestScope.pair()
 
