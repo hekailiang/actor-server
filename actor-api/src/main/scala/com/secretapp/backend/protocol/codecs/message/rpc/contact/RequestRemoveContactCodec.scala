@@ -10,7 +10,7 @@ import scala.util.Success
 
 object RequestRemoveContactCodec extends Codec[RequestRemoveContact] with utils.ProtobufCodec {
   def encode(r: RequestRemoveContact) = {
-    val boxed = protobuf.RequestRemoveContact(r.uid, r.accessHash)
+    val boxed = protobuf.RequestRemoveContact(r.userId, r.accessHash)
     encodeToBitVector(boxed)
   }
 

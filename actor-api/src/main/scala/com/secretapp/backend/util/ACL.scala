@@ -18,8 +18,8 @@ object ACL {
   def hash(s: String): Long =
     ByteBuffer.wrap(MessageDigest.getInstance("MD5").digest(s.getBytes)).getLong
 
-  def userAccessHash(authId: Long, uid: Int, accessSalt: String)(implicit s: ActorSystem): Long =
-    hash(s"$authId:$uid:$accessSalt:${secretKey()}")
+  def userAccessHash(authId: Long, userId: Int, accessSalt: String)(implicit s: ActorSystem): Long =
+    hash(s"$authId:$userId:$accessSalt:${secretKey()}")
 
   def userAccessHash(authId: Long, u: models.User)(implicit s: ActorSystem): Long =
     userAccessHash(authId, u.uid, u.accessSalt)

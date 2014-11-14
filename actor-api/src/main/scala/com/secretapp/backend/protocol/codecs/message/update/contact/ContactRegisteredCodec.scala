@@ -14,13 +14,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object ContactRegisteredCodec extends Codec[ContactRegistered] with utils.ProtobufCodec {
   def encode(n: ContactRegistered) = {
-    val boxed = protobuf.UpdateContactRegistered(n.uid, n.isSilent, n.date)
+    val boxed = protobuf.UpdateContactRegistered(n.userId, n.isSilent, n.date)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateContactRegistered.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateContactRegistered(uid, isSilent, date)) => ContactRegistered(uid, isSilent, date)
+      case Success(r) => ContactRegistered(r.uid, r.isSilent, r.date)
     }
   }
 }

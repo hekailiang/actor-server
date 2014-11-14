@@ -151,9 +151,9 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
 
       typingUsers += Tuple2((userId, typingType), system.scheduler.scheduleOnce(TypingBroker.timeoutFor(typingType), self, UserNotTyping(userId, typingType)))
 
-    case m @ UserNotTyping(uid, typingType) =>
-      typingUsers.get((uid, typingType)) map (_.cancel)
-      typingUsers -= Tuple2(uid, typingType)
+    case m @ UserNotTyping(userId, typingType) =>
+      typingUsers.get((userId, typingType)) map (_.cancel)
+      typingUsers -= Tuple2(userId, typingType)
 
     case m @ TellTypings(target) =>
       typingUsers foreach {

@@ -6,13 +6,11 @@ import scodec.bits.BitVector
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class PublicKeyResponse(uid: Int, keyHash: Long, key: BitVector) extends ProtobufMessage
+case class PublicKeyResponse(userId: Int, keyHash: Long, key: BitVector) extends ProtobufMessage
 {
-  def toProto = protobuf.PublicKey(uid, keyHash, key)
+  def toProto = protobuf.PublicKey(userId, keyHash, key)
 }
 
 object PublicKeyResponse {
-  def fromProto(r: protobuf.PublicKey): PublicKeyResponse = r match {
-    case protobuf.PublicKey(uid, keyHash, key) => PublicKeyResponse(uid, keyHash, key)
-  }
+  def fromProto(r: protobuf.PublicKey): PublicKeyResponse = PublicKeyResponse(r.uid, r.keyHash, r.key)
 }

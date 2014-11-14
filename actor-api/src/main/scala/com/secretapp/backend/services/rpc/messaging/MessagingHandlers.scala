@@ -666,7 +666,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     }
   }
 
-  protected def handleRequestMessageReceived(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
+  protected def handleRequestMessageReceived(userId: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
     withUsers(uid, accessHash, currentUser) { users =>
       users map {
         case (_, u) =>
@@ -678,7 +678,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   }
 
   // TODO: DRY
-  protected def handleRequestMessageRead(uid: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
+  protected def handleRequestMessageRead(userId: Int, randomId: Long, accessHash: Long): Future[RpcResponse] = {
     withUsers(uid, accessHash, currentUser) { users =>
       users map {
         case (_, u) =>

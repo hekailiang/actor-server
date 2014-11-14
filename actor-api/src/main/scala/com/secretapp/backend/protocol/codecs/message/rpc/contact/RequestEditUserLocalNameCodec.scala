@@ -10,7 +10,7 @@ import scala.util.Success
 
 object RequestEditUserLocalNameCodec extends Codec[RequestEditUserLocalName] with utils.ProtobufCodec {
   def encode(r: RequestEditUserLocalName) = {
-    val boxed = protobuf.RequestEditUserLocalName(r.uid, r.accessHash, r.name)
+    val boxed = protobuf.RequestEditUserLocalName(r.userId, r.accessHash, r.name)
     encodeToBitVector(boxed)
   }
 

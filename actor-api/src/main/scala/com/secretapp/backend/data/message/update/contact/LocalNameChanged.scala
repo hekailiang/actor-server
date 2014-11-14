@@ -4,10 +4,10 @@ import com.secretapp.backend.data.message.update._
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class LocalNameChanged(uid: Int, localName: Option[String]) extends SeqUpdateMessage {
+case class LocalNameChanged(userId: Int, localName: Option[String]) extends SeqUpdateMessage {
   val header = LocalNameChanged.header
 
-  def userIds: Set[Int] = Set(uid)
+  def userIds: Set[Int] = Set(userId)
 
   def groupIds: Set[Int] = Set.empty
 }

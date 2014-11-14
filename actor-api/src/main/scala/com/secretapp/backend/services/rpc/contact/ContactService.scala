@@ -51,9 +51,9 @@ trait ContactService {
       authorizedRequest {
         handleRequestSearchContacts(request)
       }
-    case RequestAddContact(uid, accessHash) =>
+    case RequestAddContact(userId, accessHash) =>
       authorizedRequest {
-        handleRequestAddContact(uid, accessHash)
+        handleRequestAddContact(userId, accessHash)
       }
   }
 
@@ -191,17 +191,17 @@ trait ContactService {
     }
   }
 
-  def handleRequestAddContact(uid: Int, accessHash: Long): Future[RpcResponse] = {
+  def handleRequestAddContact(userId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    if (uid == currentUser.uid) {
+    if (userId == currentUser.uid) {
       Future.successful(RpcErrors.cantAddSelf)
     } else {
-      persist.User.getEntity(uid) flatMap {
+      persist.User.getEntity(userId) flatMap {
         case Some(user) =>
-          if (accessHash == ACL.userAccessHash(authId, uid, user.accessSalt)) {
-            val newContactsId = Set(uid)
-            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, uid, user.phoneNumber, "", user.accessSalt)
+          if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
+            val newContactsId = Set(userId)
+            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, user.phoneNumber, "", user.accessSalt)
             val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
             val stateFuture = ask(
               updatesBrokerRegion,

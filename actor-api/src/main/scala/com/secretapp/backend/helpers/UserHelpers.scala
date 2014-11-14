@@ -28,19 +28,19 @@ trait UserHelpers {
 
   // TODO: optimize this helpers
 
-  def getUsers(uid: Int): Future[Seq[(Long, models.User)]] = {
-    Option(usersCache.get(uid)) match {
+  def getUsers(userId: Int): Future[Seq[(Long, models.User)]] = {
+    Option(usersCache.get(userId)) match {
       case Some(users) =>
         Future.successful(users)
       case None =>
-        persist.User.byUid(uid) map (
+        persist.User.byUid(userId) map (
           _ map {user => (user.publicKeyHash, user) }
         )
     }
   }
 
-  def getUserStruct(uid: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] =
-    persist.User.getEntity(uid) map (_ map (struct.User.fromModel(_, authId)))
+  def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] =
+    persist.User.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
 
   def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.UserOutPeer]] = {
     for {
@@ -102,7 +102,7 @@ trait UserHelpers {
     }
   }
 
-  def authIdFor(uid: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
-    persist.UserPublicKey.getAuthIdByUidAndPublicKeyHash(uid, publicKeyHash)
+  def authIdFor(userId: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
+    persist.UserPublicKey.getAuthIdByUidAndPublicKeyHash(userId, publicKeyHash)
   }
 }

@@ -13,13 +13,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object NewDeviceCodec extends Codec[NewDevice] with utils.ProtobufCodec {
   def encode(n: NewDevice) = {
-    val boxed = protobuf.UpdateNewDevice(n.uid, n.keyHash, n.key, n.date)
+    val boxed = protobuf.UpdateNewDevice(n.userId, n.keyHash, n.key, n.date)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateNewDevice.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateNewDevice(uid, keyHash, key, date)) => NewDevice(uid, keyHash, key, date)
+      case Success(r) => NewDevice(r.uid, r.keyHash, r.key, r.date)
     }
   }
 }

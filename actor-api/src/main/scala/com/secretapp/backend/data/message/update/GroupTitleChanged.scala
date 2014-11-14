@@ -1,9 +1,9 @@
 package com.secretapp.backend.data.message.update
 
-case class GroupTitleChanged(groupId: Int, uid: Int, title: String, date: Long) extends SeqUpdateMessage {
+case class GroupTitleChanged(groupId: Int, userId: Int, title: String, date: Long) extends SeqUpdateMessage {
   val header = GroupTitleChanged.header
 
-  def userIds: Set[Int] = Set(uid)
+  def userIds: Set[Int] = Set(userId)
 
   def groupIds: Set[Int] = Set(groupId)
 }

@@ -4,10 +4,10 @@ import com.secretapp.backend.data.message.update._
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class ContactRegistered(uid: Int, isSilent: Boolean, date: Long) extends SeqUpdateMessage {
+case class ContactRegistered(userId: Int, isSilent: Boolean, date: Long) extends SeqUpdateMessage {
   val header = ContactRegistered.header
 
-  def userIds: Set[Int] = Set(uid)
+  def userIds: Set[Int] = Set(userId)
 
   def groupIds: Set[Int] = Set.empty
 }

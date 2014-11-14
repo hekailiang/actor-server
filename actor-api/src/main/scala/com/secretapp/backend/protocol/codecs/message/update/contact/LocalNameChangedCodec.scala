@@ -12,13 +12,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object LocalNameChangedCodec extends Codec[LocalNameChanged] with utils.ProtobufCodec {
   def encode(u: LocalNameChanged) = {
-    val boxed = protobuf.UpdateUserLocalNameChanged(u.uid, u.localName)
+    val boxed = protobuf.UpdateUserLocalNameChanged(u.userId, u.localName)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateUserLocalNameChanged.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateUserLocalNameChanged(uid, localName)) => LocalNameChanged(uid, localName)
+      case Success(r) => LocalNameChanged(r.uid, r.localName)
     }
   }
 }

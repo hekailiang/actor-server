@@ -35,7 +35,7 @@ sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPubl
 
   override def fromRow(row: Row): models.UserPublicKey =
     models.UserPublicKey(
-      uid = uid(row),
+      userId = uid(row),
       publicKeyHash = publicKeyHash(row),
       publicKey = BitVector(publicKey(row)),
       authId = authId(row),
@@ -49,7 +49,7 @@ object UserPublicKey extends UserPublicKey with TableOps {
 
   def insertEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] =
     insert
-      .value(_.uid, entity.uid)
+      .value(_.uid, entity.userId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
       .value(_.userAccessSalt, entity.userAccessSalt)
@@ -59,7 +59,7 @@ object UserPublicKey extends UserPublicKey with TableOps {
 
   def insertDeletedEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] =
     insert
-      .value(_.uid, entity.uid)
+      .value(_.uid, entity.userId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
       .value(_.userAccessSalt, entity.userAccessSalt)
@@ -68,8 +68,8 @@ object UserPublicKey extends UserPublicKey with TableOps {
       .value(_.deletedAt, Some(new DateTime))
       .future()
 
-  def insertEntityRow(uid: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] =
-    insert.value(_.uid, uid)
+  def insertEntityRow(userId: Int, publicKeyHash: Long, publicKey: BitVector, authId: Long)(implicit session: Session): Future[ResultSet] =
+    insert.value(_.uid, userId)
       .value(_.publicKeyHash, publicKeyHash)
       .value(_.publicKey, publicKey.toByteBuffer)
       .value(_.authId, authId)
@@ -93,14 +93,14 @@ object UserPublicKey extends UserPublicKey with TableOps {
   /**
     * Gets authId by userId and public key hash
     *
-    * @param uid user id
+    * @param userId user id
     * @param publicKeyHash user public key hash
     * @return an authId value, right if its public key is active, left otherwise
     */
-  def getAuthIdByUidAndPublicKeyHash(uid: Int, publicKeyHash: Long)
+  def getAuthIdByUidAndPublicKeyHash(userId: Int, publicKeyHash: Long)
                                     (implicit session: Session): Future[Option[Long \/ Long]] =
     select(_.authId, _.isDeleted)
-      .where(_.uid eqs uid).and(_.publicKeyHash eqs publicKeyHash)
+      .where(_.uid eqs userId).and(_.publicKeyHash eqs publicKeyHash)
       .one() map { optAuthId =>
         optAuthId map {
           case (authId, false) => authId.right
@@ -108,22 +108,22 @@ object UserPublicKey extends UserPublicKey with TableOps {
         }
       }
 
-  def fetchAuthIdsOfDeletedKeys(uid: Int, keyHashes: immutable.Set[Long])(implicit session: Session): Future[Seq[(Long, Long)]] = {
+  def fetchAuthIdsOfDeletedKeys(userId: Int, keyHashes: immutable.Set[Long])(implicit session: Session): Future[Seq[(Long, Long)]] = {
       select(_.publicKeyHash, _.authId)
-        .where(_.uid eqs uid)
+        .where(_.uid eqs userId)
         .and(_.isDeleted eqs true)
         .and(_.publicKeyHash in keyHashes.toList).fetch()
   }
 
-  def fetchAuthIdsOfActiveKeys(uid: Int)(implicit session: Session): Future[Seq[(Long, Long)]] = {
+  def fetchAuthIdsOfActiveKeys(userId: Int)(implicit session: Session): Future[Seq[(Long, Long)]] = {
     select(_.publicKeyHash, _.authId)
-      .where(_.uid eqs uid)
+      .where(_.uid eqs userId)
       .and(_.isDeleted eqs false)
       .fetch()
   }
 
-  def fetchAuthIdsByUserId(uid: Int)(implicit session: Session): Future[Seq[Long]] =
-    select(_.authId).where(_.uid eqs uid).and(_.isDeleted eqs false).fetch()
+  def fetchAuthIdsByUserId(userId: Int)(implicit session: Session): Future[Seq[Long]] =
+    select(_.authId).where(_.uid eqs userId).and(_.isDeleted eqs false).fetch()
 
   def getAuthIdAndSalt(userId: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[(Long, String)]] =
     select(_.authId, _.userAccessSalt).where(_.uid eqs userId).and(_.publicKeyHash eqs publicKeyHash).one()

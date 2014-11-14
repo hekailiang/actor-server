@@ -11,7 +11,7 @@ import scala.util.Success
 
 object GroupTitleChangedCodec extends Codec[GroupTitleChanged] with utils.ProtobufCodec {
   def encode(u: GroupTitleChanged) = {
-    val boxed = protobuf.UpdateGroupTitleChanged(u.groupId, u.uid, u.title, u.date)
+    val boxed = protobuf.UpdateGroupTitleChanged(u.groupId, u.userId, u.title, u.date)
     encodeToBitVector(boxed)
   }
 

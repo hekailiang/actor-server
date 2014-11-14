@@ -15,8 +15,8 @@ trait SocialHelpers extends UserHelpers {
 
   import context.dispatcher
 
-  def getRelations(uid: Int): Future[immutable.Set[Int]] = {
-    ask(socialBrokerRegion, SocialMessageBox(uid, GetRelations))(5.seconds).mapTo[RelationsType]
+  def getRelations(userId: Int): Future[immutable.Set[Int]] = {
+    ask(socialBrokerRegion, SocialMessageBox(userId, GetRelations))(5.seconds).mapTo[RelationsType]
   }
 
   def getRelatedAuthIds(userId: Int): Future[Seq[Long]] = {
