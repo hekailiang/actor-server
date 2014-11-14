@@ -4,7 +4,7 @@ import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 
 sealed class UserGroup extends CassandraTable[UserGroup, Int] {
-  override val tableName = "user_group"
+  override val tableName = "user_groups"
 
   object userId extends IntColumn(this) with PartitionKey[Int] {
     override lazy val name = "user_id"

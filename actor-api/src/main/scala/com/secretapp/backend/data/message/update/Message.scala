@@ -22,5 +22,5 @@ case class Message(peer: struct.Peer,
 }
 
 object Message extends SeqUpdateMessageObject {
-  val header = 0x33
+  val header = 0x37
 }
