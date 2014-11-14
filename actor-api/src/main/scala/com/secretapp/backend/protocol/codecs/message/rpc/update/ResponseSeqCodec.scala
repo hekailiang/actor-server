@@ -19,7 +19,7 @@ object ResponseSeqCodec extends Codec[update.ResponseSeq] with utils.ProtobufCod
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobufEither(protobuf.ResponseAvatarChanged.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.ResponseSeq.parseFrom(buf.toByteArray)) {
       case Success(r) =>
         stateOpt.decode(r.state) match {
           case \/-((_, state)) => update.ResponseSeq(r.seq, state).right

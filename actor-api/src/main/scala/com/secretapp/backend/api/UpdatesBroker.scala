@@ -1,6 +1,7 @@
 package com.secretapp.backend.api
 
 import akka.actor._
+import akka.pattern.pipe
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
@@ -86,7 +87,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
       val replyTo = sender()
       persist(SeqUpdate) { _ =>
         seq += 1
-        pushUpdate(authId, seq, update) map replyTo.!
+        pushUpdate(authId, seq, update) pipeTo replyTo
         maybeSnapshot()
       }
     case e: SaveSnapshotFailure =>
@@ -128,7 +129,6 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
 
           mediator ! Publish(topic, (updateSeq, uuid, update))
       }
-
       (updateSeq, uuid)
     }
   }

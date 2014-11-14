@@ -103,8 +103,11 @@ class RpcMessagingSpec extends RpcSpec {
       state.seq must equalTo(initialState.seq + 2)
       getDifference(initialState.seq, initialState.state).updates.length must equalTo(2)
 
-
-      rq :~> <~:(409, "MESSAGE_ALREADY_SENT")
+      {
+        // same randomId
+        val (resp, _) = rq :~> <~:[updateProto.ResponseSeq]
+        resp.seq should beEqualTo(initialState.seq + 2)
+      }
 
       Thread.sleep(1000)
 
@@ -204,7 +207,7 @@ class RpcMessagingSpec extends RpcSpec {
         update.body should beAnInstanceOf[EncryptedRead]
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-        diff.updates.last.body should beAnInstanceOf[MessageRead]
+        diff.updates.last.body should beAnInstanceOf[EncryptedRead]
       }
     }
 
