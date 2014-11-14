@@ -37,6 +37,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       handleRequestEditGroupTitle(groupPeer, title)
     case RequestInviteUsers(groupOutPeer, users) =>
       handleRequestInviteUsers(groupOutPeer, users)
+    case RequestLeaveGroup(groupOutPeer) =>
+      handleRequestLeaveGroup(groupOutPeer)
   }
 
   protected def handleRequestCreateGroup(
@@ -185,6 +187,54 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     withGroupOutPeer(groupOutPeer, currentUser)(resF)
   }
 
+  protected def handleRequestLeaveGroup(
+    groupOutPeer: struct.GroupOutPeer
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.id
+
+    val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
+
+    val date = System.currentTimeMillis
+
+    withGroupOutPeer(groupOutPeer, currentUser) {
+      userIdsAuthIdsF flatMap { userIdsAuthIds =>
+        if (userIdsAuthIds.toMap.contains(currentUser.uid)) {
+          val rmUserF = Future.sequence(Seq(
+            persist.GroupUser.removeUser(groupId, currentUser.uid),
+            persist.UserGroup.removeGroup(currentUser.uid, groupId)
+          ))
+
+          val userLeaveUpdate = GroupUserLeave(
+            groupId = groupId,
+            userId = currentUser.uid,
+            date = date
+          )
+
+          userIdsAuthIds foreach {
+            case (userId, authIds) =>
+              val targetAuthIds = if (userId != currentUser.uid) {
+                authIds
+              } else {
+                authIds.filterNot(_ == currentUser.authId)
+              }
+
+              targetAuthIds foreach (writeNewUpdate(_, userLeaveUpdate))
+          }
+
+          withNewUpdateState(
+            currentUser.authId,
+            userLeaveUpdate
+          ) { s =>
+            val res = ResponseSeq(s._1, Some(s._2))
+            Ok(res)
+          }
+        } else {
+          Future.successful(Error(400, "ALREADY_LEFT", "You already left this group.", false))
+        }
+      }
+    }
+  }
+
   protected def handleRequestEditGroupTitle(
     groupOutPeer: struct.GroupOutPeer,
     title: String
@@ -231,10 +281,6 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = ???
 
   protected def handleRequestRemoveGroupAvatar(
-    groupPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = ???
-
-  protected def handleRequestLeaveGroup(
     groupPeer: struct.GroupOutPeer
   ): Future[RpcResponse] = ???
 

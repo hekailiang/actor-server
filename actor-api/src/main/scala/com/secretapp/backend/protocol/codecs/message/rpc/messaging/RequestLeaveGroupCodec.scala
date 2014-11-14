@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestLeaveGroupCodec extends Codec[RequestLeaveGroup] with utils.ProtobufCodec {
   def encode(r: RequestLeaveGroup) = {
-    val boxed = protobuf.RequestLeaveGroup(r.groupPeer.toProto)
+    val boxed = protobuf.RequestLeaveGroup(r.groupOutPeer.toProto)
     encodeToBitVector(boxed)
   }
 
