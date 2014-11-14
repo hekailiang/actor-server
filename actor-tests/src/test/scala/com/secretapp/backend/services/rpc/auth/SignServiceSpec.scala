@@ -49,7 +49,7 @@ class SignServiceSpec extends RpcSpec {
 
         expectMsgByPF(withNewSession = true) {
           case RpcResponseBox(_, Ok(
-            ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(500)))) =>
+            ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
         }
       }
 
@@ -66,7 +66,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(500)))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
         }
 
         Thread.sleep(2000) // let database save user
@@ -93,7 +93,7 @@ class SignServiceSpec extends RpcSpec {
 
         val accessHash = ACL.userAccessHash(scope.authId, scope.user)
         val newUser = struct.User(scope.user.uid, accessHash, scope.user.name, None, Set(newPublicKeyHash), scope.user.phoneNumber)
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser, struct.Config(500))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser, struct.Config(300))), withNewSession = true)
       }
 
       "succeed with new public key and new authId" in {
@@ -111,7 +111,7 @@ class SignServiceSpec extends RpcSpec {
         val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
         val newUser = scope.user.copy(authId = newAuthId, publicKey = newPublicKey, publicKeyHash = newPublicKeyHash,
           keyHashes = keyHashes)
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, newAuthId), struct.Config(500))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, newAuthId), struct.Config(300))), withNewSession = true)
 
         def sortU(users: Seq[models.User]) = users.map(_.copy(keyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
@@ -135,7 +135,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(500)))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
         }
       }
 
@@ -266,7 +266,7 @@ class SignServiceSpec extends RpcSpec {
 
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, scope.user.publicKey, BitVector.empty, "app", 0, "key"))
 
-        expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, struct.User.fromModel(scope.user, scope.authId), struct.Config(500))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, struct.User.fromModel(scope.user, scope.authId), struct.Config(300))), withNewSession = true)
       }
 
       "success with second public key and authId" in {
@@ -298,7 +298,7 @@ class SignServiceSpec extends RpcSpec {
 
           sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey, BitVector.empty, "app", 0, "key"))
 
-          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, struct.User.fromModel(newUser, authId), struct.Config(500))), withNewSession = true)
+          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, struct.User.fromModel(newUser, authId), struct.Config(300))), withNewSession = true)
         }
       }
 
@@ -327,7 +327,7 @@ class SignServiceSpec extends RpcSpec {
 
         sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, newPublicKey, BitVector.empty, "app", 0, "key"))
 
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, authId), struct.Config(500))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, authId), struct.Config(300))), withNewSession = true)
 
         persist.UserPublicKey.getEntitiesByUserId(newUser.uid).sync() should equalTo(Seq(
           models.UserPublicKey(
