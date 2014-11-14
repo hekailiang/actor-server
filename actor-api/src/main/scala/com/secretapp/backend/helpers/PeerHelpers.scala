@@ -32,6 +32,7 @@ trait PeerHelpers extends UserHelpers {
             Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
         }
       case struct.PeerType.Group =>
+        // TODO: use withGroupOutPeer here
         persist.Group.getEntity(outPeer.id) flatMap {
           case Some(groupEntity) =>
             if (groupEntity.accessHash != outPeer.accessHash) {
@@ -42,6 +43,19 @@ trait PeerHelpers extends UserHelpers {
           case None =>
             Future.successful(Error(400, "INTERNAL_ERROR", "Destination group not found", true))
         }
+    }
+  }
+
+  protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+    persist.Group.getEntity(groupOutPeer.groupId) flatMap {
+      case Some(groupEntity) =>
+        if (groupEntity.accessHash != groupOutPeer.accessHash) {
+          Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
+        } else {
+          f
+        }
+      case None =>
+        Future.successful(Error(400, "INTERNAL_ERROR", "Destination group not found", true))
     }
   }
 

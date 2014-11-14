@@ -33,6 +33,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   val handleGroup: RequestMatcher = {
     case RequestCreateGroup(randomId, title, users) =>
       handleRequestCreateGroup(randomId, title, users)
+    case RequestEditGroupTitle(groupPeer, title) =>
+      handleRequestEditGroupTitle(groupPeer, title)
   }
 
   protected def handleRequestCreateGroup(
@@ -90,7 +92,15 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
             date = date
           )
         ) { s =>
-          val res = ResponseSeq(s._1, Some(s._2))
+          val res = ResponseCreateGroup(
+            groupPeer = struct.GroupOutPeer(
+              groupId = group.id,
+              accessHash = group.accessHash
+            ),
+            seq = s._1,
+            state = Some(s._2),
+            users = userIds.toVector
+          )
           Ok(res)
         }
       }
@@ -98,9 +108,44 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   }
 
   protected def handleRequestEditGroupTitle(
-    groupPeer: struct.GroupOutPeer,
+    groupOutPeer: struct.GroupOutPeer,
     title: String
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.groupId
+
+    val groupAuthIdsFuture = getGroupUserAuthIds(groupId)
+
+    val date = System.currentTimeMillis
+
+    withGroupOutPeer(groupOutPeer, currentUser) {
+      persist.Group.updateTitle(groupId, title) flatMap { _ =>
+        val titleChangedUpdate =  updateProto.GroupTitleChanged(
+          groupId = groupId,
+          userId = currentUser.uid,
+          title = title,
+          date = date
+        )
+
+        for {
+          groupAuthIds <- groupAuthIdsFuture
+        } yield {
+          groupAuthIds foreach { authId =>
+            if (authId != currentUser.authId) {
+              writeNewUpdate(authId, titleChangedUpdate)
+            }
+          }
+        }
+
+        withNewUpdateState(
+          currentUser.authId,
+          titleChangedUpdate
+        ) { s =>
+          val res = ResponseSeq(s._1, Some(s._2))
+          Ok(res)
+        }
+      }
+    }
+  }
 
   protected def handleRequestEditGroupAvatar(
     groupPeer: struct.GroupOutPeer,

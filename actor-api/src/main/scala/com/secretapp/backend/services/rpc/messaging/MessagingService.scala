@@ -41,7 +41,9 @@ trait MessagingService {
       }
     case r @ (
       _: RequestClearChat
-       | _: RequestDeleteChat
+        | _: RequestDeleteChat
+        | _: RequestCreateGroup
+        | _: RequestEditGroupTitle
     ) => authorizedRequest {
         ask(messagingHandler, RpcProtocol.Request(r)).mapTo[RpcResponse]
       }

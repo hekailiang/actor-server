@@ -5,14 +5,95 @@ import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.{ update => updateProto }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.models
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
 import scala.collection.immutable
 import scala.language.higherKinds
 import scodec.bits._
-/*
+
 class GroupMessagingSpec extends RpcSpec {
+  def createGroup(users: immutable.Seq[models.User])(implicit scope: TestScope): ResponseCreateGroup = {
+    val rqCreateGroup = RequestCreateGroup(
+      randomId = 1L,
+      title = "Group 3000",
+      users = users map { user =>
+        struct.UserOutPeer(user.uid, ACL.userAccessHash(scope.user.authId, user))
+      }
+    )
+
+    val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
+
+    resp
+  }
+
   "GroupMessaging" should {
+    "send invites on group creation" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "send updates on title change" in {
+      val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestEditGroupTitle(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.groupId, respGroup.groupPeer.accessHash),
+          title = "Group 4000"
+        ) :~> <~:[updateProto.ResponseSeq]
+
+        val (diff, _) = updateProto.RequestGetDifference(respGroup.seq, respGroup.state) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.title should_==("Group 4000")
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+        upd.groupId should_==(respGroup.groupPeer.groupId)
+        upd.title should_==("Group 4000")
+      }
+    }
+    /*
     "send updates on name change" in {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
@@ -416,7 +497,6 @@ class GroupMessagingSpec extends RpcSpec {
         diff1.updates.length should beEqualTo(1)
         diff2.updates.last.body.assertInstanceOf[GroupUserAdded]
       }
-    }
+    }*/
   }
 }
- */
