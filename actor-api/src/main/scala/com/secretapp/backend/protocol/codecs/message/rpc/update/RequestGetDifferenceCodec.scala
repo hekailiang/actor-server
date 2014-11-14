@@ -14,26 +14,15 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestGetDifferenceCodec extends Codec[RequestGetDifference] with utils.ProtobufCodec {
   def encode(r: RequestGetDifference) = {
-    r.state map (uuid.encode(_)) getOrElse(BitVector.empty.right) match {
-      case \/-(encodedUuid) =>
-        val boxed = protobuf.RequestGetDifference(r.seq, encodedUuid)
-        encodeToBitVector(boxed)
-      case l @ -\/(_) => l
-    }
+    val boxed = protobuf.RequestGetDifference(r.seq, stateOpt.encodeValid(r.state))
+    encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobufEither(protobuf.RequestGetDifference.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestGetDifference(seq, state)) =>
-        val decodedState = if (state == ByteString.EMPTY) {
-          None.right
-        } else {
-          uuid.decodeValue(state) map (Some(_))
-        }
-
-        decodedState match {
-          case \/-(uuidState) =>
-            RequestGetDifference(seq, uuidState).right
+      case Success(r) =>
+        stateOpt.decodeValue(r.state) match {
+          case \/-(state) => RequestGetDifference(r.seq, state).right
           case l @ -\/(_) => l
         }
     }

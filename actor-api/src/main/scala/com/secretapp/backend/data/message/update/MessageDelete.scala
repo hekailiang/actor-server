@@ -10,7 +10,7 @@ case class MessageDelete(peer: struct.Peer, randomIds: immutable.Seq[Long]) exte
 
   def userIds: Set[Int] = Set(peer.id)
 
-  def groupIds: Set[Int] = peer.typ match {
+  def groupIds: Set[Int] = peer.kind match {
     case struct.PeerType.Group =>
       Set(peer.id)
     case _ =>

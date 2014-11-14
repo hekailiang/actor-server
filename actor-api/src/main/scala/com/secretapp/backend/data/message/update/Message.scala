@@ -15,14 +15,12 @@ case class Message(peer: struct.Peer,
 
   def userIds: Set[Int] = Set(peer.id, senderUid)
 
-  def groupIds: Set[Int] = peer.typ match {
-    case struct.PeerType.Group =>
-      Set(peer.id)
-    case _ =>
-      Set.empty
+  def groupIds: Set[Int] = peer.kind match {
+    case struct.PeerType.Group => Set(peer.id)
+    case _ => Set.empty
   }
 }
 
 object Message extends SeqUpdateMessageObject {
-  val header = 0x1
+  val header = 0x33
 }

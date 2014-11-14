@@ -45,7 +45,7 @@ object TypingBroker {
   def topicFor(userId: Int): String = s"typing-u${userId}"
   def topicFor(userId: Int, authId: Long): String = s"typing-u${userId}-a${authId}"
 
-  def topicFor(typ: BrokerType.Value, userId: Int): String = typ match {
+  def topicFor(kind: BrokerType.Value, userId: Int): String = kind match {
     case BrokerType.User  => s"typing-u${userId}"
     case BrokerType.Group => s"typing-g${userId}"
   }

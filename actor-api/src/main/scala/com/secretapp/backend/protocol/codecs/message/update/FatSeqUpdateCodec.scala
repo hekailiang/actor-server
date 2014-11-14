@@ -23,13 +23,12 @@ object FatSeqUpdateCodec extends Codec[FatSeqUpdate] with utils.ProtobufCodec {
   }
 
   def decode(buf: BitVector) = {
-    Try(protobuf.FatSeqUpdate.parseFrom(buf.toByteArray)) match {
+    decodeProtobufEither(protobuf.FatSeqUpdate.parseFrom(buf.toByteArray)) {
       case Success(u: protobuf.FatSeqUpdate) =>
         FatSeqUpdate.fromProto(u) match {
-          case \/-(unboxed) => (BitVector.empty, unboxed).right
+          case \/-(unboxed) => unboxed.right
           case l@(-\/(_)) => l
         }
-      case Failure(e) => s"parse error: ${e.getMessage}".left
     }
   }
 }

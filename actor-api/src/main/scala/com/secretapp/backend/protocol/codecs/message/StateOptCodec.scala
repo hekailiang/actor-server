@@ -13,7 +13,7 @@ object StateOptCodec extends Codec[Option[UUID]] {
     case None => BitVector.empty.right
   }
 
-  def decode(buf: BitVector) = {
+  def decode(buf: BitVector): String \/ (BitVector, Option[UUID]) = {
     if (buf.isEmpty) (buf, None).right
     else uuid.decode(buf).map { case (b, value) => (b, value.some) }
   }

@@ -13,7 +13,7 @@ class Handler(val sessionActor: ActorRef, val currentUser: User, val typingBroke
   import context.dispatcher
 
   def receive = {
-    case RpcProtocol.Request(r: RequestTyping) => r.peer.typ match {
+    case RpcProtocol.Request(r: RequestTyping) => r.peer.kind match {
       case struct.PeerType.Private => handleRequestTyping(r.peer.id, r.peer.accessHash, r.typingType) pipeTo sender
       case struct.PeerType.Group => handleRequestGroupTyping(r.peer.id, r.peer.accessHash, r.typingType) pipeTo sender
     }

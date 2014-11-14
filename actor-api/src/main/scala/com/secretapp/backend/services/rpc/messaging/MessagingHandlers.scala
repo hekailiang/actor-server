@@ -53,7 +53,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     withOutPeer(outPeer) {
       val date = System.currentTimeMillis()
 
-      outPeer.typ match {
+      outPeer.kind match {
         case struct.PeerType.Private =>
           val peerAuthIdsFuture = getAuthIds(outPeer.id)
           val myAuthIdsFuture   = getAuthIds(currentUser.uid)
@@ -108,7 +108,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   ): Future[RpcResponse] = {
     val outUserId = outPeer.id
 
-    if (outPeer.typ == struct.PeerType.Group) {
+    if (outPeer.kind == struct.PeerType.Group) {
       throw new Exception("Encrypted group sending is not implemented yet.")
     }
 
@@ -181,7 +181,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     randomId: Long
   ): Future[RpcResponse] = {
     withOutPeer(outPeer) {
-      outPeer.typ match {
+      outPeer.kind match {
         case struct.PeerType.Private =>
           for {
             authIds <- getAuthIds(outPeer.id)
@@ -202,7 +202,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     randomId: Long
   ): Future[RpcResponse] = {
     withOutPeer(outPeer) {
-      outPeer.typ match {
+      outPeer.kind match {
         case struct.PeerType.Private =>
           val peerAuthIdsFuture = getAuthIds(outPeer.id)
           val myAuthIdsFuture   = getAuthIds(currentUser.uid)
@@ -812,7 +812,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   protected def withOutPeer(outPeer: struct.OutPeer)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
     // TODO: DRY
 
-    outPeer.typ match {
+    outPeer.kind match {
       case struct.PeerType.Private =>
         persist.User.getEntity(outPeer.id) flatMap {
           case Some(userEntity) =>
