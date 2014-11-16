@@ -29,6 +29,7 @@ object BackendBuild extends Build {
   lazy val defaultSettings =
     buildSettings ++
       Seq(
+        initialize                ~= { _ => sys.props("scalac.patmat.analysisBudget") = "off" },
         resolvers                 ++= Resolvers.seq,
         scalacOptions             ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
         javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),

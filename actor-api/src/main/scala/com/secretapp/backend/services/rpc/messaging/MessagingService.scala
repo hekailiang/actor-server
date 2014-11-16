@@ -8,6 +8,7 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.history._
 import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse, RpcRequestMessage }
 import com.secretapp.backend.models.User
 import com.secretapp.backend.persist
@@ -49,6 +50,11 @@ trait MessagingService {
         | _: RequestRemoveUsers
         | _: RequestEditGroupAvatar
         | _: RequestRemoveGroupAvatar
+        | _: RequestMessageRead
+        | _: RequestMessageReceived
+        | _: RequestMessageDelete
+        | _: RequestLoadHistory
+        | _: RequestLoadDialogs
     ) => authorizedRequest {
         ask(messagingHandler, RpcProtocol.Request(r)).mapTo[RpcResponse]
       }
