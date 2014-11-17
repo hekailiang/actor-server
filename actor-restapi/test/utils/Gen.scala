@@ -3,6 +3,7 @@ package utils
 import scodec.bits.BitVector
 import scala.util.Random
 import com.secretapp.backend.{models => m}
+import scala.collection.immutable
 
 object Gen {
 
@@ -18,17 +19,22 @@ object Gen {
 
   def genSex = m.Sex.fromInt(Random.nextInt(3) + 1)
 
-  def genUser = m.User(
-    genInt,
-    genLong,
-    genLong,
-    genBitVector,
-    genLong,
-    genString,
-    genString,
-    genString,
-    genSex
-  )
+  def genUser = {
+    val ph = genLong
+
+    m.User(
+      genInt,
+      genLong,
+      ph,
+      genBitVector,
+      genLong,
+      genString,
+      genString,
+      "", // TODO:
+      genSex,
+      keyHashes = immutable.Set(ph)
+    )
+  }
 
   def genUserCreationRequest = models.UserCreationRequest(
     BitVector.fromLong(Random.nextLong()),

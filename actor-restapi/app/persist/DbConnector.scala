@@ -33,7 +33,10 @@ object DbConnector {
       Logger.trace("Creating tables")
       Future.sequence(List(
         persist.User.createTable(session),
-        persist.AuthSmsCode.createTable(session)
+        persist.AuthSmsCode.createTable(session),
+        persist.Phone.createTable(session),
+        persist.UserPublicKey.createTable(session),
+        persist.AuthId.createTable(session)
       ))
     }
 
@@ -41,7 +44,10 @@ object DbConnector {
     blocking {
       Future.sequence(List(
         persist.User.truncateTable(session),
-        persist.AuthSmsCode.truncateTable(session)
+        persist.AuthSmsCode.truncateTable(session),
+        persist.Phone.truncateTable(session),
+        persist.UserPublicKey.truncateTable(session),
+        persist.AuthId.truncateTable(session)
       ))
     }
 
