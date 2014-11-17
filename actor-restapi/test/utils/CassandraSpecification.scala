@@ -12,7 +12,7 @@ import org.specs2.specification.{ Fragments, Step }
 
 trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
 
-  private implicit lazy val session: Session = DbConnector.cluster.connect()
+  protected implicit lazy val session: Session = DbConnector.cluster.connect()
 
   private def createAndUseKeySpace(keySpace: String)(implicit session: Session): Unit = {
     Logger.trace(s"Creating keyspace $keySpace")

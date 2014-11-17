@@ -3,8 +3,9 @@ import play.api.libs.json.{Json, JsResultException}
 import play.api.test._
 import play.api.test.Helpers._
 import utils.SpecUtils
+import utils.CassandraSpecification
 
-class GlobalSpec extends Specification with SpecUtils {
+class GlobalSpec extends Specification with CassandraSpecification with SpecUtils {
 
   "Global error handler" in {
 

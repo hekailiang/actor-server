@@ -8,6 +8,7 @@ import play.api.Logger
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, blocking}
+import com.secretapp.backend.persist
 
 object DbConnector {
   private val dbConfig = ConfigFactory.load().getConfig("cassandra")
@@ -44,6 +45,9 @@ object DbConnector {
       ))
     }
 
+  object Implicits {
+    implicit lazy val s = session
+  }
 }
 
 trait DbConnector {

@@ -8,6 +8,7 @@ import play.api.test.Helpers._
 import play.api.test._
 import utils.{CassandraSpecification, SpecUtils, Gen}
 import com.secretapp.backend.models
+import com.secretapp.backend.persist
 
 class AuthSmsCodeSpec extends Specification with CassandraSpecification with SpecUtils {
 
@@ -41,7 +42,7 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
         val phone = createAuthSmsCode(code).phoneNumber
         implicit val req = request(phone)
         performRequest()
-        persist.AuthSmsCode.byPhone(phone).sync must beNone
+        persist.AuthSmsCode.getEntity(phone).sync must beNone
       }
     }
 
@@ -81,7 +82,7 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
         val j = Json.toJson(code).as[JsObject] - "phoneNumber"
         implicit val req = request(code.phoneNumber).withBody(j)
         performRequest()
-        persist.AuthSmsCode.byPhone(code.phoneNumber).sync.defined must_== code
+        persist.AuthSmsCode.getEntity(code.phoneNumber).sync.defined must_== code
       }
 
       "return ok if code was updated" in new WithApplication {
@@ -106,7 +107,7 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
         val j = Json.toJson(newCode).as[JsObject] - "phoneNumber"
         implicit val req = request(newCode.phoneNumber).withBody(j)
         performRequest()
-        persist.AuthSmsCode.byPhone(newCode.phoneNumber).sync.defined must_== newCode
+        persist.AuthSmsCode.getEntity(newCode.phoneNumber).sync.defined must_== newCode
       }
 
     }
