@@ -96,12 +96,12 @@ sealed class User extends CassandraTable[persist.User, models.User] {
 
   private val optFileLocation = Applicative[Option].lift2(m.FileLocation.apply)
 
-  private val optAvatarImage = Applicative[Option].lift4(models.AvatarImage.apply)
+  private val optAvatarImage = Applicative[Option].lift4(m.AvatarImage.apply)
 
   private def optAvatar(
-    smallImage: Option[models.AvatarImage],
-    largeImage: Option[models.AvatarImage],
-    fullImage:  Option[models.AvatarImage]
+    smallImage: Option[m.AvatarImage],
+    largeImage: Option[m.AvatarImage],
+    fullImage:  Option[m.AvatarImage]
   ): Option[models.Avatar] =
     (smallImage |@| largeImage |@| fullImage) { (_, _, _) =>
       models.Avatar(smallImage, largeImage, fullImage)

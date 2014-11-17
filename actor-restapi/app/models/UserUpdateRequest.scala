@@ -6,6 +6,7 @@ import scodec.bits.BitVector
 import utils.OptSet._
 import scalaz._
 import Scalaz._
+import models.json._
 
 case class UserUpdateRequest(
   publicKey:   Option[BitVector],

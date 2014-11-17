@@ -5,6 +5,7 @@ import play.api.libs.json.Json
 import scodec.bits.BitVector
 import scala.util.Random
 import scala.collection.immutable
+import models.json._
 
 case class UserCreationRequest(
   publicKey:   BitVector,

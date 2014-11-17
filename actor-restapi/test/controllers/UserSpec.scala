@@ -8,6 +8,7 @@ import play.api.test.Helpers._
 import play.api.test._
 import scodec.bits.BitVector
 import utils.{CassandraSpecification, SpecUtils, Gen}
+import models.json._
 
 class UserSpec extends Specification with CassandraSpecification with SpecUtils {
 
