@@ -1,7 +1,7 @@
 package models
 
 import models.CommonJsonFormats._
-import com.secretapp.backend.models.{AvatarImage, Avatar, FileLocation}
+import com.secretapp.backend.models.{Sex, Male, Female, NoSex, AvatarImage, Avatar, FileLocation}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
@@ -15,4 +15,21 @@ package object json {
     (JsPath \ "largeImage").format[Option[AvatarImage]] ~
     (JsPath \ "fullImage" ).format[Option[AvatarImage]]
   )(Avatar.apply, unlift(Avatar.unapply))
+
+  implicit object sexJsonFormat extends Format[Sex] {
+
+    override def reads(json: JsValue): JsResult[Sex] = json match {
+      case JsString("male")   => JsSuccess(Male)
+      case JsString("female") => JsSuccess(Female)
+      case JsString("nosex")  => JsSuccess(NoSex)
+      case _                  => JsError()
+    }
+
+    override def writes(o: Sex): JsValue = o match {
+      case Male   => JsString("male")
+      case Female => JsString("female")
+      case NoSex  => JsString("nosex")
+    }
+
+  }
 }

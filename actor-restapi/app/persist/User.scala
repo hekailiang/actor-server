@@ -116,7 +116,7 @@ sealed class User extends CassandraTable[persist.User, models.User] {
       phoneNumber(row),
       accessSalt(row),
       name(row),
-      models.Sex.fromInt(sex(row)),
+      m.Sex.fromInt(sex(row)),
       optAvatar(
         optAvatarImage(
           optFileLocation(smallAvatarFileId(row).map(_.toLong), smallAvatarFileHash(row)),

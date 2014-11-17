@@ -7,13 +7,13 @@ import utils.OptSet._
 import scalaz._
 import Scalaz._
 import models.json._
-import com.secretapp.backend.models.Avatar
+import com.secretapp.backend.models.{Avatar, Sex}
 
 case class UserUpdateRequest(
   publicKey:   Option[BitVector],
   phoneNumber: Option[Long],
   name:        Option[String],
-  sex:         Option[models.Sex],
+  sex:         Option[Sex],
   avatar:      Option[Avatar]
 ) {
 

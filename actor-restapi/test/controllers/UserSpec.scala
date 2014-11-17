@@ -9,7 +9,7 @@ import play.api.test._
 import scodec.bits.BitVector
 import utils.{CassandraSpecification, SpecUtils, Gen}
 import models.json._
-import com.secretapp.backend.models.Avatar
+import com.secretapp.backend.models.{Avatar, Sex, Male, Female, NoSex}
 
 class UserSpec extends Specification with CassandraSpecification with SpecUtils {
 
@@ -54,7 +54,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
         persistedUser.phoneNumber   must_== (receivedUser \ "phoneNumber"  ).asOpt[Long].defined
      // persistedUser.accessSalt is generated, client has no way to know it
         persistedUser.name          must_== (receivedUser \ "name"         ).asOpt[String].defined
-        persistedUser.sex           must_== (receivedUser \ "sex"          ).asOpt[models.Sex].defined
+        persistedUser.sex           must_== (receivedUser \ "sex"          ).asOpt[Sex].defined
         persistedUser.avatar        must_== (receivedUser \ "avatar"       ).asOpt[Option[Avatar]].defined
         persistedUser.keyHashes     must_== (receivedUser \ "keyHashes"    ).asOpt[Set[Long]].defined
       }
@@ -173,9 +173,9 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
       }
 
       "return user with sex changed on sex change request" in new WithApplication {
-        val u = createUser(Gen.genUser.copy(sex = models.Male))
+        val u = createUser(Gen.genUser.copy(sex = Male))
         implicit val validRequest = request(u.id).withBody(Json.obj(
-          "sex" -> models.Female
+          "sex" -> Female
         ))
         responseJson must_== Json.obj(
           "id"            -> u.id,
@@ -184,19 +184,19 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
           "publicKey"     -> u.publicKey,
           "phoneNumber"   -> u.phoneNumber,
           "name"          -> u.name,
-          "sex"           -> models.Female,
+          "sex"           -> Female,
           "avatar"        -> u.avatar,
           "keyHashes"     -> u.keyHashes
         )
       }
 
       "change user sex on sex change request" in new WithApplication {
-        val u = createUser(Gen.genUser.copy(sex = models.Male))
+        val u = createUser(Gen.genUser.copy(sex = Male))
         implicit val validRequest = request(u.id).withBody(Json.obj(
-          "sex" -> models.Female
+          "sex" -> Female
         ))
         performRequest()
-        persist.User.byId(u.id).sync.defined must_== u.copy(sex = models.Female)
+        persist.User.byId(u.id).sync.defined must_== u.copy(sex = Female)
       }
 
       // TODO: Test other changes as well.

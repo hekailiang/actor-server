@@ -6,7 +6,7 @@ import scodec.bits.BitVector
 import scala.util.Random
 import scala.collection.immutable
 import models.json._
-import com.secretapp.backend.models.Avatar
+import com.secretapp.backend.models.{Avatar, Sex}
 
 case class UserCreationRequest(
   publicKey:   BitVector,

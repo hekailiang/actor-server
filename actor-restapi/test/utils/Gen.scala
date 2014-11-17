@@ -2,6 +2,7 @@ package utils
 
 import scodec.bits.BitVector
 import scala.util.Random
+import com.secretapp.backend.{models => m}
 
 object Gen {
 
@@ -15,7 +16,7 @@ object Gen {
   // TODO: Generate variable-sized string
   def genString = Random.nextString(10)
 
-  def genSex = models.Sex.fromInt(Random.nextInt(3) + 1)
+  def genSex = m.Sex.fromInt(Random.nextInt(3) + 1)
 
   def genUser = models.User(
     genInt,
