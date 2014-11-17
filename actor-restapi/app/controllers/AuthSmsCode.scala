@@ -8,7 +8,7 @@ import scalaz._
 import Scalaz._
 import models.json._
 import errors.NotFoundException.getOrNotFound
-import persist.DbConnector.Implicits._
+import utils.DbConnector.Implicits._
 import com.secretapp.backend.persist
 
 object AuthSmsCode extends Controller {

@@ -1,7 +1,6 @@
 package utils
 
 import org.specs2.matcher.ThrownExpectations
-import persist.DbConnector
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global

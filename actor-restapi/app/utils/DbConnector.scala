@@ -1,14 +1,13 @@
-package persist
+package utils
 
+import com.secretapp.backend.persist
 import com.datastax.driver.core.policies.{ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy}
 import com.datastax.driver.core.{Cluster, Session}
 import com.typesafe.config.ConfigFactory
 import com.websudos.phantom.Implicits._
 import play.api.Logger
-
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, blocking}
-import com.secretapp.backend.persist
 
 object DbConnector {
   private val dbConfig = ConfigFactory.load().getConfig("cassandra")
@@ -54,17 +53,4 @@ object DbConnector {
   object Implicits {
     implicit lazy val s = session
   }
-}
-
-trait DbConnector {
-  self: CassandraTable[_, _] =>
-
-  implicit lazy val session: Session = DbConnector.session
-
-  def createTable(session: Session): Future[Unit] =
-    create.future()(session) map (_ => ())
-
-  def truncateTable(session: Session): Future[Unit] =
-    truncate.future()(session) map (_ => ())
-
 }

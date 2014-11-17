@@ -7,7 +7,7 @@ import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits._
 import models.json._
 import com.secretapp.backend.{persist => p}
-import persist.DbConnector.Implicits._
+import utils.DbConnector.Implicits._
 
 object User extends Controller {
 
