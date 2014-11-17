@@ -30,7 +30,7 @@ class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val se
 //        case \/-(p) => handlePackage(p)
 //        case -\/(e) => sendDrop(e)
 //      }
-      ???
+      throw new Exception("Not implemented")
     case x: FrameCommandFailed =>
       log.error(s"frame command failed: $x")
     case ResponseToClient(bs) =>

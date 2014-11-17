@@ -1,6 +1,7 @@
 package com.secretapp.backend.helpers
 
 import akka.actor._
+import akka.event.LoggingAdapter
 import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct
@@ -16,9 +17,10 @@ import scalaz._
 import Scalaz._
 
 trait UserHelpers {
-
   val context: ActorContext
   implicit val session: CSession
+
+  def log: LoggingAdapter
 
   import context.dispatcher
 
@@ -59,7 +61,7 @@ trait UserHelpers {
   def fetchAuthIdsForValidKeys(
     userId: Int,
     aesKeys: immutable.Seq[EncryptedAESKey],
-    skipKeyHash: Option[Long] = None
+    skipKeyHash: Option[Long]
   ): Future[(Vector[struct.UserKey], Vector[struct.UserKey], Vector[struct.UserKey]) \/ Vector[(EncryptedAESKey, Long)]] = {
     val keyHashes = aesKeys map (_.keyHash) toSet
 
@@ -79,6 +81,8 @@ trait UserHelpers {
         .map(kh => activeKeyHashes.filterNot(_ == kh))
         .getOrElse(activeKeyHashes)
         .diff(keyHashes).toVector map (struct.UserKey(userId, _))
+
+      log.debug(s"aesKeys=$aesKeys deletedAuthIdsMap=$deletedAuthIdsMap")
 
       val (goodAesKeys, removedKeys, invalidKeys) =
         aesKeys.foldLeft((Vector.empty[(EncryptedAESKey, Long)], Vector.empty[struct.UserKey], Vector.empty[struct.UserKey])) {

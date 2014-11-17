@@ -343,13 +343,13 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   protected def handleRequestEditGroupAvatar(
     groupPeer: struct.GroupOutPeer,
     fileLocation: models.FileLocation
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = notImplemented
 
   protected def handleRequestRemoveGroupAvatar(
     groupPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = notImplemented
 
   protected def handleRequestDeleteGroup(
     groupPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = notImplemented
 }

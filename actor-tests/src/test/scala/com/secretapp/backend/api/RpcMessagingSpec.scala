@@ -131,7 +131,7 @@ class RpcMessagingSpec extends RpcSpec {
         )
       )
 
-      val (resp, _) = rq :~> <~:[ResponseSeq]
+      val (resp, _) = rq :~> <~:[ResponseMessageSent]
       resp.seq should beEqualTo(initialState.seq + 2)
 
       val (state, _) = getState
@@ -140,7 +140,7 @@ class RpcMessagingSpec extends RpcSpec {
 
       {
         // same randomId
-        val (resp, _) = rq :~> <~:[ResponseSeq]
+        val (resp, _) = rq :~> <~:[ResponseMessageSent]
         resp.seq should beEqualTo(initialState.seq + 2)
       }
 
@@ -173,7 +173,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseSeq]
+        rq :~> <~:[ResponseMessageSent]
 
         // subscribe to updates
         getState(scope)
@@ -219,7 +219,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseSeq]
+        rq :~> <~:[ResponseMessageSent]
 
         // subscribe to updates
         getState(scope)

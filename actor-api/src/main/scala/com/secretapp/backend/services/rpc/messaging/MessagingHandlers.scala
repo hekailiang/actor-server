@@ -64,7 +64,15 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             myAuthIds <- myAuthIdsFuture
             peerAuthIds <- peerAuthIdsFuture
           } yield {
-            val update = updateProto.Message(
+            val ownUpdate = updateProto.Message(
+              peer = outPeer.asPeer,
+              senderUid = currentUser.uid,
+              date = date,
+              randomId = randomId,
+              message = message
+            )
+
+            val outUpdate = updateProto.Message(
               peer = struct.Peer.privat(currentUser.uid),
               senderUid = currentUser.uid,
               date = date,
@@ -72,10 +80,12 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
               message = message
             )
 
-            (peerAuthIds ++
-              (myAuthIds filterNot (_ == currentUser.authId))
-            ) foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(authId, update)
+            (myAuthIds filterNot (_ == currentUser.authId)) foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(authId, ownUpdate)
+            }
+
+            peerAuthIds foreach { authId =>
+              updatesBrokerRegion ! NewUpdatePush(authId, outUpdate)
             }
           }
 
@@ -131,19 +141,25 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     ownKeys: immutable.Seq[EncryptedAESKey]
   ): Future[RpcResponse] = {
     val outUserId = outPeer.id
+    val date = System.currentTimeMillis
 
     if (outPeer.typ == struct.PeerType.Group) {
       throw new Exception("Encrypted group sending is not implemented yet.")
     }
 
-    val ownPairsEFuture = fetchAuthIdsForValidKeys(currentUser.uid, ownKeys)
-    val outPairsEFuture = fetchAuthIdsForValidKeys(outUserId, keys)
+    val ownPairsEFuture = fetchAuthIdsForValidKeys(currentUser.uid, ownKeys, Some(currentUser.publicKeyHash))
+    val outPairsEFuture = fetchAuthIdsForValidKeys(outUserId, keys, None)
 
-    val pairsEFuture = for {
+    val ownPeer = struct.Peer.privat(currentUser.uid)
+
+    val peersAuthIdsEFuture = for {
       ownPairsE <- ownPairsEFuture
       outPairsE <- outPairsEFuture
     } yield {
-      ownPairsE +++ outPairsE
+      @inline def withPeer(peer: struct.Peer, pairs: Vector[(EncryptedAESKey, Long)]): Vector[(EncryptedAESKey, (struct.Peer, Long))] = {
+        pairs map (p => (p._1, (peer, p._2)))
+      }
+      (ownPairsE map (withPeer(outPeer.asPeer, _))) +++ (outPairsE map (withPeer(ownPeer, _)))
     }
 
     withOutPeer(outPeer, currentUser) {
@@ -151,17 +167,17 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
       socialBrokerRegion ! SocialProtocol.SocialMessageBox(
         currentUser.uid, SocialProtocol.RelationsNoted(Set(outUserId)))
 
-      pairsEFuture flatMap {
+      peersAuthIdsEFuture flatMap {
         case \/-(pairs) =>
           // TODO: get time from an actor with PinnedDispatcher
           val date = System.currentTimeMillis()
 
           pairs foreach {
-            case (EncryptedAESKey(keyHash, aesEncryptedKey), authId) =>
-              val update = NewUpdatePush(
+            case (EncryptedAESKey(keyHash, aesEncryptedKey), (peer, authId)) =>
+              writeNewUpdate(
                 authId,
                 updateProto.EncryptedMessage(
-                  peer = struct.Peer(struct.PeerType.Private, currentUser.uid),
+                  peer = peer,
                   senderUid = currentUser.uid,
                   keyHash = keyHash,
                   aesEncryptedKey = aesEncryptedKey,
@@ -169,8 +185,6 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
                   date = date
                 )
               )
-
-              updatesBrokerRegion ! update
           }
 
           withNewUpdateState(
@@ -181,7 +195,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
               date
             )
           ) { s =>
-            val rsp = ResponseSeq(seq = s._1, state = Some(s._2))
+            val rsp = ResponseMessageSent(seq = s._1, state = Some(s._2), date = date)
             Ok(rsp)
           }
         case -\/((newKeys, removedKeys, invalidKeys)) =>
@@ -247,12 +261,12 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
   protected def handleRequestMessageReceived(
     outPeer: struct.OutPeer,
     randomId: Long
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = notImplemented
 
   protected def handleRequestMessageRead(
     outPeer: struct.OutPeer,
     date: Long
-  ): Future[RpcResponse] = ???
+  ): Future[RpcResponse] = notImplemented
 
   /*
 

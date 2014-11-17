@@ -24,8 +24,19 @@ class Handler(
   type RequestMatcher = PartialFunction[RpcRequestMessage, Future[RpcResponse]]
 
   //val handleHistory: RequestMatcher = ???
+  def notImplemented = throw new Exception("Try again later")
 
   implicit val timeout = Timeout(5.seconds)
+
+  override def preStart(): Unit = {
+    log.debug("messaging preStart")
+    super.preStart()
+  }
+
+  override def postStop(): Unit = {
+    log.debug(s"postStop")
+    super.postStop()
+  }
 
   def receive = {
     case RpcProtocol.Request(request) =>
@@ -33,7 +44,11 @@ class Handler(
 
       handleMessaging
         .orElse(handleGroup)(request)
-//        .orElse(handleHistory)(request)
-        .pipeTo(replyTo)
+      //        .orElse(handleHistory)(request)
+        .pipeTo(replyTo).future.onFailure {
+        case e =>
+          log.error(s"Failed to handle messaging request")
+          throw e
+      }
   }
 }

@@ -9,11 +9,12 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.history._
-import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse, RpcRequestMessage }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, RpcRequestMessage }
 import com.secretapp.backend.models.User
 import com.secretapp.backend.persist
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.Success
 import scalaz.Scalaz._
 import scalaz._
 
@@ -32,7 +33,7 @@ trait MessagingService {
       )
     ), "messaging")
 
-  val randomIds = new ConcurrentLinkedHashMap.Builder[Long, Future[RpcResponse]]
+  val randomIds = new ConcurrentLinkedHashMap.Builder[Long, RpcResponse]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
   def handleRpcMessaging: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
@@ -63,14 +64,17 @@ trait MessagingService {
   private def withUniqRandomId(randomId: Long)(f: => Future[RpcResponse]): Future[RpcResponse] = {
     Option(randomIds.get(randomId)) match {
       case Some(resFuture) =>
-        resFuture
+        Future.successful(resFuture)
       case None =>
         val res = f recover {
           case err =>
             Error(400, "INTERNAL_SERVER_ERROR", err.getMessage, true)
         }
-        randomIds.put(randomId, res)
-        res
+
+        res andThen {
+          case Success(resp: Ok) =>
+            randomIds.put(randomId, resp)
+        }
     }
   }
 }
