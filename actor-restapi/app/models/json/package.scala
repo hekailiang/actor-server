@@ -1,7 +1,7 @@
 package models
 
 import models.CommonJsonFormats._
-import com.secretapp.backend.models.{AvatarImage, FileLocation}
+import com.secretapp.backend.models.{AvatarImage, Avatar, FileLocation}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 

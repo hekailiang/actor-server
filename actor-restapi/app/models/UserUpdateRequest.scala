@@ -7,6 +7,7 @@ import utils.OptSet._
 import scalaz._
 import Scalaz._
 import models.json._
+import com.secretapp.backend.models.Avatar
 
 case class UserUpdateRequest(
   publicKey:   Option[BitVector],

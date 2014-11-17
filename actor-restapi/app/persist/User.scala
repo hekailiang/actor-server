@@ -102,9 +102,9 @@ sealed class User extends CassandraTable[persist.User, models.User] {
     smallImage: Option[m.AvatarImage],
     largeImage: Option[m.AvatarImage],
     fullImage:  Option[m.AvatarImage]
-  ): Option[models.Avatar] =
+  ): Option[m.Avatar] =
     (smallImage |@| largeImage |@| fullImage) { (_, _, _) =>
-      models.Avatar(smallImage, largeImage, fullImage)
+      m.Avatar(smallImage, largeImage, fullImage)
     }
 
   override def fromRow(row: Row): models.User =

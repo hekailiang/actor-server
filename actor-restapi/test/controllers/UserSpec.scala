@@ -9,6 +9,7 @@ import play.api.test._
 import scodec.bits.BitVector
 import utils.{CassandraSpecification, SpecUtils, Gen}
 import models.json._
+import com.secretapp.backend.models.Avatar
 
 class UserSpec extends Specification with CassandraSpecification with SpecUtils {
 
@@ -54,7 +55,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
      // persistedUser.accessSalt is generated, client has no way to know it
         persistedUser.name          must_== (receivedUser \ "name"         ).asOpt[String].defined
         persistedUser.sex           must_== (receivedUser \ "sex"          ).asOpt[models.Sex].defined
-        persistedUser.avatar        must_== (receivedUser \ "avatar"       ).asOpt[Option[models.Avatar]].defined
+        persistedUser.avatar        must_== (receivedUser \ "avatar"       ).asOpt[Option[Avatar]].defined
         persistedUser.keyHashes     must_== (receivedUser \ "keyHashes"    ).asOpt[Set[Long]].defined
       }
 

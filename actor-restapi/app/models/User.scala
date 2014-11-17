@@ -4,6 +4,7 @@ import models.CommonJsonFormats._
 import play.api.libs.json.Json
 import scodec.bits.BitVector
 import scala.collection.immutable
+import com.secretapp.backend.models.Avatar
 
 case class User(
   id:            Int,
