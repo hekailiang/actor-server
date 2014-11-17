@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestEncryptedReceived(peer: struct.OutPeer, randomId: Long) extends RequestWithRandomId {
+case class RequestEncryptedReceived(peer: struct.OutPeer, randomId: Long) extends RpcRequestMessage {
   val header = RequestEncryptedReceived.header
 }
 

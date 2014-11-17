@@ -244,7 +244,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             myAuthIds   <- myAuthIdsFuture
           } yield {
             peerAuthIds foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(outPeer.asPeer, randomId))
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(struct.Peer.privat(currentUser.uid), randomId))
             }
 
             myAuthIds foreach { authId =>

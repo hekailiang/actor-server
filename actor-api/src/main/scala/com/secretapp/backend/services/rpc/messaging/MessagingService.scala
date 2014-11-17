@@ -53,6 +53,8 @@ trait MessagingService {
         | _: RequestRemoveGroupAvatar
         | _: RequestMessageRead
         | _: RequestMessageReceived
+        | _: RequestEncryptedRead
+        | _: RequestEncryptedReceived
         | _: RequestMessageDelete
         | _: RequestLoadHistory
         | _: RequestLoadDialogs
