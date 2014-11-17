@@ -12,7 +12,7 @@ import Scalaz._
 import errors.NotFoundException.getOrNotFound
 import com.secretapp.backend.{models => m}
 
-sealed class User extends CassandraTable[persist.User, models.User] {
+sealed class User extends CassandraTable[persist.User, m.User] {
 
   override lazy val tableName = "users"
 
@@ -32,7 +32,7 @@ sealed class User extends CassandraTable[persist.User, models.User] {
     override lazy val name = "public_key"
   }
 
-  object keyHashes extends SetColumn[User, models.User, Long](this) with StaticColumn[Set[Long]] {
+  object keyHashes extends SetColumn[User, m.User, Long](this) with StaticColumn[Set[Long]] {
     override lazy val name = "key_hashes"
   }
 
@@ -49,6 +49,10 @@ sealed class User extends CassandraTable[persist.User, models.User] {
   }
 
   object sex extends IntColumn(this) with StaticColumn[Int]
+
+  object countryCode extends StringColumn(this) with StaticColumn[String] {
+    override lazy val name = "country_code"
+  }
 
   object smallAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
     override lazy val name = "small_avatar_file_id"
@@ -107,8 +111,8 @@ sealed class User extends CassandraTable[persist.User, models.User] {
       m.Avatar(smallImage, largeImage, fullImage)
     }
 
-  override def fromRow(row: Row): models.User =
-    models.User(
+  override def fromRow(row: Row): m.User =
+    m.User(
       id(row),
       authId(row),
       publicKeyHash(row),
@@ -116,27 +120,19 @@ sealed class User extends CassandraTable[persist.User, models.User] {
       phoneNumber(row),
       accessSalt(row),
       name(row),
+      countryCode(row),
       m.Sex.fromInt(sex(row)),
-      optAvatar(
-        optAvatarImage(
-          optFileLocation(smallAvatarFileId(row).map(_.toLong), smallAvatarFileHash(row)),
-          100.some,
-          100.some,
-          smallAvatarFileSize(row)
-        ),
-        optAvatarImage(
-          optFileLocation(largeAvatarFileId(row).map(_.toLong), largeAvatarFileHash(row)),
-          200.some,
-          200.some,
-          largeAvatarFileSize(row)
-        ),
-        optAvatarImage(
-          optFileLocation(fullAvatarFileId(row).map(_.toLong), fullAvatarFileHash(row)),
-          fullAvatarWidth(row),
-          fullAvatarHeight(row),
-          fullAvatarFileSize(row)
-        )
-      ),
+      smallAvatarFileId(row),
+      smallAvatarFileHash(row),
+      smallAvatarFileSize(row),
+      largeAvatarFileId(row),
+      largeAvatarFileHash(row),
+      largeAvatarFileSize(row),
+      fullAvatarFileId(row),
+      fullAvatarFileHash(row),
+      fullAvatarFileSize(row),
+      fullAvatarWidth(row),
+      fullAvatarHeight(row),
       keyHashes(row)
     )
 
@@ -144,9 +140,9 @@ sealed class User extends CassandraTable[persist.User, models.User] {
 
 object User extends User with DbConnector {
 
-  private def saveQuery(u: models.User) =
+  private def saveQuery(u: m.User) =
     insert
-      .value(_.id,                  u.id)
+      .value(_.id,                  u.uid)
       .value(_.authId,              u.authId)
       .value(_.publicKeyHash,       u.publicKeyHash)
       .value(_.publicKey,           u.publicKey.toByteBuffer)
@@ -154,6 +150,7 @@ object User extends User with DbConnector {
       .value(_.accessSalt,          u.accessSalt)
       .value(_.name,                u.name)
       .value(_.sex,                 u.sex.toInt)
+      .value(_.countryCode,         u.countryCode)
       .value(_.smallAvatarFileId,   u.avatar.flatMap(_.smallImage.map(_.fileLocation.fileId.toInt)))
       .value(_.smallAvatarFileHash, u.avatar.flatMap(_.smallImage.map(_.fileLocation.accessHash)))
       .value(_.smallAvatarFileSize, u.avatar.flatMap(_.smallImage.map(_.fileSize)))
@@ -167,23 +164,23 @@ object User extends User with DbConnector {
       .value(_.fullAvatarHeight,    u.avatar.flatMap(_.fullImage.map(_.height)))
       .value(_.keyHashes,           u.keyHashes)
 
-  def save(u: models.User): Future[models.User] =
+  def save(u: m.User): Future[m.User] =
     saveQuery(u).future() map (_ => u)
 
-  private def saveIfNotExists(u: models.User): Future[Option[models.User]] =
+  private def saveIfNotExists(u: m.User): Future[Option[m.User]] =
     saveQuery(u).ifNotExists.future() map (_.wasApplied option u)
 
-  private def trySaveUntilSucceed(us: Seq[models.User]): Future[Option[models.User]] =
+  private def trySaveUntilSucceed(us: Seq[m.User]): Future[Option[m.User]] =
     us.headOption some { u =>
-      Logger.trace(s"Trying to persist user with uid ${u.id}")
+      Logger.trace(s"Trying to persist user with uid ${u.uid}")
       saveIfNotExists(u) flatMap {
         _.fold(trySaveUntilSucceed(us.tail))(Future successful _.some)
       }
     } none Future.successful(None)
 
-  def create(u: models.User): Future[Option[models.User]] = {
+  def create(u: m.User): Future[Option[m.User]] = {
     val tries = 10
-    val usersWithRandomId = Stream.fill(tries)(u.copy(id = Random.nextInt()))
+    val usersWithRandomId = Stream.fill(tries)(u.copy(uid = Random.nextInt()))
 
     trySaveUntilSucceed(usersWithRandomId) map {
       case None =>
@@ -195,25 +192,25 @@ object User extends User with DbConnector {
     }
   }
 
-  def byId(id: Int): Future[Option[models.User]] =
+  def byId(id: Int): Future[Option[m.User]] =
     select.where(_.id eqs id).one()
 
-  def getById(id: Int): Future[models.User] =
+  def getById(id: Int): Future[m.User] =
     getOrNotFound(byId(id))
 
   def remove(id: Int): Future[Unit] =
     delete.where(_.id eqs id).future() map (_ => ())
 
-  def list(startIdExclusive: Int, count: Int): Future[Seq[models.User]] =
+  def list(startIdExclusive: Int, count: Int): Future[Seq[m.User]] =
     select.where(_.id gtToken startIdExclusive).limit(count).fetch()
 
-  def list(count: Int): Future[Seq[models.User]] =
+  def list(count: Int): Future[Seq[m.User]] =
     select.one flatMap {
-      case Some(first) => select.where(_.id gteToken first.id).limit(count).fetch()
+      case Some(first) => select.where(_.id gteToken first.uid).limit(count).fetch()
       case _           => Future.successful(Seq())
     }
 
-  def list(startIdExclusive: Option[Int], count: Int): Future[Seq[models.User]] =
+  def list(startIdExclusive: Option[Int], count: Int): Future[Seq[m.User]] =
     startIdExclusive.fold(list(count))(list(_, count))
 
 }

@@ -6,7 +6,7 @@ import scodec.bits.BitVector
 import scala.util.Random
 import scala.collection.immutable
 import models.json._
-import com.secretapp.backend.models.{Avatar, Sex}
+import com.secretapp.backend.models.{Avatar, Sex, User}
 
 case class UserCreationRequest(
   publicKey:   BitVector,
@@ -16,10 +16,10 @@ case class UserCreationRequest(
   avatar:      Option[Avatar] = None
 ) {
 
-  def toUser: models.User = {
+  def toUser: User = {
     val publicKeyHash = PublicKey.keyHash(publicKey)
 
-    models.User(
+    User(
       0, // Will be generated at persist-time anyway.
       Random.nextLong(),
       publicKeyHash,
@@ -27,8 +27,19 @@ case class UserCreationRequest(
       phoneNumber,
       Random.nextString(30),
       name,
+      "", // TODO:
       sex,
-      avatar,
+      avatar.flatMap(_.smallImage.map(_.fileLocation.fileId.toInt)),
+      avatar.flatMap(_.smallImage.map(_.fileLocation.accessHash)),
+      avatar.flatMap(_.smallImage.map(_.fileSize)),
+      avatar.flatMap(_.largeImage.map(_.fileLocation.fileId.toInt)),
+      avatar.flatMap(_.largeImage.map(_.fileLocation.accessHash)),
+      avatar.flatMap(_.largeImage.map(_.fileSize)),
+      avatar.flatMap(_.fullImage.map(_.fileLocation.fileId.toInt)),
+      avatar.flatMap(_.fullImage.map(_.fileLocation.accessHash)),
+      avatar.flatMap(_.fullImage.map(_.fileSize)),
+      avatar.flatMap(_.fullImage.map(_.width)),
+      avatar.flatMap(_.fullImage.map(_.height)),
       immutable.Set(publicKeyHash)
     )
   }

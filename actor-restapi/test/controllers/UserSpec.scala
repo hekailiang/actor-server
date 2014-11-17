@@ -47,7 +47,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
         val id = (receivedUser \ "id").asOpt[Int].defined
         val persistedUser = persist.User.byId(id).sync.defined
 
-        persistedUser.id            must_== id
+        persistedUser.uid           must_== id
         persistedUser.authId        must_== (receivedUser \ "authId"       ).asOpt[Long].defined
         persistedUser.publicKeyHash must_== (receivedUser \ "publicKeyHash").asOpt[Long].defined
         persistedUser.publicKey     must_== (receivedUser \ "publicKey"    ).asOpt[BitVector].defined
@@ -80,12 +80,12 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
     "on valid input" should {
 
       "return no content" in new WithApplication {
-        implicit val req = request(createUser(user).id)
+        implicit val req = request(createUser(user).uid)
         responseStatus must_== NO_CONTENT
       }
 
       "remove user" in new WithApplication {
-        val id = createUser(user).id
+        val id = createUser(user).uid
         implicit val req = request(id)
         performRequest()
         persist.User.byId(id).sync must beNone
@@ -107,7 +107,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
       }
 
       "throw JsResultException on invalid input" in new WithApplication {
-        val id = createUser(user).id
+        val id = createUser(user).uid
         implicit val invalidRequest = request(id).withBody(Json.obj("name" -> 42))
         responseStatus must throwA[JsResultException]
       }
@@ -118,21 +118,22 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
       "return ok on valid request" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id).withBody(Json.obj())
+        implicit val validRequest = request(u.uid).withBody(Json.obj())
         responseStatus must_== OK
       }
 
       "return user intact on empty request" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id).withBody(Json.obj())
+        implicit val validRequest = request(u.uid).withBody(Json.obj())
         responseJson must_== Json.obj(
-          "id"            -> u.id,
+          "id"            -> u.uid,
           "authId"        -> u.authId,
           "publicKeyHash" -> u.publicKeyHash,
           "publicKey"     -> u.publicKey,
           "phoneNumber"   -> u.phoneNumber,
           "name"          -> u.name,
           "sex"           -> u.sex,
+          "countryCode"   -> u.countryCode,
           "avatar"        -> u.avatar,
           "keyHashes"     -> u.keyHashes
         )
@@ -140,24 +141,25 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
       "keep user intact on empty request" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id).withBody(Json.obj())
+        implicit val validRequest = request(u.uid).withBody(Json.obj())
         performRequest()
-        persist.User.byId(u.id).sync.defined must_== u
+        persist.User.byId(u.uid).sync.defined must_== u
       }
 
       "return user with name changed on name change request" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id).withBody(Json.obj(
+        implicit val validRequest = request(u.uid).withBody(Json.obj(
           "name" -> "New Name"
         ))
         responseJson must_== Json.obj(
-          "id"            -> u.id,
+          "id"            -> u.uid,
           "authId"        -> u.authId,
           "publicKeyHash" -> u.publicKeyHash,
           "publicKey"     -> u.publicKey,
           "phoneNumber"   -> u.phoneNumber,
           "name"          -> "New Name",
           "sex"           -> u.sex,
+          "countryCode"   -> u.countryCode,
           "avatar"        -> u.avatar,
           "keyHashes"     -> u.keyHashes
         )
@@ -165,26 +167,27 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
       "change user name on name change request" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id).withBody(Json.obj(
+        implicit val validRequest = request(u.uid).withBody(Json.obj(
           "name" -> "New Name"
         ))
         performRequest()
-        persist.User.byId(u.id).sync.defined must_== u.copy(name = "New Name")
+        persist.User.byId(u.uid).sync.defined must_== u.copy(name = "New Name")
       }
 
       "return user with sex changed on sex change request" in new WithApplication {
         val u = createUser(Gen.genUser.copy(sex = Male))
-        implicit val validRequest = request(u.id).withBody(Json.obj(
+        implicit val validRequest = request(u.uid).withBody(Json.obj(
           "sex" -> Female
         ))
         responseJson must_== Json.obj(
-          "id"            -> u.id,
+          "id"            -> u.uid,
           "authId"        -> u.authId,
           "publicKeyHash" -> u.publicKeyHash,
           "publicKey"     -> u.publicKey,
           "phoneNumber"   -> u.phoneNumber,
           "name"          -> u.name,
           "sex"           -> Female,
+          "countryCode"   -> u.countryCode,
           "avatar"        -> u.avatar,
           "keyHashes"     -> u.keyHashes
         )
@@ -192,11 +195,11 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
       "change user sex on sex change request" in new WithApplication {
         val u = createUser(Gen.genUser.copy(sex = Male))
-        implicit val validRequest = request(u.id).withBody(Json.obj(
+        implicit val validRequest = request(u.uid).withBody(Json.obj(
           "sex" -> Female
         ))
         performRequest()
-        persist.User.byId(u.id).sync.defined must_== u.copy(sex = Female)
+        persist.User.byId(u.uid).sync.defined must_== u.copy(sex = Female)
       }
 
       // TODO: Test other changes as well.
@@ -222,21 +225,22 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
       "return ok" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id)
+        implicit val validRequest = request(u.uid)
         responseStatus must_== OK
       }
 
       "return user" in new WithApplication {
         val u = createUser(user)
-        implicit val validRequest = request(u.id)
+        implicit val validRequest = request(u.uid)
         responseJson must_== Json.obj(
-          "id"            -> u.id,
+          "id"            -> u.uid,
           "authId"        -> u.authId,
           "publicKeyHash" -> u.publicKeyHash,
           "publicKey"     -> u.publicKey,
           "phoneNumber"   -> u.phoneNumber,
           "name"          -> u.name,
           "sex"           -> u.sex,
+          "countryCode"   -> u.countryCode,
           "avatar"        -> u.avatar,
           "keyHashes"     -> u.keyHashes
         )

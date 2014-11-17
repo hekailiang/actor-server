@@ -12,12 +12,12 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
     "return user with generated id" in new WithApplication {
       val u = createUser(user)
-      u must_== user.copy(id = u.id)
+      u must_== user.copy(uid = u.uid)
     }
 
     "persist user" in new WithApplication {
-      val id = createUser(user).id
-      User.byId(id).sync.defined must_== user.copy(id = id)
+      val id = createUser(user).uid
+      User.byId(id).sync.defined must_== user.copy(uid = id)
     }
 
   }
@@ -25,7 +25,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
   "User.remove" should {
 
     "remove user" in new WithApplication {
-      val id = createUser(user).id
+      val id = createUser(user).uid
       User.remove(id).sync
       User.byId(id).sync must beNone
     }

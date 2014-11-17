@@ -7,7 +7,6 @@ import play.api.test._
 import play.api.test.Helpers._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import models.User
 import persist.{User => UserP}
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -47,7 +46,7 @@ trait SpecUtils { self: Specification with CassandraSpecification =>
   def performRequest[A]()(implicit r: FakeRequest[A], w: Writeable[A]): Unit =
     responseStatus
 
-  def createUser(u: User): User = UserP.create(u).sync.defined
+  def createUser(u: models.User): models.User = UserP.create(u).sync.defined
 
   def createAuthSmsCode(c: models.AuthSmsCode): models.AuthSmsCode =
     persist.AuthSmsCode.insertEntity(c).sync

@@ -18,12 +18,13 @@ object Gen {
 
   def genSex = m.Sex.fromInt(Random.nextInt(3) + 1)
 
-  def genUser = models.User(
+  def genUser = m.User(
     genInt,
     genLong,
     genLong,
     genBitVector,
     genLong,
+    genString,
     genString,
     genString,
     genSex
