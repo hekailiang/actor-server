@@ -3,6 +3,7 @@ package models
 import models.CommonJsonFormats._
 import play.api.libs.json.Json
 import utils.OptSet._
+import com.secretapp.backend.models
 
 case class AuthSmsCodeUpdateRequest(
   smsHash: Option[String],

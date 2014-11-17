@@ -7,6 +7,8 @@ import play.api.test._
 import play.api.test.Helpers._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import models.User
+import com.secretapp.backend.models
 
 case class RichFuture[A](f: Future[A]) {
 
@@ -43,7 +45,7 @@ trait SpecUtils { self: Specification =>
   def performRequest[A]()(implicit r: FakeRequest[A], w: Writeable[A]): Unit =
     responseStatus
 
-  def createUser(u: models.User): models.User = persist.User.create(u).sync.defined
+  def createUser(u: User): User = persist.User.create(u).sync.defined
 
   def createAuthSmsCode(c: models.AuthSmsCode): models.AuthSmsCode =
     persist.AuthSmsCode.save(c).sync

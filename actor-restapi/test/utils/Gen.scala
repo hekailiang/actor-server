@@ -1,7 +1,6 @@
 package utils
 
 import scodec.bits.BitVector
-
 import scala.util.Random
 
 object Gen {
@@ -38,6 +37,6 @@ object Gen {
 
   def genPhone = (1 to 11).foldLeft(0L) { (s, _) => s * 10 + Random.nextInt(9) + 1 }
 
-  def genAuthSmsCode = models.AuthSmsCode(genPhone, genString, genString)
+  def genAuthSmsCode = com.secretapp.backend.models.AuthSmsCode(genPhone, genString, genString)
 
 }

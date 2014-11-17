@@ -4,6 +4,7 @@ import com.datastax.driver.core.Row
 import com.websudos.phantom.Implicits._
 import scala.concurrent.Future
 import errors.NotFoundException.getOrNotFound
+import com.secretapp.backend.models
 
 sealed class AuthSmsCode extends CassandraTable[persist.AuthSmsCode, models.AuthSmsCode] {
 
@@ -31,7 +32,7 @@ object AuthSmsCode extends AuthSmsCode with DbConnector {
 
   def save(c: models.AuthSmsCode): Future[models.AuthSmsCode] =
     insert
-      .value(_.phone,   c.phone)
+      .value(_.phone,   c.phoneNumber)
       .value(_.smsHash, c.smsHash)
       .value(_.smsCode, c.smsCode)
       .future() map (_ => c)
@@ -50,7 +51,7 @@ object AuthSmsCode extends AuthSmsCode with DbConnector {
 
   def list(count: Int): Future[Seq[models.AuthSmsCode]] =
     select.one flatMap {
-      case Some(first) => select.where(_.phone gteToken first.phone).limit(count).fetch()
+      case Some(first) => select.where(_.phone gteToken first.phoneNumber).limit(count).fetch()
       case _           => Future.successful(Seq())
     }
 

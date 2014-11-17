@@ -6,6 +6,7 @@ import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits._
 import scalaz._
 import Scalaz._
+import models.json._
 
 object AuthSmsCode extends Controller {
 

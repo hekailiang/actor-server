@@ -1,11 +1,13 @@
 package controllers
 
 import models.CommonJsonFormats._
+import models.json._
 import org.specs2.mutable._
 import play.api.libs.json._
 import play.api.test.Helpers._
 import play.api.test._
 import utils.{CassandraSpecification, SpecUtils, Gen}
+import com.secretapp.backend.models
 
 class AuthSmsCodeSpec extends Specification with CassandraSpecification with SpecUtils {
 
@@ -30,13 +32,13 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
     "on valid input" should {
 
       "return no content" in new WithApplication {
-        implicit val req = request(createAuthSmsCode(Gen.genAuthSmsCode).phone)
+        implicit val req = request(createAuthSmsCode(Gen.genAuthSmsCode).phoneNumber)
         responseStatus must_== NO_CONTENT
       }
 
       "remove code" in new WithApplication {
         val code = Gen.genAuthSmsCode
-        val phone = createAuthSmsCode(code).phone
+        val phone = createAuthSmsCode(code).phoneNumber
         implicit val req = request(phone)
         performRequest()
         persist.AuthSmsCode.byPhone(phone).sync must beNone
@@ -63,30 +65,30 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
       "return created if code was created" in new WithApplication {
         val code = Gen.genAuthSmsCode
         val j = Json.toJson(code).as[JsObject] - "phoneNumber"
-        implicit val req = request(code.phone).withBody(j)
+        implicit val req = request(code.phoneNumber).withBody(j)
         responseStatus must_== CREATED
       }
 
       "return created code if code was created" in new WithApplication {
         val code = Gen.genAuthSmsCode
         val reqJson = Json.toJson(code).as[JsObject] - "phoneNumber"
-        implicit val req = request(code.phone).withBody(reqJson)
+        implicit val req = request(code.phoneNumber).withBody(reqJson)
         responseJson must_== Json.toJson(code)
       }
 
       "create code if it does not already exists" in new WithApplication {
         val code = Gen.genAuthSmsCode
         val j = Json.toJson(code).as[JsObject] - "phoneNumber"
-        implicit val req = request(code.phone).withBody(j)
+        implicit val req = request(code.phoneNumber).withBody(j)
         performRequest()
-        persist.AuthSmsCode.byPhone(code.phone).sync.defined must_== code
+        persist.AuthSmsCode.byPhone(code.phoneNumber).sync.defined must_== code
       }
 
       "return ok if code was updated" in new WithApplication {
         val existingCode = createAuthSmsCode(Gen.genAuthSmsCode)
         val newCode = existingCode.copy(smsCode="new code")
         val j = Json.toJson(newCode).as[JsObject] - "phoneNumber"
-        implicit val req = request(newCode.phone).withBody(j)
+        implicit val req = request(newCode.phoneNumber).withBody(j)
         responseStatus must_== OK
       }
 
@@ -94,7 +96,7 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
         val existingCode = createAuthSmsCode(Gen.genAuthSmsCode)
         val newCode = existingCode.copy(smsCode="new code")
         val reqJson = Json.toJson(newCode).as[JsObject] - "phoneNumber"
-        implicit val req = request(newCode.phone).withBody(reqJson)
+        implicit val req = request(newCode.phoneNumber).withBody(reqJson)
         responseJson must_== Json.toJson(newCode)
       }
 
@@ -102,9 +104,9 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
         val existingCode = createAuthSmsCode(Gen.genAuthSmsCode)
         val newCode = existingCode.copy(smsCode="new code")
         val j = Json.toJson(newCode).as[JsObject] - "phoneNumber"
-        implicit val req = request(newCode.phone).withBody(j)
+        implicit val req = request(newCode.phoneNumber).withBody(j)
         performRequest()
-        persist.AuthSmsCode.byPhone(newCode.phone).sync.defined must_== newCode
+        persist.AuthSmsCode.byPhone(newCode.phoneNumber).sync.defined must_== newCode
       }
 
     }
@@ -127,15 +129,15 @@ class AuthSmsCodeSpec extends Specification with CassandraSpecification with Spe
 
       "return ok" in new WithApplication {
         val c = createAuthSmsCode(Gen.genAuthSmsCode)
-        implicit val validRequest = request(c.phone)
+        implicit val validRequest = request(c.phoneNumber)
         responseStatus must_== OK
       }
 
       "return code" in new WithApplication {
         val c = createAuthSmsCode(Gen.genAuthSmsCode)
-        implicit val validRequest = request(c.phone)
+        implicit val validRequest = request(c.phoneNumber)
         responseJson must_== Json.obj(
-          "phoneNumber" -> c.phone,
+          "phoneNumber" -> c.phoneNumber,
           "smsCode"     -> c.smsCode,
           "smsHash"     -> c.smsHash
         )

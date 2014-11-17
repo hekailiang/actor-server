@@ -2,6 +2,7 @@ package models
 
 import models.CommonJsonFormats._
 import play.api.libs.json.Json
+import com.secretapp.backend.models
 
 case class AuthSmsCodeCreationRequest(smsHash: String, smsCode: String) {
 
