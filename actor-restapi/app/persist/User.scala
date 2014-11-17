@@ -10,6 +10,7 @@ import scala.util.Random
 import scalaz._
 import Scalaz._
 import errors.NotFoundException.getOrNotFound
+import com.secretapp.backend.{models => m}
 
 sealed class User extends CassandraTable[persist.User, models.User] {
 
@@ -93,7 +94,7 @@ sealed class User extends CassandraTable[persist.User, models.User] {
     override lazy val name = "full_avatar_height"
   }
 
-  private val optFileLocation = Applicative[Option].lift2(models.FileLocation.apply)
+  private val optFileLocation = Applicative[Option].lift2(m.FileLocation.apply)
 
   private val optAvatarImage = Applicative[Option].lift4(models.AvatarImage.apply)
 
