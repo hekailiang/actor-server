@@ -1,8 +1,9 @@
 package utils
 
+import com.secretapp.backend.models.UserCreationRequest
 import scodec.bits.BitVector
 import scala.util.Random
-import com.secretapp.backend.{models => m}
+import com.secretapp.backend.models
 import scala.collection.immutable
 
 object Gen {
@@ -17,12 +18,12 @@ object Gen {
   // TODO: Generate variable-sized string
   def genString = Random.nextString(10)
 
-  def genSex = m.Sex.fromInt(Random.nextInt(3) + 1)
+  def genSex = models.Sex.fromInt(Random.nextInt(3) + 1)
 
   def genUser = {
     val ph = genLong
 
-    m.User(
+    models.User(
       genInt,
       genLong,
       ph,
@@ -36,7 +37,7 @@ object Gen {
     )
   }
 
-  def genUserCreationRequest = models.UserCreationRequest(
+  def genUserCreationRequest = UserCreationRequest(
     BitVector.fromLong(Random.nextLong()),
     Random.nextLong(),
     Random.nextString(10),
@@ -45,6 +46,6 @@ object Gen {
 
   def genPhone = (1 to 11).foldLeft(0L) { (s, _) => s * 10 + Random.nextInt(9) + 1 }
 
-  def genAuthSmsCode = com.secretapp.backend.models.AuthSmsCode(genPhone, genString, genString)
+  def genAuthSmsCode = models.AuthSmsCode(genPhone, genString, genString)
 
 }

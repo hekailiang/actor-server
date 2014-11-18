@@ -1,4 +1,4 @@
-package models
+package utils
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import scodec.bits.BitVector
@@ -18,7 +18,7 @@ object PublicKey {
   Security.addProvider(new BouncyCastleProvider())
 
   def keyHash(pk: BitVector): Long = {
-    import ByteConstants._
+    import utils.ByteConstants._
 
     val digest = MessageDigest.getInstance("SHA-256")
     val buf = BitVector(digest.digest(pk.toByteArray))

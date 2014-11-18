@@ -1,7 +1,7 @@
 package controllers
 
-import models.CommonJsonFormats._
-import models.json._
+import json.CommonJsonFormats._
+import json._
 import org.specs2.mutable._
 import play.api.libs.json._
 import play.api.test.Helpers._

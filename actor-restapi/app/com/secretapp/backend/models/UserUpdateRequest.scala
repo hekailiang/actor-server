@@ -1,13 +1,9 @@
-package models
+package com.secretapp.backend.models
 
-import models.CommonJsonFormats._
-import play.api.libs.json.Json
 import scodec.bits.BitVector
 import utils.OptSet._
 import scalaz._
 import Scalaz._
-import models.json._
-import com.secretapp.backend.models.{User, Avatar, Sex}
 
 case class UserUpdateRequest(
   publicKey:   Option[BitVector],
@@ -36,11 +32,5 @@ case class UserUpdateRequest(
         fullAvatarWidth     = v.fullImage.map(_.width),
         fullAvatarHeight    = v.fullImage.map(_.height)
       ))
-
-}
-
-object UserUpdateRequest {
-
-  implicit val jsonFormat = Json.format[UserUpdateRequest]
 
 }

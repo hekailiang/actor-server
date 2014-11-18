@@ -1,10 +1,10 @@
+import com.secretapp.backend.models.Error
 import errors._
-import models.Error
 import play.api._
 import play.api.libs.json.{JsResultException, Json}
 import play.api.mvc._
 import play.api.mvc.Results._
-
+import json._
 import scala.concurrent.Future
 
 object Global extends GlobalSettings {

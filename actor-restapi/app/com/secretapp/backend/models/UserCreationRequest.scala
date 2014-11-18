@@ -1,12 +1,9 @@
-package models
+package com.secretapp.backend.models
 
-import models.CommonJsonFormats._
-import play.api.libs.json.Json
 import scodec.bits.BitVector
+import utils.PublicKey
 import scala.util.Random
 import scala.collection.immutable
-import models.json._
-import com.secretapp.backend.models.{Avatar, Sex, User}
 
 case class UserCreationRequest(
   publicKey:   BitVector,
@@ -43,11 +40,5 @@ case class UserCreationRequest(
       immutable.Set(publicKeyHash)
     )
   }
-
-}
-
-object UserCreationRequest {
-
-  implicit val jsonFormat = Json.format[UserCreationRequest]
 
 }

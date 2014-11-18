@@ -3,7 +3,7 @@ package persist
 import org.specs2.mutable._
 import play.api.test._
 import utils.{SpecUtils, CassandraSpecification, Gen}
-import com.secretapp.backend.{persist => pp}
+import com.secretapp.backend.persist
 
 class UserSpec extends Specification with CassandraSpecification with SpecUtils {
 
@@ -18,7 +18,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
     "persist user" in new WithApplication {
       val id = createUser(user).uid
-      pp.User.getEntity(id).sync.defined must_== user.copy(uid = id)
+      persist.User.getEntity(id).sync.defined must_== user.copy(uid = id)
     }
 
   }
@@ -27,8 +27,8 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
     "remove user" in new WithApplication {
       val id = createUser(user).uid
-      pp.User.dropEntity(id).sync
-      pp.User.getEntity(id).sync must beNone
+      persist.User.dropEntity(id).sync
+      persist.User.getEntity(id).sync must beNone
     }
 
   }
@@ -37,7 +37,7 @@ class UserSpec extends Specification with CassandraSpecification with SpecUtils 
 
     "return count users" in new WithApplication {
       val users = Stream.continually(createUser(Gen.genUser)).take(6).toSet
-      pp.User.list(2).sync must haveLength(2)
+      persist.User.list(2).sync must haveLength(2)
     }
 
   }

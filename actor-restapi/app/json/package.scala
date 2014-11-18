@@ -1,15 +1,24 @@
-package models
+import json.CommonJsonFormats._
 
-import models.CommonJsonFormats._
-import com.secretapp.backend.models.{User, Sex, Male, Female, NoSex, AvatarImage, Avatar, FileLocation}
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import com.secretapp.backend.models._
 
 package object json {
 
-  implicit val authSmsCodeJsonFormat = AuthSmsCode
+  implicit object authSmsCodeJsonWrites extends Writes[AuthSmsCode] {
+    override def writes(c: AuthSmsCode): JsValue =
+      Json.obj(
+        "phoneNumber" -> c.phoneNumber,
+        "smsCode"     -> c.smsCode,
+        "smsHash"     -> c.smsHash
+      )
+  }
+
   implicit val fileLocationJsonFormat = Json.format[FileLocation]
+
   implicit val avatarImageJsonFormat = Json.format[AvatarImage]
+
   implicit val avatarJsonFormat: Format[Avatar] = (
     (JsPath \ "smallImage").format[Option[AvatarImage]] ~
     (JsPath \ "largeImage").format[Option[AvatarImage]] ~
@@ -46,5 +55,15 @@ package object json {
         "keyHashes"     -> u.keyHashes
       )
   }
+
+  implicit val authSmsCodeCreationRequestJsonFormat = Json.format[AuthSmsCodeCreationRequest]
+
+  implicit val authSmsCodeUpdateRequestJsonFormat = Json.format[AuthSmsCodeUpdateRequest]
+
+  implicit val errorJsonFormat = Json.format[Error]
+
+  implicit val userCreationRequestJsonFormat = Json.format[UserCreationRequest]
+
+  implicit val userUpdateRequestJsonFormat = Json.format[UserUpdateRequest]
 
 }

@@ -1,12 +1,13 @@
 package controllers
 
+import com.secretapp.backend.models
 import play.api._
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits._
 import scalaz._
 import Scalaz._
-import models.json._
+import json._
 import errors.NotFoundException.getOrNotFound
 import utils.DbConnector.Implicits._
 import com.secretapp.backend.persist
