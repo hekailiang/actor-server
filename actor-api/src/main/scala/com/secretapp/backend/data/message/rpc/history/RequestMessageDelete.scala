@@ -1,10 +1,11 @@
-package com.secretapp.backend.data.message.rpc.messaging
+package com.secretapp.backend.data.message.rpc.history
 
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
+import scala.collection.immutable
 
 @SerialVersionUID(1L)
-case class RequestMessageDelete(peer: struct.OutPeer, randomId: Long) extends RequestWithRandomId {
+case class RequestMessageDelete(outPeer: struct.OutPeer, randomIds: immutable.Seq[Long]) extends RpcRequestMessage {
   val header = RequestMessageDelete.header
 }
 

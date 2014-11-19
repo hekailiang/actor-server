@@ -156,6 +156,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
     def apply(): TestScope = apply(1, 79632740769L)
 
+    def apply(userId: Int): TestScope = apply(userId, 79632740769L)
+
     def apply(userId: Int, phone: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()

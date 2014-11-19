@@ -28,6 +28,7 @@ trait MessagingService {
       new Handler(
         updatesBrokerRegion,
         socialBrokerRegion,
+        singletons.dialogManagerRegion,
         fileRecord,
         currentUser.get
       )
@@ -52,6 +53,7 @@ trait MessagingService {
         | _: RequestRemoveUsers
         | _: RequestEditGroupAvatar
         | _: RequestRemoveGroupAvatar
+        | _: RequestMessageDelete
         | _: RequestMessageRead
         | _: RequestMessageReceived
         | _: RequestEncryptedRead

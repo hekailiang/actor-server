@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
+import com.secretapp.backend.data.message.rpc.history._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
@@ -80,6 +81,189 @@ class RpcMessagingSpec extends RpcSpec {
         upd.senderUid should_==(scope1.user.uid)
         upd.randomId should_==(1L)
         upd.message should_==(TextMessage("Yolo!"))
+      }
+    }
+
+    "load history of unencrypted messages" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user1!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user2!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      Thread.sleep(1000)
+
+      {
+        implicit val scope = scope1
+
+        val (resp, _) = RequestLoadHistory(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          startDate = 0,
+          limit = 2
+        ) :~> <~:[ResponseLoadHistory]
+
+        resp.users.length should_== 1
+        resp.history.length should_== 2
+      }
+    }
+     */
+    "load dialogs in proper order" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val scope3 = TestScope(rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+      catchNewSession(scope3)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(1000)
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope3.user.uid, ACL.userAccessHash(scope.user.authId, scope3.user)),
+          randomId = 2L,
+          message = TextMessage("Yolo from user1 to user3! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(2000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.length should_== 2
+          resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user3! #1")
+          resp.dialogs.head.peer.id should_== scope3.user.uid
+        }
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 3L,
+          message = TextMessage("Yolo from user1 to user2! #2")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(2000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.length should_== 2
+          resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user2! #2")
+          resp.dialogs.head.peer.id should_== scope2.user.uid
+          resp.dialogs.head.unreadCount should_== 2
+        }
+      }
+    }
+
+    "deliver unencrypted UpdateMessageReceived" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      val date = System.currentTimeMillis()
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageReceived(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          date = date
+        ) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageReceived]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+        upd.date should_==(date)
+      }
+    }
+
+    "deliver unencrypted UpdateMessageRead" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      val date = System.currentTimeMillis()
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageRead(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          date = date
+        ) :~> <~:[ResponseVoid]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageReadByMe]
+        upd.peer should_==(struct.Peer.privat(scope1.user.uid))
+        upd.date should_==(date)
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageRead]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+        upd.date should_==(date)
       }
     }
 

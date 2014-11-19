@@ -292,7 +292,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         diff.updates.length should beEqualTo(3)
         val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
-        upd.peer.kind should_== PeerType.Group
+        upd.peer.typ should_== PeerType.Group
         upd.peer.id should_== respGroup.groupPeer.id
       }
 

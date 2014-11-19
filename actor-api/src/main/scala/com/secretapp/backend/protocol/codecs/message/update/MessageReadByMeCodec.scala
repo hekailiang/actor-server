@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object MessageReadByMeCodec extends Codec[MessageReadByMe] with utils.ProtobufCodec {
   def encode(u: MessageReadByMe) = {
-    val boxed = protobuf.UpdateMessageReadByMe(u.peer.toProto, u.readDate)
+    val boxed = protobuf.UpdateMessageReadByMe(u.peer.toProto, u.date)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateMessageReadByMe.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateMessageReadByMe(peer, readDate)) =>
-        MessageReadByMe(Peer.fromProto(peer), readDate)
+      case Success(protobuf.UpdateMessageReadByMe(peer, date)) =>
+        MessageReadByMe(Peer.fromProto(peer), date)
     }
   }
 }

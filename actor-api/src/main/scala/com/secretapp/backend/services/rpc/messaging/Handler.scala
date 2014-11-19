@@ -15,6 +15,7 @@ import scala.concurrent.duration._
 class Handler(
   val updatesBrokerRegion: ActorRef,
   val socialBrokerRegion: ActorRef,
+  val dialogManagerRegion: ActorRef,
   val fileRecord: persist.File,
   val currentUser: models.User
 )(implicit val session: CSession)
@@ -22,9 +23,6 @@ class Handler(
   import context._
 
   type RequestMatcher = PartialFunction[RpcRequestMessage, Future[RpcResponse]]
-
-  //val handleHistory: RequestMatcher = ???
-  def notImplemented = throw new Exception("Try again later")
 
   implicit val timeout = Timeout(5.seconds)
 
@@ -43,8 +41,8 @@ class Handler(
       val replyTo = sender()
 
       handleMessaging
-        .orElse(handleGroup)(request)
-      //        .orElse(handleHistory)(request)
+        .orElse(handleGroup)
+        .orElse(handleHistory)(request)
         .pipeTo(replyTo).future.onFailure {
         case e =>
           log.error(s"Failed to handle messaging request")

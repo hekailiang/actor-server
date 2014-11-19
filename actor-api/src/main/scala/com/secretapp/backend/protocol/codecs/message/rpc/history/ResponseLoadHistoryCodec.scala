@@ -12,15 +12,16 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object ResponseHistoryCodec extends Codec[ResponseHistory] with utils.ProtobufCodec {
-  def encode(r: ResponseHistory) = {
-    val boxed = protobuf.ResponseHistory(r.history.map(_.toProto))
+object ResponseLoadHistoryCodec extends Codec[ResponseLoadHistory] with utils.ProtobufCodec {
+  def encode(r: ResponseLoadHistory) = {
+    val boxed = protobuf.ResponseLoadHistory(r.history.map(_.toProto), r.users.map(_.toProto))
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.ResponseHistory.parseFrom(buf.toByteArray)) {
-      case Success(r: protobuf.ResponseHistory) => ResponseHistory(r.history.map(HistoryMessage.fromProto))
+    decodeProtobuf(protobuf.ResponseLoadHistory.parseFrom(buf.toByteArray)) {
+      case Success(r: protobuf.ResponseLoadHistory) =>
+        ResponseLoadHistory(r.history.map(HistoryMessage.fromProto), r.users.map(struct.User.fromProto))
     }
   }
 }

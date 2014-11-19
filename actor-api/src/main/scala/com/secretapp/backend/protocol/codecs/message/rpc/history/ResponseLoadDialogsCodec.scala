@@ -12,16 +12,16 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object ResponseDialogsCodec extends Codec[ResponseDialogs] with utils.ProtobufCodec {
-  def encode(r: ResponseDialogs) = {
-    val boxed = protobuf.ResponseDialogs(r.groups.map(_.toProto), r.users.map(_.toProto), r.dialogs.map(_.toProto))
+object ResponseLoadDialogsCodec extends Codec[ResponseLoadDialogs] with utils.ProtobufCodec {
+  def encode(r: ResponseLoadDialogs) = {
+    val boxed = protobuf.ResponseLoadDialogs(r.groups.map(_.toProto), r.users.map(_.toProto), r.dialogs.map(_.toProto))
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.ResponseDialogs.parseFrom(buf.toByteArray)) {
-      case Success(r: protobuf.ResponseDialogs) =>
-        ResponseDialogs(r.groups.map(struct.Group.fromProto),
+    decodeProtobuf(protobuf.ResponseLoadDialogs.parseFrom(buf.toByteArray)) {
+      case Success(r: protobuf.ResponseLoadDialogs) =>
+        ResponseLoadDialogs(r.groups.map(struct.Group.fromProto),
           r.users.map(struct.User.fromProto), r.dialogs.map(Dialog.fromProto))
     }
   }

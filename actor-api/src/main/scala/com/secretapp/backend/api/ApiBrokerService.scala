@@ -61,35 +61,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
     }
 
     body match {
-      /*
-      // TODO: move to separate method!
-      case rq: RequestSendMessage =>
-        handleMessaging(rq)
-
-      case rq: RequestCreateGroup =>
-        handleMessaging(rq)
-
-      case rq: RequestInviteUsers =>
-        handleMessaging(rq)
-
-      case rq: RequestLeaveGroup =>
-        handleMessaging(rq)
-
-      case rq: RequestEditGroupTitle =>
-        handleMessaging(rq)
-
-      case rq: RequestEditGroupAvatar =>
-        handleMessaging(rq)
-
-      case rq: RequestRemoveUsers =>
-        handleMessaging(rq)
-
-      case rq: RequestMessageReceived =>
-        handleMessaging(rq)
-
-      case rq: RequestMessageRead =>
-        handleMessaging(rq)*/
-
       case rq: updateProto.RequestGetState =>
         handleUpdates(rq)
 

@@ -52,6 +52,9 @@ object DBConnector {
       UserGroup.createTable(session),
       UserPublicKey.createTable(session),
       User.createTable(session),
+      Dialog.createTable(session),
+      DialogUnreadCounter.createTable(session),
+      HistoryMessage.createTable(session),
       fileRecord.createTable(session)
     ))
   }
@@ -73,7 +76,10 @@ object DBConnector {
       contact.UserContactsListCache.truncateTable(session),
       UserGroup.truncateTable(session),
       UserPublicKey.truncateTable(session),
-      User.truncateTable(session)
+      User.truncateTable(session),
+      Dialog.truncateTable(session),
+      DialogUnreadCounter.truncateTable(session),
+      HistoryMessage.truncateTable(session)
     ))
 
 //  def dumpKeySpace() = blocking {

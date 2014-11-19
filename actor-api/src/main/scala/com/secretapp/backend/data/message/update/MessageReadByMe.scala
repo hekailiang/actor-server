@@ -3,12 +3,12 @@ package com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class MessageReadByMe(peer: struct.Peer, readDate: Long) extends SeqUpdateMessage {
+case class MessageReadByMe(peer: struct.Peer, date: Long) extends SeqUpdateMessage {
   val header = MessageReadByMe.header
 
   def userIds: Set[Int] = Set(peer.id)
 
-  def groupIds: Set[Int] = peer.kind match {
+  def groupIds: Set[Int] = peer.typ match {
     case struct.PeerType.Group =>
       Set(peer.id)
     case _ =>

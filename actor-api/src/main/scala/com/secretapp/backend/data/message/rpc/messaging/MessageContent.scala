@@ -9,12 +9,12 @@ import scala.language.implicitConversions
 import scalaz.Scalaz._
 
 sealed trait MessageContent {
-  val kind: Int
+  val typ: Int
 
   def toProto: protobuf.MessageContent
 
   def wrap(content: com.google.protobuf.GeneratedMessageLite): protobuf.MessageContent = {
-    protobuf.MessageContent(kind, content.toByteString)
+    protobuf.MessageContent(typ, content.toByteString)
   }
 }
 
@@ -28,7 +28,7 @@ object MessageContent {
 
 @SerialVersionUID(1L)
 case class TextMessage(text: String) extends MessageContent {
-  val kind = TextMessage.header
+  val typ = TextMessage.header
   def toProto = super.wrap(protobuf.TextMessage(text))
 }
 
@@ -39,7 +39,7 @@ object TextMessage {
 }
 
 sealed trait ServiceMessage extends MessageContent {
-  val kind = ServiceMessage.header
+  val typ = ServiceMessage.header
   val text: String
   val extType: Int
 
@@ -152,7 +152,7 @@ object GroupChangedAvatarExtension {
 
 
 sealed trait FileMessage extends MessageContent {
-  val kind = FileMessage.header
+  val typ = FileMessage.header
   val fileId: Int
   val accessHash: Long
   val fileSize: Int

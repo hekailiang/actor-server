@@ -558,7 +558,7 @@ message UpdateEncryptedReadByMe {
 message UpdateMessageReceived {
     required Peer peer = 1;
     required int64 date = 2;
-    required int64 readDate = 3;
+    required int64 receivedDate = 3;
 }
 
 // API#0x13
@@ -820,7 +820,7 @@ message RequestMessageRead {
 // Ответ: ResponseVoid#0x32
 message RequestMessageDelete {
     required OutPeer peer = 1;
-    required int64 rid = 3;
+    repeated int64 rid = 3;
 }
 
 // API#0x63
@@ -907,7 +907,7 @@ message RequestRemoveUsers {
 // ************************************************************************
 
 // API#0x76
-// Ответ: ResponseHistory#0x69
+// Ответ: ResponseLoadHistory#0x77
 // startDate - 0 если загружать с начала или дата для подгрузки
 // limit - не больше 100 сообщений
 message RequestLoadHistory {
@@ -917,17 +917,18 @@ message RequestLoadHistory {
 }
 
 // API#0x77
-message ResponseHistory {
+message ResponseLoadHistory {
     repeated HistoryMessage history = 1;
+    repeated User users = 2;
+}
 
-    message HistoryMessage {
-        required int32 senderUid = 1;
-        required int64 rid = 2;
+message HistoryMessage {
+    required int32 senderUid = 1;
+    required int64 rid = 2;
 
-        required int64 date = 3;
+    required int64 date = 3;
 
-        required MessageContent message = 5;
-    }
+    required MessageContent message = 5;
 }
 
 // API#0x68
@@ -940,22 +941,22 @@ message RequestLoadDialogs {
 }
 
 // API#0x69
-message ResponseDialogs {
+message ResponseLoadDialogs {
     repeated Group groups = 1;
     repeated User users = 2;
     repeated Dialog dialogs = 3;
+}
 
-    message Dialog {
-        required Peer peer = 1;
+message Dialog {
+    required Peer peer = 1;
 
-        required int32 unreadCount = 3;
-        required int64 sortDate = 4;
+    required int32 unreadCount = 3;
+    required int64 sortDate = 4;
 
-        required int32 senderUid = 5;
-        required int64 rid = 6;
-        required int64 date = 7;
-        required MessageContent message = 8;
-    }
+    required int32 senderUid = 5;
+    required int64 rid = 6;
+    required int64 date = 7;
+    required MessageContent message = 8;
 }
 
 // ************************************************************************
