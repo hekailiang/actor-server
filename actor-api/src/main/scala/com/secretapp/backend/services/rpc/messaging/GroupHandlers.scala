@@ -18,8 +18,8 @@ import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scalaz.Scalaz._
 import scalaz._
+import Scalaz._
 import scodec.bits._
 
 trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers with PeerHelpers with UpdatesHelpers {
@@ -41,6 +41,10 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       handleRequestLeaveGroup(groupOutPeer)
     case RequestRemoveUsers(groupOutPeer, users) =>
       handleRequestRemoveUsers(groupOutPeer, users)
+    case RequestEditGroupAvatar(groupOutPeer, fl) =>
+      handleRequestEditGroupAvatar(groupOutPeer, fl)
+    case RequestRemoveGroupAvatar(groupOutPeer) =>
+      handleRequestRemoveGroupAvatar(groupOutPeer)
   }
 
   protected def handleRequestCreateGroup(
@@ -341,15 +345,64 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   }
 
   protected def handleRequestEditGroupAvatar(
-    groupPeer: struct.GroupOutPeer,
+    groupOutPeer: struct.GroupOutPeer,
     fileLocation: models.FileLocation
-  ): Future[RpcResponse] = notImplemented
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.id
+
+    withGroupOutPeer(groupOutPeer, currentUser) { group =>
+      val sizeLimit: Long = 1024 * 1024 // TODO: configurable
+
+      withValidScaledAvatar(fileRecord, fileLocation) { a =>
+        val groupAvatarChangedUpdate = GroupAvatarChanged(
+          groupId,
+          currentUser.uid,
+          a.some,
+          System.currentTimeMillis
+        )
+
+        persist.Group.updateAvatar(groupId, a) flatMap { _ =>
+
+          foreachGroupUserAuthId(groupId) { authId =>
+            writeNewUpdate(authId, groupAvatarChangedUpdate)
+          }
+
+          withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
+            Ok(ResponseAvatarChanged(a, s._1, s._2.some))
+          }
+        }
+      }
+    }
+  }
 
   protected def handleRequestRemoveGroupAvatar(
-    groupPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = notImplemented
+    groupOutPeer: struct.GroupOutPeer
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.id
+
+    withGroupOutPeer(groupOutPeer, currentUser) { group =>
+
+      val groupAvatarChangedUpdate = GroupAvatarChanged(
+        groupId,
+        currentUser.uid,
+        None,
+        System.currentTimeMillis
+      )
+
+      persist.Group.removeAvatar(groupId) flatMap { _ =>
+
+        foreachGroupUserAuthId(groupId) { authId =>
+          writeNewUpdate(authId, groupAvatarChangedUpdate)
+        }
+
+        withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
+          Ok(ResponseAvatarChanged(models.Avatar(None, None, None), s._1, s._2.some))
+        }
+      }
+    }
+  }
 
   protected def handleRequestDeleteGroup(
-    groupPeer: struct.GroupOutPeer
+    groupOutPeer: struct.GroupOutPeer
   ): Future[RpcResponse] = notImplemented
 }

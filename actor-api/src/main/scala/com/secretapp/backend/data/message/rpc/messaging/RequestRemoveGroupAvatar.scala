@@ -9,5 +9,5 @@ case class RequestRemoveGroupAvatar(outPeer: struct.GroupOutPeer) extends RpcReq
 }
 
 object RequestRemoveGroupAvatar extends RpcRequestMessageObject {
-  val header = 0x60
+  val header = 0x65
 }

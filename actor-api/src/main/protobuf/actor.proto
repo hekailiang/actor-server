@@ -30,7 +30,7 @@ message Peer {
 message OutPeer {
     required PeerType type = 1;
     required int32 id = 2;
-    required int64 accessHash = 3;   
+    required int64 accessHash = 3;
 }
 
 message UserOutPeer {
@@ -145,12 +145,12 @@ message ServiceMessage {
 
     // EXT#0x3
     message UserLeftExtension {
-        
+
     }
 
     // EXT#0x4
     message GroupCreatedExtension {
-        
+
     }
 
     // EXT#0x5
@@ -210,7 +210,7 @@ message ResponseSeq {
     required int32 seq = 1;
     required bytes state = 2;
 }
- 
+
 // ************************************************************************
 //                              Authentication
 // ************************************************************************
@@ -315,7 +315,7 @@ message ResponseAvatarChanged {
 // API#0x5B
 // Ответ: ResponseSeq#0x32
 message RequestRemoveAvatar {
-    
+
 }
 // ************************************************************************
 //                                Users
@@ -376,7 +376,7 @@ message ResponseImportedContacts {
 
 // API#0x57
 // Ответ: ResponseGetContacts#0x58
-// contactsHash = SHA1("uid1,uid2,..."), где uids - отсортированные 
+// contactsHash = SHA1("uid1,uid2,..."), где uids - отсортированные
 // в порядке возрастания идентификаторы пользователей
 message RequestGetContacts {
     required string contactsHash = 1;
@@ -399,7 +399,7 @@ message RequestRemoveContact {
 // Ответ: ResponseSeq
 message RequestAddContact {
     required int32 uid = 1;
-    required int64 accessHash = 2;   
+    required int64 accessHash = 2;
 }
 
 // API#0x70
@@ -693,7 +693,7 @@ message UpdateContactRegistered {
 message UpdateContactsAdded {
     repeated int32 uids = 1;
 }
- 
+
 // API#0x29
 // Событие об удалении пользователей из контакт-листа
 message UpdateContactsRemoved {
@@ -870,7 +870,7 @@ message RequestEditGroupAvatar {
 }
 
 // API#0x60
-// Ответ: ResponseSeq#0x48
+// Ответ: ResponseSeq#0x65
 message RequestRemoveGroupAvatar {
     required GroupOutPeer groupPeer = 1;
 }
@@ -1038,7 +1038,7 @@ message RequestRegisterGooglePush {
     required int64 projectId = 1;
     required string token = 2;
 }
- 
+
 // Запрос на регистрацию эппловых пушей для ключа
 // Ответ: VoidResponse#0x32
 // API#0x4C

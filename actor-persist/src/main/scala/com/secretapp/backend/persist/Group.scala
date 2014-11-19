@@ -99,6 +99,9 @@ object Group extends Group with TableOps {
       .value(_.title, entity.title)
       .future()
 
+  def dropEntity(groupId: Int)(implicit session: Session): Future[Unit] =
+    delete.where(_.id eqs groupId).future() map (_ => ())
+
   def getEntity(groupId: Int)(implicit session: Session): Future[Option[models.Group]] =
     select.where(_.id eqs groupId).one()
 
@@ -123,4 +126,7 @@ object Group extends Group with TableOps {
       .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
+
+  def removeAvatar(id: Int)(implicit session: Session) =
+    updateAvatar(id, models.Avatar(None, None, None))
 }
