@@ -9,7 +9,7 @@ import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.history._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, RpcRequestMessage }
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.models.User
 import com.secretapp.backend.persist
 import scala.concurrent.Future
@@ -45,6 +45,7 @@ trait MessagingService {
       _: RequestClearChat
         | _: RequestDeleteChat
         | _: RequestCreateGroup
+        | _: RequestDeleteGroup
         | _: RequestEditGroupTitle
         | _: RequestInviteUsers
         | _: RequestLeaveGroup

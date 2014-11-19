@@ -1,5 +1,6 @@
 package com.secretapp.backend.api
 
+import com.secretapp.backend.data.message.struct.PeerType
 import com.secretapp.backend.util.ACL
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -270,6 +271,43 @@ class GroupMessagingSpec extends RpcSpec {
         upd.title should_==("Group 4000")
       }
     }
+
+    "send updates on group deletion" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope2
+
+        RequestDeleteGroup(
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        ) :~> <~:[ResponseSeq]
+
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(3)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
+        upd.peer.kind should_== PeerType.Group
+        upd.peer.id should_== respGroup.groupPeer.id
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserLeave]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+      }
+    }
+
     /*
     "send updates on name change" in {
       val (scope1, scope2) = TestScope.pair()

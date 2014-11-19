@@ -6,8 +6,9 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.struct.Peer
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers._
@@ -45,6 +46,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       handleRequestEditGroupAvatar(groupOutPeer, fl)
     case RequestRemoveGroupAvatar(groupOutPeer) =>
       handleRequestRemoveGroupAvatar(groupOutPeer)
+    case RequestDeleteGroup(groupOutPeer) =>
+      handleRequestDeleteGroup(groupOutPeer)
   }
 
   protected def handleRequestCreateGroup(
@@ -404,5 +407,51 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
   protected def handleRequestDeleteGroup(
     groupOutPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = notImplemented
+  ): Future[RpcResponse] = {
+    val groupId = groupOutPeer.id
+    val date = System.currentTimeMillis
+
+    withGroupOutPeer(groupOutPeer, currentUser) { _ =>
+
+      getGroupUserIdsWithAuthIds(groupId).map(_.toMap) flatMap { userIdsAuthIds =>
+
+        val userLeaveUpdate = GroupUserLeave(
+          groupId = groupId,
+          userId = currentUser.uid,
+          date = date
+        )
+
+        val chatDeleteUpdate = ChatDelete(Peer.group(groupId))
+
+        val removeUserF = Future.sequence(
+          Seq(
+            persist.GroupUser.removeUser(groupId, currentUser.uid),
+            persist.UserGroup.removeGroup(currentUser.uid, groupId)
+          )
+        )
+
+        removeUserF flatMap { _ =>
+          val allExceptCurrentAuthIds = userIdsAuthIds.filterKeys(_ != currentUser.uid).map(_._2).flatten
+
+          allExceptCurrentAuthIds foreach { authId =>
+            writeNewUpdate(authId, userLeaveUpdate)
+          }
+
+          val currentAuthIds = userIdsAuthIds.filterKeys(_ == currentUser.uid).head._2
+
+          currentAuthIds foreach { authId =>
+            writeNewUpdate(authId, chatDeleteUpdate)
+          }
+
+          withNewUpdateState(
+            currentUser.authId,
+            chatDeleteUpdate
+          ) { s =>
+            val res = ResponseSeq(s._1, Some(s._2))
+            Ok(res)
+          }
+        }
+      }
+    }
+  }
 }

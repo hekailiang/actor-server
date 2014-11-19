@@ -34,6 +34,7 @@ object SeqUpdateMessageCodec {
       case u: ContactsAdded     => ContactsAddedCodec.encode(u)
       case u: ContactsRemoved   => ContactsRemovedCodec.encode(u)
       case u: LocalNameChanged  => LocalNameChangedCodec.encode(u)
+      case u: ChatDelete        => ChatDeleteCodec.encode(u)
     }
   }
 
@@ -61,7 +62,8 @@ object SeqUpdateMessageCodec {
       case ContactRegistered.header => ContactRegisteredCodec.decode(buf)
       case ContactsAdded.header     => ContactsAddedCodec.decode(buf)
       case ContactsRemoved.header   => ContactsRemovedCodec.decode(buf)
-      case LocalNameChanged.header   => LocalNameChangedCodec.decode(buf)
+      case LocalNameChanged.header  => LocalNameChangedCodec.decode(buf)
+      case ChatDelete.header        => ChatDeleteCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {
