@@ -5,12 +5,12 @@ import com.secretapp.backend.data.json.{ UnitFormat, MessageWithHeader }
 import com.secretapp.backend.data.json.message.struct.{ JsonFormats => StructJsonFormats }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.auth._
-import com.secretapp.backend.data.message.rpc.contact.{ ResponsePublicKeys, ResponseImportedContacts, RequestPublicKeys, RequestImportContacts }
+import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.message.rpc.messaging.{ RequestSendGroupMessage, RequestMessageReceived, RequestMessageRead, RequestSendMessage }
 import com.secretapp.backend.data.message.rpc.presence.{ UnsubscribeFromOnline, SubscribeToOnline, RequestSetOnline }
 import com.secretapp.backend.data.message.rpc.push.{ RequestUnregisterPush, RequestRegisterGooglePush }
-import com.secretapp.backend.data.message.rpc.update.{ ResponseSeq, RequestGetState, RequestGetDifference }
+import com.secretapp.backend.data.message.rpc.update.{Difference, ResponseSeq, RequestGetState, RequestGetDifference}
 import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
 import com.secretapp.backend.data.message.struct.{ UserKey, WrongReceiversErrorData }
 import play.api.libs.json._
@@ -68,6 +68,7 @@ trait JsonFormats {
         case r: RequestGetFile            => requestGetFileFormat.writes(r)
         case r: RequestGetState           => requestGetStateFormat.writes(r)
         case r: RequestImportContacts     => requestImportContactsFormat.writes(r)
+        case r: RequestGetContacts     => requestRequestGetContacts.writes(r)
         case r: RequestMessageRead        => requestMessageReadFormat.writes(r)
         case r: RequestMessageReceived    => requestMessageReceivedFormat.writes(r)
         case r: RequestSendGroupMessage   => requestSendGroupMessageFormat.writes(r)
@@ -98,6 +99,7 @@ trait JsonFormats {
         case RequestGetFile.header            => requestGetFileFormat.reads(body)
         case RequestGetState.header           => requestGetStateFormat.reads(body)
         case RequestImportContacts.header     => requestImportContactsFormat.reads(body)
+        case RequestGetContacts.header        => requestRequestGetContacts.reads(body)
         case RequestMessageRead.header        => requestMessageReadFormat.reads(body)
         case RequestMessageReceived.header    => requestMessageReceivedFormat.reads(body)
         case RequestSendGroupMessage.header   => requestSendGroupMessageFormat.reads(body)
@@ -126,12 +128,14 @@ trait JsonFormats {
         case r: ResponseGetAuth          => responseGetAuthFormat.writes(r)
         case r: ResponseAuthCode         => responseAuthCodeFormat.writes(r)
         case r: ResponseImportedContacts => responseImportedContactsFormat.writes(r)
+        case r: ResponseGetContacts      => responseResponseGetContacts.writes(r)
         case r: ResponsePublicKeys       => responsePublicKeysFormat.writes(r)
         case r: ResponseFilePart         => responseFilePartFormat.writes(r)
         case r: ResponseUploadCompleted  => responseUploadCompletedFormat.writes(r)
         case r: ResponseUploadStarted    => responseUploadStartedFormat.writes(r)
         case r: ResponseSeq              => responseSeqFormat.writes(r)
         case r: ResponseAvatarChanged    => responseAvatarChanged.writes(r)
+        case r: Difference               => differenceFormat.writes(r)
       })
     )
 
@@ -142,12 +146,14 @@ trait JsonFormats {
         case ResponseGetAuth.header          => responseGetAuthFormat.reads(body)
         case ResponseAuthCode.header         => responseAuthCodeFormat.reads(body)
         case ResponseImportedContacts.header => responseImportedContactsFormat.reads(body)
+        case ResponseGetContacts.header      => responseResponseGetContacts.reads(body)
         case ResponsePublicKeys.header       => responsePublicKeysFormat.reads(body)
         case ResponseFilePart.header         => responseFilePartFormat.reads(body)
         case ResponseUploadCompleted.header  => responseUploadCompletedFormat.reads(body)
         case ResponseUploadStarted.header    => responseUploadStartedFormat.reads(body)
         case ResponseSeq.header              => responseSeqFormat.reads(body)
         case ResponseAvatarChanged.header    => responseAvatarChanged.reads(body)
+        case Difference.header               => differenceFormat.reads(body)
       }
     }
   }

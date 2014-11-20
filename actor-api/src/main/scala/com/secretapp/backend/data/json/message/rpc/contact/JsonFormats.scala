@@ -15,6 +15,9 @@ trait JsonFormats {
   implicit val requestImportContactsFormat = Json.format[RequestImportContacts]
   implicit val requestPublicKeysFormat = Json.format[RequestPublicKeys]
 
+  implicit val requestRequestGetContacts = Json.format[RequestGetContacts]
+  implicit val responseResponseGetContacts = Json.format[ResponseGetContacts]
+
   implicit val responseImportedContactsFormat = Json.format[ResponseImportedContacts]
   implicit val responsePublicKeysFormat = Json.format[ResponsePublicKeys]
 }
