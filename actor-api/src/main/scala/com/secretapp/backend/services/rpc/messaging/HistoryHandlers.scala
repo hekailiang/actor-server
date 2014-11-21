@@ -38,6 +38,10 @@ trait HistoryHandlers extends RandomService with UserHelpers with GroupHelpers {
       handleRequestLoadDialogs(startDate, limit)
     case RequestMessageDelete(outPeer, randomIds) =>
       handleRequestMessageDelete(outPeer, randomIds)
+    case RequestClearChat(outPeer) =>
+      handleRequestClearChat(outPeer)
+    case RequestDeleteChat(outPeer) =>
+      handleRequestDeleteChat(outPeer)
   }
 
   protected def handleRequestMessageDelete(
@@ -71,15 +75,49 @@ trait HistoryHandlers extends RandomService with UserHelpers with GroupHelpers {
     }
   }
 
-  def notImplemented = throw new Exception("Try again later")
-
   protected def handleRequestClearChat(
-    peer: struct.OutPeer
-  ): Future[RpcResponse] = notImplemented
+    outPeer: struct.OutPeer
+  ): Future[RpcResponse] = {
+    withOutPeer(outPeer, currentUser) {
+      persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
+
+      val update = updateProto.ChatClear(outPeer.asPeer)
+
+      for (authIds <- getAuthIds(currentUser.uid)) yield {
+        authIds foreach { authId =>
+          if (authId != currentUser.authId)
+            writeNewUpdate(authId, update)
+        }
+      }
+
+      withNewUpdateState(currentUser.authId, update) { s =>
+        Ok(ResponseSeq(s._1, Some(s._2)))
+      }
+    }
+  }
 
   protected def handleRequestDeleteChat(
-    peer: struct.OutPeer
-  ): Future[RpcResponse] = notImplemented
+    outPeer: struct.OutPeer
+  ): Future[RpcResponse] = withOutPeer(outPeer, currentUser) {
+    persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
+    persist.Dialog.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
+    persist.DialogUnreadCounter.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
+
+    leaveGroup(outPeer.id, currentUser)
+
+    val update = updateProto.ChatDelete(outPeer.asPeer)
+
+    for (authIds <- getAuthIds(currentUser.uid)) yield {
+      authIds foreach { authId =>
+        if (authId != currentUser.authId)
+          writeNewUpdate(authId, update)
+      }
+    }
+
+    withNewUpdateState(currentUser.authId, update) { s =>
+      Ok(ResponseSeq(s._1, Some(s._2)))
+    }
+  }
 
   // TODO: refactor
   protected def handleRequestLoadDialogs(

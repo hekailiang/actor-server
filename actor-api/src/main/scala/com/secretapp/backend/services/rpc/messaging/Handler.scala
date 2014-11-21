@@ -24,7 +24,7 @@ class Handler(
 
   type RequestMatcher = PartialFunction[RpcRequestMessage, Future[RpcResponse]]
 
-  implicit val timeout = Timeout(5.seconds)
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
   override def preStart(): Unit = {
     log.debug("messaging preStart")

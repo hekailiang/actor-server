@@ -80,6 +80,14 @@ object HistoryMessage extends HistoryMessage with TableOps {
       .future()
   }
 
+  def deleteByPeer(userId: Int, peer: struct.Peer)(implicit session: Session): Future[ResultSet] = {
+    delete
+      .where(_.userId eqs userId)
+      .and(_.peerType eqs peer.typ.intType)
+      .and(_.peerId eqs peer.id)
+      .future()
+  }
+
   def fetchByPeer(userId: Int, peer: struct.Peer, startDate: Long, limit: Int)(implicit session: Session): Future[Seq[history.HistoryMessage]] = {
     select
       .where(_.userId eqs userId)

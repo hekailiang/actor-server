@@ -201,45 +201,11 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
-    val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
-
-    val date = System.currentTimeMillis
-
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      userIdsAuthIdsF flatMap { userIdsAuthIds =>
-        if (userIdsAuthIds.toMap.contains(currentUser.uid)) {
-          val rmUserF = Future.sequence(Seq(
-            persist.GroupUser.removeUser(groupId, currentUser.uid),
-            persist.UserGroup.removeGroup(currentUser.uid, groupId)
-          ))
-
-          val userLeaveUpdate = GroupUserLeave(
-            groupId = groupId,
-            userId = currentUser.uid,
-            date = date
-          )
-
-          userIdsAuthIds foreach {
-            case (userId, authIds) =>
-              val targetAuthIds = if (userId != currentUser.uid) {
-                authIds
-              } else {
-                authIds.filterNot(_ == currentUser.authId)
-              }
-
-              targetAuthIds foreach (writeNewUpdate(_, userLeaveUpdate))
-          }
-
-          withNewUpdateState(
-            currentUser.authId,
-            userLeaveUpdate
-          ) { s =>
-            val res = ResponseSeq(s._1, Some(s._2))
-            Ok(res)
-          }
-        } else {
-          Future.successful(Error(400, "ALREADY_LEFT", "You already left this group.", false))
-        }
+      leaveGroup(groupId, currentUser) map {
+        case \/-(state) =>
+          Ok(ResponseSeq(state._1, Some(state._2)))
+        case -\/(err) => err
       }
     }
   }

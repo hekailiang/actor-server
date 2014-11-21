@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestDeleteChat(peer: struct.OutPeer) extends RpcRequestMessage {
+case class RequestDeleteChat(outPeer: struct.OutPeer) extends RpcRequestMessage {
   val header = RequestDeleteChat.header
 }
 

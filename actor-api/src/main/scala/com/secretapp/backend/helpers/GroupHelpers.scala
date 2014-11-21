@@ -3,17 +3,22 @@ package com.secretapp.backend.helpers
 import akka.actor._
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.data.message.rpc.{RpcResponse, Error}
+import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.data.message.rpc.{ RpcResponse, Error}
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.models.FileLocation
 import com.secretapp.backend.persist
 import com.secretapp.backend.util.AvatarUtils
 import scala.concurrent.{ExecutionContext, Future}
+import scalaz._
+import scalaz.Scalaz._
 
-trait GroupHelpers extends UserHelpers {
+trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   val context: ActorContext
   implicit val session: CSession
+  implicit val timeout: Timeout
 
   import context.dispatcher
 
@@ -89,4 +94,42 @@ trait GroupHelpers extends UserHelpers {
     withValidAvatar(fr, fl) {
       withScaledAvatar(fr, fl)(f)
     }
+
+  def leaveGroup(groupId: Int, currentUser: models.User): Future[Error \/ UpdatesBroker.StrictState] = {
+    val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
+    val date = System.currentTimeMillis()
+
+    userIdsAuthIdsF flatMap { userIdsAuthIds =>
+      if (userIdsAuthIds.toMap.contains(currentUser.uid)) {
+        val rmUserF = Future.sequence(Seq(
+          persist.GroupUser.removeUser(groupId, currentUser.uid),
+          persist.UserGroup.removeGroup(currentUser.uid, groupId)
+        ))
+
+        val userLeaveUpdate = GroupUserLeave(
+          groupId = groupId,
+          userId = currentUser.uid,
+          date = date
+        )
+
+        userIdsAuthIds foreach {
+          case (userId, authIds) =>
+            val targetAuthIds = if (userId != currentUser.uid) {
+              authIds
+            } else {
+              authIds.filterNot(_ == currentUser.authId)
+            }
+
+            targetAuthIds foreach (writeNewUpdate(_, userLeaveUpdate))
+        }
+
+        writeNewUpdateAndGetState(
+          currentUser.authId,
+          userLeaveUpdate
+        ) map (_.right)
+      } else {
+        Future.successful(Error(400, "ALREADY_LEFT", "You already left this group.", false).left)
+      }
+    }
+  }
 }

@@ -27,15 +27,20 @@ trait UpdatesHelpers {
     )
   }
 
-  def withNewUpdateState[A](authId: Long, update: SeqUpdateMessage)
-    (f: UpdatesBroker.StrictState => A)
-    (implicit timeout: Timeout): Future[A] = {
+  def writeNewUpdateAndGetState(authId: Long, update: SeqUpdateMessage)
+    (implicit timeout: Timeout): Future[UpdatesBroker.StrictState] = {
     ask(
       updatesBrokerRegion,
       UpdatesBroker.NewUpdatePush(
         authId,
         update
-      )).mapTo[UpdatesBroker.StrictState] map f
+      )).mapTo[UpdatesBroker.StrictState]
+  }
+
+  def withNewUpdateState[A](authId: Long, update: SeqUpdateMessage)
+    (f: UpdatesBroker.StrictState => A)
+    (implicit timeout: Timeout): Future[A] = {
+    writeNewUpdateAndGetState(authId, update) map f
   }
 
   def withNewUpdatesState[A](authId: Long, updates: Seq[SeqUpdateMessage])

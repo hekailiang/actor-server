@@ -55,4 +55,12 @@ object DialogUnreadCounter extends DialogUnreadCounter with TableOps {
       .and(_.peerId eqs peer.id)
       .one() map (_.getOrElse(0))
   }
+
+  def deleteByUserAndPeer(userId: Int, peer: struct.Peer)(implicit session: Session): Future[ResultSet] = {
+    delete
+      .where(_.userId eqs userId)
+      .and(_.peerType eqs peer.typ.intType)
+      .and(_.peerId eqs peer.id)
+      .future()
+  }
 }

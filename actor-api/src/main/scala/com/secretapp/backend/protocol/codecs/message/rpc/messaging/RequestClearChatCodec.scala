@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestClearChatCodec extends Codec[RequestClearChat] with utils.ProtobufCodec {
   def encode(r: RequestClearChat) = {
-    val boxed = protobuf.RequestClearChat(r.peer.toProto)
+    val boxed = protobuf.RequestClearChat(r.outPeer.toProto)
     encodeToBitVector(boxed)
   }
 

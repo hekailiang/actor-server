@@ -78,6 +78,14 @@ object Dialog extends Dialog with TableOps {
       .future()
   }
 
+  def deleteByUserAndPeer(userId: Int, peer: struct.Peer)(implicit session: Session): Future[ResultSet] = {
+    delete
+      .where(_.userId eqs userId)
+      .and(_.peerType eqs peer.typ.intType)
+      .and(_.peerId eqs peer.id)
+      .future()
+  }
+
   // rethink this
   def fetchDialogs(
     userId: Int,

@@ -70,6 +70,8 @@ class RpcMessagingSpec extends RpcSpec {
         upd.peer should_==(struct.Peer.privat(scope2.user.uid))
       }
 
+      Thread.sleep(1000)
+
       {
         implicit val scope = scope2
 
@@ -124,7 +126,67 @@ class RpcMessagingSpec extends RpcSpec {
         resp.history.length should_== 2
       }
     }
-     */
+
+
+    "clear chat and send updates" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        RequestSendMessage(
+          outPeer = outPeer,
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        RequestClearChat(outPeer) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatClear]
+
+        Thread.sleep(1000)
+
+        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+      }
+
+    }
+
+    "delete chat and send updates" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        RequestSendMessage(
+          outPeer = outPeer,
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        RequestDeleteChat(outPeer) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
+
+        Thread.sleep(1000)
+
+        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+        persist.Dialog.fetchDialogs(scope.user.uid, 0, 0).sync().length should_== 0
+      }
+
+    }
+
     "load dialogs in proper order" in {
       val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       val scope3 = TestScope(rand.nextInt)

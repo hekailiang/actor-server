@@ -49,7 +49,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
   self: UpdatesServiceActor =>
 
   import context._
-  implicit val timeout = Timeout(5.seconds)
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
   private val differenceSize = 300
 
