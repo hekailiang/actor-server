@@ -26,10 +26,8 @@ case class SeqUpdate(seq: Int, state: BitVector, body: SeqUpdateMessage) extends
 object SeqUpdate extends UpdateMessageObject {
   val header = 0x0D
 
-  def fromProto(u: protobuf.SeqUpdate): String \/ SeqUpdate = u match {
-    case protobuf.SeqUpdate(seq, state, updateId, body) =>
-      for {
-        update <- SeqUpdateMessageCodec.decode(updateId, body)
-      } yield SeqUpdate(seq, state, update)
+  def fromProto(u: protobuf.SeqUpdate) = {
+    for { update <- SeqUpdateMessageCodec.decode(u.updateHeader, u.update) }
+    yield SeqUpdate(u.seq, u.state, update)
   }
 }

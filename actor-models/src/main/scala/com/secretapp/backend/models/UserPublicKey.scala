@@ -4,7 +4,7 @@ import scodec.bits.BitVector
 
 @SerialVersionUID(1L)
 case class UserPublicKey(
-  uid: Int,
+  userId: Int,
   publicKeyHash: Long,
   userAccessSalt: String,
   publicKey: BitVector,

@@ -16,7 +16,7 @@ object RequestSignUpCodec extends Codec[RequestSignUp] with utils.ProtobufCodec 
   def encode(r: RequestSignUp) = {
     val boxed = protobuf.RequestSignUp(
       r.phoneNumber, r.smsHash, r.smsCode, r.name, r.publicKey,
-      r.deviceHash, r.deviceTitle, r.appId, r.appKey
+      r.deviceHash, r.deviceTitle, r.appId, r.appKey, r.isSilent
     )
     encodeToBitVector(boxed)
   }
@@ -25,9 +25,9 @@ object RequestSignUpCodec extends Codec[RequestSignUp] with utils.ProtobufCodec 
     decodeProtobuf(protobuf.RequestSignUp.parseFrom(buf.toByteArray)) {
       case Success(protobuf.RequestSignUp(
         phoneNumber, smsHash, smsCode, name, publicKey,
-        deviceHash, deviceTitle, appId, appKey
+        deviceHash, deviceTitle, appId, appKey, isSilent
       )) =>
-        RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, deviceHash, deviceTitle, appId, appKey)
+        RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, deviceHash, deviceTitle, appId, appKey, isSilent)
     }
   }
 }

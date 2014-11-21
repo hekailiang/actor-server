@@ -14,14 +14,15 @@ import scala.util.Success
 
 object GroupAvatarChangedCodec extends Codec[GroupAvatarChanged] with utils.ProtobufCodec {
   def encode(u: GroupAvatarChanged) = {
-    val boxed = protobuf.UpdateGroupAvatarChanged(u.groupId, u.avatar map proto.toProto[models.Avatar, protobuf.Avatar])
+    val boxed = protobuf.UpdateGroupAvatarChanged(u.groupId, u.userId,
+      u.avatar.map(proto.toProto[models.Avatar, protobuf.Avatar]), u.date)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateGroupAvatarChanged.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.UpdateGroupAvatarChanged(groupId, avatar)) =>
-        GroupAvatarChanged(groupId, avatar map proto.fromProto[models.Avatar, protobuf.Avatar])
+      case Success(protobuf.UpdateGroupAvatarChanged(groupId, uid, avatar, date)) =>
+        GroupAvatarChanged(groupId, uid, avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]), date)
     }
   }
 }

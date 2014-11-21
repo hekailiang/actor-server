@@ -17,16 +17,21 @@ package object utils {
     def decodeProtobuf[T, R](res: => T)(f: PartialFunction[Success[T], R]): String \/ (BitVector, R) = {
       Try(res) match {
         case s@Success(_) => (BitVector.empty, f(s)).right
-        case Failure(e) => s"parse error: ${e.getMessage}".left
+        case Failure(e) =>
+//          e.printStackTrace()
+          s"parse error: ${e.getMessage}".left
       }
     }
+
     def decodeProtobufEither[T, R](res: => T)(f: PartialFunction[Success[T], String \/ R]): String \/ (BitVector, R) = {
       Try(res) match {
         case s@Success(_) => f(s) match {
           case \/-(res) => (BitVector.empty, res).right
           case l@(-\/(_)) => l
         }
-        case Failure(e) => s"parse error: ${e.getMessage}".left
+        case Failure(e) =>
+//          e.printStackTrace()
+          s"parse error: ${e.getMessage}".left
       }
     }
   }

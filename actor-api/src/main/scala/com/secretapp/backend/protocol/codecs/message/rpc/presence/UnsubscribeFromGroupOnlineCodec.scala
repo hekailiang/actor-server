@@ -21,7 +21,7 @@ object UnsubscribeFromGroupOnlineCodec extends Codec[UnsubscribeFromGroupOnline]
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UnsubscribeFromGroupOnline.parseFrom(buf.toByteArray)) {
       case Success(protobuf.UnsubscribeFromGroupOnline(groupIds)) =>
-        UnsubscribeFromGroupOnline(groupIds map struct.GroupId.fromProto)
+        UnsubscribeFromGroupOnline(groupIds map struct.GroupOutPeer.fromProto)
     }
   }
 }

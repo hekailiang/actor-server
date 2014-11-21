@@ -30,15 +30,15 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
 
   override  def postStop(): Unit = {
     super.postStop()
-    log.debug(s"$authId#postStop(): $remote, $connection")
+    //log.debug(s"$authId#postStop(): $remote, $connection")
   }
 
   def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
-      log.debug(s"$authId#Received($data)")
+      //log.debug(s"$authId#Received($data)")
       handleByteStream(BitVector(data.toArray))(handlePackage, e => sendDrop(e.msg))
     case ResponseToClient(payload) =>
-      log.debug(s"$authId#ResponseToClient($payload)")
+      //log.debug(s"$authId#ResponseToClient($payload)")
       serialize2MTPackageBox(payload, writing)
     case ResponseToClientWithDrop(payload) =>
       serialize2MTPackageBox(payload, writing)

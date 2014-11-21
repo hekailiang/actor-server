@@ -39,21 +39,21 @@ trait ContactService {
       authorizedRequest {
         handleRequestGetContacts(contactsHash)
       }
-    case RequestDeleteContact(contactId, accessHash) =>
+    case RequestRemoveContact(contactId, accessHash) =>
       authorizedRequest {
-        handleRequestDeleteContact(contactId, accessHash)
+        handleRequestRemoveContact(contactId, accessHash)
       }
-    case RequestEditContactName(contactId, accessHash, localName) =>
+    case RequestEditUserLocalName(contactId, accessHash, localName) =>
       authorizedRequest {
-        handleRequestEditContactName(contactId, accessHash, localName)
+        handleRequestEditUserLocalName(contactId, accessHash, localName)
       }
-    case RequestFindContacts(request) =>
+    case RequestSearchContacts(request) =>
       authorizedRequest {
-        handleRequestFindContacts(request)
+        handleRequestSearchContacts(request)
       }
-    case RequestAddContact(uid, accessHash) =>
+    case RequestAddContact(userId, accessHash) =>
       authorizedRequest {
-        handleRequestAddContact(uid, accessHash)
+        handleRequestAddContact(userId, accessHash)
       }
   }
 
@@ -96,7 +96,7 @@ trait ContactService {
             UpdatesBroker.NewUpdatePush(currentUser.authId,
               updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
           ).mapTo[UpdatesBroker.StrictState].map {
-            case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, uuid.encodeValid(state)))
+            case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, state.some))
           }
 
           for {
@@ -104,7 +104,7 @@ trait ContactService {
             _ <- clCacheFuture
             response <- stateFuture
           } yield response
-        } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, BitVector.empty)))
+        } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, None)))
     }
   }
 
@@ -129,7 +129,7 @@ trait ContactService {
     }
   }
 
-  def handleRequestDeleteContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
+  def handleRequestRemoveContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
@@ -152,7 +152,7 @@ trait ContactService {
     }
   }
 
-  def handleRequestEditContactName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
+  def handleRequestEditUserLocalName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     persist.User.getAccessSaltAndPhone(contactId) flatMap {
@@ -177,31 +177,31 @@ trait ContactService {
     }
   }
 
-  def handleRequestFindContacts(request: String): Future[RpcResponse] = {
+  def handleRequestSearchContacts(request: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
     PhoneNumber.normalizeStr(request, currentUser.countryCode) match {
-      case None => Future.successful(Ok(ResponseFindContacts(immutable.Seq[struct.User]())))
+      case None => Future.successful(Ok(ResponseSearchContacts(immutable.Seq[struct.User]())))
       case Some(phoneNumber) =>
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
           phones <- persist.Phone.getEntities(filteredPhones)
           users <- Future.sequence(phones map (p => persist.User.getEntity(p.userId))).map(_.flatten)
-        } yield Ok(ResponseFindContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
+        } yield Ok(ResponseSearchContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
     }
   }
 
-  def handleRequestAddContact(uid: Int, accessHash: Long): Future[RpcResponse] = {
+  def handleRequestAddContact(userId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    if (uid == currentUser.uid) {
+    if (userId == currentUser.uid) {
       Future.successful(RpcErrors.cantAddSelf)
     } else {
-      persist.User.getEntity(uid) flatMap {
+      persist.User.getEntity(userId) flatMap {
         case Some(user) =>
-          if (accessHash == ACL.userAccessHash(authId, uid, user.accessSalt)) {
-            val newContactsId = Set(uid)
-            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, uid, user.phoneNumber, "", user.accessSalt)
+          if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
+            val newContactsId = Set(userId)
+            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, user.phoneNumber, "", user.accessSalt)
             val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
             val stateFuture = ask(
               updatesBrokerRegion,

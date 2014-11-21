@@ -65,7 +65,7 @@ class GroupPresenceBroker extends Actor with ActorLogging {
       scheduledOffline += Tuple2(userId, system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(userId)))
 
       if (!onlineUserIds.contains(userId)) {
-        log.debug(s"Setting group online for groupId=$selfGroupId userId=$userId")
+        //log.debug(s"Setting group online for groupId=$selfGroupId userId=$userId")
 
         onlineUserIds += userId
         mediator ! Publish(GroupPresenceBroker.topicFor(selfGroupId), updateProto.GroupOnline(selfGroupId, onlineUserIds.size))

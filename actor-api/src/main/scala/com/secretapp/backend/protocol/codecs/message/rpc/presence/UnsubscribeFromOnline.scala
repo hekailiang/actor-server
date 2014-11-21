@@ -21,7 +21,7 @@ object UnsubscribeFromOnlineCodec extends Codec[UnsubscribeFromOnline] with util
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UnsubscribeFromOnline.parseFrom(buf.toByteArray)) {
       case Success(protobuf.UnsubscribeFromOnline(userIds)) =>
-        UnsubscribeFromOnline(userIds map (struct.UserId.fromProto(_)))
+        UnsubscribeFromOnline(userIds map (struct.UserOutPeer.fromProto(_)))
     }
   }
 }

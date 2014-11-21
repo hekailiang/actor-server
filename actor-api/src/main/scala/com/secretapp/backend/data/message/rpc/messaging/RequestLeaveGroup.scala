@@ -1,14 +1,10 @@
 package com.secretapp.backend.data.message.rpc.messaging
 
-import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
-import scodec.bits.BitVector
+import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestLeaveGroup(
-  groupId: Int,
-  accessHash: Long
-) extends RpcRequestMessage {
+case class RequestLeaveGroup(groupOutPeer: struct.GroupOutPeer) extends RpcRequestMessage {
   val header = RequestLeaveGroup.header
 }
 

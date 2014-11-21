@@ -14,14 +14,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestTypingCodec extends Codec[RequestTyping] with utils.ProtobufCodec {
   def encode(r: RequestTyping) = {
-    val boxed = protobuf.RequestTyping(r.uid, r.accessHash, r.typingType)
+    val boxed = protobuf.RequestTyping(r.peer.toProto, r.typingType)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestTyping.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestTyping(uid, accessHash, typingType)) =>
-        RequestTyping(uid, accessHash, typingType)
+      case Success(r) => RequestTyping(struct.OutPeer.fromProto(r.peer), r.typingType)
     }
   }
 }

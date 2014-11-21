@@ -9,7 +9,5 @@ case class UserKey(userId: Int, keyHash: Long) extends ProtobufMessage {
 }
 
 object UserKey {
-  def fromProto(userKey: protobuf.UserKey): UserKey = userKey match {
-    case protobuf.UserKey(uid, keyHash) => UserKey(uid, keyHash)
-  }
+  def fromProto(userKey: protobuf.UserKey) = UserKey(userKey.uid, userKey.keyHash)
 }

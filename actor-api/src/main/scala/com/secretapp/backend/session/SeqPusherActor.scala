@@ -18,19 +18,15 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
 
   def receive = {
     case (seq: Int, state: UUID, u: updateProto.SeqUpdateMessage) =>
-      log.info(s"Pushing update to session seq=$seq authId=$authId $u")
       val fupd = u match {
         case _: ContactRegistered | _: ContactsAdded =>
           val fuserStructs = u.userIds map { userId =>
             persist.User.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
           }
-          for {
-            userStructs <- Future.sequence(fuserStructs)
-          } yield {
-            FatSeqUpdate(seq, uuidCodec.encode(state).toOption.get, u, userStructs.flatten.toVector)
-          }
+          for { userStructs <- Future.sequence(fuserStructs) }
+          yield FatSeqUpdate(seq, uuidCodec.encode(state).toOption.get, u, userStructs.flatten.toVector, Vector.empty)
         case _ =>
-          Future.successful(SeqUpdate(seq, uuidCodec.encode(state).toOption.get, u))
+          Future.successful(SeqUpdate(seq, uuidCodec.encodeValid(state), u))
       }
 
       fupd map { upd =>

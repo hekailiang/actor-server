@@ -6,7 +6,7 @@ import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.Singletons
-import com.secretapp.backend.api.frontend.{ JsonConnection, MTConnection, TransportConnection }
+import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.api.frontend.ws.WSFrontend
 import com.secretapp.backend.crypto.ec
@@ -83,11 +83,11 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     u
   }
 
-  def authDefaultUser(uid: Int, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): models.User = blocking {
+  def authDefaultUser(userId: Int, phoneNumber: Long = defaultPhoneNumber)(implicit destActor: ActorRef, s: SessionIdentifier, authId: Long): models.User = blocking {
     val publicKey = hex"ac1d".bits
-    val name = s"Timothy${uid} Klim${uid}"
+    val name = s"Timothy${userId} Klim${userId}"
     val pkHash = ec.PublicKey.keyHash(publicKey)
-    val user = models.User(uid, authId, pkHash, publicKey, phoneNumber, "salt", name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+    val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, "salt", name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
     authUser(user, phoneNumber)
   }
 
@@ -134,11 +134,6 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val probe = TestProbe()
     val actor = transport match {
       case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion, csession))
-      case JsonConnection =>
-        val props = Props(new WSFrontend(probe.ref, inetAddr, sessionRegion, csession) {
-          override def receive = businessLogic orElse closeLogic
-        })
-        system.actorOf(props)
     }
     (probe, actor)
   }
@@ -161,13 +156,15 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
     def apply(): TestScope = apply(1, 79632740769L)
 
-    def apply(uid: Int, phone: Long): TestScope = {
+    def apply(userId: Int): TestScope = apply(userId, 79632740769L)
+
+    def apply(userId: Int, phone: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong()
       val publicKey = BitVector.fromLong(rand.nextLong())
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val newUser = models.User(uid, authId, pkHash, publicKey, phone, "salt", s"Timothy$uid Klim$uid", "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+      val newUser = models.User(userId, authId, pkHash, publicKey, phone, "salt", s"Timothy_$userId Klim_$userId", "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
     }

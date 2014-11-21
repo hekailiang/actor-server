@@ -13,10 +13,11 @@ import com.secretapp.backend.services.UserManagerService
 import com.secretapp.backend.services.rpc.presence.PresenceService
 import com.secretapp.backend.services.rpc.typing.TypingService
 import com.secretapp.backend.services.rpc.auth.SignService
-import com.secretapp.backend.services.rpc.push.PushService
-import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.services.rpc.contact.{ ContactService, PublicKeysService}
 import com.secretapp.backend.services.rpc.files.FilesService
+import com.secretapp.backend.services.rpc.messaging.MessagingService
+import com.secretapp.backend.services.rpc.push.PushService
+import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
 import scala.concurrent.Future
@@ -28,7 +29,7 @@ import Scalaz._
 trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
-trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with persist.CassandraRecords with RpcUpdatesService with RpcMessagingService with ContactService with FilesService
+trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with persist.CassandraRecords with RpcUpdatesService with MessagingService with ContactService with FilesService
 with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
@@ -59,43 +60,7 @@ with PublicKeysService with PresenceService with TypingService with UserService 
       handleUpdatesRpc(rq)
     }
 
-    @inline
-    def handleMessaging(rq: RpcRequestMessage) = authorizedRequest {
-      handleMessagingRpc(rq)
-    }
-
     body match {
-      // TODO: move to separate method!
-      case rq: RequestSendMessage =>
-        handleMessaging(rq)
-
-      case rq: RequestCreateGroup =>
-        handleMessaging(rq)
-
-      case rq: RequestInviteUsers =>
-        handleMessaging(rq)
-
-      case rq: RequestLeaveGroup =>
-        handleMessaging(rq)
-
-      case rq: RequestEditGroupTitle =>
-        handleMessaging(rq)
-
-      case rq: RequestEditGroupAvatar =>
-        handleMessaging(rq)
-
-      case rq: RequestRemoveUser =>
-        handleMessaging(rq)
-
-      case rq: RequestSendGroupMessage =>
-        handleMessaging(rq)
-
-      case rq: RequestMessageReceived =>
-        handleMessaging(rq)
-
-      case rq: RequestMessageRead =>
-        handleMessaging(rq)
-
       case rq: updateProto.RequestGetState =>
         handleUpdates(rq)
 
@@ -103,14 +68,15 @@ with PublicKeysService with PresenceService with TypingService with UserService 
         handleUpdates(rq)
 
       case _ =>
-        handleRpcAuth.
-          orElse(handleRpcFiles).
-          orElse(handleRpcContact).
-          orElse(handleRpcPresence).
-          orElse(handleRpcTyping).
-          orElse(handleRpcPublicKeys).
-          orElse(handleRpcUser).
-          orElse(handleRpcPush)(body)
+        handleRpcMessaging
+          .orElse(handleRpcAuth)
+          .orElse(handleRpcFiles)
+          .orElse(handleRpcContact)
+          .orElse(handleRpcPresence)
+          .orElse(handleRpcTyping)
+          .orElse(handleRpcPublicKeys)
+          .orElse(handleRpcUser)
+          .orElse(handleRpcPush)(body)
     }
   }
 
@@ -125,7 +91,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
     persist.UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
       case Success(authIds) =>
-        log.debug(s"Fetched authIds for uid=$userId $authIds")
         f(authIds)
 
       case Failure(e) =>
@@ -136,7 +101,6 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   protected def withRelations(userId: Int)(f: Seq[Long] => Unit): Unit =
     ask(socialBrokerRegion, SocialMessageBox(userId, GetRelations))(5.seconds).mapTo[SocialProtocol.RelationsType] onComplete {
       case Success(userIds) =>
-        log.debug(s"Got relations for $userId -> $userIds")
         userIds.foreach(withAuthIds(_)(f))
 
       case Failure(e) =>

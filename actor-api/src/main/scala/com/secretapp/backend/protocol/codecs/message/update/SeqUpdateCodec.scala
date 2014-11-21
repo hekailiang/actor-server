@@ -23,13 +23,12 @@ object SeqUpdateCodec extends Codec[SeqUpdate] with utils.ProtobufCodec {
   }
 
   def decode(buf: BitVector) = {
-    Try(protobuf.SeqUpdate.parseFrom(buf.toByteArray)) match {
+    decodeProtobufEither(protobuf.SeqUpdate.parseFrom(buf.toByteArray)) {
       case Success(u@protobuf.SeqUpdate(_, _, _, _)) =>
         SeqUpdate.fromProto(u) match {
-          case \/-(unboxed) => (BitVector.empty, unboxed).right
+          case \/-(unboxed) => unboxed.right
           case l@(-\/(_)) => l
         }
-      case Failure(e) => s"parse error: ${e.getMessage}".left
     }
   }
 }

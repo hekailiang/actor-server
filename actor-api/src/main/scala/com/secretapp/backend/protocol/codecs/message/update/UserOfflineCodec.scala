@@ -13,7 +13,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object UserOfflineCodec extends Codec[UserOffline] with utils.ProtobufCodec {
   def encode(u: UserOffline) = {
-    val boxed = protobuf.UpdateUserOffline(u.uid)
+    val boxed = protobuf.UpdateUserOffline(u.userId)
     encodeToBitVector(boxed)
   }
 

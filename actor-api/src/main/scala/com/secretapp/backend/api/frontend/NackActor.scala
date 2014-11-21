@@ -104,7 +104,6 @@ trait NackActor { this: Actor with ActorLogging =>
       context stop self
 
     } else if (stored > highWatermark) {
-      log.debug(s"suspending reading at $currentOffset")
       connection ! SuspendReading
       suspended = true
     }
@@ -122,7 +121,6 @@ trait NackActor { this: Actor with ActorLogging =>
     storage = storage drop 1
 
     if (suspended && stored < lowWatermark) {
-      log.debug("resuming reading")
       connection ! ResumeReading
       suspended = false
     }

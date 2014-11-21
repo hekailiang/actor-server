@@ -50,14 +50,12 @@ class CounterActor(name: String, initial: CounterProtocol.StateType = 0) extends
         maybeSnapshot()
       }
     case s: SaveSnapshotSuccess =>
-      log.debug("SaveSnapshotSuccess {}", s)
     case e: SaveSnapshotFailure =>
       log.error("SaveSnapshotFailure {}", e)
   }
 
   def receiveRecover: Actor.Receive = {
     case SnapshotOffer(metadata, offeredSnapshot) =>
-      log.debug("SnapshotOffer {} {}", metadata, offeredSnapshot)
       count = offeredSnapshot.asInstanceOf[StateType]
     case GetNext =>
       count += 1
@@ -67,7 +65,6 @@ class CounterActor(name: String, initial: CounterProtocol.StateType = 0) extends
 
   private def maybeSnapshot(): Unit = {
     if (count - lastSnapshottedAt >= minSnapshotStep) {
-      log.debug("Saving snapshot count={} lastSnapshottedAt={}", count, lastSnapshottedAt)
       lastSnapshottedAt = count
       saveSnapshot(count)
     }

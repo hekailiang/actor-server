@@ -16,9 +16,8 @@ trait HandlerService extends UserHelpers {
   import context.dispatcher
   import TypingProtocol._
 
-  protected def handleRequestTyping(uid: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    log.info(s"Handling RequestTyping $uid, $accessHash, $typingType")
-    getUsers(uid) map {
+  protected def handleRequestTyping(userId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
+    getUsers(userId) map {
       case users if users.isEmpty =>
         Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
       case users =>
@@ -27,14 +26,13 @@ trait HandlerService extends UserHelpers {
         if (ACL.userAccessHash(currentUser.authId, checkUser) != accessHash) {
           Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false)
         } else {
-          typingBrokerRegion ! Envelope(uid, UserTyping(currentUser.uid, typingType))
+          typingBrokerRegion ! Envelope(userId, UserTyping(currentUser.uid, typingType))
           Ok(ResponseVoid())
         }
     }
   }
 
   protected def handleRequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    log.info(s"Handling RequestGroupTyping $groupId, $accessHash, $typingType")
     persist.Group.getEntity(groupId)(session) map {
       case Some(group) =>
         if (group.accessHash != accessHash) {

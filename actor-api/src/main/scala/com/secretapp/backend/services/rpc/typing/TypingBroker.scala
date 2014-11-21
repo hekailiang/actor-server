@@ -5,11 +5,13 @@ import akka.contrib.pattern.{ ClusterSharding, DistributedPubSubExtension, Shard
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
@@ -44,7 +46,7 @@ object TypingBroker {
   def topicFor(userId: Int): String = s"typing-u${userId}"
   def topicFor(userId: Int, authId: Long): String = s"typing-u${userId}-a${authId}"
 
-  def topicFor(typ: BrokerType.Value, userId: Int): String = typ match {
+  def topicFor(kind: BrokerType.Value, userId: Int): String = kind match {
     case BrokerType.User  => s"typing-u${userId}"
     case BrokerType.Group => s"typing-g${userId}"
   }
@@ -113,43 +115,53 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
 
       selfType match {
         case BrokerType.User =>
-          log.debug(s"Publishing UserTyping ${userId}")
-          mediator ! Publish(TypingBroker.topicFor(selfId), updateProto.Typing(userId, typingType))
+          //log.debug(s"Publishing UserTyping ${userId}")
+          mediator ! Publish(
+            TypingBroker.topicFor(selfId),
+            updateProto.Typing(
+              struct.Peer(struct.PeerType.Private, userId),
+              userId,
+              typingType
+            )
+          )
         case BrokerType.Group =>
-          log.debug(s"Publishing UserTypingGroup ${userId}")
-          persist.GroupUser.getUsersWithKeyHashes(selfId) map { xs =>
-            xs foreach {
-              case (userId, keyHashes) =>
-                keyHashes foreach { keyHash =>
-                  for {
-                    optAuthId <- authIdFor(userId, keyHash)
-                  } yield {
-                    optAuthId map {
-                      case \/-(authId) =>
-                        mediator ! Publish(TypingBroker.topicFor(userId, authId), updateProto.TypingGroup(selfId, userId, typingType))
-                      case _ =>
-                        log.warning(s"Attempt to send to user with deleted key userId=$userId keyHash=$keyHash")
-                    }
-                  }
-                }
+          //log.debug(s"Publishing UserTypingGroup ${userId}")
+          for {
+            groupUserIds <- persist.GroupUser.getUserIds(selfId)
+            pairs <- Future.sequence(
+              groupUserIds map { userId =>
+                getAuthIds(userId) map (_ map ((userId, _)))
+              }
+            ) map (_.flatten)
+          } yield {
+            pairs foreach {
+              case (userId, authId) =>
+                mediator ! Publish(
+                  TypingBroker.topicFor(userId, authId),
+                  updateProto.Typing(
+                    struct.Peer(struct.PeerType.Group, selfId),
+                    userId,
+                    typingType
+                  )
+                )
             }
           }
       }
 
       typingUsers += Tuple2((userId, typingType), system.scheduler.scheduleOnce(TypingBroker.timeoutFor(typingType), self, UserNotTyping(userId, typingType)))
 
-    case m @ UserNotTyping(uid, typingType) =>
-      typingUsers.get((uid, typingType)) map (_.cancel)
-      typingUsers -= Tuple2(uid, typingType)
+    case m @ UserNotTyping(userId, typingType) =>
+      typingUsers.get((userId, typingType)) map (_.cancel)
+      typingUsers -= Tuple2(userId, typingType)
 
     case m @ TellTypings(target) =>
       typingUsers foreach {
         case ((userId, typingType), _) =>
           selfType match {
             case BrokerType.User =>
-              target ! updateProto.Typing(userId, typingType)
+              target ! updateProto.Typing(struct.Peer(struct.PeerType.Private, userId), userId, typingType)
             case BrokerType.Group =>
-              target ! updateProto.TypingGroup(selfId, userId, typingType)
+              target ! updateProto.Typing(struct.Peer(struct.PeerType.Group, selfId), userId, typingType)
           }
       }
 

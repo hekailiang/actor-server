@@ -1,25 +1,23 @@
 package com.secretapp.backend.session
 
 import akka.actor._
-import akka.persistence._
-import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
+import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
+import akka.persistence._
 import akka.util.Timeout
+import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
-import com.secretapp.backend.models.User
-import com.secretapp.backend.services.common.RandomService
-import scala.concurrent.duration._
-import scala.collection.immutable
 import com.secretapp.backend.data.transport.MessageBox
-import com.datastax.driver.core.{ Session => CSession }
+import com.secretapp.backend.models.User
+import com.secretapp.backend.services.common.PackageCommon._
+import com.secretapp.backend.services.common.RandomService
+import im.actor.util.logging.MDCActorLogging
+import scala.collection.immutable
+import scala.concurrent.duration._
+import scalaz.Scalaz._
 import scodec.bits._
-import com.secretapp.backend.services.common.PackageCommon
-import com.secretapp.backend.api._
-import PackageCommon._
-import scalaz._
-import Scalaz._
-import com.datastax.driver.core.{ Session => CSession }
 
 object SessionProtocol {
   // TODO: wrap all messages into Envelope
@@ -30,8 +28,6 @@ object SessionProtocol {
   }
   @SerialVersionUID(1L)
   case class HandleMTMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
-  @SerialVersionUID(1L)
-  case class HandleJsonMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
 
   @SerialVersionUID(1L)
   case class AuthorizeUser(user: User) extends SessionMessage
@@ -83,7 +79,7 @@ object SessionActor {
     )
 }
 
-class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with ActorLogging {
+class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with MDCActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -112,26 +108,32 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
   // we need lazy here because subscribedToUpdates sets during receiveRecover
   lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, subscribedToUpdates, session)), "api-broker")
 
+  override protected def mdc = Map(
+    "unit" -> "session",
+    "sessionId" -> sessionId,
+    "authId" -> authId
+  )
+
   def queueNewSession(messageId: Long): Unit = {
-    log.info(s"$authId, $sessionId#queueNewSession $messageId, $sessionId")
+    withMDC(log.debug(s"$authId, $sessionId#queueNewSession $messageId, $sessionId"))
     val mb = MessageBox(getMessageId(TransportMsgId), NewSession(messageId, sessionId))
     registerSentMessage(mb, serializeMessageBox(mb))
   }
 
   override def preStart(): Unit = {
-    log.debug(s"$authId, $sessionId#preStart")
+    withMDC(log.debug(s"$authId, $sessionId#preStart"))
     super.preStart()
   }
 
   override def postStop(): Unit = {
-    log.debug(s"$authId, $sessionId#postStop")
+    withMDC(log.debug(s"postStop"))
     connectors foreach (_ ! SilentClose)
     super.postStop()
   }
 
   def checkNewConnection(connector: ActorRef) = {
     if (!connectors.contains(connector)) {
-      log.debug(s"$authId, $sessionId#NewConnection $connector")
+      withMDC(log.debug(s"NewConnection $connector"))
       connectors = connectors + connector
       lastConnector = connector.some
       context.watch(connector)
@@ -139,7 +141,6 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
       getUnsentMessages() map { messages =>
         messages foreach { case Tuple2(mid, message) =>
           val pe = serializePackage(message)
-          println(s"connector ! pe: $pe")
           connector ! pe
         }
       }
@@ -148,9 +149,8 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
 
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
-      log.debug(s"$authId, $sessionId#$authId#HandleMessageBox($handleBox)")
+      withMDC(log.info(s"HandleMessageBox($handleBox)"))
       transport = handleBox match {
-        case _: HandleJsonMessageBox => JsonConnection.some
         case _: HandleMTMessageBox => MTConnection.some
       }
       queueNewSession(handleBox.mb.messageId)
@@ -159,14 +159,14 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
     case p: AuthorizeUser =>
       receiveBusinessLogic(p)
     case m =>
-      log.error(s"received unmatched message: $m")
+      withMDC(log.error(s"received unmatched message: $m"))
   }
 
   val receiveBusinessLogic: Receive = {
     case handleBox: HandleMessageBox =>
       val connector = sender()
       checkNewConnection(connector)
-      log.debug(s"$authId, $sessionId#$authId#HandleMessageBox ${handleBox.mb} $connector")
+      withMDC(log.info(s"HandleMessageBox ${handleBox.mb} $connector"))
       lastConnector = connector.some
 
       handleBox.mb.body match {
@@ -175,32 +175,30 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
       }
     case SendRpcResponseBox(connector, rpcBox) =>
       val mb = MessageBox(getMessageId(ResponseMsgId), rpcBox)
-      log.debug(s"$authId, $sessionId#SendMessageBox $authId $sessionId $connector $mb")
+      withMDC(log.info(s"SendMessageBox $mb"))
 
       val origEncoded = serializeMessageBox(mb)
       val origLength = origEncoded.length / 8
       val blob = mb.body match {
         case RpcResponseBox(messageId, _) if origLength > maxResponseLength =>
           val unsentResponse = UnsentResponse(mb.messageId, messageId, origLength.toInt)
-          log.debug(s"$authId, $sessionId#Response is too large, generated $unsentResponse")
+          //log.debug(s"$authId, $sessionId#Response is too large, generated $unsentResponse")
           serializeMessageBox(MessageBox(mb.messageId, unsentResponse))
         case _ => origEncoded
       }
       registerSentMessage(mb, blob)
 
       val pe = serializePackage(origEncoded)
-      println(s"tell.! connector $connector ! pe: $mb")
       connector ! pe
     case UpdateBoxToSend(ub) =>
-      log.debug(s"$authId, $sessionId#UpdateBoxToSend $authId $sessionId $ub")
+      withMDC(log.info(s"UpdateBoxToSend $ub"))
       val mb = MessageBox(getMessageId(UpdateMsgId), ub)
-      println(s"tell.! connectors $connectors ! pe: $mb")
       val blob = serializeMessageBox(mb)
       registerSentMessage(mb, blob)
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
-      log.debug(s"$authId, $sessionId#$authId#$msg")
+      //log.debug(s"$authId, $sessionId#$authId#$msg")
       if (!currentUser.exists(_ == user)) {
         persist(msg) { _ =>
           currentUser = Some(user)
@@ -237,7 +235,7 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
     case SubscribeAck(ack) =>
       handleSubscribeAck(ack)
     case Terminated(connector) =>
-      log.debug(s"$authId, $sessionId#removing connector $connector")
+      //log.debug(s"$authId, $sessionId#removing connector $connector")
       connectors = connectors - connector
     case ReceiveTimeout ⇒
       context.parent ! Passivate(stopMessage = Stop)
@@ -247,8 +245,6 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
 
   val receiveRecover: Receive = {
     case RecoveryCompleted =>
-      log.info(s"$authId, $sessionId#RecoveryCompleted")
-
       if (subscribingToUpdates) {
         subscribeToUpdates()
       }

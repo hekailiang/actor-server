@@ -8,8 +8,9 @@ import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.update.{ SeqUpdate, MessageReceived, MessageRead }
+import com.secretapp.backend.data.message.rpc.history._
+import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist
@@ -24,16 +25,16 @@ import scala.language.higherKinds
 import scodec.bits._
 
 class RpcMessagingSpec extends RpcSpec {
-  def getState(implicit scope: TestScope): (updateProto.ResponseSeq, Seq[UpdateBox]) = {
+  def getState(implicit scope: TestScope): (ResponseSeq, Seq[UpdateBox]) = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
-    updateProto.RequestGetState() :~> <~:[updateProto.ResponseSeq]
+    RequestGetState() :~> <~:[ResponseSeq]
   }
 
-  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): updateProto.Difference = {
+  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): Difference = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
-    val rq = updateProto.RequestGetDifference(seq, state)
+    val rq = RequestGetDifference(seq, state)
     val messageId = getMessageId()
     val rpcRq = RpcRequestBox(Request(rq))
     val packageBlob = pack(0, u.authId, MessageBox(messageId, rpcRq))
@@ -44,10 +45,134 @@ class RpcMessagingSpec extends RpcSpec {
     msg
       .body.asInstanceOf[RpcResponseBox]
       .body.asInstanceOf[Ok]
-      .body.asInstanceOf[updateProto.Difference]
+      .body.asInstanceOf[Difference]
   }
 
   "RpcMessaging" should {
+    "deliver unencrypted messages" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+      }
+
+      Thread.sleep(1000)
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[Message]
+        upd.peer should_==(struct.Peer.privat(scope1.user.uid))
+        upd.senderUid should_==(scope1.user.uid)
+        upd.randomId should_==(1L)
+        upd.message should_==(TextMessage("Yolo!"))
+      }
+    }
+
+    "deliver unencrypted UpdateMessageReceived" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      Thread.sleep(1000)
+
+      val date = System.currentTimeMillis()
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageReceived(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          date = date
+        ) :~> <~:[ResponseVoid]
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageReceived]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+        upd.date should_==(date)
+      }
+    }
+
+    "deliver unencrypted UpdateMessageRead" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      Thread.sleep(1000)
+
+      val date = System.currentTimeMillis()
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageRead(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          date = date
+        ) :~> <~:[ResponseVoid]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageReadByMe]
+        upd.peer should_==(struct.Peer.privat(scope1.user.uid))
+        upd.date should_==(date)
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageRead]
+        upd.peer should_==(struct.Peer.privat(scope2.user.uid))
+        upd.date should_==(date)
+      }
+    }
+
     "reply to SendMessage and push to sequence" in {
       //implicit val (probe, apiActor) = probeAndActor()
       //implicit val sessionId = SessionIdentifier()
@@ -80,34 +205,34 @@ class RpcMessagingSpec extends RpcSpec {
       // get initial state
       val (initialState, _) = getState
 
-      val rq = RequestSendMessage(
-        uid = secondUser.uid,
-        accessHash = ACL.userAccessHash(scope.user.authId, secondUser),
+      val rq = RequestSendEncryptedMessage(
+        struct.OutPeer.privat(secondUser.uid, ACL.userAccessHash(scope.user.authId, secondUser)),
         randomId = 555L,
-        message = EncryptedRSAMessage(
-          encryptedMessage = BitVector(1, 2, 3),
-          keys = immutable.Seq(
-            EncryptedAESKey(
-              secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
-            )
-          ),
-          ownKeys = immutable.Seq(
-            EncryptedAESKey(
-              scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
-            )
+        encryptedMessage = BitVector(1, 2, 3),
+        keys = immutable.Seq(
+          EncryptedAESKey(
+            secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
+          )
+        ),
+        ownKeys = immutable.Seq(
+          EncryptedAESKey(
+            scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
           )
         )
       )
 
-      val (resp, _) = rq :~> <~:[updateProto.ResponseSeq]
+      val (resp, _) = rq :~> <~:[ResponseMessageSent]
       resp.seq should beEqualTo(initialState.seq + 2)
 
       val (state, _) = getState
       state.seq must equalTo(initialState.seq + 2)
       getDifference(initialState.seq, initialState.state).updates.length must equalTo(2)
 
-
-      rq :~> <~:(409, "MESSAGE_ALREADY_SENT")
+      {
+        // same randomId
+        val (resp, _) = rq :~> <~:[ResponseMessageSent]
+        resp.seq should beEqualTo(initialState.seq + 2)
+      }
 
       Thread.sleep(1000)
 
@@ -122,24 +247,23 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             )
           )
         )
-        rq :~> <~:[updateProto.ResponseSeq]
+
+        rq :~> <~:[ResponseMessageSent]
 
         // subscribe to updates
         getState(scope)
@@ -148,7 +272,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageReceived(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
+        RequestEncryptedReceived(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)), 555L) :~> <~:[ResponseVoid]
       }
 
       {
@@ -157,7 +281,7 @@ class RpcMessagingSpec extends RpcSpec {
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[SeqUpdate]
-        update.body should beAnInstanceOf[MessageReceived]
+        update.body should beAnInstanceOf[EncryptedReceived]
       }
     }
 
@@ -169,24 +293,23 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             )
           )
         )
-        rq :~> <~:[updateProto.ResponseSeq]
+
+        rq :~> <~:[ResponseMessageSent]
 
         // subscribe to updates
         getState(scope)
@@ -197,7 +320,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestMessageRead(scope1.user.uid, 555L, ACL.userAccessHash(scope.user.authId, scope1.user)) :~> <~:[ResponseVoid]
+        RequestEncryptedRead(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)), 555L) :~> <~:[ResponseVoid]
       }
 
       {
@@ -206,10 +329,10 @@ class RpcMessagingSpec extends RpcSpec {
         val p = protoReceiveN(1)(scope.probe, scope.apiActor)
         val updBox = MessageBoxCodec.decodeValidValue(p.head.messageBoxBytes).body.asInstanceOf[UpdateBox]
         val update = updBox.body.asInstanceOf[SeqUpdate]
-        update.body should beAnInstanceOf[MessageRead]
+        update.body should beAnInstanceOf[EncryptedRead]
 
-        val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-        diff.updates.last.body should beAnInstanceOf[MessageRead]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        diff.updates.last.body should beAnInstanceOf[EncryptedRead]
       }
     }
 
@@ -226,26 +349,25 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
             ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                scope1.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              ),
-              EncryptedAESKey(
-                111L, BitVector(1, 0, 1, 0)
-              )
+            EncryptedAESKey(
+              111L, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         val error = rq :~> <~:(400, "WRONG_KEYS")
         error.data.get should equalTo(struct.WrongReceiversErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
@@ -257,29 +379,187 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val rq = RequestSendMessage(
-          uid = scope2.user.uid, accessHash = ACL.userAccessHash(scope.user.authId, scope2.user),
+        val rq = RequestSendEncryptedMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 555L,
-          message = EncryptedRSAMessage(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
-              )
-            ),
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                111L, BitVector(1, 0, 1, 0)
-              )
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              111L, BitVector(1, 0, 1, 0)
             )
           )
         )
+
         val error = rq :~> <~:(400, "WRONG_KEYS")
         error.data.get should equalTo(struct.WrongReceiversErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
           removedKeys = Seq(struct.UserKey(scope2.user.uid, scope2.user.publicKeyHash)),
           invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
         ))
+      }
+    }
+
+    "load history of unencrypted messages" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user1!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user2!")
+        ) :~> <~:[ResponseMessageSent]
+      }
+
+      Thread.sleep(1000)
+
+      {
+        implicit val scope = scope1
+
+        val (resp, _) = RequestLoadHistory(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          startDate = 0,
+          limit = 2
+        ) :~> <~:[ResponseLoadHistory]
+
+        resp.users.length should_== 1
+        resp.history.length should_== 2
+      }
+    }
+
+    "clear chat and send updates" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        RequestSendMessage(
+          outPeer = outPeer,
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        RequestClearChat(outPeer) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatClear]
+
+        Thread.sleep(1000)
+
+        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+      }
+
+    }
+
+    "delete chat and send updates" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        RequestSendMessage(
+          outPeer = outPeer,
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        RequestDeleteChat(outPeer) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
+
+        Thread.sleep(1000)
+
+        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+        persist.Dialog.fetchDialogs(scope.user.uid, 0, 0).sync().length should_== 0
+      }
+
+    }
+
+    "load dialogs in proper order" in {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val scope3 = TestScope(rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+      catchNewSession(scope3)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(1000)
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope3.user.uid, ACL.userAccessHash(scope.user.authId, scope3.user)),
+          randomId = 2L,
+          message = TextMessage("Yolo from user1 to user3! #1")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(2000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.length should_== 2
+          resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user3! #1")
+          resp.dialogs.head.peer.id should_== scope3.user.uid
+        }
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 3L,
+          message = TextMessage("Yolo from user1 to user2! #2")
+        ) :~> <~:[ResponseMessageSent]
+
+        Thread.sleep(2000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.length should_== 2
+          resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user2! #2")
+          resp.dialogs.head.peer.id should_== scope2.user.uid
+          resp.dialogs.head.unreadCount should_== 2
+        }
       }
     }
   }

@@ -21,7 +21,7 @@ object SubscribeToOnlineCodec extends Codec[SubscribeToOnline] with utils.Protob
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.SubscribeToOnline.parseFrom(buf.toByteArray)) {
       case Success(protobuf.SubscribeToOnline(userIds)) =>
-        SubscribeToOnline(userIds map (struct.UserId.fromProto(_)))
+        SubscribeToOnline(userIds map (struct.UserOutPeer.fromProto(_)))
     }
   }
 }

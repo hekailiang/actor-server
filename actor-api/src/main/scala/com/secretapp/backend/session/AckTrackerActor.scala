@@ -44,7 +44,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
         case Some(message) =>
           State(messages - key, messagesSize - (message.size / 8).toInt)
         case None =>
-          log.warning("Trying to remove element which is not present in undelivered things list")
+          //log.warning("Trying to remove element which is not present in undelivered things list")
           this
       }
     }
@@ -54,7 +54,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
 
   def receive = {
     case m: RegisterMessage =>
-      log.debug(s"RegisterMessage ${m.key} size=${state.messagesSize}")
+      //log.debug(s"RegisterMessage ${m.key} size=${state.messagesSize}")
       val newState = state.withNew(m.key, m.value)
 
       if (newState.messagesSize > sizeLimit) {
@@ -67,10 +67,10 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
     case m: RegisterMessageAck =>
       registerMessageAck(m.key)
     case ms: RegisterMessageAcks =>
-      log.debug(s"RegisterMessageAcks $ms")
+      //log.debug(s"RegisterMessageAcks $ms")
       ms.keys.foreach(registerMessageAck)
     case GetUnackdMessages =>
-      log.debug(s"GetUnackdMessages $state")
+      //log.debug(s"GetUnackdMessages $state")
       sender() ! UnackdMessages(state.messages)
   }
 

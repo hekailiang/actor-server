@@ -1,10 +1,13 @@
 package com.secretapp.backend.api
 
+import com.secretapp.backend.data.message.struct.PeerType
 import com.secretapp.backend.util.ACL
+import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ update => updateProto }
-import com.secretapp.backend.data.message.struct.UserId
+import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
+import com.secretapp.backend.models
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
 import scala.collection.immutable
@@ -12,7 +15,300 @@ import scala.language.higherKinds
 import scodec.bits._
 
 class GroupMessagingSpec extends RpcSpec {
+  def createGroup(users: immutable.Seq[models.User])(implicit scope: TestScope): ResponseCreateGroup = {
+    val rqCreateGroup = RequestCreateGroup(
+      randomId = 1L,
+      title = "Group 3000",
+      users = users map { user =>
+        struct.UserOutPeer(user.uid, ACL.userAccessHash(scope.user.authId, user))
+      }
+    )
+
+    val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
+
+    resp
+  }
+
   "GroupMessaging" should {
+    "send invites on group creation" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "send invites on group invitation" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector())(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestInviteUsers(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          users = Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserAdded]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+        upd.userId should_==(scope2.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.inviterUserId should_==(scope1.user.uid)
+      }
+    }
+
+    "not allow to invite user twice" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestInviteUsers(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          users = Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:(400, "USER_ALREADY_INVITED")
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        // check if there are doubled invitation updates
+        diff.updates.length should beEqualTo(1)
+      }
+    }
+
+    "send updates on group leave" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope2
+
+        RequestLeaveGroup(
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        ) :~> <~:[ResponseSeq]
+
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserLeave]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserLeave]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+      }
+    }
+
+    "send updates on group kick" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestRemoveUsers(
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          Vector(struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)))
+        ) :~> <~:[ResponseSeq]
+
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserKick]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+        upd.kickerUid should_==(scope.user.uid)
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserKick]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+        upd.kickerUid should_==(scope1.user.uid)
+      }
+    }
+
+    "deliver messages into group" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestSendMessage(
+          outPeer = struct.OutPeer.group(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          randomId = 1L,
+          message = TextMessage("Yolo!")
+        ) :~> <~:[ResponseMessageSent]
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.id))
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[Message]
+        upd.peer should_==(struct.Peer.group(respGroup.groupPeer.id))
+        upd.senderUid should_==(scope1.user.uid)
+        upd.randomId should_==(1L)
+        upd.message should_==(TextMessage("Yolo!"))
+      }
+    }
+
+    "send updates on title change" in {
+      val (scope1, scope2) = TestScope.pair()
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope1
+
+        RequestEditGroupTitle(
+          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          title = "Group 4000"
+        ) :~> <~:[ResponseSeq]
+
+        val (diff, _) = RequestGetDifference(respGroup.seq, respGroup.state) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(1)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.title should_==("Group 4000")
+      }
+
+      {
+        implicit val scope = scope2
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupTitleChanged]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.title should_==("Group 4000")
+      }
+    }
+
+    "send updates on group deletion" in {
+      val (scope1, scope2) = TestScope.pair()
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(Vector(scope2.user))(scope1)
+
+      {
+        implicit val scope = scope2
+
+        RequestDeleteGroup(
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        ) :~> <~:[ResponseSeq]
+
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(3)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
+        upd.peer.typ should_== PeerType.Group
+        upd.peer.id should_== respGroup.groupPeer.id
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[GroupUserLeave]
+        upd.groupId should_==(respGroup.groupPeer.id)
+        upd.userId should_==(scope2.user.uid)
+      }
+    }
+
+    /*
     "send updates on name change" in {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
@@ -156,8 +452,8 @@ class GroupMessagingSpec extends RpcSpec {
         val invite = diff.updates.head.body.assertInstanceOf[GroupInvite]
 
         invite.users.toSet should beEqualTo(Set(
-          UserId(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
-          UserId(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+          struct.UserOutPeer(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ))
 
         diff.updates(1).body.assertInstanceOf[GroupMessage]
@@ -223,7 +519,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
         val update = diff.updates.head.body.assertInstanceOf[GroupInvite]
-        update.users should beEqualTo(Seq(UserId(scope1.user.uid, ACL.userAccessHash(scope2.user.authId, scope1.user))))
+        update.users should beEqualTo(Seq(struct.UserOutPeer(scope1.user.uid, ACL.userAccessHash(scope2.user.authId, scope1.user))))
       }
     }
 
@@ -416,6 +712,6 @@ class GroupMessagingSpec extends RpcSpec {
         diff1.updates.length should beEqualTo(1)
         diff2.updates.last.body.assertInstanceOf[GroupUserAdded]
       }
-    }
+    }*/
   }
 }

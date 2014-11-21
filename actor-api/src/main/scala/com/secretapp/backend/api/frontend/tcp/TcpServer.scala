@@ -23,12 +23,12 @@ class TcpServer(sessionRegion: ActorRef)(implicit csession: CSession) extends Ac
 
   def receive = {
     case b @ Bound(localAddress) =>
-      log.info(s"Bound: $b")
+      //log.debug(s"Bound: $b")
     case CommandFailed(_: Bind) =>
-      log.info("CommandFailed")
+      //log.debug("CommandFailed")
       context stop self
     case c @ Connected(remote, local) =>
-      log.info(s"Connected: $c")
+      log.debug(s"Connected: $c")
       val connection = sender()
       val frontend = context.actorOf(TcpFrontend.props(connection, remote, sessionRegion, csession))
       connection ! Register(frontend, keepOpenOnPeerClosed = true)

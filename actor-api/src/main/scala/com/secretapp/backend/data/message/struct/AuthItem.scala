@@ -16,15 +16,9 @@ case class AuthItem(
 }
 
 object AuthItem {
-  def fromProto(authItem: protobuf.AuthItem): AuthItem = authItem match {
-    case protobuf.AuthItem(
-      id, authHolder, appId, appTitle, deviceTitle, authTime,
-      authLocation, latitude, longitude
-    ) => AuthItem(
-      id, authHolder, appId, appTitle, deviceTitle, authTime,
-      authLocation, latitude, longitude
-    )
-  }
+  def fromProto(authItem: protobuf.AuthItem): AuthItem =
+    AuthItem(authItem.id, authItem.authHolder, authItem.appId, authItem.appTitle, authItem.deviceTitle, authItem.authTime,
+      authItem.authLocation, authItem.latitude, authItem.longitude)
 
   def fromModel(a: models.AuthItem, currentAuthId: Long) = {
     val authHolder = if (currentAuthId == a.authId) 0 else 1

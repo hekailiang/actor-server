@@ -18,12 +18,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
     override lazy val name = "access_hash"
   }
   object title extends StringColumn(this)
-  object keyHash extends BlobColumn(this) {
-    override lazy val name = "key_hash"
-  }
-  object publicKey extends BlobColumn(this) {
-    override lazy val name = "public_key"
-  }
+
   object smallAvatarFileId extends OptionalIntColumn(this) {
     override lazy val name = "small_avatar_file_id"
   }
@@ -63,9 +58,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
       id            = id(row),
       creatorUserId = creatorUserId(row),
       accessHash    = accessHash(row),
-      title         = title(row),
-      keyHash       = BitVector(keyHash(row)),
-      publicKey     = BitVector(publicKey(row))
+      title         = title(row)
     )
   }
 
@@ -75,9 +68,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
         id            = id(row),
         creatorUserId = creatorUserId(row),
         accessHash    = accessHash(row),
-        title         = title(row),
-        keyHash       = BitVector(keyHash(row)),
-        publicKey     = BitVector(publicKey(row))
+        title         = title(row)
       ),
       models.AvatarData(
         smallAvatarFileId   = smallAvatarFileId(row),
@@ -106,9 +97,10 @@ object Group extends Group with TableOps {
       .value(_.creatorUserId, entity.creatorUserId)
       .value(_.accessHash, entity.accessHash)
       .value(_.title, entity.title)
-      .value(_.keyHash, entity.keyHash.toByteBuffer)
-      .value(_.publicKey, entity.publicKey.toByteBuffer)
       .future()
+
+  def dropEntity(groupId: Int)(implicit session: Session): Future[Unit] =
+    delete.where(_.id eqs groupId).future() map (_ => ())
 
   def getEntity(groupId: Int)(implicit session: Session): Future[Option[models.Group]] =
     select.where(_.id eqs groupId).one()
@@ -134,4 +126,7 @@ object Group extends Group with TableOps {
       .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
+
+  def removeAvatar(id: Int)(implicit session: Session) =
+    updateAvatar(id, models.Avatar(None, None, None))
 }

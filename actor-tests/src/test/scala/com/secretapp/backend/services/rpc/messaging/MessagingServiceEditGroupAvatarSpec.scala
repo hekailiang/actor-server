@@ -1,6 +1,7 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{ Files, Paths }
+import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -23,9 +24,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     }
   }
 
-  "user service on receiving `RequestSetAvatar`" should {
+  "user service on receiving `RequestEditGroupAvatar`" should {
 
-    "respond with `ResponseAvatarUploaded`" in {
+    "respond with `ResponseAvatarChanged`" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -35,7 +36,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        val r = setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        val r = setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
         r.avatar.fullImage.get.width          should_== validOrigDimensions._1
         r.avatar.fullImage.get.height         should_== validOrigDimensions._2
@@ -54,7 +55,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "update user avatar" in {
+    "update group avatar" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -64,16 +65,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       val r = {
         implicit val scope = scope1
 
-        setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
       }
 
-      dbGroup(respGroup.groupId)._2.avatar    should beSome
-      dbAvatar(respGroup.groupId).fullImage   should beSome
-      dbAvatar(respGroup.groupId).smallImage  should beSome
-      dbAvatar(respGroup.groupId).largeImage  should beSome
+      dbGroup(respGroup.groupPeer.id)._2.avatar    should beSome
+      dbAvatar(respGroup.groupPeer.id).fullImage   should beSome
+      dbAvatar(respGroup.groupPeer.id).smallImage  should beSome
+      dbAvatar(respGroup.groupPeer.id).largeImage  should beSome
     }
 
-    "store full image in user avatar" in {
+    "store full image in group avatar" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -83,16 +84,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbFullImage(respGroup.groupId).width           should_== validOrigDimensions._1
-        dbFullImage(respGroup.groupId).height          should_== validOrigDimensions._2
-        dbFullImage(respGroup.groupId).fileSize        should_== validOrigBytes.length
-        dbImageBytes(dbFullImage((respGroup.groupId))) should_== validOrigBytes
+        dbFullImage(respGroup.groupPeer.id).width           should_== validOrigDimensions._1
+        dbFullImage(respGroup.groupPeer.id).height          should_== validOrigDimensions._2
+        dbFullImage(respGroup.groupPeer.id).fileSize        should_== validOrigBytes.length
+        dbImageBytes(dbFullImage(respGroup.groupPeer.id)) should_== validOrigBytes
       }
     }
 
-    "store large image in user avatar" in {
+    "store large image in group avatar" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -102,16 +103,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbLargeImage(respGroup.groupId).width         should_== validLargeDimensions._1
-        dbLargeImage(respGroup.groupId).height        should_== validLargeDimensions._2
-        dbLargeImage(respGroup.groupId).fileSize      should_== validLargeBytes.length
-        dbImageBytes(dbLargeImage(respGroup.groupId)) should_== validLargeBytes
+        dbLargeImage(respGroup.groupPeer.id).width         should_== validLargeDimensions._1
+        dbLargeImage(respGroup.groupPeer.id).height        should_== validLargeDimensions._2
+        dbLargeImage(respGroup.groupPeer.id).fileSize      should_== validLargeBytes.length
+        dbImageBytes(dbLargeImage(respGroup.groupPeer.id)) should_== validLargeBytes
       }
     }
 
-    "store small image in user avatar" in {
+    "store small image in group avatar" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -121,12 +122,12 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbSmallImage(respGroup.groupId).width         should_== validSmallDimensions._1
-        dbSmallImage(respGroup.groupId).height        should_== validSmallDimensions._2
-        dbSmallImage(respGroup.groupId).fileSize      should_== validSmallBytes.length
-        dbImageBytes(dbSmallImage(respGroup.groupId)) should_== validSmallBytes
+        dbSmallImage(respGroup.groupPeer.id).width         should_== validSmallDimensions._1
+        dbSmallImage(respGroup.groupPeer.id).height        should_== validSmallDimensions._2
+        dbSmallImage(respGroup.groupPeer.id).fileSize      should_== validSmallBytes.length
+        dbImageBytes(dbSmallImage(respGroup.groupPeer.id)) should_== validSmallBytes
       }
     }
 
@@ -143,7 +144,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       val respGroup = {
         implicit val scope = scope1
         val respGroup = createGroup(scope1, scope2)
-        setValidAvatarShouldBeOk(respGroup.groupId, respGroup.accessHash)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
         respGroup
       }
 
@@ -153,7 +154,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
         implicit val scope = scope1
         val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
 
-        updates2.length should beEqualTo(1)
+        updates2.length should beEqualTo(2)
         val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
 
         val a = update.avatar.get
@@ -185,7 +186,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        RequestEditGroupAvatar(respGroup.groupId, respGroup.accessHash, invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
+        RequestEditGroupAvatar(respGroup.groupPeer, invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
       }
     }
 
@@ -199,7 +200,75 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        RequestEditGroupAvatar(respGroup.groupId, respGroup.accessHash, tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
+        RequestEditGroupAvatar(respGroup.groupPeer, tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
+      }
+    }
+  }
+
+  "user service on receiving `RequestRemoveGroupAvatar`" should {
+
+    "respond with `ResponseAvatarChanged`" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(scope1, scope2)
+
+      {
+        implicit val scope = scope1
+
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        val r = removeAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+
+        r.avatar.fullImage  should beNone
+        r.avatar.smallImage should beNone
+        r.avatar.largeImage should beNone
+      }
+    }
+
+    "update group avatar" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val respGroup = createGroup(scope1, scope2)
+
+      val r = {
+        implicit val scope = scope1
+
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        removeAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+      }
+
+      dbGroup(respGroup.groupPeer.id)._2.avatar should beNone
+    }
+
+    "append update to chain" in {
+      val (scope1, scope2) = TestScope.pair(1, 2)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val diff1 = {
+        implicit val scope = scope1
+        RequestGetDifference(0, None) :~> <~:[Difference]
+      }._1
+
+      val respGroup = {
+        implicit val scope = scope1
+        val respGroup = createGroup(scope1, scope2)
+        setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        removeAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+        respGroup
+      }
+
+      Thread.sleep(1000)
+
+      {
+        implicit val scope = scope1
+        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
+
+        update.avatar should beNone
       }
     }
   }
@@ -250,7 +319,12 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def setValidAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
-    val (rsp, _) = RequestEditGroupAvatar(groupId, accessHash, validFileLocation) :~> <~:[ResponseAvatarChanged]
+    val (rsp, _) = RequestEditGroupAvatar(GroupOutPeer(groupId, accessHash), validFileLocation) :~> <~:[ResponseAvatarChanged]
+    rsp
+  }
+
+  private def removeAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
+    val (rsp, _) = RequestRemoveGroupAvatar(GroupOutPeer(groupId, accessHash)) :~> <~:[ResponseAvatarChanged]
     rsp
   }
 
@@ -269,28 +343,8 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     val rqCreateGroup = RequestCreateGroup(
       randomId = 1L,
       title = "Group 3000",
-      keyHash = BitVector(1, 1, 1),
-      publicKey = BitVector(1, 0, 1, 0),
-      broadcast = EncryptedRSABroadcast(
-        encryptedMessage = BitVector(1, 2, 3),
-        keys = immutable.Seq(
-          EncryptedUserAESKeys(
-            userId = scope2.user.uid,
-            accessHash = ACL.userAccessHash(ownerScope.user.authId, scope2.user),
-            keys = immutable.Seq(
-              EncryptedAESKey(
-                keyHash = scope2.user.publicKeyHash,
-                aesEncryptedKey = BitVector(2, 0, 2, 0)
-              )
-            )
-          )
-        ),
-        ownKeys = immutable.Seq(
-          EncryptedAESKey(
-            keyHash = ownerScope.user.publicKeyHash,
-            aesEncryptedKey = BitVector(2, 0, 2, 0)
-          )
-        )
+      users = immutable.Seq(
+        UserOutPeer(scope2.user.uid, ACL.userAccessHash(ownerScope.user.authId, scope2.user))
       )
     )
 

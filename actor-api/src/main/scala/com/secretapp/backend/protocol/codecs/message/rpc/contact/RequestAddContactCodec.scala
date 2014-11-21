@@ -10,13 +10,13 @@ import scala.util.Success
 
 object RequestAddContactCodec extends Codec[RequestAddContact] with utils.ProtobufCodec {
   def encode(r: RequestAddContact) = {
-    val boxed = protobuf.RequestAddContact(r.uid, r.accessHash)
+    val boxed = protobuf.RequestAddContact(r.userId, r.accessHash)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestAddContact.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.RequestAddContact(uid, accessHash)) => RequestAddContact(uid, accessHash)
+      case Success(r) => RequestAddContact(r.uid, r.accessHash)
     }
   }
 }

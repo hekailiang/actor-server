@@ -29,6 +29,7 @@ object BackendBuild extends Build {
   lazy val defaultSettings =
     buildSettings ++
       Seq(
+        initialize                ~= { _ => sys.props("scalac.patmat.analysisBudget") = "off" },
         resolvers                 ++= Resolvers.seq,
         scalacOptions             ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
         javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),
@@ -58,17 +59,13 @@ object BackendBuild extends Build {
    .dependsOn(actorApi, actorModels, actorPersist)
    .aggregate(actorTests)
 
-  lazy val actorExport2Js = Project(
-    id       = "actor-export2js",
-    base     = file("actor-export2js"),
-    settings = Revolver.settings
-  ).dependsOn(actorExport2JsMacros)
-
-  lazy val actorExport2JsMacros = Project(
-    id       = "actor-export2js-macros",
-    base     = file("actor-export2js-macros"),
-    settings = Revolver.settings
-  ).dependsOn(root)
+  lazy val actorUtil = Project(
+    id   = "actor-util",
+    base = file("actor-util"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.util
+    )
+  )
 
   lazy val actorModels = Project(
     id   = "actor-models",
@@ -86,7 +83,7 @@ object BackendBuild extends Build {
     id       = "actor-api",
     base     = file("actor-api"),
     settings = defaultSettings ++ scalabuffSettings
-  ).dependsOn(actorPersist).configs(ScalaBuff)
+  ).dependsOn(actorPersist, actorUtil).configs(ScalaBuff)
 
   lazy val actorTests = Project(
     id       = "actor-tests",
