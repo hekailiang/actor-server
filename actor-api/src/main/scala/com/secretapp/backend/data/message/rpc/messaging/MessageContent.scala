@@ -4,22 +4,21 @@ import com.secretapp.backend.data.message.rpc.file.FastThumb
 import com.secretapp.backend.data.message.struct._
 import com.secretapp.backend.{models, proto}
 import im.actor.messenger.{api => protobuf}
-
 import scala.language.implicitConversions
 import scalaz.Scalaz._
 
 sealed trait MessageContent {
-  val typ: Int
+  val header: Int
 
   def toProto: protobuf.MessageContent
 
   def wrap(content: com.google.protobuf.GeneratedMessageLite): protobuf.MessageContent = {
-    protobuf.MessageContent(typ, content.toByteString)
+    protobuf.MessageContent(header, content.toByteString)
   }
 }
 
 object MessageContent {
-  def fromProto(m: protobuf.MessageContent) = m.`type` match {
+  def fromProto(m: protobuf.MessageContent): MessageContent = m.`type` match {
     case TextMessage.header => TextMessage.fromProto(protobuf.TextMessage.parseFrom(m.content))
     case ServiceMessage.header => ServiceMessage.fromProto(protobuf.ServiceMessage.parseFrom(m.content))
     case FileMessage.header => FileMessage.fromProto(protobuf.FileMessage.parseFrom(m.content))
@@ -28,7 +27,7 @@ object MessageContent {
 
 @SerialVersionUID(1L)
 case class TextMessage(text: String) extends MessageContent {
-  val typ = TextMessage.header
+  val header = TextMessage.header
   def toProto = super.wrap(protobuf.TextMessage(text))
 }
 
@@ -38,31 +37,42 @@ object TextMessage {
   def fromProto(m: protobuf.TextMessage) = TextMessage(m.text)
 }
 
-sealed trait ServiceMessage extends MessageContent {
-  val typ = ServiceMessage.header
-  val text: String
-  val extType: Int
+@SerialVersionUID(1L)
+case class ServiceMessage(text: String, ext: Option[ServiceMessageExt]) extends MessageContent {
+  val header = ServiceMessage.header
 
-  override def wrap(content: com.google.protobuf.GeneratedMessageLite) = super.wrap(protobuf.ServiceMessage(text, extType, content.toByteString.some))
+  def toProto = super.wrap(protobuf.ServiceMessage(text, ext.map(_.header).getOrElse(0), ext.map(_.toProto.toByteString)))
 }
 
 object ServiceMessage {
   val header = 0x02
 
-  def fromProto(m: protobuf.ServiceMessage) = m.extType match {
-    case UserAddedExtension.header => UserAddedExtension.fromProto(m)
-    case UserKickedExtension.header => UserKickedExtension.fromProto(m)
-    case UserLeftExtension.header => UserLeftExtension.fromProto(m)
-    case GroupCreatedExtension.header => GroupCreatedExtension.fromProto(m)
-    case GroupChangedTitleExtension.header => GroupChangedTitleExtension.fromProto(m)
-    case GroupChangedAvatarExtension.header => GroupChangedAvatarExtension.fromProto(m)
+  def fromProto(m: protobuf.ServiceMessage) = ServiceMessage(m.text, ServiceMessageExt.fromProto(m))
+}
+
+trait ServiceMessageExt {
+  val header: Int
+
+  def toProto: com.google.protobuf.GeneratedMessageLite
+}
+
+object ServiceMessageExt {
+  def fromProto(m: protobuf.ServiceMessage): Option[ServiceMessageExt] = m.extType match {
+    case UserAddedExtension.header => UserAddedExtension.fromProto(m).some
+    case UserKickedExtension.header => UserKickedExtension.fromProto(m).some
+    case UserLeftExtension.header => UserLeftExtension.fromProto(m).some
+    case GroupCreatedExtension.header => GroupCreatedExtension.fromProto(m).some
+    case GroupChangedTitleExtension.header => GroupChangedTitleExtension.fromProto(m).some
+    case GroupChangedAvatarExtension.header => GroupChangedAvatarExtension.fromProto(m).some
+    case _ => None
   }
 }
 
 @SerialVersionUID(1L)
-case class UserAddedExtension(text: String, addedUid: Int) extends ServiceMessage {
-  val extType = UserAddedExtension.header
-  def toProto = super.wrap(protobuf.ServiceMessage.UserAddedExtension(addedUid))
+case class UserAddedExtension(addedUid: Int) extends ServiceMessageExt {
+  val header = UserAddedExtension.header
+
+  def toProto = protobuf.ServiceMessage.UserAddedExtension(addedUid)
 }
 
 object UserAddedExtension {
@@ -70,14 +80,15 @@ object UserAddedExtension {
 
   def fromProto(m: protobuf.ServiceMessage) = {
     val ext = protobuf.ServiceMessage.UserAddedExtension.parseFrom(m.ext.get)
-    UserAddedExtension(m.text, ext.addedUid)
+    UserAddedExtension(ext.addedUid)
   }
 }
 
 @SerialVersionUID(1L)
-case class UserKickedExtension(text: String, kickedUid: Int) extends ServiceMessage {
-  val extType = UserKickedExtension.header
-  def toProto = super.wrap(protobuf.ServiceMessage.UserKickedExtension(kickedUid))
+case class UserKickedExtension(kickedUid: Int) extends ServiceMessageExt {
+  val header =  UserKickedExtension.header
+
+  def toProto = protobuf.ServiceMessage.UserKickedExtension(kickedUid)
 }
 
 object UserKickedExtension {
@@ -85,42 +96,41 @@ object UserKickedExtension {
 
   def fromProto(m: protobuf.ServiceMessage) = {
     val ext = protobuf.ServiceMessage.UserKickedExtension.parseFrom(m.ext.get)
-    UserKickedExtension(m.text, ext.kickedUid)
+    UserKickedExtension(ext.kickedUid)
   }
 }
 
 @SerialVersionUID(1L)
-case class UserLeftExtension(text: String) extends ServiceMessage {
-  val extType = UserLeftExtension.header
-  def toProto = super.wrap(protobuf.ServiceMessage.UserLeftExtension())
+case class UserLeftExtension() extends ServiceMessageExt {
+  val header =  UserLeftExtension.header
+
+  def toProto = protobuf.ServiceMessage.UserLeftExtension()
 }
 
 object UserLeftExtension {
   val header = 0x03
 
-  def fromProto(m: protobuf.ServiceMessage) = {
-    UserLeftExtension(m.text)
-  }
+  def fromProto(m: protobuf.ServiceMessage) = UserLeftExtension()
 }
 
 @SerialVersionUID(1L)
-case class GroupCreatedExtension(text: String) extends ServiceMessage {
-  val extType = GroupCreatedExtension.header
-  def toProto = super.wrap(protobuf.ServiceMessage.GroupCreatedExtension())
+case class GroupCreatedExtension() extends ServiceMessageExt {
+  val header =  GroupCreatedExtension.header
+
+  def toProto = protobuf.ServiceMessage.GroupCreatedExtension()
 }
 
 object GroupCreatedExtension {
   val header = 0x04
 
-  def fromProto(m: protobuf.ServiceMessage) = {
-    GroupCreatedExtension(m.text)
-  }
+  def fromProto(m: protobuf.ServiceMessage) = GroupCreatedExtension()
 }
 
 @SerialVersionUID(1L)
-case class GroupChangedTitleExtension(text: String, title: String) extends ServiceMessage {
-  val extType = GroupChangedTitleExtension.header
-  def toProto = super.wrap(protobuf.ServiceMessage.GroupChangedTitleExtension(title))
+case class GroupChangedTitleExtension(title: String) extends ServiceMessageExt {
+  val header =  GroupChangedTitleExtension.header
+
+  def toProto = protobuf.ServiceMessage.GroupChangedTitleExtension(title)
 }
 
 object GroupChangedTitleExtension {
@@ -128,16 +138,16 @@ object GroupChangedTitleExtension {
 
   def fromProto(m: protobuf.ServiceMessage) = {
     val ext = protobuf.ServiceMessage.GroupChangedTitleExtension.parseFrom(m.ext.get)
-    GroupChangedTitleExtension(m.text, ext.title)
+    GroupChangedTitleExtension(ext.title)
   }
 }
 
 @SerialVersionUID(1L)
-case class GroupChangedAvatarExtension(text: String, avatar: Option[models.Avatar]) extends ServiceMessage {
-  val extType = GroupChangedAvatarExtension.header
+case class GroupChangedAvatarExtension(avatar: Option[models.Avatar]) extends ServiceMessageExt {
+  val header =  GroupChangedAvatarExtension.header
+
   def toProto = {
-    super.wrap(protobuf.ServiceMessage.GroupChangedAvatarExtension(
-      avatar.map(proto.toProto[models.Avatar, protobuf.Avatar])))
+    protobuf.ServiceMessage.GroupChangedAvatarExtension(avatar.map(proto.toProto[models.Avatar, protobuf.Avatar]))
   }
 }
 
@@ -146,42 +156,51 @@ object GroupChangedAvatarExtension {
 
   def fromProto(m: protobuf.ServiceMessage) = {
     val ext = protobuf.ServiceMessage.GroupChangedAvatarExtension.parseFrom(m.ext.get)
-    GroupChangedAvatarExtension(m.text, ext.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
+    GroupChangedAvatarExtension(ext.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
   }
 }
 
+@SerialVersionUID(1L)
+case class FileMessage(fileId: Int, accessHash: Long, fileSize: Int, name: String,
+                       mimeType: String, thumb: Option[FastThumb], ext: Option[FileMessageExt]) extends MessageContent {
+  val header = FileMessage.header
 
-sealed trait FileMessage extends MessageContent {
-  val typ = FileMessage.header
-  val fileId: Int
-  val accessHash: Long
-  val fileSize: Int
-  val name: String
-  val mimeType: String
-  val thumb: Option[FastThumb]
-  val extType: Int
-  def toProto(content: com.google.protobuf.GeneratedMessageLite) = {
+  def toProto = {
     super.wrap(
-      protobuf.FileMessage(
-        fileId, accessHash, fileSize, name, mimeType, thumb.map(_.toProto), extType, content.toByteString.some))
+      protobuf.FileMessage(fileId, accessHash, fileSize, name, mimeType, thumb.map(_.toProto),
+        ext.map(_.header).getOrElse(0), ext.map(_.toProto.toByteString)))
   }
 }
 
 object FileMessage {
   val header = 0x03
 
-  def fromProto(m: protobuf.FileMessage) = m.extType match {
-    case PhotoExtension.header => PhotoExtension.fromProto(m)
-    case VideoExtension.header => VideoExtension.fromProto(m)
-    case VoiceExtension.header => VoiceExtension.fromProto(m)
+  def fromProto(m: protobuf.FileMessage) = {
+    FileMessage(m.fileId, m.accessHash, m.fileSize, m.name, m.mimeType,
+      m.thumb.map(FastThumb.fromProto), FileMessageExt.fromProto(m))
   }
 }
 
+trait FileMessageExt {
+  val header: Int
+
+  def toProto: com.google.protobuf.GeneratedMessageLite
+}
+
+object FileMessageExt {
+  def fromProto(m: protobuf.FileMessage): Option[FileMessageExt] = m.extType match {
+    case PhotoExtension.header => PhotoExtension.fromProto(m).some
+    case VideoExtension.header => VideoExtension.fromProto(m).some
+    case VoiceExtension.header => VoiceExtension.fromProto(m).some
+    case _ => None
+  }
+}
 
 @SerialVersionUID(1L)
-case class PhotoExtension(fileId: Int, accessHash: Long, fileSize: Int, name: String, mimeType: String, thumb: Option[FastThumb], w: Int, h: Int) extends FileMessage {
-  val extType = PhotoExtension.header
-  def toProto = super.wrap(protobuf.FileMessage.PhotoExtension(w, h))
+case class PhotoExtension(w: Int, h: Int) extends FileMessageExt {
+  val header =  PhotoExtension.header
+
+  def toProto = protobuf.FileMessage.PhotoExtension(w, h)
 }
 
 object PhotoExtension {
@@ -189,14 +208,15 @@ object PhotoExtension {
 
   def fromProto(m: protobuf.FileMessage) = {
     val ext = protobuf.FileMessage.PhotoExtension.parseFrom(m.ext.get)
-    PhotoExtension(m.fileId, m.accessHash, m.fileSize, m.name, m.mimeType, m.thumb.map(FastThumb.fromProto), ext.w, ext.h)
+    PhotoExtension(ext.w, ext.h)
   }
 }
 
 @SerialVersionUID(1L)
-case class VideoExtension(fileId: Int, accessHash: Long, fileSize: Int, name: String, mimeType: String, thumb: Option[FastThumb], w: Int, h: Int, duration: Int) extends FileMessage {
-  val extType = VideoExtension.header
-  def toProto = super.wrap(protobuf.FileMessage.VideoExtension(w, h, duration))
+case class VideoExtension(w: Int, h: Int, duration: Int) extends FileMessageExt {
+  val header =  VideoExtension.header
+
+  def toProto = protobuf.FileMessage.VideoExtension(w, h, duration)
 }
 
 object VideoExtension {
@@ -204,14 +224,15 @@ object VideoExtension {
 
   def fromProto(m: protobuf.FileMessage) = {
     val ext = protobuf.FileMessage.VideoExtension.parseFrom(m.ext.get)
-    VideoExtension(m.fileId, m.accessHash, m.fileSize, m.name, m.mimeType, m.thumb.map(FastThumb.fromProto), ext.w, ext.h, ext.duration)
+    VideoExtension(ext.w, ext.h, ext.duration)
   }
 }
 
 @SerialVersionUID(1L)
-case class VoiceExtension(fileId: Int, accessHash: Long, fileSize: Int, name: String, mimeType: String, thumb: Option[FastThumb], duration: Int) extends FileMessage {
-  val extType = VoiceExtension.header
-  def toProto = super.wrap(protobuf.FileMessage.VoiceExtension(duration))
+case class VoiceExtension(duration: Int) extends FileMessageExt {
+  val header =  VoiceExtension.header
+
+  def toProto = protobuf.FileMessage.VoiceExtension(duration)
 }
 
 object VoiceExtension {
@@ -219,6 +240,6 @@ object VoiceExtension {
 
   def fromProto(m: protobuf.FileMessage) = {
     val ext = protobuf.FileMessage.VoiceExtension.parseFrom(m.ext.get)
-    VoiceExtension(m.fileId, m.accessHash, m.fileSize, m.name, m.mimeType, m.thumb.map(FastThumb.fromProto), ext.duration)
+    VoiceExtension(ext.duration)
   }
 }

@@ -74,7 +74,7 @@ object HistoryMessage extends HistoryMessage with TableOps {
       .value(_.date, date)
       .value(_.randomId, randomId)
       .value(_.senderUserId, senderUserId)
-      .value(_.messageContentHeader, message.typ)
+      .value(_.messageContentHeader, message.header)
       .value(_.messageContentBytes, message.toProto.content.asReadOnlyByteBuffer)
       .value(_.isDeleted, false)
       .future()

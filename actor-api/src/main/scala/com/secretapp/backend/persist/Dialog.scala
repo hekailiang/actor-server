@@ -73,7 +73,7 @@ object Dialog extends Dialog with TableOps {
       .value(_.senderUserId, senderUserId)
       .value(_.randomId, randomId)
       .value(_.date, date)
-      .value(_.messageContentHeader, message.typ)
+      .value(_.messageContentHeader, message.header)
       .value(_.messageContentBytes, message.toProto.content.asReadOnlyByteBuffer)
       .future()
   }
