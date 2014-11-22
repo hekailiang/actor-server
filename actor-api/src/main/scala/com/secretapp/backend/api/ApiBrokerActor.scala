@@ -48,7 +48,7 @@ class ApiBrokerActor(
                   connector,
                   RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
                 self)
-              log.error(s"Failed to handle rpc(right) $connector $messageId $body {}", error)
+              log.error(error, s"Failed to handle rpc(right) $connector $messageId $body")
           }
 
         case -\/(UserNotAuthenticated) =>
@@ -61,7 +61,7 @@ class ApiBrokerActor(
             SessionProtocol.SendRpcResponseBox(
               connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
             self)
-          log.error(s"Failed to handle rpc(left) $connector $messageId $body {}", error)
+          log.error(error, s"Failed to handle rpc(left) $connector $messageId $body")
       }
   }
 }
