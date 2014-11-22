@@ -1,6 +1,6 @@
 resolvers ++= Seq(
   "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/",
-  Resolver.url("secret repository", url("http://54.77.139.175:8081/content/repositories/snapshots"))(Resolver.ivyStylePatterns)
+  Resolver.url("secret repository", url("http://repos.81port.com/nexus/content/repositories/snapshots"))(Resolver.ivyStylePatterns)
 )
 
 addSbtPlugin("com.typesafe.akka" % "akka-sbt-plugin" % "2.2.3")
