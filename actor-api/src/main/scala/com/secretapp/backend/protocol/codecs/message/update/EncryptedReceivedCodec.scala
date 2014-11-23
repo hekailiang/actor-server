@@ -14,13 +14,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object EncryptedReceivedCodec extends Codec[EncryptedReceived] with utils.ProtobufCodec {
   def encode(m: EncryptedReceived) = {
-    val boxed = protobuf.UpdateEncryptedReceived(m.outPeer.toProto, m.randomId)
+    val boxed = protobuf.UpdateEncryptedReceived(m.outPeer.toProto, m.randomId, m.receivedDate)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector): String \/ (BitVector, EncryptedReceived) = {
     decodeProtobuf(protobuf.UpdateEncryptedReceived.parseFrom(buf.toByteArray)) {
-      case Success(e) => EncryptedReceived(Peer.fromProto(e.peer), e.rid)
+      case Success(e) => EncryptedReceived(Peer.fromProto(e.peer), e.rid, e.receivedDate)
     }
   }
 }

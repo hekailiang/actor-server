@@ -534,6 +534,7 @@ message UpdateMessageSent {
 message UpdateEncryptedReceived {
     required Peer peer = 1;
     required int64 rid = 2;
+    required int64 receivedDate = 3;
 }
 
 // API#0x34

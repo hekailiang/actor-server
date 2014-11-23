@@ -248,13 +248,15 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     randomId: Long
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
+      val receivedDate = System.currentTimeMillis()
+
       outPeer.typ match {
         case struct.PeerType.Private =>
           for {
             authIds <- getAuthIds(outPeer.id)
           } yield {
             authIds foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedReceived(outPeer.asPeer, randomId))
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedReceived(outPeer.asPeer, randomId, receivedDate))
             }
           }
           Future.successful(Ok(ResponseVoid()))
@@ -269,6 +271,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     randomId: Long
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
+      val readDate = System.currentTimeMillis()
+
       outPeer.typ match {
         case struct.PeerType.Private =>
           val peerAuthIdsFuture = getAuthIds(outPeer.id)
@@ -279,7 +283,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             myAuthIds   <- myAuthIdsFuture
           } yield {
             peerAuthIds foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(struct.Peer.privat(currentUser.uid), randomId))
+              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedRead(struct.Peer.privat(currentUser.uid), randomId, readDate))
             }
 
             myAuthIds foreach { authId =>
