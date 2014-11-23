@@ -167,7 +167,7 @@ trait SignService extends SocialHelpers {
               ), u.uid
             )
 
-              Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId), struct.Config(300)))
+            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId), struct.Config(300)))
           }
         }
 
@@ -242,13 +242,15 @@ trait SignService extends SocialHelpers {
                 case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
                 case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
                 case _ =>
-                  persist.AuthSmsCode.dropEntity(phoneNumber)
                   m match {
                     case -\/(_: RequestSignIn) => phoneR match {
                       case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
-                      case Some(rec) => signIn(rec.userId) // user must be persisted before sign in
+                      case Some(rec) =>
+                        persist.AuthSmsCode.dropEntity(phoneNumber)
+                        signIn(rec.userId) // user must be persisted before sign in
                     }
                     case \/-(req: RequestSignUp) =>
+                      persist.AuthSmsCode.dropEntity(phoneNumber)
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
