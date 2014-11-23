@@ -24,17 +24,29 @@ sealed class AuthSmsCode extends CassandraTable[AuthSmsCode, models.AuthSmsCode]
 }
 
 object AuthSmsCode extends AuthSmsCode with TableOps {
-  def insertEntity(entity: models.AuthSmsCode)(implicit session: CSession): Future[ResultSet] =
+  def insertEntity(entity: models.AuthSmsCode)(implicit session: CSession): Future[models.AuthSmsCode] =
     insert
       .value(_.phoneNumber, entity.phoneNumber)
       .value(_.smsHash, entity.smsHash)
       .value(_.smsCode, entity.smsCode)
       .ttl(15.minutes.toSeconds.toInt)
-      .future()
+      .future().map(_ => entity)
 
   def getEntity(phoneNumber: Long)(implicit session: CSession): Future[Option[models.AuthSmsCode]] =
     select.where(_.phoneNumber eqs phoneNumber).one()
 
   def dropEntity(phoneNumber: Long)(implicit session: CSession) =
     delete.where(_.phoneNumber eqs phoneNumber).future()
+
+  def list(startPhoneExclusive: Long, count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
+    select.where(_.phoneNumber gtToken startPhoneExclusive).limit(count).fetch()
+
+  def list(count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
+    select.one flatMap {
+      case Some(first) => select.where(_.phoneNumber gteToken first.phoneNumber).limit(count).fetch()
+      case _           => Future.successful(Seq())
+    }
+
+  def list(startPhoneExclusive: Option[Long], count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
+    startPhoneExclusive.fold(list(count))(list(_, count))
 }

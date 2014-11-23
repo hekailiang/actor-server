@@ -4,7 +4,7 @@ object Dependencies {
   object V {
     val akka    = "2.3.7"
     val phantom = "1.4.0"
-    val scalaz  = "7.1.0"
+    val scalaz  = "7.0.6"
   }
 
   object Compile {
@@ -35,13 +35,13 @@ object Dependencies {
   }
 
   object Test {
-    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka       % "test"
-    val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"     % "test"
-    val scalamockSpecs2   = "org.scalamock"              %% "scalamock-specs2-support"      % "3.0.1"      % "test"
-    val specs2            = "org.specs2"                 %% "specs2"                        % "2.4.6"      % "test"
-    val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.2"        % "test"
-    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"     % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
-    val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"
+    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka               % "test"
+    val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
+    val scalamockSpecs2   = "org.scalamock"              %% "scalamock-specs2-support"      % "3.0.1"              % "test"
+    val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.9-scalaz-7.0.6" % "test"
+    val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
+    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"             % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
+    val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"              % "test"
   }
 
   object Deploy {
@@ -71,4 +71,7 @@ object Dependencies {
     akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, scalamockSpecs2, specs2, scalazSpecs2, utilTesting,
       scalaLoggingSlf4j, akkaKernel
   )
+
+  val restApi   = Seq(phantomDsl, scodecBits, bcprov, specs2, scalazCore)
+
 }

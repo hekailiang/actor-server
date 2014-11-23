@@ -101,7 +101,7 @@ sealed class User extends CassandraTable[User, models.User] {
 
 object User extends User with TableOps {
 
-  def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[ResultSet] = {
+  def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[models.User] = {
     val phone = models.Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
@@ -116,7 +116,8 @@ object User extends User with TableOps {
       publicKey = entity.publicKey,
       authId = entity.authId)
 
-    insert.value(_.userId, entity.uid)
+    insert
+      .value(_.userId, entity.uid)
       .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
       .value(_.publicKey, entity.publicKey.toByteBuffer)
@@ -141,6 +142,7 @@ object User extends User with TableOps {
       .flatMap(_ => Phone.insertEntity(phone))
       .flatMap(_ => UserPublicKey.insertEntity(userPK))
       .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
+      .map( _ => entity)
   }
 
   def insertEntityRowWithChildren(userId: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, countryCode: String, sex: models.Sex = models.NoSex)
@@ -222,4 +224,19 @@ object User extends User with TableOps {
 
   def byUid(userId: Int)(implicit session: Session): Future[Seq[models.User]] =
     select.where(_.userId eqs userId).fetch()
+
+  def dropEntity(uid: Int)(implicit session: Session): Future[Unit] =
+    delete.where(_.userId eqs uid).future() map (_ => ())
+
+  def list(startUidExclusive: Int, count: Int)(implicit session: Session): Future[Seq[models.User]] =
+    select.where(_.userId gtToken startUidExclusive).limit(count).fetch()
+
+  def list(count: Int)(implicit session: Session): Future[Seq[models.User]] =
+    select.one flatMap {
+      case Some(first) => select.where(_.userId gteToken first.uid).limit(count).fetch()
+      case _           => Future.successful(Seq())
+    }
+
+  def list(startUidExclusive: Option[Int], count: Int)(implicit session: Session): Future[Seq[models.User]] =
+    startUidExclusive.fold(list(count))(list(_, count))
 }

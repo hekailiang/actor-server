@@ -1,0 +1,18 @@
+application {
+  secret="kAtHj<PEDUndYD9h@Ad9wFL?_d:MoHBv]>M_GE9c0y^F4Y;F@TRSt96ZLTV?gprt"
+  langs="en"
+}
+
+evolutionplugin=disabled
+
+logger {
+  root=ERROR
+  play=INFO
+  application=DEBUG
+}
+
+cassandra {
+  keyspace = "actor_admin"
+  contact-points = [${?CASSANDRA_HOST}, "localhost"]
+  port = 9042
+}
