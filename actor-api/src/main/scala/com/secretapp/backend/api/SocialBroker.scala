@@ -48,7 +48,7 @@ class SocialBroker extends PersistentActor with ActorLogging {
   val receiveCommand: Actor.Receive = {
     case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
       persist(msg) { _ =>
-        uids = uids ++ newUids
+        uids = uids ++ newUids.filterNot(_ == userId)
         maybeSnapshot()
       }
     case SocialMessageBox(userId, GetRelations) =>
@@ -58,8 +58,8 @@ class SocialBroker extends PersistentActor with ActorLogging {
   val receiveRecover: Actor.Receive = {
     case SnapshotOffer(metadata, offeredSnapshot) =>
       uids = offeredSnapshot.asInstanceOf[PersistentStateType]
-    case msg @ SocialMessageBox(_, RelationsNoted(newUids)) if newUids.size > 0 =>
-      uids = uids ++ newUids
+    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
+      uids = uids ++ newUids.filterNot(_ == userId)
   }
 
   private def maybeSnapshot(): Unit = {

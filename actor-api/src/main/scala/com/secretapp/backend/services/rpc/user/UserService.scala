@@ -4,17 +4,18 @@ import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
+import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.rpc.user.{ RequestEditName, RequestEditAvatar }
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
-import com.secretapp.backend.helpers.{ SocialHelpers, UserHelpers }
+import com.secretapp.backend.helpers.{ SocialHelpers, UpdatesHelpers, UserHelpers }
 import com.secretapp.backend.persist
 import com.secretapp.backend.util.AvatarUtils
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
-trait UserService extends SocialHelpers with UserHelpers {
+trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
   self: ApiBrokerService =>
 
   import context._
@@ -63,13 +64,18 @@ trait UserService extends SocialHelpers with UserHelpers {
   }
 
   private def handleEditName(user: models.User, r: RequestEditName): Future[RpcResponse] =
-    persist.User.updateName(user.uid, r.name) map { _ =>
+    persist.User.updateName(user.uid, r.name) flatMap { _ =>
+      val update = NameChanged(user.uid, Some(r.name))
+
       withRelatedAuthIds(user.uid) { authIds =>
         authIds foreach { authId =>
-          updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, NameChanged(user.uid, Some(r.name)))
+          if (authId != currentUser.get.authId)
+            writeNewUpdate(authId, update)
         }
       }
 
-      Ok(ResponseVoid())
+      withNewUpdateState(currentUser.get.authId, update) {
+        case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
+      }
     }
 }

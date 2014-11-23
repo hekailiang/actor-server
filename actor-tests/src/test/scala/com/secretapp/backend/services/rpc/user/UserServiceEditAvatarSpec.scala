@@ -211,7 +211,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       ownKeys = immutable.Seq.empty
     )
 
-    rq :~> <~:[ResponseSeq]
+    rq :~> <~:[ResponseMessageSent]
 
     Thread.sleep(1000)
   }

@@ -75,7 +75,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
   private val newName = "John The New"
 
   private def editNameShouldBeOk(implicit scope: TestScope) =
-    RequestEditName(newName) :~> <~:[ResponseVoid]
+    RequestEditName(newName) :~> <~:[ResponseSeq]
 
   private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
     val rq = RequestSendEncryptedMessage(
@@ -90,7 +90,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
       ownKeys = immutable.Seq.empty
     )
 
-    rq :~> <~:[ResponseSeq]
+    rq :~> <~:[ResponseMessageSent]
 
     Thread.sleep(1000)
   }
