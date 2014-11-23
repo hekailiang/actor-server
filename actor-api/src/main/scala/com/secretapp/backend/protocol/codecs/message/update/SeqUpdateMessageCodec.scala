@@ -24,6 +24,7 @@ object SeqUpdateMessageCodec {
       case u: MessageReceived   => MessageReceivedCodec.encode(u)
       case u: MessageRead       => MessageReadCodec.encode(u)
       case u: MessageReadByMe   => MessageReadByMeCodec.encode(u)
+      case u: MessageDelete     => MessageDeleteCodec.encode(u)
       case u: GroupInvite       => GroupInviteCodec.encode(u)
       case u: GroupUserAdded    => GroupUserAddedCodec.encode(u)
       case u: GroupUserLeave    => GroupUserLeaveCodec.encode(u)
