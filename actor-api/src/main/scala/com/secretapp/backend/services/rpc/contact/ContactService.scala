@@ -3,12 +3,13 @@ package com.secretapp.backend.services.rpc.contact
 import akka.actor._
 import akka.pattern.ask
 import com.secretapp.backend.api.rpc.RpcErrors
-import com.secretapp.backend.api.{UpdatesBroker, SocialProtocol, ApiBrokerService, PhoneNumber}
+import com.secretapp.backend.api.{ UpdatesBroker, SocialProtocol, ApiBrokerService, PhoneNumber }
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.services.{UserManagerService, GeneratorService}
+import com.secretapp.backend.helpers.UpdatesHelpers
+import com.secretapp.backend.services.{ UserManagerService, GeneratorService }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist
 import com.secretapp.backend.models
@@ -22,7 +23,7 @@ import Scalaz._
 import scodec.bits.BitVector
 import scodec.codecs.uuid
 
-trait ContactService {
+trait ContactService extends UpdatesHelpers {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
 
   implicit val session: CSession
@@ -91,18 +92,17 @@ trait ContactService {
 
           val clFuture = persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
           val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
-          val stateFuture = ask(
-            updatesBrokerRegion,
-            UpdatesBroker.NewUpdatePush(currentUser.authId,
-              updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
-          ).mapTo[UpdatesBroker.StrictState].map {
+          val responseFuture = broadcastCUUpdateAndGetState(
+            currentUser,
+            updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
+          ) map {
             case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, state.some))
           }
 
           for {
             _ <- clFuture
             _ <- clCacheFuture
-            response <- stateFuture
+            response <- responseFuture
           } yield response
         } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, None)))
     }
@@ -136,16 +136,16 @@ trait ContactService {
       case Some(contact) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, contact.accessSalt)) {
           val clFuture = persist.contact.UserContactsList.removeContact(currentUser.uid, contactId)
-          val stateFuture = ask(
-            updatesBrokerRegion,
-            UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.ContactsRemoved(immutable.Seq(contactId)))
-          ).mapTo[UpdatesBroker.StrictState].map {
+          val responseFuture = broadcastCUUpdateAndGetState(
+            currentUser,
+            updateProto.contact.ContactsRemoved(immutable.Seq(contactId))
+          ) map {
             case (seq, state) => Ok(ResponseSeq(seq, state.some))
           }
 
           for {
             _ <- clFuture
-            response <- stateFuture
+            response <- responseFuture
           } yield response
         } else Future.successful(RpcErrors.invalidAccessHash)
       case _ => Future.successful(RpcErrors.entityNotFound("CONTACT"))
@@ -160,16 +160,16 @@ trait ContactService {
         if (accessHash == ACL.userAccessHash(authId, contactId, accessSalt)) {
           withValidName(name) { name =>
             val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, contactId, phoneNumber, name, accessSalt)
-            val stateFuture = ask(
-              updatesBrokerRegion,
-              UpdatesBroker.NewUpdatePush(currentUser.authId, updateProto.contact.LocalNameChanged(contactId, name.some))
-            ).mapTo[UpdatesBroker.StrictState].map {
+            val responseFuture = broadcastCUUpdateAndGetState(
+              currentUser,
+              updateProto.contact.LocalNameChanged(contactId, name.some)
+            ) map {
               case (seq, state) => Ok(ResponseSeq(seq, state.some))
             }
 
             for {
               _ <- clFuture
-              response <- stateFuture
+              response <- responseFuture
             } yield response
           }
         } else Future.successful(RpcErrors.invalidAccessHash)
@@ -203,18 +203,17 @@ trait ContactService {
             val newContactsId = Set(userId)
             val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, user.phoneNumber, "", user.accessSalt)
             val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
-            val stateFuture = ask(
-              updatesBrokerRegion,
-              UpdatesBroker.NewUpdatePush(currentUser.authId,
-                updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq))
-            ).mapTo[UpdatesBroker.StrictState].map {
-              case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
+            val responseFuture = broadcastCUUpdateAndGetState(
+              currentUser,
+              updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
+            ) map {
+              case (seq, state) => Ok(ResponseSeq(seq, state.some))
             }
 
             for {
               _ <- clFuture
               _ <- clCacheFuture
-              response <- stateFuture
+              response <- responseFuture
             } yield response
           } else Future.successful(RpcErrors.invalidAccessHash)
         case None => Future.successful(RpcErrors.entityNotFound("USER"))

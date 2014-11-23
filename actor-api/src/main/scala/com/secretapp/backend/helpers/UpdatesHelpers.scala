@@ -14,7 +14,7 @@ import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
 
-trait UpdatesHelpers {
+trait UpdatesHelpers extends UserHelpers {
   val context: ActorContext
 
   import context.dispatcher
@@ -26,6 +26,30 @@ trait UpdatesHelpers {
       authId, update
     )
   }
+
+  def broadcastCurrentUserUpdate(currentUser: models.User, update: SeqUpdateMessage): Unit = {
+    getAuthIds(currentUser.uid) map { authIds =>
+      authIds foreach (writeNewUpdate(_, update))
+    }
+  }
+
+  def broadcastCUUpdate(currentUser: models.User, update: SeqUpdateMessage): Unit =
+    broadcastCurrentUserUpdate(currentUser, update)
+
+  def broadcastCurrentUserUpdateAndGetState(currentUser: models.User, update: SeqUpdateMessage)
+    (implicit timeout: Timeout): Future[UpdatesBroker.StrictState] = {
+    getAuthIds(currentUser.uid) flatMap { authIds =>
+      authIds foreach { authId =>
+        if (authId != currentUser.authId)
+          writeNewUpdate(authId, update)
+      }
+      writeNewUpdateAndGetState(currentUser.authId, update)
+    }
+  }
+
+  def broadcastCUUpdateAndGetState(currentUser: models.User, update: SeqUpdateMessage)
+    (implicit timeout: Timeout): Future[UpdatesBroker.StrictState] =
+    broadcastCurrentUserUpdateAndGetState(currentUser, update)
 
   def writeNewUpdateAndGetState(authId: Long, update: SeqUpdateMessage)
     (implicit timeout: Timeout): Future[UpdatesBroker.StrictState] = {
