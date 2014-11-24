@@ -5,7 +5,7 @@ import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
-import com.secretapp.backend.data.message.rpc.user.{ RequestEditName, RequestEditAvatar }
+import com.secretapp.backend.data.message.rpc.user._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.helpers.{ SocialHelpers, UpdatesHelpers, UserHelpers }
@@ -27,6 +27,9 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     }
     case r: RequestEditName => authorizedRequest {
       handleEditName(currentUser.get, r)
+    }
+    case r: RequestRemoveAvatar => authorizedRequest {
+      handleRemoveAvatar(currentUser.get)
     }
   }
 
@@ -55,6 +58,17 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
             log.warning(s"Failed while updating avatar: $e")
             Error(400, "IMAGE_LOAD_ERROR", "", false)
         }
+    }
+  }
+
+  private def handleRemoveAvatar(user: models.User): Future[RpcResponse] = {
+    val emptyAvatar = models.Avatar(None, None, None)
+
+    persist.User.updateAvatar(user.uid, emptyAvatar) flatMap { _ =>
+      broadcastCUUpdateAndGetState(currentUser.get, AvatarChanged(user.uid, None)) map {
+        case (seq, state) =>
+          Ok(ResponseSeq(seq, Some(state)))
+      }
     }
   }
 

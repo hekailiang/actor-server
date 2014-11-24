@@ -1,7 +1,7 @@
-package com.secretapp.backend.protocol.codecs.message.rpc
+package com.secretapp.backend.protocol.codecs.message.rpc.user
 
 import com.secretapp.backend.protocol.codecs._
-import com.secretapp.backend.data.message.rpc.RequestRemoveAvatar
+import com.secretapp.backend.data.message.rpc.user.RequestRemoveAvatar
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
 import scodec.bits._
 import scodec.Codec

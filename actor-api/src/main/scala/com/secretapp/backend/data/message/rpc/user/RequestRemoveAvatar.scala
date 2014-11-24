@@ -1,4 +1,6 @@
-package com.secretapp.backend.data.message.rpc
+package com.secretapp.backend.data.message.rpc.user
+
+import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
 case class RequestRemoveAvatar() extends RpcRequestMessage {

@@ -12,7 +12,7 @@ import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
 import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
-import com.secretapp.backend.data.message.rpc.user.RequestEditAvatar
+import com.secretapp.backend.data.message.rpc.user.{ RequestEditAvatar, RequestRemoveAvatar }
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
@@ -131,6 +131,16 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
 
     "respond with FILE_TOO_BIG if huge image passed" in {
       RequestEditAvatar(tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
+    }
+  }
+
+  "user service on receiving `RequestSetAvatar`" should {
+    "remove user avatar" in {
+      setValidAvatarShouldBeOk
+
+      RequestRemoveAvatar() :~> <~:[ResponseSeq]
+
+      dbUser.avatar       should beNone
     }
   }
 
