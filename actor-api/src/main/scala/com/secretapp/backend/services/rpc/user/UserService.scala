@@ -45,14 +45,9 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
               }
             }
 
-            for {
-              updateState <- ask(
-                updatesBrokerRegion,
-                UpdatesBroker.NewUpdatePush(user.authId, AvatarChanged(user.uid, Some(a)))
-              ).mapTo[UpdatesBroker.StrictState]
-            } yield {
-              val (seq, state) = updateState
-              Ok(ResponseAvatarChanged(a, seq, Some(state)))
+            broadcastCUUpdateAndGetState(currentUser.get, AvatarChanged(user.uid, Some(a))) map {
+              case (seq, state) =>
+                Ok(ResponseAvatarChanged(a, seq, Some(state)))
             }
           }
         } recover {
@@ -74,7 +69,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
         }
       }
 
-      withNewUpdateState(currentUser.get.authId, update) {
+      broadcastCUUpdateAndGetState(currentUser.get, update) map {
         case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
       }
     }
