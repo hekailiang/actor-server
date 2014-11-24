@@ -208,8 +208,13 @@ trait ContactService extends UpdatesHelpers {
       persist.User.getEntity(userId) flatMap {
         case Some(user) =>
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
-            addContact(user.uid, user.phoneNumber, "", user.accessSalt, currentUser) map {
-              case (seq, state) => Ok(ResponseSeq(seq, state.some))
+            persist.contact.UserContactsList.getContact(currentUser.uid, userId) flatMap {
+              case None =>
+                addContact(user.uid, user.phoneNumber, "", user.accessSalt, currentUser) map {
+                  case (seq, state) => Ok(ResponseSeq(seq, state.some))
+                }
+              case Some(_) =>
+                Future.successful(RpcErrors.entityAlreadyExists("CONTACT"))
             }
           } else Future.successful(RpcErrors.invalidAccessHash)
         case None => Future.successful(RpcErrors.entityNotFound("USER"))
