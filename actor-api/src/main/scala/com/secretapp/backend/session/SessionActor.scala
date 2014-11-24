@@ -198,7 +198,7 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
-      //log.debug(s"$authId, $sessionId#$authId#$msg")
+      withMDC(log.debug(s"$msg"))
       if (!currentUser.exists(_ == user)) {
         persist(msg) { _ =>
           currentUser = Some(user)
