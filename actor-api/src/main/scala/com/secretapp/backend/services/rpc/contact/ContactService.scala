@@ -155,22 +155,23 @@ trait ContactService extends UpdatesHelpers {
   def handleRequestEditUserLocalName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.User.getAccessSaltAndPhone(contactId) flatMap {
-      case Some((accessSalt, phoneNumber)) =>
-        if (accessHash == ACL.userAccessHash(authId, contactId, accessSalt)) {
-          withValidName(name) { name =>
-            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, contactId, phoneNumber, name, accessSalt)
-            val responseFuture = broadcastCUUpdateAndGetState(
+    persist.User.getEntity(contactId) flatMap {
+      case Some(user) =>
+        if (accessHash == ACL.userAccessHash(authId, contactId, user.accessSalt)) {
+          val clFuture = persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
+            case Some(contact) =>
+              persist.contact.UserContactsList.insertContact(currentUser.uid, user.uid, user.phoneNumber, name, user.accessSalt)
+            case None =>
+              addContact(user.uid, user.phoneNumber, name, user.accessSalt, currentUser)
+          }
+
+          clFuture flatMap { _ =>
+            broadcastCUUpdateAndGetState(
               currentUser,
               updateProto.contact.LocalNameChanged(contactId, name.some)
             ) map {
               case (seq, state) => Ok(ResponseSeq(seq, state.some))
             }
-
-            for {
-              _ <- clFuture
-              response <- responseFuture
-            } yield response
           }
         } else Future.successful(RpcErrors.invalidAccessHash)
       case _ => Future.successful(RpcErrors.entityNotFound("CONTACT"))
@@ -200,24 +201,28 @@ trait ContactService extends UpdatesHelpers {
       persist.User.getEntity(userId) flatMap {
         case Some(user) =>
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
-            val newContactsId = Set(userId)
-            val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, user.phoneNumber, "", user.accessSalt)
-            val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
-            val responseFuture = broadcastCUUpdateAndGetState(
-              currentUser,
-              updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
-            ) map {
+            addContact(user.uid, user.phoneNumber, "", user.accessSalt, currentUser) map {
               case (seq, state) => Ok(ResponseSeq(seq, state.some))
             }
-
-            for {
-              _ <- clFuture
-              _ <- clCacheFuture
-              response <- responseFuture
-            } yield response
           } else Future.successful(RpcErrors.invalidAccessHash)
         case None => Future.successful(RpcErrors.entityNotFound("USER"))
       }
     }
+  }
+
+  private def addContact(userId: Int, phoneNumber: Long, name: String, accessSalt: String, currentUser: models.User): Future[UpdatesBroker.StrictState] = {
+    val newContactsId = Set(userId)
+    val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, phoneNumber, name, accessSalt)
+    val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
+    val stateFuture = broadcastCUUpdateAndGetState(
+      currentUser,
+      updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
+    )
+
+    for {
+      _ <- clFuture
+      _ <- clCacheFuture
+      state <- stateFuture
+    } yield state
   }
 }

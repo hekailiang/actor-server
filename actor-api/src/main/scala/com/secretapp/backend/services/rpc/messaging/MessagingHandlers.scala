@@ -259,9 +259,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
           for {
             authIds <- getAuthIds(outPeer.id)
           } yield {
-            authIds foreach { authId =>
-              updatesBrokerRegion ! NewUpdatePush(authId, updateProto.EncryptedReceived(outPeer.asPeer, randomId, receivedDate))
-            }
+            val update = updateProto.EncryptedReceived(struct.Peer.privat(currentUser.uid), randomId, receivedDate)
+            authIds foreach (writeNewUpdate(_, update))
           }
           Future.successful(Ok(ResponseVoid()))
         case struct.PeerType.Group =>
