@@ -27,13 +27,13 @@ trait UpdatesHelpers extends UserHelpers {
     )
   }
 
-  def broadcastCurrentUserUpdate(currentUser: models.User, update: SeqUpdateMessage): Unit = {
+  def broadcastCurrentUserUpdate(currentUser: models.User, update: SeqUpdateMessage): Future[Unit] = {
     getAuthIds(currentUser.uid) map { authIds =>
       authIds foreach (writeNewUpdate(_, update))
     }
   }
 
-  def broadcastCUUpdate(currentUser: models.User, update: SeqUpdateMessage): Unit =
+  def broadcastCUUpdate(currentUser: models.User, update: SeqUpdateMessage): Future[Unit] =
     broadcastCurrentUserUpdate(currentUser, update)
 
   def broadcastCurrentUserUpdateAndGetState(currentUser: models.User, update: SeqUpdateMessage)

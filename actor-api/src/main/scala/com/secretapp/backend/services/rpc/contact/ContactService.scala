@@ -136,17 +136,24 @@ trait ContactService extends UpdatesHelpers {
       case Some(contact) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, contact.accessSalt)) {
           val clFuture = persist.contact.UserContactsList.removeContact(currentUser.uid, contactId)
-          val responseFuture = broadcastCUUpdateAndGetState(
-            currentUser,
-            updateProto.contact.ContactsRemoved(immutable.Seq(contactId))
-          ) map {
-            case (seq, state) => Ok(ResponseSeq(seq, state.some))
-          }
 
-          for {
-            _ <- clFuture
-            response <- responseFuture
-          } yield response
+          getAuthIds(currentUser.uid) flatMap { authIds =>
+            authIds foreach { authId =>
+              if (authId != currentUser.authId) {
+                writeNewUpdate(authId, updateProto.contact.LocalNameChanged(contactId, None))
+                writeNewUpdate(authId, updateProto.contact.ContactsRemoved(immutable.Seq(contactId)))
+              }
+            }
+
+            writeNewUpdate(currentUser.authId, updateProto.contact.LocalNameChanged(contactId, None))
+
+            withNewUpdateState(
+              currentUser.authId,
+              updateProto.contact.ContactsRemoved(immutable.Seq(contactId))
+            ) {
+              case (seq, state) => Ok(ResponseSeq(seq, state.some))
+            }
+          }
         } else Future.successful(RpcErrors.invalidAccessHash)
       case _ => Future.successful(RpcErrors.entityNotFound("CONTACT"))
     }
