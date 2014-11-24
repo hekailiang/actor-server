@@ -1,5 +1,6 @@
 package utils
 
+import com.datastax.driver.core.SocketOptions
 import com.secretapp.backend.persist
 import com.datastax.driver.core.policies.{ConstantReconnectionPolicy, DefaultRetryPolicy, LoggingRetryPolicy}
 import com.datastax.driver.core.{Cluster, Session}
@@ -22,6 +23,7 @@ object DbConnector {
       .withoutMetrics()
       .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
       .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
+      .withSocketOptions(new SocketOptions().setReadTimeoutMillis(dbConfig.getInt("read-timeout-millis")))
       .build()
 
   // TODO: Get rid of lazy, it is not free.
