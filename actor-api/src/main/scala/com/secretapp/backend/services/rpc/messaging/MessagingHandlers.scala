@@ -51,6 +51,10 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     message: MessageContent
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
+      // Record relation between receiver authId and sender uid
+      socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+        currentUser.uid, SocialProtocol.RelationsNoted(Set(outPeer.id)))
+
       val date = System.currentTimeMillis()
 
       val selfUpdateFuture = outPeer.typ match {
