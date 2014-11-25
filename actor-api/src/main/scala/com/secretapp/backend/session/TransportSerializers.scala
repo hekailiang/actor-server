@@ -12,7 +12,6 @@ trait TransportSerializers {
   var transport: Option[TransportConnection] = None
 
   def serializeMessageBox(message: MessageBox): BitVector = {
-    //log.debug(s"$authId#serializeMessageBox: $message")
     transport match {
       case Some(MTConnection) => MessageBoxCodec.encodeValid(message)
       case None => throw new IllegalArgumentException("transport == None")

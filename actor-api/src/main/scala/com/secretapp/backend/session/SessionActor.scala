@@ -73,7 +73,7 @@ object SessionActor {
   def startRegion(singletons: Singletons, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(SessionActor.props(singletons, receiveTimeout, session)),
+      entryProps = Some(props(singletons, receiveTimeout, session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )

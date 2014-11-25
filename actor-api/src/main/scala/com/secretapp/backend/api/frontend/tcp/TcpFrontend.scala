@@ -19,7 +19,7 @@ object TcpFrontend {
   }
 }
 
-class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService with SslConfiguration {
+class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService {
   import akka.io.Tcp._
 
   val transport = MTConnection
