@@ -9,6 +9,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
+import com.secretapp.backend.data.message.update.WeakUpdate
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.models.User
 import com.secretapp.backend.services.common.PackageCommon._
@@ -194,7 +195,10 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
       withMDC(log.info(s"UpdateBoxToSend $ub"))
       val mb = MessageBox(getMessageId(UpdateMsgId), ub)
       val blob = serializeMessageBox(mb)
-      registerSentMessage(mb, blob)
+
+      if (!ub.body.isInstanceOf[WeakUpdate])
+        registerSentMessage(mb, blob)
+
       val pe = serializePackage(blob)
       connectors foreach (_ ! pe)
     case msg @ AuthorizeUser(user) =>
