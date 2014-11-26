@@ -14,6 +14,7 @@ import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.helpers.SocialHelpers
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.ClickatellSmsEngineActor
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -167,6 +168,7 @@ trait SignService extends SocialHelpers {
               ), u.uid
             )
 
+            sessionActor ! SessionProtocol.AuthorizeUser(u)
             Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId), struct.Config(300)))
           }
         }
