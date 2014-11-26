@@ -15,8 +15,8 @@ object PresenceType {
 
 object PresenceProtocol {
   sealed trait PresenceMessage
-  case class UserOnline(timeout: Long) extends PresenceMessage
-  case object UserOffline extends PresenceMessage
+  case class UserOnline(authId: Long, timeout: Long) extends PresenceMessage
+  case class UserOffline(authId: Long) extends PresenceMessage
   case class TellPresence(target: ActorRef) extends PresenceMessage
 
   case class Envelope(userId: Int, payload: PresenceMessage)
@@ -56,7 +56,7 @@ class PresenceBroker extends PersistentActor with ActorLogging {
 
   var lastSeen: Option[Long] = None
   var presence = PresenceType.Offline
-  var scheduledOffline: Option[Cancellable] = None
+  var scheduledOfflines = immutable.HashMap.empty[Long, Cancellable]
 
   val selfUserId = Integer.parseInt(self.path.name.drop(1))
   override def persistenceId = s"presence-broker-u$selfUserId"
@@ -64,30 +64,33 @@ class PresenceBroker extends PersistentActor with ActorLogging {
   type State = Option[Long]
 
   def receiveCommand: Receive = {
-    case m @ UserOnline(timeout) =>
+    case m @ UserOnline(authId, timeout) =>
       val time = System.currentTimeMillis / 1000
 
       saveSnapshot(Some(time))
 
       setState(Some(time))
 
-      scheduledOffline map (_.cancel())
-      scheduledOffline = Some(system.scheduler.scheduleOnce(timeout.millis, self, UserOffline))
+      scheduledOfflines.get(authId) map (_.cancel())
+      scheduledOfflines += Tuple2(authId, system.scheduler.scheduleOnce(timeout.millis, self, UserOffline(authId)))
 
       if (presence != PresenceType.Online) {
         publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
       }
 
       presence = PresenceType.Online
-    case UserOffline =>
-      presence = PresenceType.Offline
-      val update = lastSeen match {
-        case Some(time) =>
-          updateProto.UserLastSeen(selfUserId, time)
-        case None => // should never happen but shit happens
-          updateProto.UserOffline(selfUserId)
+    case UserOffline(authId) =>
+      scheduledOfflines -= authId
+      if (scheduledOfflines.size == 0) {
+        presence = PresenceType.Offline
+        val update = lastSeen match {
+          case Some(time) =>
+            updateProto.UserLastSeen(selfUserId, time)
+          case None => // should never happen but shit happens
+            updateProto.UserOffline(selfUserId)
+        }
+        publish(PresenceBroker.topicFor(selfUserId), update)
       }
-      publish(PresenceBroker.topicFor(selfUserId), update)
     case TellPresence(target) =>
       val update = presence match {
         case PresenceType.Online =>

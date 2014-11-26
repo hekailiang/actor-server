@@ -45,9 +45,9 @@ trait HandlerService {
 
   protected def handleRequestSetOnline(isOnline: Boolean, timeout: Long): Future[RpcResponse] = {
     val message = if (isOnline) {
-      UserOnline(timeout)
+      UserOnline(currentUser.authId, timeout)
     } else {
-      UserOffline
+      UserOffline(currentUser.authId)
     }
 
     presenceBrokerRegion ! Envelope(currentUser.uid, message)
