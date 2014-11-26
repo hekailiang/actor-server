@@ -15,9 +15,9 @@ class WSHeatingUpActor(host: String, port: Int)(implicit as: ActorSystem) extend
 
   def businessLogic: Receive = {
     case websocket.UpgradedToWebSocket =>
-      connection ! TextFrame(ByteString("$!#@%^$&*^*(#$&%".getBytes))
+      connection ! BinaryFrame(ByteString("$!#@%^$&*^*(#$&%".getBytes))
       context.become({
-        case _: TextFrame =>
+        case _: BinaryFrame =>
           connection ! CloseFrame()
         case _: Http.ConnectionClosed =>
           context stop self

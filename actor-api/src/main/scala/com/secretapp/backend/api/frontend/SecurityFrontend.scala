@@ -6,7 +6,6 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.session.SessionProtocol.Envelope
 import scala.collection.JavaConversions._
 import scala.util.Success
 import scalaz._
@@ -58,8 +57,8 @@ with ActorLogging
             case \/-(mb) =>
 //              TODO
 //              if (mb.messageId % 4 == 0)
-                //log.debug(s"$authId#Envelope: ${Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}, name: ${self.path.name}")
-                sessionRegion.tell(Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
+//                log.debug(s"$authId#Envelope: ${SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}, name: ${self.path.name}")
+                sessionRegion.tell(SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
 //              else silentClose()
             case -\/(e) =>
               log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${p.messageBoxBytes.toHex}")
