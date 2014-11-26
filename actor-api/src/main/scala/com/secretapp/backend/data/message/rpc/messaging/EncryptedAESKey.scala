@@ -3,7 +3,7 @@ package com.secretapp.backend.data.message.rpc.messaging
 import scala.language.implicitConversions
 import com.secretapp.backend.data.message.ProtobufMessage
 import com.secretapp.backend.protocol.codecs.utils.protobuf._
-import im.actor.messenger.api.{ RequestSendEncryptedMessage => protobuf }
+import im.actor.messenger.{ api => protobuf }
 import scodec.bits.BitVector
 import scala.collection.immutable
 import scalaz._
@@ -14,9 +14,9 @@ case class EncryptedAESKey(
   keyHash: Long,
   aesEncryptedKey: BitVector
 ) extends ProtobufMessage {
-  def toProto = protobuf.EncryptedAESKey(keyHash, aesEncryptedKey)
+  def toProto = protobuf.EncryptedAesKey(keyHash, aesEncryptedKey)
 }
 
 object EncryptedAESKey {
-  def fromProto(k: protobuf.EncryptedAESKey): EncryptedAESKey = EncryptedAESKey(k.keyHash, k.aesEncryptedKey)
+  def fromProto(k: protobuf.EncryptedAesKey): EncryptedAESKey = EncryptedAESKey(k.keyHash, k.aesEncryptedKey)
 }

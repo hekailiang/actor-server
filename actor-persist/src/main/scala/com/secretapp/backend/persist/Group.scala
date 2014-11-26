@@ -18,6 +18,9 @@ sealed class Group extends CassandraTable[Group, models.Group] {
     override lazy val name = "access_hash"
   }
   object title extends StringColumn(this)
+  object createDate extends LongColumn(this) {
+    override lazy val name = "create_date"
+  }
 
   object smallAvatarFileId extends OptionalIntColumn(this) {
     override lazy val name = "small_avatar_file_id"
@@ -58,7 +61,8 @@ sealed class Group extends CassandraTable[Group, models.Group] {
       id            = id(row),
       creatorUserId = creatorUserId(row),
       accessHash    = accessHash(row),
-      title         = title(row)
+      title         = title(row),
+      createDate    = createDate(row)
     )
   }
 
@@ -68,7 +72,8 @@ sealed class Group extends CassandraTable[Group, models.Group] {
         id            = id(row),
         creatorUserId = creatorUserId(row),
         accessHash    = accessHash(row),
-        title         = title(row)
+        title         = title(row),
+        createDate    = createDate(row)
       ),
       models.AvatarData(
         smallAvatarFileId   = smallAvatarFileId(row),
@@ -97,6 +102,7 @@ object Group extends Group with TableOps {
       .value(_.creatorUserId, entity.creatorUserId)
       .value(_.accessHash, entity.accessHash)
       .value(_.title, entity.title)
+      .value(_.createDate, entity.createDate)
       .future()
 
   def dropEntity(groupId: Int)(implicit session: Session): Future[Unit] =

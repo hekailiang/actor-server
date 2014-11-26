@@ -23,7 +23,7 @@ object WeakUpdateCodec extends Codec[WeakUpdate] with utils.ProtobufCodec {
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobufEither(protobuf.WeakUpdate.parseFrom(buf.toByteArray)) {
+    decodeProtobufEither(protobuf.UpdateWeakUpdate.parseFrom(buf.toByteArray)) {
       case Success(u) =>
         WeakUpdate.fromProto(u) match {
           case \/-(unboxed) => unboxed.right

@@ -20,17 +20,17 @@ case class FatSeqUpdate(seq: Int,
                         groups: immutable.Seq[struct.Group]) extends UpdateMessage {
   val header = SeqUpdate.header
 
-  def toProto: String \/ protobuf.FatSeqUpdate = {
+  def toProto: String \/ protobuf.UpdateFatSeqUpdate = {
     for {
       update <- SeqUpdateMessageCodec.encode(body)
-    } yield protobuf.FatSeqUpdate(seq, state, body.header, update, users map (_.toProto), groups map (_.toProto))
+    } yield protobuf.UpdateFatSeqUpdate(seq, state, body.header, update, users map (_.toProto), groups map (_.toProto))
   }
 }
 
 object FatSeqUpdate extends UpdateMessageObject {
   val header = 0x49
 
-  def fromProto(u: protobuf.FatSeqUpdate) = {
+  def fromProto(u: protobuf.UpdateFatSeqUpdate) = {
     for { update <- SeqUpdateMessageCodec.decode(u.updateHeader, u.update) }
     yield FatSeqUpdate(u.seq, u.state, update, u.users map struct.User.fromProto, u.groups map struct.Group.fromProto)
   }

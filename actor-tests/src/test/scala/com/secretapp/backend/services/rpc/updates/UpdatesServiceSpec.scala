@@ -52,7 +52,7 @@ class UpdatesServiceSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseSeq]
+        rq :~> <~:[ResponseSeqDate]
       }
 
       {
@@ -109,7 +109,7 @@ class UpdatesServiceSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseSeq]
+        rq :~> <~:[ResponseSeqDate]
       }
 
       {
@@ -178,10 +178,10 @@ class UpdatesServiceSpec extends RpcSpec {
         val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
         state.state must not equalTo None
 
-        val (diff1, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff1, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
         diff1.updates.length must equalTo(300)
 
-        val (diff2, _) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        val (diff2, _) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
         diff2.updates.length must equalTo(30)
 
         val updates = diff1.updates ++ diff2.updates
@@ -192,7 +192,7 @@ class UpdatesServiceSpec extends RpcSpec {
 
         updates.map(_.body.asInstanceOf[update.EncryptedMessage].message).toSet must equalTo(expectedMessages)
 
-        val (diff3, _) = RequestGetDifference(diff2.seq, diff2.state) :~> <~:[Difference]
+        val (diff3, _) = RequestGetDifference(diff2.seq, diff2.state) :~> <~:[ResponseGetDifference]
         diff3.updates.length must equalTo(0)
         diff3.state must not equalTo(None)
       }

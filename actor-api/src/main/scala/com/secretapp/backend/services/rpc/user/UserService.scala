@@ -3,7 +3,6 @@ package com.secretapp.backend.services.rpc.user
 import akka.pattern.ask
 import com.secretapp.backend.api.{ ApiBrokerService, UpdatesBroker }
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.rpc.user._
 import com.secretapp.backend.data.message.update._
@@ -44,13 +43,13 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
           persist.User.updateAvatar(user.uid, a) flatMap { _ =>
             withRelatedAuthIds(user.uid) { authIds =>
               authIds foreach { authId =>
-                updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, AvatarChanged(user.uid, Some(a)))
+                updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, UserAvatarChanged(user.uid, Some(a)))
               }
             }
 
-            broadcastCUUpdateAndGetState(currentUser.get, AvatarChanged(user.uid, Some(a))) map {
+            broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, Some(a))) map {
               case (seq, state) =>
-                Ok(ResponseAvatarChanged(a, seq, Some(state)))
+                Ok(ResponseEditAvatar(a, seq, Some(state)))
             }
           }
         } recover {
@@ -65,7 +64,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     val emptyAvatar = models.Avatar(None, None, None)
 
     persist.User.updateAvatar(user.uid, emptyAvatar) flatMap { _ =>
-      broadcastCUUpdateAndGetState(currentUser.get, AvatarChanged(user.uid, None)) map {
+      broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, None)) map {
         case (seq, state) =>
           Ok(ResponseSeq(seq, Some(state)))
       }
@@ -74,7 +73,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
 
   private def handleEditName(user: models.User, r: RequestEditName): Future[RpcResponse] =
     persist.User.updateName(user.uid, r.name) flatMap { _ =>
-      val update = NameChanged(user.uid, Some(r.name))
+      val update = NameChanged(user.uid, r.name)
 
       withRelatedAuthIds(user.uid) { authIds =>
         authIds foreach { authId =>

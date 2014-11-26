@@ -98,7 +98,7 @@ class TransportMessageCodecSpec extends Specification {
  */
     "encode and decode Update.SeqUpdateTooLong" in {
       val encoded = hex"05050000001900".bits
-      val decoded = UpdateBox(SeqUpdateTooLong())
+      val decoded = UpdateBox(UpdateSeqUpdateTooLong())
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -121,7 +121,7 @@ class TransportMessageCodecSpec extends Specification {
 
     "encode and decode RpcRequest.RequestAuthCode" in {
       val encoded = hex"031b0100000001150888a0a5bda90210b9601a09776f776170696b6579".bits
-      val decoded = RpcRequestBox(Request(RequestAuthCode(79853867016L, 12345, "wowapikey")))
+      val decoded = RpcRequestBox(Request(RequestSendAuthCode(79853867016L, 12345, "wowapikey")))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -169,7 +169,7 @@ class TransportMessageCodecSpec extends Specification {
       val keys = (1 to 3).map { id =>
         PublicKeyRequest(id, 1234567L + id, 1981234L + id)
       }
-      val decoded = RpcRequestBox(Request(RequestPublicKeys(keys)))
+      val decoded = RpcRequestBox(Request(RequestGetPublicKeys(keys)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -206,7 +206,7 @@ class TransportMessageCodecSpec extends Specification {
  */
     "encode and decode RpcResponse.ResponseAuthCode" in {
       val encoded = hex"0400000000000000011101000000020b0a07736d73686173681001".bits
-      val decoded = RpcResponseBox(1L, Ok(ResponseAuthCode("smshash", true)))
+      val decoded = RpcResponseBox(1L, Ok(ResponseSendAuthCode("smshash", true)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -261,7 +261,7 @@ class TransportMessageCodecSpec extends Specification {
       val keys = (1 to 3).map { id =>
         PublicKeyResponse(id, 1234567L + id, BitVector(s"ac1d$id".getBytes))
       }
-      val decoded = RpcResponseBox(1L, Ok(ResponsePublicKeys(keys)))
+      val decoded = RpcResponseBox(1L, Ok(ResponseGetPublicKeys(keys)))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some

@@ -18,7 +18,7 @@ object ErrorCodec extends Codec[Error] with utils.ProtobufCodec {
 
   def encode(e: Error) = {
     val eEncodedData = e.data match {
-      case Some(data: WrongReceiversErrorData) =>
+      case Some(data: WrongKeysErrorData) =>
         encodeToBitVector(data.toProto)
       case Some(w) =>
         s"Wrong error data $w".left
@@ -40,9 +40,9 @@ object ErrorCodec extends Codec[Error] with utils.ProtobufCodec {
           case BitVector.empty =>
             None.right
           case _ =>
-            decodeProtobuf(protobuf.WrongReceiversErrorData.parseFrom(encData.toByteArray)) {
-              case Success(protoData: protobuf.WrongReceiversErrorData) =>
-                Some(WrongReceiversErrorData.fromProto(protoData))
+            decodeProtobuf(protobuf.WrongKeysErrorData.parseFrom(encData.toByteArray)) {
+              case Success(protoData: protobuf.WrongKeysErrorData) =>
+                Some(WrongKeysErrorData.fromProto(protoData))
             } match {
               case \/-((_, r)) => r.right
               case e @ -\/(_) => e

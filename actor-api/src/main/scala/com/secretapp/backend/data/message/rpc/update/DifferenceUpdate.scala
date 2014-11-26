@@ -23,7 +23,7 @@ case class DifferenceUpdate(body: SeqUpdateMessage)
 
 object DifferenceUpdate {
   def fromProto(u: protobuf.DifferenceUpdate): String \/ DifferenceUpdate = {
-    for {update <- SeqUpdateMessageCodec.decode(u.updateId, u.update)}
+    for {update <- SeqUpdateMessageCodec.decode(u.updateHeader, u.update)}
     yield DifferenceUpdate(update)
   }
 }

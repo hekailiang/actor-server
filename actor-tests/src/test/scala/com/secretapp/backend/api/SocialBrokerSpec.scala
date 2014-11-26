@@ -45,7 +45,7 @@ class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecificatio
       region ! SocialMessageBox(uid2, RelationsNoted((40 to 43).toSet))
 
       Await.result(region ? SocialMessageBox(uid2, GetRelations), timeout.duration) must equalTo((40 to 45).toSet)
-      Await.result(region ? SocialMessageBox(uid1, GetRelations), timeout.duration) must equalTo((1 to 15).toSet)
+      Await.result(region ? SocialMessageBox(uid1, GetRelations), timeout.duration) must equalTo((2 to 15).toSet)
     }
   }
 }

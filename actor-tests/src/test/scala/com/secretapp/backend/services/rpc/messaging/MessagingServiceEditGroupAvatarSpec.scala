@@ -3,7 +3,7 @@ package com.secretapp.backend.services.rpc.user
 import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
-import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference }
+import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.util.{ACL, AvatarUtils}
@@ -12,7 +12,7 @@ import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing._
-import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
+import com.secretapp.backend.data.message.rpc.messaging.ResponseEditGroupAvatar
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
@@ -138,7 +138,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       val diff1 = {
         implicit val scope = scope1
-        RequestGetDifference(0, None) :~> <~:[Difference]
+        RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
       }._1
 
       val respGroup = {
@@ -152,7 +152,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       {
         implicit val scope = scope1
-        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
 
         updates2.length should beEqualTo(2)
         val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
@@ -218,11 +218,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
         implicit val scope = scope1
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
-        val r = removeAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
-
-        r.avatar.fullImage  should beNone
-        r.avatar.smallImage should beNone
-        r.avatar.largeImage should beNone
+        removeAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
       }
     }
 
@@ -250,7 +246,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       val diff1 = {
         implicit val scope = scope1
-        RequestGetDifference(0, None) :~> <~:[Difference]
+        RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
       }._1
 
       val respGroup = {
@@ -265,7 +261,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       {
         implicit val scope = scope1
-        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
         val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
 
         update.avatar should beNone
@@ -319,12 +315,12 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def setValidAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
-    val (rsp, _) = RequestEditGroupAvatar(GroupOutPeer(groupId, accessHash), validFileLocation) :~> <~:[ResponseAvatarChanged]
+    val (rsp, _) = RequestEditGroupAvatar(GroupOutPeer(groupId, accessHash), validFileLocation) :~> <~:[ResponseEditGroupAvatar]
     rsp
   }
 
   private def removeAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
-    val (rsp, _) = RequestRemoveGroupAvatar(GroupOutPeer(groupId, accessHash)) :~> <~:[ResponseAvatarChanged]
+    val (rsp, _) = RequestRemoveGroupAvatar(GroupOutPeer(groupId, accessHash)) :~> <~:[ResponseSeqDate]
     rsp
   }
 

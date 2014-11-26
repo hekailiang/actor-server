@@ -10,18 +10,18 @@ import Scalaz._
 case class WeakUpdate(date: Long, body: WeakUpdateMessage) extends UpdateMessage {
   val header = WeakUpdate.header
 
-  def toProto: String \/ protobuf.WeakUpdate = {
+  def toProto: String \/ protobuf.UpdateWeakUpdate = {
     for {
       update <- WeakUpdateMessageCodec.encode(body)
-    } yield protobuf.WeakUpdate(date, body.header, update)
+    } yield protobuf.UpdateWeakUpdate(date, body.header, update)
   }
 }
 
 object WeakUpdate extends UpdateMessageObject {
   val header = 0x1A
 
-  def fromProto(u: protobuf.WeakUpdate) = {
-    for { update <- WeakUpdateMessageCodec.decode(u.updateId, u.update) }
+  def fromProto(u: protobuf.UpdateWeakUpdate) = {
+    for { update <- WeakUpdateMessageCodec.decode(u.updateHeader, u.update) }
     yield WeakUpdate(u.date, update)
   }
 }

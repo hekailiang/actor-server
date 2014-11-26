@@ -16,17 +16,17 @@ case class SeqUpdate(seq: Int, state: BitVector, body: SeqUpdateMessage) extends
 {
   val header = SeqUpdate.header
 
-  def toProto: String \/ protobuf.SeqUpdate = {
+  def toProto: String \/ protobuf.UpdateSeqUpdate = {
     for {
       update <- SeqUpdateMessageCodec.encode(body)
-    } yield protobuf.SeqUpdate(seq, state, body.header, update)
+    } yield protobuf.UpdateSeqUpdate(seq, state, body.header, update)
   }
 }
 
 object SeqUpdate extends UpdateMessageObject {
   val header = 0x0D
 
-  def fromProto(u: protobuf.SeqUpdate) = {
+  def fromProto(u: protobuf.UpdateSeqUpdate) = {
     for { update <- SeqUpdateMessageCodec.decode(u.updateHeader, u.update) }
     yield SeqUpdate(u.seq, u.state, update)
   }

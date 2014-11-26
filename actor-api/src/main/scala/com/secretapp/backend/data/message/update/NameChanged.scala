@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.update
 
-case class NameChanged(userId: Int, name: Option[String]) extends SeqUpdateMessage {
+case class NameChanged(userId: Int, name: String) extends SeqUpdateMessage {
   val header = NameChanged.header
 
   def userIds: Set[Int] = Set(userId)

@@ -72,14 +72,14 @@ object ServiceMessageExt {
 case class UserAddedExtension(addedUid: Int) extends ServiceMessageExt {
   val header = UserAddedExtension.header
 
-  def toProto = protobuf.ServiceMessage.UserAddedExtension(addedUid)
+  def toProto = protobuf.ServiceExUserAdded(addedUid)
 }
 
 object UserAddedExtension {
   val header = 0x01
 
   def fromProto(m: protobuf.ServiceMessage) = {
-    val ext = protobuf.ServiceMessage.UserAddedExtension.parseFrom(m.ext.get)
+    val ext = protobuf.ServiceExUserAdded.parseFrom(m.ext.get)
     UserAddedExtension(ext.addedUid)
   }
 }
@@ -88,14 +88,14 @@ object UserAddedExtension {
 case class UserKickedExtension(kickedUid: Int) extends ServiceMessageExt {
   val header =  UserKickedExtension.header
 
-  def toProto = protobuf.ServiceMessage.UserKickedExtension(kickedUid)
+  def toProto = protobuf.ServiceExUserKicked(kickedUid)
 }
 
 object UserKickedExtension {
   val header = 0x02
 
   def fromProto(m: protobuf.ServiceMessage) = {
-    val ext = protobuf.ServiceMessage.UserKickedExtension.parseFrom(m.ext.get)
+    val ext = protobuf.ServiceExUserKicked.parseFrom(m.ext.get)
     UserKickedExtension(ext.kickedUid)
   }
 }
@@ -104,7 +104,7 @@ object UserKickedExtension {
 case class UserLeftExtension() extends ServiceMessageExt {
   val header =  UserLeftExtension.header
 
-  def toProto = protobuf.ServiceMessage.UserLeftExtension()
+  def toProto = protobuf.ServiceExUserLeft()
 }
 
 object UserLeftExtension {
@@ -117,7 +117,7 @@ object UserLeftExtension {
 case class GroupCreatedExtension() extends ServiceMessageExt {
   val header =  GroupCreatedExtension.header
 
-  def toProto = protobuf.ServiceMessage.GroupCreatedExtension()
+  def toProto = protobuf.ServiceExGroupCreated()
 }
 
 object GroupCreatedExtension {
@@ -130,14 +130,14 @@ object GroupCreatedExtension {
 case class GroupChangedTitleExtension(title: String) extends ServiceMessageExt {
   val header =  GroupChangedTitleExtension.header
 
-  def toProto = protobuf.ServiceMessage.GroupChangedTitleExtension(title)
+  def toProto = protobuf.ServiceExChangedTitle(title)
 }
 
 object GroupChangedTitleExtension {
   val header = 0x05
 
   def fromProto(m: protobuf.ServiceMessage) = {
-    val ext = protobuf.ServiceMessage.GroupChangedTitleExtension.parseFrom(m.ext.get)
+    val ext = protobuf.ServiceExChangedTitle.parseFrom(m.ext.get)
     GroupChangedTitleExtension(ext.title)
   }
 }
@@ -147,7 +147,7 @@ case class GroupChangedAvatarExtension(avatar: Option[models.Avatar]) extends Se
   val header =  GroupChangedAvatarExtension.header
 
   def toProto = {
-    protobuf.ServiceMessage.GroupChangedAvatarExtension(avatar.map(proto.toProto[models.Avatar, protobuf.Avatar]))
+    protobuf.ServiceExChangedAvatar(avatar.map(proto.toProto[models.Avatar, protobuf.Avatar]))
   }
 }
 
@@ -155,13 +155,13 @@ object GroupChangedAvatarExtension {
   val header = 0x06
 
   def fromProto(m: protobuf.ServiceMessage) = {
-    val ext = protobuf.ServiceMessage.GroupChangedAvatarExtension.parseFrom(m.ext.get)
+    val ext = protobuf.ServiceExChangedAvatar.parseFrom(m.ext.get)
     GroupChangedAvatarExtension(ext.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
   }
 }
 
 @SerialVersionUID(1L)
-case class FileMessage(fileId: Int, accessHash: Long, fileSize: Int, name: String,
+case class FileMessage(fileId: Long, accessHash: Long, fileSize: Int, name: String,
                        mimeType: String, thumb: Option[FastThumb], ext: Option[FileMessageExt]) extends MessageContent {
   val header = FileMessage.header
 
@@ -200,14 +200,14 @@ object FileMessageExt {
 case class PhotoExtension(w: Int, h: Int) extends FileMessageExt {
   val header =  PhotoExtension.header
 
-  def toProto = protobuf.FileMessage.PhotoExtension(w, h)
+  def toProto = protobuf.FileExPhoto(w, h)
 }
 
 object PhotoExtension {
   val header = 0x01
 
   def fromProto(m: protobuf.FileMessage) = {
-    val ext = protobuf.FileMessage.PhotoExtension.parseFrom(m.ext.get)
+    val ext = protobuf.FileExPhoto.parseFrom(m.ext.get)
     PhotoExtension(ext.w, ext.h)
   }
 }
@@ -216,14 +216,14 @@ object PhotoExtension {
 case class VideoExtension(w: Int, h: Int, duration: Int) extends FileMessageExt {
   val header =  VideoExtension.header
 
-  def toProto = protobuf.FileMessage.VideoExtension(w, h, duration)
+  def toProto = protobuf.FileExVideo(w, h, duration)
 }
 
 object VideoExtension {
   val header = 0x02
 
   def fromProto(m: protobuf.FileMessage) = {
-    val ext = protobuf.FileMessage.VideoExtension.parseFrom(m.ext.get)
+    val ext = protobuf.FileExVideo.parseFrom(m.ext.get)
     VideoExtension(ext.w, ext.h, ext.duration)
   }
 }
@@ -232,14 +232,14 @@ object VideoExtension {
 case class VoiceExtension(duration: Int) extends FileMessageExt {
   val header =  VoiceExtension.header
 
-  def toProto = protobuf.FileMessage.VoiceExtension(duration)
+  def toProto = protobuf.FileExVoice(duration)
 }
 
 object VoiceExtension {
   val header = 0x03
 
   def fromProto(m: protobuf.FileMessage) = {
-    val ext = protobuf.FileMessage.VoiceExtension.parseFrom(m.ext.get)
+    val ext = protobuf.FileExVoice.parseFrom(m.ext.get)
     VoiceExtension(ext.duration)
   }
 }

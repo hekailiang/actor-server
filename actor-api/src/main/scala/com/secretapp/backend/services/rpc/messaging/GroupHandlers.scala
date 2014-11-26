@@ -8,6 +8,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.rpc.user.ResponseEditAvatar
 import com.secretapp.backend.data.message.struct.Peer
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
@@ -36,12 +37,12 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       handleRequestCreateGroup(randomId, title, users)
     case RequestEditGroupTitle(groupPeer, title) =>
       handleRequestEditGroupTitle(groupPeer, title)
-    case RequestInviteUsers(groupOutPeer, users) =>
-      handleRequestInviteUsers(groupOutPeer, users)
+    case RequestInviteUser(groupOutPeer, user) =>
+      handleRequestInviteUser(groupOutPeer, user)
     case RequestLeaveGroup(groupOutPeer) =>
       handleRequestLeaveGroup(groupOutPeer)
-    case RequestRemoveUsers(groupOutPeer, users) =>
-      handleRequestRemoveUsers(groupOutPeer, users)
+    case RequestRemoveUser(groupOutPeer, users) =>
+      handleRequestRemoveUser(groupOutPeer, users)
     case RequestEditGroupAvatar(groupOutPeer, fl) =>
       handleRequestEditGroupAvatar(groupOutPeer, fl)
     case RequestRemoveGroupAvatar(groupOutPeer) =>
@@ -55,9 +56,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     title: String,
     users: immutable.Seq[struct.UserOutPeer]
   ): Future[RpcResponse] = {
-    val id = rand.nextInt
+    val id = rand.nextInt(java.lang.Integer.MAX_VALUE)
 
-    val group = models.Group(id, currentUser.uid, rand.nextLong(), title)
+    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, System.currentTimeMillis)
 
     withUserOutPeers(users, currentUser) {
       val createGroupModelF = persist.Group.insertEntity(group)
@@ -120,9 +121,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     }
   }
 
-  protected def handleRequestInviteUsers(
+  protected def handleRequestInviteUser(
     groupOutPeer: struct.GroupOutPeer,
-    users: immutable.Seq[struct.UserOutPeer]
+    user: struct.UserOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
@@ -131,60 +132,51 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     val date = System.currentTimeMillis()
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      withUserOutPeers(users, currentUser) {
+      withUserOutPeer(user, currentUser) {
         userIdsAuthIdsF flatMap { userIdsAuthIds =>
           val userIds = userIdsAuthIds.keySet
-          val newUserIds = users map (_.id) toSet
 
-          if (newUserIds.diff(userIds) == newUserIds) {
-            val addUsersF = Future.sequence(
-              newUserIds map { userId =>
-                // TODO: use shapeless-contrib here after upgrading to scala 2.11
-                Future.sequence(Seq(
-                  persist.GroupUser.addUser(groupId, userId),
-                  persist.UserGroup.addGroup(userId, groupId)
-                ))
-              }
-            )
+          if (!userIds.contains(user.id)) {
+            // TODO: use shapeless-contrib here after upgrading to scala 2.11
+            val addUserF = Future.sequence(Seq(
+              persist.GroupUser.addUser(groupId, user.id),
+              persist.UserGroup.addGroup(user.id, groupId)
+            ))
 
-            addUsersF flatMap { _ =>
+            addUserF flatMap { _ =>
               val groupInviteUpdate = GroupInvite(
                 groupId = groupId,
                 inviterUserId = currentUser.uid,
                 date = date
               )
 
-              newUserIds foreach { userId =>
-                for {
-                  authIds <- getAuthIds(userId)
-                } yield {
-                  authIds foreach (writeNewUpdate(_, groupInviteUpdate))
-                }
+              for {
+                authIds <- getAuthIds(user.id)
+              } yield {
+                authIds foreach (writeNewUpdate(_, groupInviteUpdate))
               }
 
-              val groupUserAddedUpdates = newUserIds map ( userId =>
-                GroupUserAdded(
-                  groupId = groupId,
-                  userId = userId,
-                  inviterUserId = currentUser.uid,
-                  date = date
-                )
+              val groupUserAddedUpdate = GroupUserAdded(
+                groupId = groupId,
+                userId = user.id,
+                inviterUserId = currentUser.uid,
+                date = date
               )
 
               userIdsAuthIds foreach {
                 case (userId, authIds) =>
                   authIds foreach { authId =>
                     if (authId != currentUser.authId) {
-                      groupUserAddedUpdates foreach (writeNewUpdate(authId, _))
+                      writeNewUpdate(authId, groupUserAddedUpdate)
                     }
                   }
               }
 
-              withNewUpdatesState(
+              withNewUpdateState(
                 currentUser.authId,
-                groupUserAddedUpdates.toSeq
+                groupUserAddedUpdate
               ) { s =>
-                val res = ResponseSeq(s._1, Some(s._2))
+                val res = ResponseSeqDate(s._1, Some(s._2), date)
                 Ok(res)
               }
             }
@@ -204,47 +196,40 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
       leaveGroup(groupId, currentUser) map {
         case \/-(state) =>
-          Ok(ResponseSeq(state._1, Some(state._2)))
+          Ok(ResponseSeqDate(state._1, Some(state._2), System.currentTimeMillis()))
         case -\/(err) => err
       }
     }
   }
 
-  protected def handleRequestRemoveUsers(
+  protected def handleRequestRemoveUser(
     groupOutPeer: struct.GroupOutPeer,
-    users: immutable.Seq[struct.UserOutPeer]
+    userOutPeer: struct.UserOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
+    val kickedUserId = userOutPeer.id
 
     val date = System.currentTimeMillis
 
     withOwnGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      withUserOutPeers(users, currentUser) {
+      withUserOutPeer(userOutPeer, currentUser) {
         val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId) map (_.toMap)
 
         userIdsAuthIdsF flatMap { userIdsAuthIds =>
-          val removedUserIds = users map (_.id) toSet
+          if (userIdsAuthIds.keySet.contains(kickedUserId)) {
+            // TODO: use shapeless-contrib here after upgrading to scala 2.11
+            val removeUserF = Future.sequence(Seq(
+              persist.GroupUser.removeUser(groupId, kickedUserId),
+              persist.UserGroup.removeGroup(kickedUserId, groupId)
+            ))
 
-          if (removedUserIds.diff(userIdsAuthIds.keySet) == Set.empty) {
-            val removeUsersF = Future.sequence(
-              removedUserIds map { userId =>
-                // TODO: use shapeless-contrib here after upgrading to scala 2.11
-                Future.sequence(Seq(
-                  persist.GroupUser.removeUser(groupId, userId),
-                  persist.UserGroup.removeGroup(userId, groupId)
-                ))
-              }
-            )
-
-            removeUsersF flatMap { _ =>
-              val userKickUpdates = removedUserIds map { userId =>
-                GroupUserKick(
-                  groupId = groupId,
-                  userId = userId,
-                  kickerUid = currentUser.uid,
-                  date = date
-                )
-              }
+            removeUserF flatMap { _ =>
+              val userKickUpdate = GroupUserKick(
+                groupId = groupId,
+                userId = kickedUserId,
+                kickerUid = currentUser.uid,
+                date = date
+              )
 
               val targetAuthIds = userIdsAuthIds map {
                 case (currentUser.uid, authIds) =>
@@ -254,14 +239,14 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
               } flatten
 
               targetAuthIds foreach { authId =>
-                userKickUpdates foreach (writeNewUpdate(authId, _))
+                writeNewUpdate(authId, userKickUpdate)
               }
 
-              withNewUpdatesState(
+              withNewUpdateState(
                 currentUser.authId,
-                userKickUpdates.toSeq
+                userKickUpdate
               ) { s =>
-                val res = ResponseSeq(s._1, Some(s._2))
+                val res = ResponseSeqDate(s._1, Some(s._2), date)
                 Ok(res)
               }
             }
@@ -306,7 +291,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           currentUser.authId,
           titleChangedUpdate
         ) { s =>
-          val res = ResponseSeq(s._1, Some(s._2))
+          val res = ResponseSeqDate(s._1, Some(s._2), date)
           Ok(res)
         }
       }
@@ -318,6 +303,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     fileLocation: models.FileLocation
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
+    val date = System.currentTimeMillis()
 
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
       val sizeLimit: Long = 1024 * 1024 // TODO: configurable
@@ -327,7 +313,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           groupId,
           currentUser.uid,
           a.some,
-          System.currentTimeMillis
+          date
         )
 
         persist.Group.updateAvatar(groupId, a) flatMap { _ =>
@@ -337,7 +323,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           }
 
           withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
-            Ok(ResponseAvatarChanged(a, s._1, s._2.some))
+            Ok(ResponseEditGroupAvatar(a, s._1, s._2.some, date))
           }
         }
       }
@@ -348,6 +334,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     groupOutPeer: struct.GroupOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
+    val date = System.currentTimeMillis()
 
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
 
@@ -355,7 +342,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
         groupId,
         currentUser.uid,
         None,
-        System.currentTimeMillis
+        date
       )
 
       persist.Group.removeAvatar(groupId) flatMap { _ =>
@@ -365,7 +352,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
         }
 
         withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
-          Ok(ResponseAvatarChanged(models.Avatar(None, None, None), s._1, s._2.some))
+          Ok(ResponseSeqDate(s._1, s._2.some, date))
         }
       }
     }
@@ -413,7 +400,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
             currentUser.authId,
             chatDeleteUpdate
           ) { s =>
-            val res = ResponseSeq(s._1, Some(s._2))
+            val res = ResponseSeqDate(s._1, Some(s._2), date)
             Ok(res)
           }
         }

@@ -6,7 +6,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
@@ -165,7 +165,7 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
           currentUser.authId,
           _
         ) { s =>
-          val rsp = ResponseMessageSent(seq = s._1, state = Some(s._2), date)
+          val rsp = ResponseSeqDate(seq = s._1, state = Some(s._2), date)
           Ok(rsp)
         }
       }
@@ -234,11 +234,11 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
               date
             )
           ) { s =>
-            val rsp = ResponseMessageSent(seq = s._1, state = Some(s._2), date = date)
+            val rsp = ResponseSeqDate(seq = s._1, state = Some(s._2), date = date)
             Ok(rsp)
           }
         case -\/((newKeys, removedKeys, invalidKeys)) =>
-          val errorData = struct.WrongReceiversErrorData(newKeys.toSeq, removedKeys.toSeq, invalidKeys.toSeq)
+          val errorData = struct.WrongKeysErrorData(newKeys.toSeq, removedKeys.toSeq, invalidKeys.toSeq)
 
           Future.successful(
             Error(400, "WRONG_KEYS", "", false, Some(errorData))

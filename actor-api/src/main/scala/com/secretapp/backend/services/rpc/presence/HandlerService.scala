@@ -28,7 +28,7 @@ trait HandlerService {
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeFromOnline(users: immutable.Seq[struct.UserOutPeer]): Future[RpcResponse] = {
+  protected def handleSubscribeFromOnline(users: immutable.Seq[struct.UserOutPeer]): Future[RpcResponse] = {
     sessionActor ! SessionProtocol.UnsubscribeToPresences(users map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }
@@ -38,7 +38,7 @@ trait HandlerService {
     Future.successful(Ok(ResponseVoid()))
   }
 
-  protected def handleUnsubscribeFromGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
+  protected def handleSubscribeFromGroupOnline(groups: immutable.Seq[struct.GroupOutPeer]): Future[RpcResponse] = {
     sessionActor ! SessionProtocol.UnsubscribeFromGroupPresences(groups map (_.id))
     Future.successful(Ok(ResponseVoid()))
   }

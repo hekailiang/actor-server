@@ -56,7 +56,6 @@ class File(implicit session: Session, context: ExecutionContext with Executor) {
     }
 
   def getFile(fileId: Int, offset: Int, limit: Int): Future[Array[Byte]] = {
-    println(s"getFile $offset $limit")
     for {
       blocks <- blockRecord.getFileBlocks(fileId, offset, limit)
     } yield {

@@ -7,7 +7,7 @@ import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.history._
-import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseAvatarChanged, ResponseVoid }
+import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, ResponseVoid }
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
@@ -36,15 +36,15 @@ trait HistoryHandlers extends RandomService with UserHelpers with GroupHelpers {
       handleRequestLoadHistory(peer, randomId, message)
     case RequestLoadDialogs(startDate, limit) =>
       handleRequestLoadDialogs(startDate, limit)
-    case RequestMessageDelete(outPeer, randomIds) =>
-      handleRequestMessageDelete(outPeer, randomIds)
+    case RequestDeleteMessage(outPeer, randomIds) =>
+      handleRequestDeleteMessage(outPeer, randomIds)
     case RequestClearChat(outPeer) =>
       handleRequestClearChat(outPeer)
     case RequestDeleteChat(outPeer) =>
       handleRequestDeleteChat(outPeer)
   }
 
-  protected def handleRequestMessageDelete(
+  protected def handleRequestDeleteMessage(
     outPeer: struct.OutPeer,
     randomIds: immutable.Seq[Long]
   ): Future[RpcResponse] = {

@@ -1,7 +1,7 @@
 package com.secretapp.backend.services.rpc.user
 
 import java.nio.file.{ Files, Paths }
-import com.secretapp.backend.data.message.rpc.update.{ Difference, RequestGetDifference, ResponseSeq }
+import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
@@ -11,8 +11,7 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
 import scodec.bits._
-import com.secretapp.backend.data.message.rpc.ResponseAvatarChanged
-import com.secretapp.backend.data.message.rpc.user.{ RequestEditAvatar, RequestRemoveAvatar }
+import com.secretapp.backend.data.message.rpc.user.{ RequestEditAvatar, RequestRemoveAvatar, ResponseEditAvatar }
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
@@ -88,7 +87,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
 
       val diff1 = {
         implicit val scope = scope1
-        RequestGetDifference(0, None) :~> <~:[Difference]
+        RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
       }._1
 
       {
@@ -101,11 +100,11 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
 
       val (diff2, updates2) = {
         implicit val scope = scope1
-        RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
       }
 
       updates2.length should beEqualTo(2)
-      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[AvatarChanged]
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[UserAvatarChanged]
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
@@ -193,7 +192,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def setValidAvatarShouldBeOk(implicit scope: TestScope) = {
-    val (rsp, _) = RequestEditAvatar(validFileLocation) :~> <~:[ResponseAvatarChanged]
+    val (rsp, _) = RequestEditAvatar(validFileLocation) :~> <~:[ResponseEditAvatar]
     rsp
   }
 
@@ -221,7 +220,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       ownKeys = immutable.Seq.empty
     )
 
-    rq :~> <~:[ResponseMessageSent]
+    rq :~> <~:[ResponseSeqDate]
 
     Thread.sleep(1000)
   }

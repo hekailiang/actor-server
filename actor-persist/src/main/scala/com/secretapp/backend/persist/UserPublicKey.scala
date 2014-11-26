@@ -11,7 +11,9 @@ import scodec.bits.BitVector
 sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPublicKey] {
   override val tableName = "user_public_keys"
 
-  object uid extends IntColumn(this) with PartitionKey[Int]
+  object uid extends IntColumn(this) with PartitionKey[Int] {
+    override lazy val name = "user_id"
+  }
   object publicKeyHash extends LongColumn(this) with PrimaryKey[Long] {
     override lazy val name = "public_key_hash"
   }

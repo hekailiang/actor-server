@@ -20,7 +20,7 @@ object MessageDeleteCodec extends Codec[MessageDelete] with utils.ProtobufCodec 
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateMessageDelete.parseFrom(buf.toByteArray)) {
-      case Success(u) => MessageDelete(Peer.fromProto(u.peer), u.rid)
+      case Success(u) => MessageDelete(Peer.fromProto(u.peer), u.rids)
     }
   }
 }

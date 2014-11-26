@@ -4,8 +4,8 @@ import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.data.message.rpc._
-import com.secretapp.backend.data.message.rpc.contact.{PublicKeyRequest, PublicKeyResponse, RequestPublicKeys, ResponsePublicKeys}
-import com.secretapp.backend.services.{UserManagerService, GeneratorService}
+import com.secretapp.backend.data.message.rpc.contact.{ PublicKeyRequest, PublicKeyResponse, RequestGetPublicKeys, ResponseGetPublicKeys }
+import com.secretapp.backend.services.{ UserManagerService, GeneratorService }
 import com.secretapp.backend.persist
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
@@ -21,13 +21,13 @@ trait PublicKeysService {
   import context._
 
   def handleRpcPublicKeys: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
-    case RequestPublicKeys(keys) =>
+    case RequestGetPublicKeys(keys) =>
       authorizedRequest {
-        handleRequestPublicKeys(keys)
+        handleRequestGetPublicKeys(keys)
       }
   }
 
-  def handleRequestPublicKeys(keys: immutable.Seq[PublicKeyRequest]): Future[RpcResponse] = {
+  def handleRequestGetPublicKeys(keys: immutable.Seq[PublicKeyRequest]): Future[RpcResponse] = {
     val authId = currentAuthId
     val keysMap = keys.map(k => k.userId * k.keyHash -> k.accessHash).toMap
     for {
@@ -41,7 +41,7 @@ trait PublicKeysService {
       val pubKeys = items.map { key =>
         PublicKeyResponse(key.userId, key.publicKeyHash, key.publicKey)
       }
-      Ok(ResponsePublicKeys(pubKeys))
+      Ok(ResponseGetPublicKeys(pubKeys))
     }
   }
 }

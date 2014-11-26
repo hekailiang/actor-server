@@ -6,7 +6,7 @@ import scala.language.{ postfixOps, higherKinds }
 import scala.collection.immutable
 import com.secretapp.backend.persist
 import com.secretapp.backend.data.message.RpcRequestBox
-import com.secretapp.backend.data.message.rpc.{Ok, Request}
+import com.secretapp.backend.data.message.rpc.{ Ok, Request }
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.models
 import com.secretapp.backend.crypto.ec
@@ -33,11 +33,11 @@ class PublicKeysServiceSpec extends RpcSpec {
         persist.User.insertEntityWithChildren(secondUser).sync()
 
         val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
-        val rpcReq = RpcRequestBox(Request(RequestPublicKeys(reqKeys)))
+        val rpcReq = RpcRequestBox(Request(RequestGetPublicKeys(reqKeys)))
         sendMsg(rpcReq)
 
         val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))
-        expectRpcMsg(Ok(ResponsePublicKeys(resKeys)), withNewSession = true)
+        expectRpcMsg(Ok(ResponseGetPublicKeys(resKeys)), withNewSession = true)
       }
     }
   }

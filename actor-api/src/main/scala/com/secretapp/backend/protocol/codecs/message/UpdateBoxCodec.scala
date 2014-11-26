@@ -13,7 +13,7 @@ object UpdateBoxCodec extends Codec[UpdateBox] {
   private val updateCodec: Codec[UpdateMessage] = discriminated[UpdateMessage].by(uint32)
     .\(SeqUpdate.header) { case c: SeqUpdate => c } (protoPayload(SeqUpdateCodec))
     .\(FatSeqUpdate.header) { case c: FatSeqUpdate => c } (protoPayload(FatSeqUpdateCodec))
-    .\(SeqUpdateTooLong.header) { case c: SeqUpdateTooLong => c } (protoPayload(SeqUpdateTooLongCodec))
+    .\(UpdateSeqUpdateTooLong.header) { case c: UpdateSeqUpdateTooLong => c } (protoPayload(UpdateSeqUpdateTooLongCodec))
     .\(WeakUpdate.header) { case c: WeakUpdate => c } (protoPayload(WeakUpdateCodec))
     .\(0, _ => true) { case a: Any => a } (new DiscriminatedErrorCodec("UpdateBox"))
 

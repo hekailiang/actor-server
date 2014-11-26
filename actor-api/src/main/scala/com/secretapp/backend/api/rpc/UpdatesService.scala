@@ -11,7 +11,7 @@ import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.{ struct, update => updateProto }
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Ok, update => updateRpcProto }
-import com.secretapp.backend.data.message.rpc.update.{ Difference, DifferenceUpdate }
+import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, DifferenceUpdate }
 import com.secretapp.backend.data.message.update.SeqUpdate
 import com.secretapp.backend.helpers._
 import com.secretapp.backend.models
@@ -79,7 +79,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     }
   }
 
-  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[Difference] = {
+  protected def mkDifference(seq: Int, requestState: Option[UUID], allUpdates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[ResponseGetDifference] = {
     val needMore = allUpdates.length > differenceSize
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val state = if (updates.length > 0) Some(updates.last.key) else requestState
@@ -91,7 +91,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
       users <- usersFuture
       groups <- groupsFuture
     } yield {
-      Difference(seq, state, users, groups,
+      ResponseGetDifference(seq, state, users, groups,
         updates map { u => DifferenceUpdate(u.value) }, needMore)
     }
   }

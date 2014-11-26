@@ -27,10 +27,10 @@ trait HandlerService extends GeneratorService {
 
   implicit val timeout = Timeout(5.seconds)
 
-  protected def handleRequestUploadStart(): Future[RpcResponse] = {
+  protected def handleRequestStartUpload(): Future[RpcResponse] = {
     val fileId = rand.nextInt
     fileRecord.createFile(fileId, genFileAccessSalt) map { _ =>
-      val rsp = ResponseUploadStarted(UploadConfig(int32codec.encodeValid(fileId)))
+      val rsp = ResponseStartUpload(UploadConfig(int32codec.encodeValid(fileId)))
       Ok(rsp)
     }
   }
@@ -67,6 +67,7 @@ trait HandlerService extends GeneratorService {
     }
   }
 
+  // TODO: refactor makaron
   protected def handleRequestCompleteUpload(config: UploadConfig, blocksCount: Int, crc32: Long): Future[RpcResponse] = {
     int32codec.decodeValue(config.serverData) match {
       case -\/(e) =>
@@ -80,7 +81,7 @@ trait HandlerService extends GeneratorService {
             val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
               if (crc32 == realcrc32) {
                 val f = faccessHash map { accessHash =>
-                  val rsp = ResponseUploadCompleted(models.FileLocation(fileId, accessHash))
+                  val rsp = ResponseCompleteUpload(models.FileLocation(fileId, accessHash))
                   Ok(rsp)
                 }
                 f onFailure {
@@ -120,8 +121,8 @@ trait HandlerService extends GeneratorService {
       }
       fileRecord.getFile(location.fileId.toInt, offset, limit)
     } map { bytes =>
-        val rsp = ResponseFilePart(BitVector(bytes))
-        Ok(rsp)
+      val rsp = ResponseGetFile(BitVector(bytes))
+      Ok(rsp)
     } recover {
       case e: persist.FileError =>
         Error(400, e.tag, "", e.canTryAgain)

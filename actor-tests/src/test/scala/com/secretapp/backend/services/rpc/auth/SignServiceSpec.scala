@@ -26,10 +26,10 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
 
-        sendRpcMsg(RequestAuthCode(phoneNumber, rand.nextInt(), rand.nextString(10)))
+        sendRpcMsg(RequestSendAuthCode(phoneNumber, rand.nextInt(), rand.nextString(10)))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuthCode(_, false))) =>
+          case RpcResponseBox(_, Ok(ResponseSendAuthCode(_, false))) =>
         }
       }
     }
@@ -71,15 +71,15 @@ class SignServiceSpec extends RpcSpec {
 
         Thread.sleep(2000) // let database save user
 
-        sendRpcMsg(RequestGetAuth())
+        sendRpcMsg(RequestGetAuthSessions())
 
         expectMsgByPF() {
-          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
-            struct.AuthItem(_, 0, 0, "Android Official", "app", _, "", None, None)
+          case RpcResponseBox(_, Ok(ResponseGetAuthSessions(Seq(
+            struct.AuthSession(_, 0, 0, "Android Official", "app", _, "", None, None)
           )))) =>
         }
 
-        sendRpcMsg(RequestLogout())
+        sendRpcMsg(RequestSignOut())
 
         expectRpcMsg(Ok(ResponseVoid()))
       }
@@ -399,23 +399,23 @@ class SignServiceSpec extends RpcSpec {
 
         Thread.sleep(2000) // let database process old auth deletion
 
-        sendRpcMsg(RequestGetAuth())
+        sendRpcMsg(RequestGetAuthSessions())
 
         expectMsgByPF() {
-          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
-            struct.AuthItem(_, 0, 0, "Android Official", "app2", _, "", None, None)
+          case RpcResponseBox(_, Ok(ResponseGetAuthSessions(Seq(
+            struct.AuthSession(_, 0, 0, "Android Official", "app2", _, "", None, None)
           )))) =>
         }
 
-        val authItems = persist.AuthItem.getEntitiesByUserId(userId).sync()
+        val authItems = persist.AuthSession.getEntitiesByUserId(userId).sync()
 
         authItems.length should_== 1
         authItems.head.deviceTitle should_== "app2"
 
-        val deletedAuthItems = persist.DeletedAuthItem.getEntitiesByUserId(userId).sync()
+        val deletedAuthSessions = persist.DeletedAuthSession.getEntitiesByUserId(userId).sync()
 
-        deletedAuthItems.length should_== 1
-        deletedAuthItems.head.deviceTitle should_== "app1"
+        deletedAuthSessions.length should_== 1
+        deletedAuthSessions.head.deviceTitle should_== "app1"
 
         val pkeys = persist.UserPublicKey.getEntitiesByUserId(userId).sync()
         pkeys.length should_== 1
@@ -459,23 +459,23 @@ class SignServiceSpec extends RpcSpec {
 
         Thread.sleep(2000) // let database process old auth deletion
 
-        sendRpcMsg(RequestGetAuth())
+        sendRpcMsg(RequestGetAuthSessions())
 
         expectMsgByPF() {
-          case RpcResponseBox(_, Ok(ResponseGetAuth(Seq(
-            struct.AuthItem(_, 0, 0, "Android Official", "app2", _, "", None, None)
+          case RpcResponseBox(_, Ok(ResponseGetAuthSessions(Seq(
+            struct.AuthSession(_, 0, 0, "Android Official", "app2", _, "", None, None)
           )))) =>
         }
 
-        val authItems = persist.AuthItem.getEntitiesByUserId(userId).sync()
+        val authItems = persist.AuthSession.getEntitiesByUserId(userId).sync()
 
         authItems.length should_== 1
         authItems.head.deviceTitle should_== "app2"
 
-        val deletedAuthItems = persist.DeletedAuthItem.getEntitiesByUserId(userId).sync()
+        val deletedAuthSessions = persist.DeletedAuthSession.getEntitiesByUserId(userId).sync()
 
-        deletedAuthItems.length should_== 1
-        deletedAuthItems.head.deviceTitle should_== "app1"
+        deletedAuthSessions.length should_== 1
+        deletedAuthSessions.head.deviceTitle should_== "app1"
 
         val pkeys = persist.UserPublicKey.getEntitiesByUserId(userId).sync()
         pkeys.length should_== 1

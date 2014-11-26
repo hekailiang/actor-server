@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.contact
 
 import com.secretapp.backend.data.message.ProtobufMessage
-import im.actor.messenger.api.{ RequestImportContacts => protobuf }
+import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
 case class EmailToImport(email: String, contactName: Option[String]) extends ProtobufMessage

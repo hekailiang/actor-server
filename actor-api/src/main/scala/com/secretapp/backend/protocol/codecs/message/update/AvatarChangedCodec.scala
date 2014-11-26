@@ -12,15 +12,15 @@ import im.actor.messenger.{ api => protobuf }
 
 import scala.util.Success
 
-object AvatarChangedCodec extends Codec[AvatarChanged] with utils.ProtobufCodec {
-  def encode(n: AvatarChanged) = {
-    val boxed = protobuf.UpdateAvatarChanged(n.userId, n.avatar map proto.toProto[models.Avatar, protobuf.Avatar])
+object UserAvatarChangedCodec extends Codec[UserAvatarChanged] with utils.ProtobufCodec {
+  def encode(n: UserAvatarChanged) = {
+    val boxed = protobuf.UpdateUserAvatarChanged(n.userId, n.avatar map proto.toProto[models.Avatar, protobuf.Avatar])
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.UpdateAvatarChanged.parseFrom(buf.toByteArray)) {
-      case Success(r) => AvatarChanged(r.uid, r.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
+    decodeProtobuf(protobuf.UpdateUserAvatarChanged.parseFrom(buf.toByteArray)) {
+      case Success(r) => UserAvatarChanged(r.uid, r.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
     }
   }
 }

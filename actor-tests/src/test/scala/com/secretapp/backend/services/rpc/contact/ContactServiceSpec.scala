@@ -30,7 +30,7 @@ class ContactServiceSpec extends RpcSpec {
       sendRpcMsg(RequestImportContacts(phones, emails))
 
       val (users, seq, state) = expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseImportedContacts => (r.users, r.seq, r.state)
+        case r: ResponseImportContacts => (r.users, r.seq, r.state)
       }
       users.should_==(Seq(struct.User.fromModel(contact, scope.authId, s"${contact.name}_wow1".some)))
     }
@@ -49,7 +49,7 @@ class ContactServiceSpec extends RpcSpec {
       val users = contacts.zipWithIndex.map {
         case (_, index) =>
           expectRpcMsgByPF(withNewSession = index == 0) {
-            case r: ResponseImportedContacts => r.users
+            case r: ResponseImportContacts => r.users
           }
       }.flatten
 
@@ -166,7 +166,7 @@ class ContactServiceSpec extends RpcSpec {
 
       sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), immutable.Seq()))
       val importedUsers = expectRpcMsgByPF() {
-        case r: ResponseImportedContacts => users
+        case r: ResponseImportContacts => users
       }
       importedUsers.isEmpty.should_==(true)
     }

@@ -15,10 +15,11 @@ case class Group(
   id: Int,
   accessHash: Long,
   title: String,
+  avatar: Option[models.Avatar],
   isMember: Boolean,
-  members: immutable.Seq[Int],
   adminUid: Int,
-  avatar: Option[models.Avatar] = None
+  members: immutable.Seq[Int],
+  createDate: Long
 ) extends ProtobufMessage {
   lazy val toProto = protobuf.Group(
     id,
@@ -26,24 +27,29 @@ case class Group(
     title,
     avatar map proto.toProto[models.Avatar, protobuf.Avatar],
     isMember,
+    adminUid,
     members,
-    adminUid)
+    createDate
+  )
 }
 
 object Group {
   def fromProto(g: protobuf.Group): Group =
-    Group(g.id, g.accessHash, g.title, g.isMember, g.members, g.adminUid,
-      g.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]))
+    Group(
+      g.id, g.accessHash, g.title, g.avatar.map(proto.fromProto[models.Avatar, protobuf.Avatar]),
+      g.isMember, g.adminUid, g.members, g.createDate
+    )
 
   def fromModel(group: models.Group, groupUserIds: immutable.Seq[Int], isMember: Boolean, optAvatar: Option[models.Avatar])(implicit s: ActorSystem) = {
     Group(
       id = group.id,
       accessHash = group.accessHash,
       title = group.title,
+      avatar = optAvatar,
       isMember = isMember,
-      members = groupUserIds,
       adminUid = group.creatorUserId,
-      avatar = optAvatar
+      members = groupUserIds,
+      createDate = group.createDate
     )
   }
 }

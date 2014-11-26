@@ -10,15 +10,15 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object ResponseUploadStartedCodec extends Codec[ResponseUploadStarted] with utils.ProtobufCodec {
-  def encode(r: ResponseUploadStarted) = {
-    val boxed = protobuf.ResponseUploadStarted(r.config.toProto)
+object ResponseStartUploadCodec extends Codec[ResponseStartUpload] with utils.ProtobufCodec {
+  def encode(r: ResponseStartUpload) = {
+    val boxed = protobuf.ResponseStartUpload(r.config.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.ResponseUploadStarted.parseFrom(buf.toByteArray)) {
-      case Success(protobuf.ResponseUploadStarted(config)) => ResponseUploadStarted(UploadConfig.fromProto(config))
+    decodeProtobuf(protobuf.ResponseStartUpload.parseFrom(buf.toByteArray)) {
+      case Success(protobuf.ResponseStartUpload(config)) => ResponseStartUpload(UploadConfig.fromProto(config))
     }
   }
 }

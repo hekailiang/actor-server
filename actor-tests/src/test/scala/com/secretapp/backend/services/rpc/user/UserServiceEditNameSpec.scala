@@ -2,7 +2,7 @@ package com.secretapp.backend.services.rpc.user
 
 import com.secretapp.backend.data.message.rpc.ResponseVoid
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.rpc.update.{Difference, RequestGetDifference, ResponseSeq}
+import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.user.RequestEditName
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
@@ -35,7 +35,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
       val (diff1, _) = {
         implicit val scope = scope1
-        RequestGetDifference(0, None) :~> <~:[Difference]
+        RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
       }
 
       {
@@ -49,7 +49,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
       val (diff2, updates2) = {
         implicit val scope = scope1
 
-        RequestGetDifference(diff1.seq, diff1.state) :~> <~:[Difference]
+        RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
       }
 
       updates2.length should beEqualTo(2)
@@ -90,7 +90,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
       ownKeys = immutable.Seq.empty
     )
 
-    rq :~> <~:[ResponseMessageSent]
+    rq :~> <~:[ResponseSeqDate]
 
     Thread.sleep(1000)
   }

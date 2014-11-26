@@ -13,13 +13,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object UserLastSeenCodec extends Codec[UserLastSeen] with utils.ProtobufCodec {
   def encode(u: UserLastSeen) = {
-    val boxed = protobuf.UpdateUserLastSeen(u.userId, u.time)
+    val boxed = protobuf.UpdateUserLastSeen(u.userId, u.date)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.UpdateUserLastSeen.parseFrom(buf.toByteArray)) {
-      case Success(r) => UserLastSeen(r.uid, r.time)
+      case Success(r) => UserLastSeen(r.uid, r.date)
     }
   }
 }

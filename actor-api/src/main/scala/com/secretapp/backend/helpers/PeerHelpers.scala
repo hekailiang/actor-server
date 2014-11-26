@@ -80,6 +80,10 @@ trait PeerHelpers extends UserHelpers {
     renderCheckResult(checkOptsFutures, f)
   }
 
+  protected def withUserOutPeer(userOutPeer: struct.UserOutPeer, currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+    renderCheckResult(Seq(checkUserPeer(userOutPeer.id, userOutPeer.accessHash, currentUser)), f)
+  }
+
   protected def withUserOutPeers(userOutPeers: immutable.Seq[struct.UserOutPeer], currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
     val checkOptsFutures = userOutPeers map {
       case struct.UserOutPeer(userId, accessHash) =>

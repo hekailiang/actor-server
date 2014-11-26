@@ -17,7 +17,7 @@ class Handler(
 
   def receive = {
     case rq @ RpcProtocol.Request(RequestStartUpload()) =>
-      handleRequestUploadStart() pipeTo sender
+      handleRequestStartUpload() pipeTo sender
     case RpcProtocol.Request(RequestUploadPart(config, offset, data)) =>
       handleRequestUploadFile(config, offset, data) pipeTo sender
     case RpcProtocol.Request(RequestCompleteUpload(config, blocksCount, crc32)) =>

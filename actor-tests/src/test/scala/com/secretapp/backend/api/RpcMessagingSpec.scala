@@ -31,7 +31,7 @@ class RpcMessagingSpec extends RpcSpec {
     RequestGetState() :~> <~:[ResponseSeq]
   }
 
-  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): Difference = {
+  def getDifference(seq: Int, state: Option[UUID])(implicit scope: TestScope): ResponseGetDifference = {
     implicit val TestScope(probe: TestProbe, destActor: ActorRef, s: SessionIdentifier, u: models.User) = scope
 
     val rq = RequestGetDifference(seq, state)
@@ -45,7 +45,7 @@ class RpcMessagingSpec extends RpcSpec {
     msg
       .body.asInstanceOf[RpcResponseBox]
       .body.asInstanceOf[Ok]
-      .body.asInstanceOf[Difference]
+      .body.asInstanceOf[ResponseGetDifference]
   }
 
   "RpcMessaging" should {
@@ -61,9 +61,9 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 1L,
           message = TextMessage("Yolo!")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
@@ -75,7 +75,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[Message]
@@ -98,7 +98,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 1L,
           message = TextMessage("Yolo!")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
       }
 
       Thread.sleep(1000)
@@ -117,12 +117,12 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[MessageReceived]
         upd.peer should_==(struct.Peer.privat(scope2.user.uid))
-        upd.date should_==(date)
+        upd.startDate should_==(date)
       }
     }
 
@@ -138,7 +138,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 1L,
           message = TextMessage("Yolo!")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
       }
 
       Thread.sleep(1000)
@@ -153,7 +153,7 @@ class RpcMessagingSpec extends RpcSpec {
           date = date
         ) :~> <~:[ResponseVoid]
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[MessageReadByMe]
@@ -164,7 +164,7 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[MessageRead]
@@ -221,7 +221,7 @@ class RpcMessagingSpec extends RpcSpec {
         )
       )
 
-      val (resp, _) = rq :~> <~:[ResponseMessageSent]
+      val (resp, _) = rq :~> <~:[ResponseSeqDate]
       resp.seq should beEqualTo(initialState.seq + 2)
 
       val (state, _) = getState
@@ -230,7 +230,7 @@ class RpcMessagingSpec extends RpcSpec {
 
       {
         // same randomId
-        val (resp, _) = rq :~> <~:[ResponseMessageSent]
+        val (resp, _) = rq :~> <~:[ResponseSeqDate]
         resp.seq should beEqualTo(initialState.seq + 2)
       }
 
@@ -263,7 +263,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseMessageSent]
+        rq :~> <~:[ResponseSeqDate]
 
         // subscribe to updates
         getState(scope)
@@ -309,7 +309,7 @@ class RpcMessagingSpec extends RpcSpec {
           )
         )
 
-        rq :~> <~:[ResponseMessageSent]
+        rq :~> <~:[ResponseSeqDate]
 
         // subscribe to updates
         getState(scope)
@@ -331,7 +331,7 @@ class RpcMessagingSpec extends RpcSpec {
         val update = updBox.body.asInstanceOf[SeqUpdate]
         update.body should beAnInstanceOf[EncryptedRead]
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
         diff.updates.last.body should beAnInstanceOf[EncryptedRead]
       }
     }
@@ -369,7 +369,7 @@ class RpcMessagingSpec extends RpcSpec {
         )
 
         val error = rq :~> <~:(400, "WRONG_KEYS")
-        error.data.get should equalTo(struct.WrongReceiversErrorData(
+        error.data.get should equalTo(struct.WrongKeysErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
           removedKeys = Seq(struct.UserKey(scope2.user.uid, scope2.user.publicKeyHash)),
           invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
@@ -396,7 +396,7 @@ class RpcMessagingSpec extends RpcSpec {
         )
 
         val error = rq :~> <~:(400, "WRONG_KEYS")
-        error.data.get should equalTo(struct.WrongReceiversErrorData(
+        error.data.get should equalTo(struct.WrongKeysErrorData(
           newKeys = Seq(struct.UserKey(scope2_2.user.uid, scope2_2.user.publicKeyHash)),
           removedKeys = Seq(struct.UserKey(scope2.user.uid, scope2.user.publicKeyHash)),
           invalidKeys = Seq(struct.UserKey(scope1.user.uid, 111L))
@@ -416,7 +416,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 1L,
           message = TextMessage("Yolo from user1!")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
       }
 
       {
@@ -426,7 +426,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
           randomId = 1L,
           message = TextMessage("Yolo from user2!")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
       }
 
       Thread.sleep(1000)
@@ -458,11 +458,11 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = outPeer,
           randomId = 1L,
           message = TextMessage("Yolo from user1 to user2! #1")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
         RequestClearChat(outPeer) :~> <~:[ResponseSeq]
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[ChatClear]
@@ -487,11 +487,11 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = outPeer,
           randomId = 1L,
           message = TextMessage("Yolo from user1 to user2! #1")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
         RequestDeleteChat(outPeer) :~> <~:[ResponseSeq]
 
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[Difference]
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(2)
         val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
@@ -518,7 +518,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 1L,
           message = TextMessage("Yolo from user1 to user2! #1")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
         Thread.sleep(1000)
 
@@ -526,7 +526,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope3.user.uid, ACL.userAccessHash(scope.user.authId, scope3.user)),
           randomId = 2L,
           message = TextMessage("Yolo from user1 to user3! #1")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
         Thread.sleep(2000)
 
@@ -545,7 +545,7 @@ class RpcMessagingSpec extends RpcSpec {
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
           randomId = 3L,
           message = TextMessage("Yolo from user1 to user2! #2")
-        ) :~> <~:[ResponseMessageSent]
+        ) :~> <~:[ResponseSeqDate]
 
         Thread.sleep(2000)
 

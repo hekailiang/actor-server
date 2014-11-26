@@ -96,7 +96,7 @@ trait ContactService extends UpdatesHelpers {
             currentUser,
             updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
           ) map {
-            case (seq, state) => Ok(ResponseImportedContacts(usersTuple.map(_._1), seq, state.some))
+            case (seq, state) => Ok(ResponseImportContacts(usersTuple.map(_._1), seq, state.some))
           }
 
           for {
@@ -104,7 +104,7 @@ trait ContactService extends UpdatesHelpers {
             _ <- clCacheFuture
             response <- responseFuture
           } yield response
-        } else Future.successful(Ok(ResponseImportedContacts(immutable.Seq[struct.User](), 0, None)))
+        } else Future.successful(Ok(ResponseImportContacts(immutable.Seq[struct.User](), 0, None)))
     }
   }
 

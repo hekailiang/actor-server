@@ -30,8 +30,8 @@ class FilesServiceSpec extends RpcSpec {
   val blockSize = 0x2000
 
   def requestUploadStart()(
-    implicit scope: TestScope): ResponseUploadStarted = {
-    val (rsp, _) = RequestStartUpload() :~> <~:[ResponseUploadStarted]
+    implicit scope: TestScope): ResponseStartUpload = {
+    val (rsp, _) = RequestStartUpload() :~> <~:[ResponseStartUpload]
     rsp
   }
 
@@ -77,7 +77,7 @@ class FilesServiceSpec extends RpcSpec {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
         Thread.sleep(3000)
-        val (fileUploaded, _) = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
+        val (fileUploaded, _) = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseCompleteUpload]
         Math.abs(fileUploaded.location.accessHash) should be >(0l)
 
         RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
@@ -93,14 +93,14 @@ class FilesServiceSpec extends RpcSpec {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
         Thread.sleep(3000)
-        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseCompleteUpload]
       }
 
       {
         val config = requestUploadStart().config
         uploadFileBlocks(config)
         Thread.sleep(3000)
-        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
+        val fileUploaded = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseCompleteUpload]
       }
     }
 
@@ -111,16 +111,16 @@ class FilesServiceSpec extends RpcSpec {
       val config = requestUploadStart().config
       uploadFileBlocks(config)
       Thread.sleep(1000)
-      val (fileUploaded, _) = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseUploadCompleted]
+      val (fileUploaded, _) = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseCompleteUpload]
 
       {
-        val (filePart, _) = RequestGetFile(fileUploaded.location, 0, blockSize) :~> <~:[ResponseFilePart]
+        val (filePart, _) = RequestGetFile(fileUploaded.location, 0, blockSize) :~> <~:[ResponseGetFile]
         filePart.data.toByteArray.length should equalTo(blockSize)
         filePart.data.toByteArray should equalTo(fileContent.take(blockSize))
       }
 
       {
-        val (filePart, _) = RequestGetFile(fileUploaded.location, blockSize, blockSize * 3) :~> <~:[ResponseFilePart]
+        val (filePart, _) = RequestGetFile(fileUploaded.location, blockSize, blockSize * 3) :~> <~:[ResponseGetFile]
         filePart.data.toByteArray.length should equalTo(blockSize * 3)
         filePart.data.toByteArray should equalTo(fileContent.drop(blockSize).take(blockSize * 3))
       }

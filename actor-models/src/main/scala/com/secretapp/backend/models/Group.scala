@@ -6,5 +6,6 @@ case class Group(
   id: Int,
   creatorUserId: Int,
   accessHash: Long,
-  title: String
+  title: String,
+  createDate: Long
 )

@@ -14,14 +14,14 @@ class Handler(
   import context.dispatcher
 
   def receive = {
-    case rq @ RpcProtocol.Request(SubscribeToOnline(users)) =>
+    case rq @ RpcProtocol.Request(RequestSubscribeToOnline(users)) =>
       handleSubscribeToOnline(users) pipeTo sender
-    case rq @ RpcProtocol.Request(UnsubscribeFromOnline(users)) =>
-      handleUnsubscribeFromOnline(users) pipeTo sender
-    case rq @ RpcProtocol.Request(SubscribeToGroupOnline(groups)) =>
+    case rq @ RpcProtocol.Request(RequestSubscribeFromOnline(users)) =>
+      handleSubscribeFromOnline(users) pipeTo sender
+    case rq @ RpcProtocol.Request(RequestSubscribeToGroupOnline(groups)) =>
       handleSubscribeToGroupOnline(groups) pipeTo sender
-    case rq @ RpcProtocol.Request(UnsubscribeFromGroupOnline(groups)) =>
-      handleUnsubscribeFromGroupOnline(groups) pipeTo sender
+    case rq @ RpcProtocol.Request(RequestSubscribeFromGroupOnline(groups)) =>
+      handleSubscribeFromGroupOnline(groups) pipeTo sender
     case rq @ RpcProtocol.Request(RequestSetOnline(isOnline, timeout)) =>
       handleRequestSetOnline(isOnline, timeout) pipeTo sender
   }

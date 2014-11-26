@@ -40,7 +40,7 @@ sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updatePro
     }
 
     header(row) match {
-      case updateProto.AvatarChanged.header => decode(row, AvatarChangedCodec)
+      case updateProto.UserAvatarChanged.header => decode(row, UserAvatarChangedCodec)
       case updateProto.ChatClear.header => decode(row, ChatClearCodec)
       case updateProto.ChatDelete.header => decode(row, ChatDeleteCodec)
       case updateProto.EncryptedMessage.header => decode(row, EncryptedMessageCodec)
@@ -62,7 +62,7 @@ sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updatePro
       case updateProto.MessageSent.header => decode(row, MessageSentCodec)
       case updateProto.NameChanged.header => decode(row, NameChangedCodec)
       case updateProto.NewDevice.header => decode(row, NewDeviceCodec)
-      case updateProto.RemoveDevice.header => decode(row, RemoveDeviceCodec)
+      case updateProto.RemovedDevice.header => decode(row, RemovedDeviceCodec)
       case updateProto.UpdateConfig.header => decode(row, UpdateConfigCodec)
       case updateProto.contact.ContactRegistered.header => decode(row, ContactRegisteredCodec)
       case updateProto.contact.ContactsAdded.header => decode(row, ContactsAddedCodec)
@@ -119,7 +119,7 @@ object SeqUpdate extends SeqUpdate with TableOps {
 
   def push(uuid: UUID, authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] = {
     val (body, header) = update match {
-      case u: updateProto.AvatarChanged => (AvatarChangedCodec.encodeValid(u), updateProto.AvatarChanged.header)
+      case u: updateProto.UserAvatarChanged => (UserAvatarChangedCodec.encodeValid(u), updateProto.UserAvatarChanged.header)
       case u: updateProto.ChatClear => (ChatClearCodec.encodeValid(u), updateProto.ChatClear.header)
       case u: updateProto.ChatDelete => (ChatDeleteCodec.encodeValid(u), updateProto.ChatDelete.header)
       case u: updateProto.EncryptedMessage => (EncryptedMessageCodec.encodeValid(u), updateProto.EncryptedMessage.header)
@@ -141,7 +141,7 @@ object SeqUpdate extends SeqUpdate with TableOps {
       case u: updateProto.MessageSent => (MessageSentCodec.encodeValid(u), updateProto.MessageSent.header)
       case u: updateProto.NameChanged => (NameChangedCodec.encodeValid(u), updateProto.NameChanged.header)
       case u: updateProto.NewDevice => (NewDeviceCodec.encodeValid(u), updateProto.NewDevice.header)
-      case u: updateProto.RemoveDevice => (RemoveDeviceCodec.encodeValid(u), updateProto.RemoveDevice.header)
+      case u: updateProto.RemovedDevice => (RemovedDeviceCodec.encodeValid(u), updateProto.RemovedDevice.header)
       case u: updateProto.UpdateConfig => (UpdateConfigCodec.encodeValid(u), updateProto.UpdateConfig.header)
       case u: updateProto.contact.ContactRegistered => (ContactRegisteredCodec.encodeValid(u), updateProto.contact.ContactRegistered.header)
       case u: updateProto.contact.ContactsAdded => (ContactsAddedCodec.encodeValid(u), updateProto.contact.ContactsAdded.header)

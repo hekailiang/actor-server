@@ -48,17 +48,16 @@ trait MessagingService {
         | _: RequestCreateGroup
         | _: RequestDeleteGroup
         | _: RequestEditGroupTitle
-        | _: RequestInviteUsers
+        | _: RequestInviteUser
         | _: RequestLeaveGroup
-        | _: RequestRemoveUsers
+        | _: RequestRemoveUser
         | _: RequestEditGroupAvatar
         | _: RequestRemoveGroupAvatar
-        | _: RequestMessageDelete
+        | _: RequestDeleteMessage
         | _: RequestMessageRead
         | _: RequestMessageReceived
         | _: RequestEncryptedRead
         | _: RequestEncryptedReceived
-        | _: RequestMessageDelete
         | _: RequestLoadHistory
         | _: RequestLoadDialogs
     ) => authorizedRequest {
