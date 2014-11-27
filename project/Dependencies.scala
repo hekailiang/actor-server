@@ -20,6 +20,7 @@ object Dependencies {
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
     val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % "0.4"
     val sprayWebSocket  = "com.wandoulabs.akka"           %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai"))
+    val sprayClient     = "io.spray"                      %% "spray-client"                  % "1.3.2"
     // we need this because commons-codec 1.2 jar is broken (apns dependency)
     val commonsCodec    = "commons-codec"                 %  "commons-codec"                 % "1.3"
     val dispatchCore    = "net.databinder.dispatch"       %% "dispatch-core"                 % "0.11.1"
@@ -55,7 +56,8 @@ object Dependencies {
 
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
-    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra
+    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
+    sprayClient
   )
 
   val deploy    = Seq(traceAkka)

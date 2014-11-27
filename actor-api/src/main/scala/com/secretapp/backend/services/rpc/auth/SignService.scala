@@ -15,7 +15,7 @@ import com.secretapp.backend.helpers.{ ContactHelpers, SocialHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
-import com.secretapp.backend.sms.ClickatellSmsEngineActor
+import com.secretapp.backend.sms.SmsEnginesProtocol
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.{ Success, Failure }
@@ -132,7 +132,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
                 case _ => genSmsCode
               }
-              singletons.smsEngine ! ClickatellSmsEngineActor.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
+              singletons.smsEngines ! SmsEnginesProtocol.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
               for { _ <- persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)) }
               yield Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
           }

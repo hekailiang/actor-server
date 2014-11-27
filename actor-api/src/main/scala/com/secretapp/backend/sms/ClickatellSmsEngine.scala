@@ -1,4 +1,4 @@
-package com.secretapp.backend.sms
+/*package com.secretapp.backend.sms
 
 import java.util.concurrent.TimeUnit
 
@@ -11,10 +11,10 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-trait ClickatellSmsEngine {
-  self: ActorLogging =>
+trait ClickatellSmsEngine extends HttpClient {
+  self: ClickatellSmsEngineActor =>
 
-  val config: Config
+  val httpConfig = config.getConfig("sms.twilio.http")
 
   private val http = {
     val httpConfig              = config.getConfig("sms.clickatell.http")
@@ -110,3 +110,4 @@ object ClickatellSmsEngineActor {
 
   def apply()(implicit system: ActorSystem): ActorRef = ClickatellSmsEngineActor(ConfigFactory.load())
 }
+ */
