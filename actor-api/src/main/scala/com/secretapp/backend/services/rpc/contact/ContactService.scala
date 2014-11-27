@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.helpers.UpdatesHelpers
+import com.secretapp.backend.helpers.{ ContactHelpers, UpdatesHelpers }
 import com.secretapp.backend.services.{ UserManagerService, GeneratorService }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist
@@ -23,7 +23,7 @@ import Scalaz._
 import scodec.bits.BitVector
 import scodec.codecs.uuid
 
-trait ContactService extends UpdatesHelpers {
+trait ContactService extends UpdatesHelpers with ContactHelpers {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
 
   implicit val session: CSession
@@ -169,7 +169,7 @@ trait ContactService extends UpdatesHelpers {
             case Some(contact) =>
               persist.contact.UserContactsList.insertContact(currentUser.uid, user.uid, user.phoneNumber, name, user.accessSalt)
             case None =>
-              addContact(user.uid, user.phoneNumber, name, user.accessSalt, currentUser)
+              addContactSendUpdate(currentUser, user.uid, user.phoneNumber, name, user.accessSalt)
           }
 
           clFuture flatMap { _ =>
@@ -210,7 +210,7 @@ trait ContactService extends UpdatesHelpers {
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
             persist.contact.UserContactsList.getContact(currentUser.uid, userId) flatMap {
               case None =>
-                addContact(user.uid, user.phoneNumber, "", user.accessSalt, currentUser) map {
+                addContactSendUpdate(currentUser, user.uid, user.phoneNumber, "", user.accessSalt) map {
                   case (seq, state) => Ok(ResponseSeq(seq, state.some))
                 }
               case Some(_) =>
@@ -220,21 +220,5 @@ trait ContactService extends UpdatesHelpers {
         case None => Future.successful(RpcErrors.entityNotFound("USER"))
       }
     }
-  }
-
-  private def addContact(userId: Int, phoneNumber: Long, name: String, accessSalt: String, currentUser: models.User): Future[UpdatesBroker.StrictState] = {
-    val newContactsId = Set(userId)
-    val clFuture = persist.contact.UserContactsList.insertContact(currentUser.uid, userId, phoneNumber, name, accessSalt)
-    val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
-    val stateFuture = broadcastCUUpdateAndGetState(
-      currentUser,
-      updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
-    )
-
-    for {
-      _ <- clFuture
-      _ <- clCacheFuture
-      state <- stateFuture
-    } yield state
   }
 }

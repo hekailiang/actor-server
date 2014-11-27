@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update.{ NewDevice, RemovedDevice }
 import com.secretapp.backend.data.message.update.contact.ContactRegistered
-import com.secretapp.backend.helpers.SocialHelpers
+import com.secretapp.backend.helpers.{ ContactHelpers, SocialHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
@@ -26,7 +26,7 @@ import shapeless._
 import Function.tupled
 import com.secretapp.backend.api.rpc.RpcValidators._
 
-trait SignService extends SocialHelpers {
+trait SignService extends ContactHelpers with SocialHelpers {
   self: ApiBrokerService =>
   implicit val session: CSession
 
@@ -345,13 +345,15 @@ trait SignService extends SocialHelpers {
       contacts foreach { c =>
         socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
 
+        addContact(c.ownerUserId, u.uid, u.phoneNumber, u.name, u.accessSalt)
+
         getAuthIds(c.ownerUserId) map { authIds =>
           authIds foreach { authId =>
             pushUpdate(authId, ContactRegistered(u.uid, false, System.currentTimeMillis()))
           }
         }
       }
-      persist.UnregisteredContact.removeEntity(u.phoneNumber)
+      persist.UnregisteredContact.removeEntities(u.phoneNumber)
     }
   }
 

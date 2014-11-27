@@ -12,7 +12,7 @@ sealed class UnregisteredContact extends CassandraTable[UnregisteredContact, mod
     override lazy val name = "phone_number"
   }
 
-  object ownerUserId extends IntColumn(this) {
+  object ownerUserId extends IntColumn(this) with PrimaryKey[Int] {
     override lazy val name = "owner_user_id"
   }
 
@@ -30,6 +30,6 @@ object UnregisteredContact extends UnregisteredContact with TableOps {
   def byNumber(phoneNumber: Long)(implicit session: Session): Future[Set[models.UnregisteredContact]] =
     select.where(_.phoneNumber eqs phoneNumber).fetch().map(_.toSet)
 
-  def removeEntity(phoneNumber: Long)(implicit session: Session): Future[ResultSet] =
+  def removeEntities(phoneNumber: Long)(implicit session: Session): Future[ResultSet] =
     delete.where(_.phoneNumber eqs phoneNumber).future()
 }
