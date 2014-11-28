@@ -122,7 +122,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
         case _: updateProto.MessageSent =>
 
         case u =>
-          if (u.isInstanceOf[updateProto.Message]) {
+          if (u.isInstanceOf[updateProto.Message] || u.isInstanceOf[updateProto.EncryptedMessage]) {
             deliverGooglePush(authId, updateSeq)
             deliverApplePush(authId, updateSeq)
           }
