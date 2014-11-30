@@ -23,7 +23,7 @@ import scalaz.Scalaz._
 import scalaz._
 import scodec.bits._
 
-trait HistoryHandlers extends RandomService with UserHelpers with GroupHelpers {
+trait HistoryHandlers extends RandomService with UserHelpers {
   self: Handler =>
 
   import context.{ dispatcher, system }
@@ -102,8 +102,6 @@ trait HistoryHandlers extends RandomService with UserHelpers with GroupHelpers {
     persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
     persist.Dialog.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
     persist.DialogUnreadCounter.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
-
-    leaveGroup(outPeer.id, currentUser)
 
     val update = updateProto.ChatDelete(outPeer.asPeer)
 
