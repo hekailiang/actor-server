@@ -127,6 +127,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
+    val groupWithMetaFuture = persist.Group.getEntityWithAvatarAndChangeMeta(groupId)
+
     val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupOutPeer.id) map (_.toMap)
 
     val date = System.currentTimeMillis()
@@ -143,17 +145,42 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
               persist.UserGroup.addGroup(user.id, groupId)
             ))
 
+            // FIXME: add user AFTER we got Some(groupWithMeta)
             addUserF flatMap { _ =>
-              val groupInviteUpdate = GroupInvite(
-                groupId = groupId,
-                inviterUserId = currentUser.uid,
-                date = date
-              )
-
               for {
-                authIds <- getAuthIds(user.id)
+                groupWithMetaOpt <- groupWithMetaFuture
               } yield {
-                authIds foreach (writeNewUpdate(_, groupInviteUpdate))
+                groupWithMetaOpt match {
+                  case Some((group, avatarData, titleChangeMeta, avatarChangeMeta)) =>
+                    val targetUserUpdates = Vector(
+                      GroupInvite(
+                        groupId = groupId,
+                        inviterUserId = currentUser.uid,
+                        date = date
+                      ),
+                      GroupTitleChanged(
+                        groupId = groupId,
+                        userId = titleChangeMeta.userId,
+                        group.title,
+                        date = titleChangeMeta.date
+                      ),
+                      GroupAvatarChanged(
+                        groupId = groupId,
+                        userId = titleChangeMeta.userId,
+                        avatar = avatarData.avatar,
+                        date = titleChangeMeta.date
+                      ),
+                      GroupMembersUpdate(
+                        groupId = groupId,
+                        members = (userIds + user.id).toIndexedSeq
+                      )
+                    )
+
+                    broadcastUserUpdates(user.id, targetUserUpdates)
+                  case None =>
+                    throw new Exception("Cannot get group with meta")
+                }
+
               }
 
               val groupUserAddedUpdate = GroupUserAdded(

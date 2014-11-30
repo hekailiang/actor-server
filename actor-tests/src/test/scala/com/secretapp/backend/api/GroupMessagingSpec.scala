@@ -91,10 +91,22 @@ class GroupMessagingSpec extends RpcSpec {
 
         val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
-        diff.updates.length should beEqualTo(1)
-        val upd = diff.updates.last.body.assertInstanceOf[GroupInvite]
-        upd.groupId should_==(respGroup.groupPeer.id)
-        upd.inviterUserId should_==(scope1.user.uid)
+        diff.updates.length should beEqualTo(4)
+
+        {
+          val upd = diff.updates.head.body.assertInstanceOf[GroupInvite]
+          upd.groupId should_==(respGroup.groupPeer.id)
+          upd.inviterUserId should_==(scope1.user.uid)
+        }
+
+        diff.updates(1).body.assertInstanceOf[GroupTitleChanged]
+        diff.updates(2).body.assertInstanceOf[GroupAvatarChanged]
+
+        {
+          val upd = diff.updates(3).body.assertInstanceOf[GroupMembersUpdate]
+          upd.groupId should_==(respGroup.groupPeer.id)
+          upd.members.toSet should_==(Set(scope1.user.uid, scope2.user.uid))
+        }
       }
     }
 

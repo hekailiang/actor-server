@@ -76,9 +76,8 @@ class PresenceBroker extends PersistentActor with ActorLogging {
 
       if (presence != PresenceType.Online) {
         publish(PresenceBroker.topicFor(selfUserId), updateProto.UserOnline(selfUserId))
+        presence = PresenceType.Online
       }
-
-      presence = PresenceType.Online
     case UserOffline(authId) =>
       scheduledOfflines -= authId
       if (scheduledOfflines.size == 0) {

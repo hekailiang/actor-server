@@ -7,6 +7,9 @@ import com.websudos.phantom.query.SelectQuery
 import scala.concurrent.Future
 import scodec.bits.BitVector
 
+case class TitleChangeMeta(userId: Int, date: Long)
+case class AvatarChangeMeta(userId: Int, date: Long)
+
 sealed class Group extends CassandraTable[Group, models.Group] {
   override val tableName = "groups"
 
@@ -20,6 +23,22 @@ sealed class Group extends CassandraTable[Group, models.Group] {
   object title extends StringColumn(this)
   object createDate extends LongColumn(this) {
     override lazy val name = "create_date"
+  }
+
+  object titleChangeUserId extends IntColumn(this) {
+    override lazy val name = "title_change_user_id"
+  }
+
+  object titleChangeDate extends LongColumn(this) {
+    override lazy val name = "title_change_date"
+  }
+
+  object avatarChangeUserId extends IntColumn(this) {
+    override lazy val name = "avatar_change_user_id"
+  }
+
+  object avatarChangeDate extends LongColumn(this) {
+    override lazy val name = "avatar_change_date"
   }
 
   object smallAvatarFileId extends OptionalIntColumn(this) {
@@ -91,8 +110,44 @@ sealed class Group extends CassandraTable[Group, models.Group] {
     )
   }
 
+  def fromRowWithAvatarAndChangeMeta(row: Row): (models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta) = {
+    (
+      models.Group(
+        id            = id(row),
+        creatorUserId = creatorUserId(row),
+        accessHash    = accessHash(row),
+        title         = title(row),
+        createDate    = createDate(row)
+      ),
+      models.AvatarData(
+        smallAvatarFileId   = smallAvatarFileId(row),
+        smallAvatarFileHash = smallAvatarFileHash(row),
+        smallAvatarFileSize = smallAvatarFileSize(row),
+        largeAvatarFileId   = largeAvatarFileId(row),
+        largeAvatarFileHash = largeAvatarFileHash(row),
+        largeAvatarFileSize = largeAvatarFileSize(row),
+        fullAvatarFileId    = fullAvatarFileId(row),
+        fullAvatarFileHash  = fullAvatarFileHash(row),
+        fullAvatarFileSize  = fullAvatarFileSize(row),
+        fullAvatarWidth     = fullAvatarWidth(row),
+        fullAvatarHeight    = fullAvatarHeight(row)
+      ),
+      TitleChangeMeta(userId = titleChangeUserId(row), date = titleChangeDate(row)),
+      AvatarChangeMeta(userId = avatarChangeUserId(row), date = avatarChangeDate(row))
+    )
+  }
+
   def selectWithAvatar: SelectQuery[Group, (models.Group, models.AvatarData)] =
     new SelectQuery[Group, (models.Group, models.AvatarData)](this.asInstanceOf[Group], QueryBuilder.select().from(tableName), this.asInstanceOf[Group].fromRowWithAvatar)
+
+  def selectWithAvatarAndChangeMeta: SelectQuery[Group, (models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta)] =
+    new SelectQuery[
+      Group,
+      (models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta)
+    ](
+      this.asInstanceOf[Group],
+      QueryBuilder.select().from(tableName), this.asInstanceOf[Group].fromRowWithAvatarAndChangeMeta
+    )
 }
 
 object Group extends Group with TableOps {
@@ -103,6 +158,10 @@ object Group extends Group with TableOps {
       .value(_.accessHash, entity.accessHash)
       .value(_.title, entity.title)
       .value(_.createDate, entity.createDate)
+      .value(_.titleChangeUserId, entity.creatorUserId)
+      .value(_.titleChangeDate, entity.createDate)
+      .value(_.avatarChangeUserId, entity.creatorUserId)
+      .value(_.avatarChangeDate, entity.createDate)
       .future()
 
   def dropEntity(groupId: Int)(implicit session: Session): Future[Unit] =
@@ -112,8 +171,13 @@ object Group extends Group with TableOps {
     select.where(_.id eqs groupId).one()
 
   def getEntityWithAvatar(groupId: Int)
-                         (implicit session: Session): Future[Option[(models.Group, models.AvatarData)]] =
+    (implicit session: Session): Future[Option[(models.Group, models.AvatarData)]] =
     selectWithAvatar.where(_.id eqs groupId).one()
+
+  def getEntityWithAvatarAndChangeMeta(groupId: Int)
+    (implicit session: Session): Future[Option[(models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta)]] = {
+    selectWithAvatarAndChangeMeta.where(_.id eqs groupId).one()
+  }
 
   def updateTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] =
     update.where(_.id eqs id).modify(_.title setTo title).future()
