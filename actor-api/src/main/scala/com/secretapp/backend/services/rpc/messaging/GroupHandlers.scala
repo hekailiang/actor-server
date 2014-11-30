@@ -319,7 +319,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
         persist.Group.updateAvatar(groupId, a) flatMap { _ =>
 
           foreachGroupUserAuthId(groupId) { authId =>
-            writeNewUpdate(authId, groupAvatarChangedUpdate)
+            if (authId != currentUser.authId)
+              writeNewUpdate(authId, groupAvatarChangedUpdate)
           }
 
           withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
@@ -348,7 +349,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       persist.Group.removeAvatar(groupId) flatMap { _ =>
 
         foreachGroupUserAuthId(groupId) { authId =>
-          writeNewUpdate(authId, groupAvatarChangedUpdate)
+          if (authId != currentUser.authId)
+            writeNewUpdate(authId, groupAvatarChangedUpdate)
         }
 
         withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
