@@ -129,15 +129,15 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           for {
             groupUserIds <- persist.GroupUser.getUserIds(selfId)
             pairs <- Future.sequence(
-              groupUserIds map { userId =>
-                getAuthIds(userId) map (_ map ((userId, _)))
+              groupUserIds map { targetUserId =>
+                getAuthIds(targetUserId) map (_ map ((targetUserId, _)))
               }
             ) map (_.flatten)
           } yield {
             pairs foreach {
-              case (userId, authId) =>
+              case (targetUserId, authId) =>
                 mediator ! Publish(
-                  TypingBroker.topicFor(userId, authId),
+                  TypingBroker.topicFor(targetUserId, authId),
                   updateProto.Typing(
                     struct.Peer(struct.PeerType.Group, selfId),
                     userId,

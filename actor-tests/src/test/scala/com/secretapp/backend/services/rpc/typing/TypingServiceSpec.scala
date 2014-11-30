@@ -12,7 +12,7 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scodec.bits._
-/*
+
 class TypingServiceSpec extends RpcSpec {
   "presence service" should {
     "send typings on subscribtion and receive typing weak updates" in {
@@ -79,17 +79,8 @@ class TypingServiceSpec extends RpcSpec {
         val rqCreateGroup = RequestCreateGroup(
           randomId = 1L,
           title = "Groupgroup 3000",
-          keyHash = BitVector(1, 2, 3),
-          publicKey = BitVector(1, 0, 1, 0),
-          broadcast = EncryptedRSABroadcast(
-            encryptedMessage = BitVector(1, 2, 3),
-            keys = immutable.Seq.empty,
-            ownKeys = immutable.Seq(
-              EncryptedAESKey(
-                keyHash = scope.user.publicKeyHash,
-                aesEncryptedKey = BitVector(2, 0, 2, 0)
-              )
-            )
+          users = immutable.Seq(
+            struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
           )
         )
         val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
@@ -102,16 +93,17 @@ class TypingServiceSpec extends RpcSpec {
       {
         implicit val scope = scope2
 
-        RequestGroupTyping(respGroup.groupId, respGroup.accessHash, 1) :~> <~:[ResponseVoid]
+        RequestTyping(struct.OutPeer.group(respGroup.groupPeer.id, respGroup.groupPeer.accessHash), 1) :~> <~:[ResponseVoid]
       }
 
       {
         implicit val scope = scope1
 
-        val update = receiveNMessageBoxes(1)(scope.probe, scope.apiActor).head.body
-        update.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[TypingGroup]
+        val updateBox = receiveNMessageBoxes(1)(scope.probe, scope.apiActor).head.body
+        val update = updateBox.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[Typing]
+        update.userId should_== scope2.user.uid
+        update.peer.id should_== respGroup.groupPeer.id
       }
     }
   }
 }
- */
