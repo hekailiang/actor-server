@@ -14,21 +14,28 @@ object SmsEnginesProtocol {
 }
 
 object SmsEnginesActor {
-  def apply(config: Config, engine: SmsEngine)(implicit system: ActorSystem): ActorRef = system.actorOf(
-    Props(classOf[SmsEnginesActor], config, engine),
+  def apply()(implicit system: ActorSystem): ActorRef = system.actorOf(
+    Props(classOf[SmsEnginesActor]),
     "sms-engines"
   )
 }
 
 // TODO: use multiple engines
-class SmsEnginesActor(config: Config, engine: SmsEngine) extends Actor with ActorLogging {
+class SmsEnginesActor() extends Actor with ActorLogging {
   import SmsEnginesProtocol._
+
+  val config = context.system.settings.config.getConfig("sms")
 
   implicit val ec = context.dispatcher
 
-  private val smsWaitIntervalMs = config.getDuration("sms.sms-wait-interval", TimeUnit.MILLISECONDS)
+  private val smsWaitIntervalMs = config.getDuration("sms-wait-interval", TimeUnit.MILLISECONDS)
 
   private val sentCodes = new mutable.HashSet[(Long, String)]()
+
+  // need separate system because of https://github.com/wandoulabs/spray-websocket/issues/44
+  private val spraySystem = ActorSystem("spray-client", ConfigFactory.load().getConfig("spray-client"))
+
+  private val engine = new TwilioSmsEngine(config.getConfig("twilio"))(spraySystem)
 
   private def codeWasNotSent(phoneNumber: Long, code: String) = !sentCodes.contains((phoneNumber, code))
 
@@ -51,6 +58,10 @@ class SmsEnginesActor(config: Config, engine: SmsEngine) extends Actor with Acto
     } else {
       //log.debug(s"Ignoring send $code to $phoneNumber")
     }
+  }
+
+  override def postStop(): Unit = {
+    spraySystem.shutdown()
   }
 
   override def receive: Receive = {

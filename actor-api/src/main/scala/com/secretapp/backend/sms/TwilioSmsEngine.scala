@@ -14,9 +14,9 @@ import spray.client.pipelining._
 class TwilioSmsEngine(val config: Config)(implicit system: ActorSystem) extends SmsEngine {
   implicit val ec = system.dispatcher
 
-  private val account = config.getString("sms.twilio.account")
-  private val token   = config.getString("sms.twilio.token")
-  private val from = config.getString("sms.twilio.from")
+  private val account = config.getString("account")
+  private val token   = config.getString("token")
+  private val from = config.getString("from")
 
   private val pipeline: HttpRequest => Future[HttpResponse] = (
     addCredentials(BasicHttpCredentials(account, token))

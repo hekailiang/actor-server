@@ -11,7 +11,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, blocking}
 
 object DbConnector {
-  private val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  private val dbConfig = ConfigFactory.load().getConfig("actor-server.cassandra")
 
   val keySpace = dbConfig.getString("keyspace")
 

@@ -52,7 +52,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   protected var incMessageId = 0L
 
   val singletons = new Singletons
-  val sessionReceiveTimeout = singletons.appConfig.getDuration("session.receive-timeout", MILLISECONDS)
+  val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
   val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, csession)
 
   def genPhoneNumber() = {

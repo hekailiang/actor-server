@@ -1,5 +1,6 @@
 package com.secretapp.backend.api
 
+import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
@@ -12,10 +13,10 @@ import scalaz._
 import Scalaz._
 
 trait GooglePush {
-  self: MDCActorLogging =>
+  self: Actor with MDCActorLogging =>
 
-  private val token = ConfigFactory.load().getString("gcm.token")
-  private val dryRun = ConfigFactory.load().getBoolean("gcm.dry-run")
+  private val token = context.system.settings.config.getString("gcm.token")
+  private val dryRun = context.system.settings.config.getBoolean("gcm.dry-run")
 
   private val basicRequest =
     url("https://android.googleapis.com/gcm/send")

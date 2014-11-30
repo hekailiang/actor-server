@@ -12,16 +12,15 @@ import com.typesafe.config.ConfigFactory
 
 package object api {
   final class Singletons(implicit val system: ActorSystem, csession: CSession) {
-    val config = ConfigFactory.load()
-    val appConfig = config.getConfig("secret")
-    val smsEngines = SmsEnginesActor(config, new TwilioSmsEngine(config))
     val dialogManagerRegion = DialogManager.startRegion()
     val typingBrokerRegion = TypingBroker.startRegion()
     val presenceBrokerRegion = PresenceBroker.startRegion()
     val groupPresenceBrokerRegion = GroupPresenceBroker.startRegion()
     val apnsService = APNS.newService.withCert(
-      appConfig.getString("apns.cert.path"),
-      appConfig.getString("apns.cert.password")
+      system.settings.config.getString("apns.cert.path"),
+      system.settings.config.getString("apns.cert.password")
     ).withProductionDestination.build
+
+    val smsEngines = SmsEnginesActor()
   }
 }

@@ -1,33 +1,27 @@
-sms {
-  clickatell {
-    user = "ex3ndr"
-    password = "QEFAQAcREYHfXX"
-    api-id = "3486451"
+actor-server {
+  sms {
+    clickatell {
+      user = "user"
+      password = "password"
+      api-id = "111222333"
+    }
+
+    twilio {
+      account = "account name"
+      token = "token"
+      from = "+1222333444"
+    }
   }
-}
 
-gcm {
-  token = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
-  dry-run = false
-}
+  gcm {
+    token = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
+    dry-run = false
+  }
 
-secret {
   apns {
     cert {
       path = "apns/apns-dev.pfx"
       password = "private"
-    }
-  }
-}
-
-akka {
-  persistence{
-    journal {
-      plugin = "cassandra-journal"
-    }
-
-    snapshot-store {
-      plugin = "cassandra-snapshot-store"
     }
   }
 }

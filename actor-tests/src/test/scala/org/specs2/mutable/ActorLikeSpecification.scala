@@ -67,7 +67,7 @@ with TestKitBase
         akka.remote.netty.tcp.hostname = "$host"
         akka.cluster.seed-nodes = [ "akka.tcp://$systemName@$host:$port" ]
       """).
-      withFallback(ConfigFactory.load())
+      withFallback(ConfigFactory.load().getConfig("actor-server"))
   }
 }
 

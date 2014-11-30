@@ -10,7 +10,7 @@ import scala.concurrent. { blocking, Future }
 import scala.concurrent.ExecutionContext
 
 object DBConnector {
-  val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  val dbConfig = ConfigFactory.load().getConfig("actor-server.cassandra")
 
   val keySpace = dbConfig.getString("keyspace")
 
