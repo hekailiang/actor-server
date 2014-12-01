@@ -12,13 +12,13 @@ import scalaz.\/
 
 object RequestEditGroupTitleCodec extends Codec[RequestEditGroupTitle] with utils.ProtobufCodec {
   override def encode(r: RequestEditGroupTitle): \/[String, BitVector] = {
-    val boxed = protobuf.RequestEditGroupTitle(r.groupOutPeer.toProto, r.title)
+    val boxed = protobuf.RequestEditGroupTitle(r.groupOutPeer.toProto, r.randomId, r.title)
     encodeToBitVector(boxed)
   }
 
   override def decode(buf: BitVector): \/[String, (BitVector, RequestEditGroupTitle)] = {
     decodeProtobuf(protobuf.RequestEditGroupTitle.parseFrom(buf.toByteArray)) {
-      case Success(r) => RequestEditGroupTitle(struct.GroupOutPeer.fromProto(r.groupPeer), r.title)
+      case Success(r) => RequestEditGroupTitle(struct.GroupOutPeer.fromProto(r.groupPeer), r.rid, r.title)
     }
   }
 }

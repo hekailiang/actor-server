@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message.update
 @SerialVersionUID(1L)
 case class GroupUserAdded(
   groupId: Int,
+  randomId: Long,
   userId: Int,
   inviterUserId: Int,
   date: Long

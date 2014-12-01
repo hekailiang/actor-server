@@ -186,7 +186,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        RequestEditGroupAvatar(respGroup.groupPeer, invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
+        RequestEditGroupAvatar(respGroup.groupPeer, rand.nextLong, invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
       }
     }
 
@@ -200,7 +200,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       {
         implicit val scope = scope1
 
-        RequestEditGroupAvatar(respGroup.groupPeer, tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
+        RequestEditGroupAvatar(respGroup.groupPeer, rand.nextLong, tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
       }
     }
   }
@@ -315,12 +315,12 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def setValidAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
-    val (rsp, _) = RequestEditGroupAvatar(GroupOutPeer(groupId, accessHash), validFileLocation) :~> <~:[ResponseEditGroupAvatar]
+    val (rsp, _) = RequestEditGroupAvatar(GroupOutPeer(groupId, accessHash), rand.nextLong, validFileLocation) :~> <~:[ResponseEditGroupAvatar]
     rsp
   }
 
   private def removeAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
-    val (rsp, _) = RequestRemoveGroupAvatar(GroupOutPeer(groupId, accessHash)) :~> <~:[ResponseSeqDate]
+    val (rsp, _) = RequestRemoveGroupAvatar(GroupOutPeer(groupId, accessHash), rand.nextLong) :~> <~:[ResponseSeqDate]
     rsp
   }
 

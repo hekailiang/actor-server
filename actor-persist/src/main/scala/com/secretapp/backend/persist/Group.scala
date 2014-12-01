@@ -7,8 +7,8 @@ import com.websudos.phantom.query.SelectQuery
 import scala.concurrent.Future
 import scodec.bits.BitVector
 
-case class TitleChangeMeta(userId: Int, date: Long)
-case class AvatarChangeMeta(userId: Int, date: Long)
+case class TitleChangeMeta(userId: Int, date: Long, randomId: Long)
+case class AvatarChangeMeta(userId: Int, date: Long, randomId: Long)
 
 sealed class Group extends CassandraTable[Group, models.Group] {
   override val tableName = "groups"
@@ -33,12 +33,20 @@ sealed class Group extends CassandraTable[Group, models.Group] {
     override lazy val name = "title_change_date"
   }
 
+  object titleChangeRandomId extends LongColumn(this) {
+    override lazy val name = "title_change_random_id"
+  }
+
   object avatarChangeUserId extends IntColumn(this) {
     override lazy val name = "avatar_change_user_id"
   }
 
   object avatarChangeDate extends LongColumn(this) {
     override lazy val name = "avatar_change_date"
+  }
+
+  object avatarChangeRandomId extends LongColumn(this) {
+    override lazy val name = "avatar_change_random_id"
   }
 
   object smallAvatarFileId extends OptionalIntColumn(this) {
@@ -132,8 +140,8 @@ sealed class Group extends CassandraTable[Group, models.Group] {
         fullAvatarWidth     = fullAvatarWidth(row),
         fullAvatarHeight    = fullAvatarHeight(row)
       ),
-      TitleChangeMeta(userId = titleChangeUserId(row), date = titleChangeDate(row)),
-      AvatarChangeMeta(userId = avatarChangeUserId(row), date = avatarChangeDate(row))
+      TitleChangeMeta(userId = titleChangeUserId(row), date = titleChangeDate(row), randomId = titleChangeRandomId(row)),
+      AvatarChangeMeta(userId = avatarChangeUserId(row), date = avatarChangeDate(row), randomId = avatarChangeRandomId(row))
     )
   }
 
@@ -151,7 +159,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
 }
 
 object Group extends Group with TableOps {
-  def insertEntity(entity: models.Group)(implicit session: Session): Future[ResultSet] =
+  def insertEntity(entity: models.Group, randomId: Long)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.id, entity.id)
       .value(_.creatorUserId, entity.creatorUserId)
@@ -160,8 +168,10 @@ object Group extends Group with TableOps {
       .value(_.createDate, entity.createDate)
       .value(_.titleChangeUserId, entity.creatorUserId)
       .value(_.titleChangeDate, entity.createDate)
+      .value(_.titleChangeRandomId, randomId)
       .value(_.avatarChangeUserId, entity.creatorUserId)
       .value(_.avatarChangeDate, entity.createDate)
+      .value(_.avatarChangeRandomId, randomId)
       .future()
 
   def dropEntity(groupId: Int)(implicit session: Session): Future[Unit] =
@@ -179,12 +189,21 @@ object Group extends Group with TableOps {
     selectWithAvatarAndChangeMeta.where(_.id eqs groupId).one()
   }
 
-  def updateTitle(id: Int, title: String)(implicit session: Session): Future[ResultSet] =
-    update.where(_.id eqs id).modify(_.title setTo title).future()
+  def updateTitle(id: Int, title: String, userId: Int, randomId: Long, date: Long)(implicit session: Session): Future[ResultSet] =
+    update
+      .where(_.id eqs id)
+      .modify(_.title setTo title)
+      .and(_.titleChangeUserId setTo userId)
+      .and(_.titleChangeRandomId setTo randomId)
+      .and(_.titleChangeDate setTo date)
+      .future()
 
-  def updateAvatar(id: Int, avatar: models.Avatar)(implicit session: Session) =
+  def updateAvatar(id: Int, avatar: models.Avatar, userId: Int, randomId: Long, date: Long)(implicit session: Session) =
     update.where(_.id eqs id)
-      .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
+      .modify(_.avatarChangeUserId setTo userId)
+      .and   (_.avatarChangeRandomId setTo randomId)
+      .and   (_.avatarChangeDate setTo date)
+      .and   (_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
       .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
       .and   (_.smallAvatarFileSize setTo avatar.smallImage.map(_.fileSize))
       .and   (_.largeAvatarFileId   setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
@@ -197,6 +216,6 @@ object Group extends Group with TableOps {
       .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
       .future
 
-  def removeAvatar(id: Int)(implicit session: Session) =
-    updateAvatar(id, models.Avatar(None, None, None))
+  def removeAvatar(id: Int, userId: Int, randomId: Long, date: Long)(implicit session: Session) =
+    updateAvatar(id, models.Avatar(None, None, None), userId, randomId, date)
 }

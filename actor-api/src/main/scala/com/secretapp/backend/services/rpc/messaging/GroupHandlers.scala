@@ -35,20 +35,18 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   val handleGroup: RequestMatcher = {
     case RequestCreateGroup(randomId, title, users) =>
       handleRequestCreateGroup(randomId, title, users)
-    case RequestEditGroupTitle(groupPeer, title) =>
-      handleRequestEditGroupTitle(groupPeer, title)
-    case RequestInviteUser(groupOutPeer, user) =>
-      handleRequestInviteUser(groupOutPeer, user)
-    case RequestLeaveGroup(groupOutPeer) =>
-      handleRequestLeaveGroup(groupOutPeer)
-    case RequestRemoveUser(groupOutPeer, users) =>
-      handleRequestRemoveUser(groupOutPeer, users)
-    case RequestEditGroupAvatar(groupOutPeer, fl) =>
-      handleRequestEditGroupAvatar(groupOutPeer, fl)
-    case RequestRemoveGroupAvatar(groupOutPeer) =>
-      handleRequestRemoveGroupAvatar(groupOutPeer)
-    case RequestDeleteGroup(groupOutPeer) =>
-      handleRequestDeleteGroup(groupOutPeer)
+    case RequestEditGroupTitle(groupPeer, randomId, title) =>
+      handleRequestEditGroupTitle(groupPeer, randomId, title)
+    case RequestInviteUser(groupOutPeer, randomId, user) =>
+      handleRequestInviteUser(groupOutPeer, randomId, user)
+    case RequestLeaveGroup(groupOutPeer, randomId) =>
+      handleRequestLeaveGroup(groupOutPeer, randomId)
+    case RequestKickUser(groupOutPeer, randomId, users) =>
+      handleRequestKickUser(groupOutPeer, randomId, users)
+    case RequestEditGroupAvatar(groupOutPeer, randomId, fl) =>
+      handleRequestEditGroupAvatar(groupOutPeer, randomId, fl)
+    case RequestRemoveGroupAvatar(groupOutPeer, randomId) =>
+      handleRequestRemoveGroupAvatar(groupOutPeer, randomId)
   }
 
   protected def handleRequestCreateGroup(
@@ -58,10 +56,12 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = {
     val id = rand.nextInt(java.lang.Integer.MAX_VALUE)
 
-    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, System.currentTimeMillis)
+    val date = System.currentTimeMillis
+
+    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, date)
 
     withUserOutPeers(users, currentUser) {
-      val createGroupModelF = persist.Group.insertEntity(group)
+      val createGroupModelF = persist.Group.insertEntity(group, randomId)
 
       val userIds = (users map (_.id) toSet) + currentUser.uid
 
@@ -80,8 +80,6 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       } yield {}
 
       groupCreatedF flatMap { _ =>
-        val date = System.currentTimeMillis()
-
         userIds foreach { userId =>
           for {
             authIds <- getAuthIds(userId)
@@ -90,6 +88,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
               if (authId != currentUser.authId) {
                 writeNewUpdate(authId, GroupInvite(
                   groupId = group.id,
+                  randomId = randomId,
                   inviterUserId = currentUser.uid,
                   date = date
                 ))
@@ -102,6 +101,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           currentUser.authId,
           GroupInvite(
             groupId = group.id,
+            randomId = randomId,
             inviterUserId = currentUser.uid,
             date = date
           )
@@ -123,6 +123,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
   protected def handleRequestInviteUser(
     groupOutPeer: struct.GroupOutPeer,
+    randomId: Long,
     user: struct.UserOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
@@ -147,6 +148,10 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
             // FIXME: add user AFTER we got Some(groupWithMeta)
             addUserF flatMap { _ =>
+              groupWithMetaFuture onFailure {
+                case e =>
+                  println(s"eeee $e")
+              }
               for {
                 groupWithMetaOpt <- groupWithMetaFuture
               } yield {
@@ -155,18 +160,21 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
                     val targetUserUpdates = Vector(
                       GroupInvite(
                         groupId = groupId,
+                        randomId = randomId,
                         inviterUserId = currentUser.uid,
                         date = date
                       ),
                       GroupTitleChanged(
                         groupId = groupId,
+                        randomId = titleChangeMeta.randomId,
                         userId = titleChangeMeta.userId,
                         group.title,
                         date = titleChangeMeta.date
                       ),
                       GroupAvatarChanged(
                         groupId = groupId,
-                        userId = titleChangeMeta.userId,
+                        randomId = avatarChangeMeta.randomId,
+                        userId = avatarChangeMeta.userId,
                         avatar = avatarData.avatar,
                         date = titleChangeMeta.date
                       ),
@@ -185,6 +193,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
               val groupUserAddedUpdate = GroupUserAdded(
                 groupId = groupId,
+                randomId = randomId,
                 userId = user.id,
                 inviterUserId = currentUser.uid,
                 date = date
@@ -216,12 +225,13 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   }
 
   protected def handleRequestLeaveGroup(
-    groupOutPeer: struct.GroupOutPeer
+    groupOutPeer: struct.GroupOutPeer,
+    randomId: Long
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      leaveGroup(groupId, currentUser) map {
+      leaveGroup(groupId, randomId, currentUser) map {
         case \/-(state) =>
           Ok(ResponseSeqDate(state._1, Some(state._2), System.currentTimeMillis()))
         case -\/(err) => err
@@ -229,8 +239,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     }
   }
 
-  protected def handleRequestRemoveUser(
+  protected def handleRequestKickUser(
     groupOutPeer: struct.GroupOutPeer,
+    randomId: Long,
     userOutPeer: struct.UserOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
@@ -253,6 +264,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
             removeUserF flatMap { _ =>
               val userKickUpdate = GroupUserKick(
                 groupId = groupId,
+                randomId = randomId,
                 userId = kickedUserId,
                 kickerUid = currentUser.uid,
                 date = date
@@ -287,6 +299,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
   protected def handleRequestEditGroupTitle(
     groupOutPeer: struct.GroupOutPeer,
+    randomId: Long,
     title: String
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
@@ -296,9 +309,10 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     val date = System.currentTimeMillis
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      persist.Group.updateTitle(groupId, title) flatMap { _ =>
+      persist.Group.updateTitle(groupId, title, currentUser.uid, randomId, date) flatMap { _ =>
         val titleChangedUpdate =  GroupTitleChanged(
           groupId = groupId,
+          randomId = randomId,
           userId = currentUser.uid,
           title = title,
           date = date
@@ -327,6 +341,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
   protected def handleRequestEditGroupAvatar(
     groupOutPeer: struct.GroupOutPeer,
+    randomId: Long,
     fileLocation: models.FileLocation
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
@@ -338,12 +353,13 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       withValidScaledAvatar(fileRecord, fileLocation) { a =>
         val groupAvatarChangedUpdate = GroupAvatarChanged(
           groupId,
+          randomId,
           currentUser.uid,
           a.some,
           date
         )
 
-        persist.Group.updateAvatar(groupId, a) flatMap { _ =>
+        persist.Group.updateAvatar(groupId, a, currentUser.uid, randomId, date) flatMap { _ =>
 
           foreachGroupUserAuthId(groupId) { authId =>
             if (authId != currentUser.authId)
@@ -359,7 +375,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   }
 
   protected def handleRequestRemoveGroupAvatar(
-    groupOutPeer: struct.GroupOutPeer
+    groupOutPeer: struct.GroupOutPeer,
+    randomId: Long
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
     val date = System.currentTimeMillis()
@@ -367,13 +384,14 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
 
       val groupAvatarChangedUpdate = GroupAvatarChanged(
-        groupId,
-        currentUser.uid,
-        None,
-        date
+        groupId = groupId,
+        randomId = randomId,
+        userId = currentUser.uid,
+        avatar = None,
+        date = date
       )
 
-      persist.Group.removeAvatar(groupId) flatMap { _ =>
+      persist.Group.removeAvatar(groupId, currentUser.uid, randomId, date) flatMap { _ =>
 
         foreachGroupUserAuthId(groupId) { authId =>
           if (authId != currentUser.authId)
@@ -382,56 +400,6 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
         withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
           Ok(ResponseSeqDate(s._1, s._2.some, date))
-        }
-      }
-    }
-  }
-
-  protected def handleRequestDeleteGroup(
-    groupOutPeer: struct.GroupOutPeer
-  ): Future[RpcResponse] = {
-    val groupId = groupOutPeer.id
-    val date = System.currentTimeMillis
-
-    withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-
-      getGroupUserIdsWithAuthIds(groupId).map(_.toMap) flatMap { userIdsAuthIds =>
-
-        val userLeaveUpdate = GroupUserLeave(
-          groupId = groupId,
-          userId = currentUser.uid,
-          date = date
-        )
-
-        val chatDeleteUpdate = ChatDelete(Peer.group(groupId))
-
-        val removeUserF = Future.sequence(
-          Seq(
-            persist.GroupUser.removeUser(groupId, currentUser.uid),
-            persist.UserGroup.removeGroup(currentUser.uid, groupId)
-          )
-        )
-
-        removeUserF flatMap { _ =>
-          val allExceptCurrentAuthIds = userIdsAuthIds.filterKeys(_ != currentUser.uid).map(_._2).flatten
-
-          allExceptCurrentAuthIds foreach { authId =>
-            writeNewUpdate(authId, userLeaveUpdate)
-          }
-
-          val currentAuthIds = userIdsAuthIds.filterKeys(_ == currentUser.uid).head._2
-
-          currentAuthIds foreach { authId =>
-            writeNewUpdate(authId, chatDeleteUpdate)
-          }
-
-          withNewUpdateState(
-            currentUser.authId,
-            chatDeleteUpdate
-          ) { s =>
-            val res = ResponseSeqDate(s._1, Some(s._2), date)
-            Ok(res)
-          }
         }
       }
     }

@@ -12,16 +12,16 @@ import Scalaz._
 import scala.util.Success
 import im.actor.messenger.{ api => protobuf }
 
-object RequestRemoveUserCodec extends Codec[RequestRemoveUser] with utils.ProtobufCodec {
-  def encode(r: RequestRemoveUser) = {
-    val boxed = protobuf.RequestRemoveUser(r.groupOutPeer.toProto, r.user.toProto)
+object RequestKickUserCodec extends Codec[RequestKickUser] with utils.ProtobufCodec {
+  def encode(r: RequestKickUser) = {
+    val boxed = protobuf.RequestKickUser(r.groupOutPeer.toProto, r.randomId, r.user.toProto)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
-    decodeProtobuf(protobuf.RequestRemoveUser.parseFrom(buf.toByteArray)) {
+    decodeProtobuf(protobuf.RequestKickUser.parseFrom(buf.toByteArray)) {
       case Success(r) =>
-        RequestRemoveUser(struct.GroupOutPeer.fromProto(r.groupPeer), struct.UserOutPeer.fromProto(r.user))
+        RequestKickUser(struct.GroupOutPeer.fromProto(r.groupPeer), r.rid, struct.UserOutPeer.fromProto(r.user))
     }
   }
 }

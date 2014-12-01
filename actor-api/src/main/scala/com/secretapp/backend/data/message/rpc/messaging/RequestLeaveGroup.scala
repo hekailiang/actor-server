@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestLeaveGroup(groupOutPeer: struct.GroupOutPeer) extends RpcRequestMessage {
+case class RequestLeaveGroup(groupOutPeer: struct.GroupOutPeer, randomId: Long) extends RpcRequestMessage {
   val header = RequestLeaveGroup.header
 }
 

@@ -22,6 +22,7 @@ trait UpdatesHelpers extends UserHelpers {
   val updatesBrokerRegion: ActorRef
 
   def writeNewUpdate(authId: Long, update: SeqUpdateMessage): Unit = {
+    println(s"wwwriting update $authId $update")
     updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(
       authId, update
     )
@@ -37,6 +38,7 @@ trait UpdatesHelpers extends UserHelpers {
     broadcastUserUpdates(user.uid, updates)
 
   def broadcastUserUpdates(userId: Int, updates: Seq[SeqUpdateMessage]): Future[Unit] = {
+    println(s"bbbroadcasting user updates $userId $updates")
     getAuthIds(userId) map { authIds =>
       authIds foreach { authId =>
         updates foreach (writeNewUpdate(authId, _))

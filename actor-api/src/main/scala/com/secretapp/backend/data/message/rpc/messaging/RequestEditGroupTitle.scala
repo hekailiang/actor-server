@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc.{ RpcRequestMessageObject, RpcRequ
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestEditGroupTitle(groupOutPeer: struct.GroupOutPeer, title: String) extends RpcRequestMessage {
+case class RequestEditGroupTitle(groupOutPeer: struct.GroupOutPeer, randomId: Long, title: String) extends RpcRequestMessage {
   val header = RequestEditGroupTitle.header
 }
 

@@ -14,14 +14,14 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestEditGroupAvatarCodec extends Codec[RequestEditGroupAvatar] with utils.ProtobufCodec {
   def encode(r: RequestEditGroupAvatar) = {
-    val boxed = protobuf.RequestEditGroupAvatar(r.groupPeer.toProto, proto.toProto(r.fileLocation))
+    val boxed = protobuf.RequestEditGroupAvatar(r.groupPeer.toProto, r.randomId, proto.toProto(r.fileLocation))
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestEditGroupAvatar.parseFrom(buf.toByteArray)) {
       case Success(r) =>
-        RequestEditGroupAvatar(struct.GroupOutPeer.fromProto(r.groupPeer),
+        RequestEditGroupAvatar(struct.GroupOutPeer.fromProto(r.groupPeer), r.rid,
           proto.fromProto[models.FileLocation, protobuf.FileLocation](r.fileLocation))
     }
   }

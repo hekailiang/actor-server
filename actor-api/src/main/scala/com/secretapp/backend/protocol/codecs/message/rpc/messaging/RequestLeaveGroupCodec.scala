@@ -14,13 +14,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestLeaveGroupCodec extends Codec[RequestLeaveGroup] with utils.ProtobufCodec {
   def encode(r: RequestLeaveGroup) = {
-    val boxed = protobuf.RequestLeaveGroup(r.groupOutPeer.toProto)
+    val boxed = protobuf.RequestLeaveGroup(r.groupOutPeer.toProto, r.randomId)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestLeaveGroup.parseFrom(buf.toByteArray)) {
-      case Success(r) => RequestLeaveGroup(struct.GroupOutPeer.fromProto(r.groupPeer))
+      case Success(r) => RequestLeaveGroup(struct.GroupOutPeer.fromProto(r.groupPeer), r.rid)
     }
   }
 }

@@ -37,6 +37,7 @@ trait MessagingService {
   val randomIds = new ConcurrentLinkedHashMap.Builder[Long, RpcResponse]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
+  // TODO: reuse matchers from handlers
   def handleRpcMessaging: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestWithRandomId =>
       authorizedRequest {
@@ -46,11 +47,10 @@ trait MessagingService {
       _: RequestClearChat
         | _: RequestDeleteChat
         | _: RequestCreateGroup
-        | _: RequestDeleteGroup
         | _: RequestEditGroupTitle
         | _: RequestInviteUser
         | _: RequestLeaveGroup
-        | _: RequestRemoveUser
+        | _: RequestKickUser
         | _: RequestEditGroupAvatar
         | _: RequestRemoveGroupAvatar
         | _: RequestDeleteMessage

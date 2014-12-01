@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message.update
 @SerialVersionUID(1L)
 case class GroupUserKick(
   groupId: Int,
+  randomId: Long,
   userId: Int,
   kickerUid: Int,
   date: Long

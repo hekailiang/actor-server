@@ -3,6 +3,7 @@ package com.secretapp.backend.data.message.update
 @SerialVersionUID(1L)
 case class GroupInvite(
   groupId: Int,
+  randomId: Long,
   inviterUserId: Int,
   date: Long
 ) extends SeqUpdateMessage {

@@ -95,7 +95,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
       withScaledAvatar(fr, fl)(f)
     }
 
-  def leaveGroup(groupId: Int, currentUser: models.User): Future[Error \/ UpdatesBroker.StrictState] = {
+  def leaveGroup(groupId: Int, randomId: Long, currentUser: models.User): Future[Error \/ UpdatesBroker.StrictState] = {
     val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
     val date = System.currentTimeMillis()
 
@@ -108,6 +108,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
 
         val userLeaveUpdate = GroupUserLeave(
           groupId = groupId,
+          randomId = randomId,
           userId = currentUser.uid,
           date = date
         )

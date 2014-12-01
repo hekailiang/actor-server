@@ -74,8 +74,11 @@ class GroupMessagingSpec extends RpcSpec {
 
         RequestInviteUser(
           groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          randomId = rand.nextLong,
           user = struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ) :~> <~:[ResponseSeqDate]
+
+        Thread.sleep(1000)
 
         val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
@@ -123,6 +126,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         RequestInviteUser(
           groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          randomId = rand.nextLong,
           user = struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ) :~> <~:(400, "USER_ALREADY_INVITED")
       }
@@ -148,7 +152,8 @@ class GroupMessagingSpec extends RpcSpec {
         implicit val scope = scope2
 
         RequestLeaveGroup(
-          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
+          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          rand.nextLong
         ) :~> <~:[ResponseSeqDate]
 
 
@@ -183,8 +188,9 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        RequestRemoveUser(
+        RequestKickUser(
           struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          rand.nextLong,
           struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
         ) :~> <~:[ResponseSeqDate]
 
@@ -261,6 +267,7 @@ class GroupMessagingSpec extends RpcSpec {
 
         RequestEditGroupTitle(
           groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
+          randomId = rand.nextLong,
           title = "Group 4000"
         ) :~> <~:[ResponseSeqDate]
 
@@ -284,42 +291,6 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on group deletion" in {
-      val (scope1, scope2) = TestScope.pair()
-
-      catchNewSession(scope1)
-      catchNewSession(scope2)
-
-      val respGroup = createGroup(Vector(scope2.user))(scope1)
-
-      {
-        implicit val scope = scope2
-
-        RequestDeleteGroup(
-          struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
-        ) :~> <~:[ResponseSeqDate]
-
-
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
-
-        diff.updates.length should beEqualTo(3)
-        val upd = diff.updates.last.body.assertInstanceOf[ChatDelete]
-        upd.peer.typ should_== PeerType.Group
-        upd.peer.id should_== respGroup.groupPeer.id
-      }
-
-      {
-        implicit val scope = scope1
-
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
-
-        diff.updates.length should beEqualTo(2)
-        val upd = diff.updates.last.body.assertInstanceOf[GroupUserLeave]
-        upd.groupId should_==(respGroup.groupPeer.id)
-        upd.userId should_==(scope2.user.uid)
-      }
-    }
-
     "send updates on name change" in {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
@@ -336,6 +307,7 @@ class GroupMessagingSpec extends RpcSpec {
             respGroup.groupPeer.id,
             respGroup.groupPeer.accessHash
           ),
+          randomId = rand.nextLong,
           title = "Title 3000"
         ) :~> <~:[ResponseSeqDate]
 

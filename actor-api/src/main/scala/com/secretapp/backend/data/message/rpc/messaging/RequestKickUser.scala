@@ -6,10 +6,10 @@ import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
-case class RequestRemoveUser(groupOutPeer: struct.GroupOutPeer, user: struct.UserOutPeer) extends RpcRequestMessage {
-  val header = RequestRemoveUser.header
+case class RequestKickUser(groupOutPeer: struct.GroupOutPeer, randomId: Long, user: struct.UserOutPeer) extends RpcRequestMessage {
+  val header = RequestKickUser.header
 }
 
-object RequestRemoveUser extends RpcRequestMessageObject {
+object RequestKickUser extends RpcRequestMessageObject {
   val header = 0x47
 }

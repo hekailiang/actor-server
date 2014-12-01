@@ -12,13 +12,13 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestRemoveGroupAvatarCodec extends Codec[RequestRemoveGroupAvatar] with utils.ProtobufCodec {
   def encode(r: RequestRemoveGroupAvatar) = {
-    val boxed = protobuf.RequestRemoveGroupAvatar(r.outPeer.toProto)
+    val boxed = protobuf.RequestRemoveGroupAvatar(r.outPeer.toProto, r.randomId)
     encodeToBitVector(boxed)
   }
 
   def decode(buf: BitVector) = {
     decodeProtobuf(protobuf.RequestRemoveGroupAvatar.parseFrom(buf.toByteArray)) {
-      case Success(r) => RequestRemoveGroupAvatar(struct.GroupOutPeer.fromProto(r.groupPeer))
+      case Success(r) => RequestRemoveGroupAvatar(struct.GroupOutPeer.fromProto(r.groupPeer), r.rid)
     }
   }
 }

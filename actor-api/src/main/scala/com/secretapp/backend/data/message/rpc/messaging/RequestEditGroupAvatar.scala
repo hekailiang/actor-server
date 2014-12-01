@@ -5,7 +5,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.{ RpcRequestMessageObject, RpcRequestMessage }
 
 @SerialVersionUID(1L)
-case class RequestEditGroupAvatar(groupPeer: struct.GroupOutPeer, fileLocation: models.FileLocation) extends RpcRequestMessage {
+case class RequestEditGroupAvatar(groupPeer: struct.GroupOutPeer, randomId: Long, fileLocation: models.FileLocation) extends RpcRequestMessage {
   val header = RequestEditGroupAvatar.header
 }
 

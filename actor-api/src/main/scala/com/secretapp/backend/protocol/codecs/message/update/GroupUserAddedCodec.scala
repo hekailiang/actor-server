@@ -13,7 +13,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object GroupUserAddedCodec extends Codec[GroupUserAdded] with utils.ProtobufCodec {
   def encode(u: GroupUserAdded) = {
-    val boxed = protobuf.UpdateGroupUserAdded(u.groupId, u.userId, u.inviterUserId, u.date)
+    val boxed = protobuf.UpdateGroupUserAdded(u.groupId, u.randomId, u.userId, u.inviterUserId, u.date)
     encodeToBitVector(boxed)
   }
 
@@ -21,11 +21,11 @@ object GroupUserAddedCodec extends Codec[GroupUserAdded] with utils.ProtobufCode
     decodeProtobuf(protobuf.UpdateGroupUserAdded.parseFrom(buf.toByteArray)) {
       case Success(
         protobuf.UpdateGroupUserAdded(
-          groupId, userId, inviterUserId, date
+          groupId, randomId, userId, inviterUserId, date
         )
       ) =>
         GroupUserAdded(
-          groupId, userId, inviterUserId, date
+          groupId, randomId, userId, inviterUserId, date
         )
     }
   }
