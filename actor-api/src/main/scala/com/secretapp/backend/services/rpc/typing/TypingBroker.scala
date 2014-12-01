@@ -129,7 +129,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           for {
             groupUserIds <- persist.GroupUser.getUserIds(selfId)
             pairs <- Future.sequence(
-              groupUserIds map { targetUserId =>
+              groupUserIds filterNot(_ == userId) map { targetUserId =>
                 getAuthIds(targetUserId) map (_ map ((targetUserId, _)))
               }
             ) map (_.flatten)
