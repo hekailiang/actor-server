@@ -1,12 +1,13 @@
 package com.secretapp.backend.data.message.update
 
+import com.secretapp.backend.data.message.struct
 import scala.collection.immutable
 
 @SerialVersionUID(1L)
-case class GroupMembersUpdate(groupId: Int, members: immutable.Seq[Int]) extends SeqUpdateMessage {
+case class GroupMembersUpdate(groupId: Int, members: immutable.Seq[struct.Member]) extends SeqUpdateMessage {
   val header = GroupMembersUpdate.header
 
-  def userIds: Set[Int] = members.toSet
+  def userIds: Set[Int] = members.map(_.id).toSet
 
   def groupIds: Set[Int] = Set(groupId)
 }

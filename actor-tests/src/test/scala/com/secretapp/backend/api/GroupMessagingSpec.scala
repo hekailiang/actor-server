@@ -108,7 +108,12 @@ class GroupMessagingSpec extends RpcSpec {
         {
           val upd = diff.updates(3).body.assertInstanceOf[GroupMembersUpdate]
           upd.groupId should_==(respGroup.groupPeer.id)
-          upd.members.toSet should_==(Set(scope1.user.uid, scope2.user.uid))
+
+          upd.members(0).id should_== scope1.user.uid
+          upd.members(0).inviterUserId should_== scope1.user.uid
+
+          upd.members(1).id should_== scope2.user.uid
+          upd.members(1).inviterUserId should_== scope1.user.uid
         }
       }
     }

@@ -68,7 +68,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
       val addUsersF = userIds map { userId =>
         // TODO: use shapeless-contrib here after upgrading to scala 2.11
         Future.sequence(Seq(
-          persist.GroupUser.addUser(group.id, userId),
+          persist.GroupUser.addUser(group.id, userId, currentUser.uid, date),
           persist.UserGroup.addGroup(userId, group.id)
         ))
       }
@@ -130,19 +130,19 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
     val groupWithMetaFuture = persist.Group.getEntityWithAvatarAndChangeMeta(groupId)
 
-    val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupOutPeer.id) map (_.toMap)
+    val membersAuthIdsF = getGroupMembersWithAuthIds(groupOutPeer.id)
 
     val date = System.currentTimeMillis()
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
       withUserOutPeer(user, currentUser) {
-        userIdsAuthIdsF flatMap { userIdsAuthIds =>
-          val userIds = userIdsAuthIds.keySet
+        membersAuthIdsF flatMap { membersAuthIds =>
+          val userIds = membersAuthIds.map(_._1.id).toSet
 
           if (!userIds.contains(user.id)) {
             // TODO: use shapeless-contrib here after upgrading to scala 2.11
             val addUserF = Future.sequence(Seq(
-              persist.GroupUser.addUser(groupId, user.id),
+              persist.GroupUser.addUser(groupId, user.id, currentUser.uid, date),
               persist.UserGroup.addGroup(user.id, groupId)
             ))
 
@@ -180,7 +180,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
                       ),
                       GroupMembersUpdate(
                         groupId = groupId,
-                        members = (userIds + user.id).toIndexedSeq
+                        members = (membersAuthIds map (_._1) toVector) :+ struct.Member(user.id, currentUser.uid, date)
                       )
                     )
 
@@ -199,8 +199,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
                 date = date
               )
 
-              userIdsAuthIds foreach {
-                case (userId, authIds) =>
+              membersAuthIds foreach {
+                case (struct.Member(userId, _, _), authIds) =>
                   authIds foreach { authId =>
                     if (authId != currentUser.authId) {
                       writeNewUpdate(authId, groupUserAddedUpdate)
