@@ -87,6 +87,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
           }
 
           (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
+            log.debug(s"Inserting UnregisteredContact $phoneNumber ${currentUser.uid}")
             persist.UnregisteredContact.insertEntity(models.UnregisteredContact(phoneNumber, currentUser.uid))
           }
 

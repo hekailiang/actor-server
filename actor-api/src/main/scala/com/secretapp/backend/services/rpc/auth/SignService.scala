@@ -342,6 +342,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     import com.secretapp.backend.api.SocialProtocol._
 
     persist.UnregisteredContact.byNumber(u.phoneNumber) map { contacts =>
+      log.debug(s"unregistered ${u.phoneNumber} is in contacts of users: $contacts")
       contacts foreach { c =>
         socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
 
