@@ -5,8 +5,13 @@ import com.secretapp.backend.data.message.rpc.messaging.MessageContent
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class HistoryMessage(senderUserId: Int, randomId: Long, date: Long, message: MessageContent) extends ProtobufMessage {
-  def toProto = protobuf.HistoryMessage(senderUserId, randomId, date, message.toProto)
+case class HistoryMessage(
+  senderUserId: Int,
+  randomId: Long,
+  date: Long,
+  message: MessageContent
+) extends ProtobufMessage {
+  def toProto = protobuf.HistoryMessage(senderUserId, randomId, date, message.toProto, protobuf.MessageState.SENT)
 }
 
 object HistoryMessage {
