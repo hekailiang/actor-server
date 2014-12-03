@@ -1,6 +1,5 @@
 package com.secretapp.backend.util
 
-import com.secretapp.backend.Configuration
 import com.secretapp.backend.models
 import java.nio.ByteBuffer
 import java.security.MessageDigest
