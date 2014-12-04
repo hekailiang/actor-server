@@ -22,8 +22,11 @@ import scodec.bits._
 
 object DialogManagerProtocol {
   sealed trait DialogMessage
+
+  @SerialVersionUID(1L)
   case class Envelope(userId: Int, peer: struct.Peer, payload: DialogMessage)
 
+  @SerialVersionUID(1L)
   case class WriteMessage(
     date: Long,
     randomId: Long,
@@ -31,7 +34,10 @@ object DialogManagerProtocol {
     message: MessageContent
   ) extends DialogMessage
 
+  @SerialVersionUID(1L)
   case class MessageRead(date: Long) extends DialogMessage
+
+  @SerialVersionUID(1L)
   case class MessageDelete(randomIds: immutable.Seq[Long]) extends DialogMessage
 }
 
