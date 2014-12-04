@@ -434,14 +434,31 @@ class RpcMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        val (resp, _) = RequestLoadHistory(
-          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        val (resp1, _) = RequestLoadHistory(
+          outPeer = outPeer,
           startDate = 0,
           limit = 2
         ) :~> <~:[ResponseLoadHistory]
 
-        resp.users.length should_== 1
-        resp.history.length should_== 2
+        resp1.users.length should_== 1
+        resp1.history.length should_== 2
+        resp1.history(0).state should_== struct.MessageState.Sent
+        resp1.history(1).state should_== struct.MessageState.Sent
+
+        RequestMessageReceived(outPeer, System.currentTimeMillis()) :~> <~:[ResponseVoid]
+
+        val (resp2, _) = RequestLoadHistory(
+          outPeer = outPeer,
+          startDate = 0,
+          limit = 2
+        ) :~> <~:[ResponseLoadHistory]
+
+        resp2.users.length should_== 1
+        resp2.history.length should_== 2
+        resp2.history(0).state should_== struct.MessageState.Sent
+        resp2.history(1).state should_== struct.MessageState.Received
       }
     }
 

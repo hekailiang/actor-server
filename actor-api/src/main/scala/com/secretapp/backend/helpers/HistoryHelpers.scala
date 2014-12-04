@@ -20,10 +20,11 @@ trait HistoryHelpers extends UserHelpers {
     date: Long,
     randomId: Long,
     senderUserId: Int,
-    message: MessageContent
+    message: MessageContent,
+    state: struct.MessageState
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, WriteMessage(
-      date, randomId, senderUserId, message
+      date, randomId, senderUserId, message, state
     ))
   }
 
@@ -33,6 +34,14 @@ trait HistoryHelpers extends UserHelpers {
     date: Long
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, MessageRead(date))
+  }
+
+  def markMessageReceived(
+    userId: Int,
+    peer: struct.Peer,
+    date: Long
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, MessageReceived(date))
   }
 
   def markMessageDeleted(

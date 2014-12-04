@@ -42,6 +42,7 @@ sealed class HistoryMessage extends CassandraTable[HistoryMessage, history.Histo
   object isDeleted extends BooleanColumn(this) with Index[Boolean] {
     override lazy val name = "is_deleted"
   }
+  object state extends IntColumn(this)
 
   override def fromRow(row: Row): history.HistoryMessage = {
     history.HistoryMessage(
@@ -53,7 +54,8 @@ sealed class HistoryMessage extends CassandraTable[HistoryMessage, history.Histo
           `type` = messageContentHeader(row),
           content = ByteString.copyFrom(messageContentBytes(row))
         )
-      )
+      ),
+      state = struct.MessageState.fromInt(state(row))
     )
   }
 }
@@ -65,7 +67,8 @@ object HistoryMessage extends HistoryMessage with TableOps {
     date: Long,
     randomId: Long,
     senderUserId: Int,
-    message: MessageContent
+    message: MessageContent,
+    state: struct.MessageState
   )(implicit session: Session): Future[ResultSet] = {
     insert
       .value(_.userId, userId)
@@ -77,6 +80,7 @@ object HistoryMessage extends HistoryMessage with TableOps {
       .value(_.messageContentHeader, message.header)
       .value(_.messageContentBytes, message.toProto.content.asReadOnlyByteBuffer)
       .value(_.isDeleted, false)
+      .value(_.state, state.intType)
       .future()
   }
 
@@ -119,7 +123,19 @@ object HistoryMessage extends HistoryMessage with TableOps {
       .one() map (_.getOrElse(0))
   }
 
-  // rethink this
+  // FIXME: possible performance issue, don't set state of messages which already have such state
+  def setState(userId: Int, peer: struct.Peer, beforeDate: Long, state: struct.MessageState)
+    (implicit session: Session): Future[ResultSet] = {
+    update
+      .where(_.userId eqs userId)
+      .and(_.peerType eqs peer.typ.intType)
+      .and(_.peerId eqs peer.id)
+      .and(_.date lte beforeDate)
+      .modify(_.state setTo state.intType)
+      .future()
+  }
+
+  // FIXME: rethink this
   def setDeleted(userId: Int, peer: struct.Peer, randomId: Long)(implicit session: Session): Future[Unit] = {
     select(_.date)
       .where(_.userId eqs userId)

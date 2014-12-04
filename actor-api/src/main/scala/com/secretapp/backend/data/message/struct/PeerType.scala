@@ -7,7 +7,7 @@ sealed trait PeerType {
 
   def toProto = value
 
-  def intType: Int
+  val intType: Int
 }
 
 object PeerType {
@@ -15,14 +15,14 @@ object PeerType {
   case object Private extends PeerType {
     val value = protobuf.PRIVATE
 
-    def intType = value.id
+    val intType = value.id
   }
 
   @SerialVersionUID(1L)
   case object Group extends PeerType {
     val value = protobuf.GROUP
 
-    def intType = value.id
+    val intType = value.id
   }
 
   def fromInt(id: Int) = {

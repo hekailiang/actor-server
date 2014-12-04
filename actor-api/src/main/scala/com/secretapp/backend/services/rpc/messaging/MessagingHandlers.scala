@@ -97,7 +97,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             date = date,
             randomId = randomId,
             senderUserId = currentUser.uid,
-            message = message
+            message = message,
+            state = struct.MessageState.Sent
           )
 
           writeHistoryMessage(
@@ -106,7 +107,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             date = date,
             randomId = randomId,
             senderUserId = currentUser.uid,
-            message = message
+            message = message,
+            state = struct.MessageState.Sent
           )
 
           Future.successful(
@@ -133,7 +135,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
                 date = date,
                 randomId = randomId,
                 senderUserId = currentUser.uid,
-                message = message
+                message = message,
+                state = struct.MessageState.Sent
               )
             }
 
@@ -307,6 +310,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     withOutPeer(outPeer, currentUser) {
       val receivedDate = System.currentTimeMillis()
 
+      markMessageReceived(currentUser.uid, outPeer.asPeer, date)
+
       val (authIdsF, update) = outPeer.typ match {
         case struct.PeerType.Group =>
           val update = updateProto.MessageReceived(struct.Peer.group(outPeer.id), date, receivedDate)
@@ -347,6 +352,8 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
     withOutPeer(outPeer, currentUser) {
       val readDate = System.currentTimeMillis()
 
+      markMessageRead(currentUser.uid, outPeer.asPeer, date)
+
       val authIdsUpdatesF = outPeer.typ match {
         case struct.PeerType.Group =>
           getGroupUserIdsWithAuthIds(outPeer.id) map { pairs =>
@@ -363,8 +370,6 @@ trait MessagingHandlers extends RandomService with UserHelpers with GroupHelpers
             }
           }
         case struct.PeerType.Private =>
-          markMessageRead(currentUser.uid, outPeer.asPeer, date)
-
           val outAuthIdsUpdatesF = for (authIds <- getAuthIds(outPeer.id)) yield {
             authIds map ((_, updateProto.MessageRead(struct.Peer.privat(currentUser.uid), date, readDate)))
           }
