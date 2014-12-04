@@ -81,7 +81,7 @@ class DialogManager(implicit val session: CSession) extends Actor {
         date
       }
       lastDate = newDate
-      p.HistoryMessage.insertEntity(userId, peer, newDate, randomId, senderUserId, message)
+      //p.HistoryMessage.insertEntity(userId, peer, newDate, randomId, senderUserId, message)
       p.DialogUnreadCounter.increment(userId, peer)
       p.Dialog.updateEntity(userId, peer, senderUserId, randomId, newDate, message)
     case Envelope(userId, peer, MessageRead(date)) =>
