@@ -10,7 +10,7 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
-import com.secretapp.backend.data.message.{update => updateProto}
+import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.{persist => p}
 import java.util.UUID
 import im.actor.util.logging._
@@ -118,17 +118,13 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
         log.debug(s"Wrote update seq=$updateSeq state=$uuid update=$update")
       }
 
-      update match {
-        case _: updateProto.MessageSent =>
+      if (!update.isInstanceOf[updateProto.MessageSent]) {
+        if (update.isInstanceOf[updateProto.Message] || update.isInstanceOf[updateProto.EncryptedMessage])
+          deliverGooglePush(authId, updateSeq)
 
-        case u =>
-          if (u.isInstanceOf[updateProto.Message] || u.isInstanceOf[updateProto.EncryptedMessage]) {
-            deliverGooglePush(authId, updateSeq)
-            deliverApplePush(authId, updateSeq)
-          }
-
-          mediator ! Publish(topic, (updateSeq, uuid, update))
+        deliverApplePush(authId, updateSeq, applePushText(update))
       }
+
       (updateSeq, uuid)
     }
   }
