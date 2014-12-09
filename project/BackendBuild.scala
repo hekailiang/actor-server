@@ -58,7 +58,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests, actorRestApi)
+   .aggregate(actorTests)
 
   lazy val actorUtil = Project(
     id   = "actor-util",
