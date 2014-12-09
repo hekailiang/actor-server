@@ -25,7 +25,6 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   "user service on receiving `RequestEditGroupAvatar`" should {
-
     "respond with `ResponseAvatarChanged`" in {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
@@ -152,10 +151,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       {
         implicit val scope = scope1
-        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
+        val (diff2, _) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
 
-        updates2.length should beEqualTo(2)
-        val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
+        diff2.updates.length should beEqualTo(2)
+        val update = diff2.updates.last.body.asInstanceOf[SeqUpdateMessage].assertInstanceOf[GroupAvatarChanged]
 
         val a = update.avatar.get
 
@@ -261,8 +260,8 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
       {
         implicit val scope = scope1
-        val (diff2, updates2) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
-        val update = updates2.last.body.asInstanceOf[SeqUpdate].body.assertInstanceOf[GroupAvatarChanged]
+        val (diff2, _) = RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
+        val update = diff2.updates.last.body.asInstanceOf[SeqUpdateMessage].assertInstanceOf[GroupAvatarChanged]
 
         update.avatar should beNone
       }

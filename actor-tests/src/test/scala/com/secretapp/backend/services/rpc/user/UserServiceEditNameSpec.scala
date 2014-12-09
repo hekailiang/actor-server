@@ -46,14 +46,14 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
 
       Thread.sleep(1000)
 
-      val (diff2, updates2) = {
+      val (diff2, _) = {
         implicit val scope = scope1
 
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
       }
 
-      updates2.length should beEqualTo(2)
-      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[NameChanged]
+      diff2.updates.length should beEqualTo(2)
+      diff2.updates.last.body.asInstanceOf[SeqUpdateMessage] should beAnInstanceOf[NameChanged]
 
       val n = diff2.users.filter(_.uid == scope2.user.uid)(0).name
 
