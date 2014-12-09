@@ -69,11 +69,11 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
       phones <- persist.Phone.getEntities(phoneNumbers)
       ignoredContactsId <- persist.contact.UserContactsListCache.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
-      usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.getEntity(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
+      usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.getEntityWithAvatar(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
       usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
-        case ((usersTuple, newContactsId, registeredPhones), user) =>
-          (usersTuple :+ (struct.User.fromModel(user, authId, phonesMap(user.phoneNumber)), user.accessSalt),
+        case ((usersTuple, newContactsId, registeredPhones), (user, avatarData)) =>
+          (usersTuple :+ (struct.User.fromModel(user, avatarData, authId, phonesMap(user.phoneNumber)), user.accessSalt),
             newContactsId + user.uid,
             registeredPhones + user.phoneNumber)
       }
@@ -118,11 +118,12 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
       } else {
         for {
           contactList <- persist.contact.UserContactsList.getEntitiesWithLocalName(currentUser.uid)
-          usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.getEntity(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
+          usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.getEntityWithAvatar(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
-          val users = usersFutureSeq.map { user =>
-            struct.User.fromModel(user, authId, localNames.get(user.uid))
+          val users = usersFutureSeq.map {
+            case (user, avatarData) =>
+              struct.User.fromModel(user, avatarData, authId, localNames.get(user.uid))
           }
           Ok(ResponseGetContacts(users.toIndexedSeq, isNotChanged = false))
         }
@@ -195,8 +196,8 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
           phones <- persist.Phone.getEntities(filteredPhones)
-          users <- Future.sequence(phones map (p => persist.User.getEntity(p.userId))).map(_.flatten)
-        } yield Ok(ResponseSearchContacts(users.map(struct.User.fromModel(_, authId)).toIndexedSeq))
+          usersAvatars <- Future.sequence(phones map (p => persist.User.getEntityWithAvatar(p.userId))).map(_.flatten)
+        } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId)).toIndexedSeq))
     }
   }
 

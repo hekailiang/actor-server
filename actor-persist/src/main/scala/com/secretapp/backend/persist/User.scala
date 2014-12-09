@@ -1,12 +1,12 @@
 package com.secretapp.backend.persist
 
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
-import scala.concurrent.Future
+import com.websudos.phantom.query.SelectQuery
 import scala.collection.immutable
+import scala.concurrent.Future
 import scodec.bits.BitVector
-import scalaz._
-import Scalaz._
 
 sealed class User extends CassandraTable[User, models.User] {
   override val tableName = "users"
@@ -84,24 +84,38 @@ sealed class User extends CassandraTable[User, models.User] {
       phoneNumber         = phoneNumber(row),
       name                = name(row),
       sex                 = models.Sex.fromInt(sex(row)),
-      countryCode         = countryCode(row),
-      smallAvatarFileId   = smallAvatarFileId(row),
-      smallAvatarFileHash = smallAvatarFileHash(row),
-      smallAvatarFileSize = smallAvatarFileSize(row),
-      largeAvatarFileId   = largeAvatarFileId(row),
-      largeAvatarFileHash = largeAvatarFileHash(row),
-      largeAvatarFileSize = largeAvatarFileSize(row),
-      fullAvatarFileId    = fullAvatarFileId(row),
-      fullAvatarFileHash  = fullAvatarFileHash(row),
-      fullAvatarFileSize  = fullAvatarFileSize(row),
-      fullAvatarWidth     = fullAvatarWidth(row),
-      fullAvatarHeight    = fullAvatarHeight(row)
+      countryCode         = countryCode(row)
+    )
+
+  def fromRowWithAvatar(row: Row): (models.User, models.AvatarData) = {
+    (
+      fromRow(row),
+      models.AvatarData(
+        smallAvatarFileId   = smallAvatarFileId(row),
+        smallAvatarFileHash = smallAvatarFileHash(row),
+        smallAvatarFileSize = smallAvatarFileSize(row),
+        largeAvatarFileId   = largeAvatarFileId(row),
+        largeAvatarFileHash = largeAvatarFileHash(row),
+        largeAvatarFileSize = largeAvatarFileSize(row),
+        fullAvatarFileId    = fullAvatarFileId(row),
+        fullAvatarFileHash  = fullAvatarFileHash(row),
+        fullAvatarFileSize  = fullAvatarFileSize(row),
+        fullAvatarWidth     = fullAvatarWidth(row),
+        fullAvatarHeight    = fullAvatarHeight(row)
+      )
+    )
+  }
+
+  def selectWithAvatar: SelectQuery[User, (models.User, models.AvatarData)] =
+    new SelectQuery[User, (models.User, models.AvatarData)](
+      this.asInstanceOf[User],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[User].fromRowWithAvatar
     )
 }
 
 object User extends User with TableOps {
-
-  def insertEntityWithChildren(entity: models.User)(implicit session: Session): Future[models.User] = {
+  def insertEntityWithChildren(entity: models.User, ad: models.AvatarData)(implicit session: Session): Future[models.User] = {
     val phone = models.Phone(
       number = entity.phoneNumber,
       userId = entity.uid,
@@ -127,17 +141,17 @@ object User extends User with TableOps {
       .value(_.name, entity.name)
       .value(_.sex, entity.sex.toInt)
       .value(_.countryCode, entity.countryCode)
-      .value(_.smallAvatarFileId, entity.smallAvatarFileId)
-      .value(_.smallAvatarFileHash, entity.smallAvatarFileHash)
-      .value(_.smallAvatarFileSize, entity.smallAvatarFileSize)
-      .value(_.largeAvatarFileId, entity.largeAvatarFileId)
-      .value(_.largeAvatarFileHash, entity.largeAvatarFileHash)
-      .value(_.largeAvatarFileSize, entity.largeAvatarFileSize)
-      .value(_.fullAvatarFileId, entity.fullAvatarFileId)
-      .value(_.fullAvatarFileHash, entity.fullAvatarFileHash)
-      .value(_.fullAvatarFileSize, entity.fullAvatarFileSize)
-      .value(_.fullAvatarWidth, entity.fullAvatarWidth)
-      .value(_.fullAvatarHeight, entity.fullAvatarHeight)
+      .value(_.smallAvatarFileId, ad.smallAvatarFileId)
+      .value(_.smallAvatarFileHash, ad.smallAvatarFileHash)
+      .value(_.smallAvatarFileSize, ad.smallAvatarFileSize)
+      .value(_.largeAvatarFileId, ad.largeAvatarFileId)
+      .value(_.largeAvatarFileHash, ad.largeAvatarFileHash)
+      .value(_.largeAvatarFileSize, ad.largeAvatarFileSize)
+      .value(_.fullAvatarFileId, ad.fullAvatarFileId)
+      .value(_.fullAvatarFileHash, ad.fullAvatarFileHash)
+      .value(_.fullAvatarFileSize, ad.fullAvatarFileSize)
+      .value(_.fullAvatarWidth, ad.fullAvatarWidth)
+      .value(_.fullAvatarHeight, ad.fullAvatarHeight)
       .future()
       .flatMap(_ => Phone.insertEntity(phone))
       .flatMap(_ => UserPublicKey.insertEntity(userPK))
@@ -157,7 +171,7 @@ object User extends User with TableOps {
       .future()
       .flatMap(_ => addKeyHash(userId, publicKeyHash, phoneNumber))
       .flatMap(_ => UserPublicKey.insertEntityRow(userId, publicKeyHash, publicKey, authId))
-      .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, userId.some)))
+      .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, Some(userId))))
       .flatMap(_ => Phone.updateUserName(phoneNumber, name))
 
   private def addKeyHash(userId: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
@@ -218,6 +232,12 @@ object User extends User with TableOps {
 
   def getEntity(userId: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
     select.where(_.userId eqs userId).and(_.authId eqs authId).one()
+
+  def getEntityWithAvatar(userId: Int)(implicit session: Session): Future[Option[(models.User, models.AvatarData)]] =
+    selectWithAvatar.where(_.userId eqs userId).one()
+
+  def getEntityWithAvatar(userId: Int, authId: Long)(implicit session: Session): Future[Option[(models.User, models.AvatarData)]] =
+    selectWithAvatar.where(_.userId eqs userId).and(_.authId eqs authId).one()
 
   def getAccessSaltAndPhone(userId: Int)(implicit session: Session): Future[Option[(String, Long)]] =
     select(_.accessSalt, _.phoneNumber).where(_.userId eqs userId).one()

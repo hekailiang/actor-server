@@ -95,13 +95,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
 
   def fromRowWithAvatar(row: Row): (models.Group, models.AvatarData) = {
     (
-      models.Group(
-        id            = id(row),
-        creatorUserId = creatorUserId(row),
-        accessHash    = accessHash(row),
-        title         = title(row),
-        createDate    = createDate(row)
-      ),
+      fromRow(row),
       models.AvatarData(
         smallAvatarFileId   = smallAvatarFileId(row),
         smallAvatarFileHash = smallAvatarFileHash(row),
@@ -120,13 +114,7 @@ sealed class Group extends CassandraTable[Group, models.Group] {
 
   def fromRowWithAvatarAndChangeMeta(row: Row): (models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta) = {
     (
-      models.Group(
-        id            = id(row),
-        creatorUserId = creatorUserId(row),
-        accessHash    = accessHash(row),
-        title         = title(row),
-        createDate    = createDate(row)
-      ),
+      fromRow(row),
       models.AvatarData(
         smallAvatarFileId   = smallAvatarFileId(row),
         smallAvatarFileHash = smallAvatarFileHash(row),
@@ -146,7 +134,11 @@ sealed class Group extends CassandraTable[Group, models.Group] {
   }
 
   def selectWithAvatar: SelectQuery[Group, (models.Group, models.AvatarData)] =
-    new SelectQuery[Group, (models.Group, models.AvatarData)](this.asInstanceOf[Group], QueryBuilder.select().from(tableName), this.asInstanceOf[Group].fromRowWithAvatar)
+    new SelectQuery[Group, (models.Group, models.AvatarData)](
+      this.asInstanceOf[Group],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[Group].fromRowWithAvatar
+    )
 
   def selectWithAvatarAndChangeMeta: SelectQuery[Group, (models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta)] =
     new SelectQuery[

@@ -169,7 +169,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
             )
 
             sessionActor ! SessionProtocol.AuthorizeUser(u)
-            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, authId), struct.Config(300)))
+            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, models.AvatarData.empty, authId), struct.Config(300)))
           }
         }
 
@@ -268,7 +268,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                               sex = models.NoSex,
                               countryCode = countryCode,
                               keyHashes = immutable.Set(pkHash))
-                            persist.User.insertEntityWithChildren(user) flatMap { _ =>
+                            persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>
                               pushContactRegisteredUpdates(user)
                               auth(user)
                             }
