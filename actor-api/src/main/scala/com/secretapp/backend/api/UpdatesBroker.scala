@@ -119,6 +119,8 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
       }
 
       if (!update.isInstanceOf[updateProto.MessageSent]) {
+        mediator ! Publish(topic, (updateSeq, uuid, update))
+
         if (update.isInstanceOf[updateProto.Message] || update.isInstanceOf[updateProto.EncryptedMessage])
           deliverGooglePush(authId, updateSeq)
 
