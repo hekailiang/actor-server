@@ -61,7 +61,7 @@ object User {
     case _ => None
   }
 
-  def fromModel(u: models.User, ad: models.AvatarData, senderAuthId: Long, localName: Option[String] = None)(implicit s: ActorSystem) = {
+  def fromModel(u: models.User, senderAuthId: Long, localName: Option[String] = None)(implicit s: ActorSystem) = {
     User(
       uid = u.uid,
       accessHash = ACL.userAccessHash(senderAuthId, u),
@@ -69,8 +69,8 @@ object User {
       localName = toLocalName(localName),
       sex = u.sex.toOption,
       keyHashes = u.keyHashes,
-      phoneNumber  = u.phoneNumber,
-      avatar = ad.avatar
+      phoneNumber = u.phoneNumber,
+      avatar = u.avatar
     )
   }
 }

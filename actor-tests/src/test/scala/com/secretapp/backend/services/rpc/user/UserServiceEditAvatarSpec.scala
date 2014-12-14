@@ -24,6 +24,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   "user service on receiving `RequestSetAvatar`" should {
+
     "respond with `ResponseAvatarUploaded`" in {
       val r = setValidAvatarShouldBeOk
 
@@ -46,7 +47,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
     "update user avatar" in {
       setValidAvatarShouldBeOk
 
-      dbAvatarData.avatar       should beSome
+      dbUser.avatar       should beSome
       dbAvatar.fullImage  should beSome
       dbAvatar.smallImage should beSome
       dbAvatar.largeImage should beSome
@@ -102,8 +103,8 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
         RequestGetDifference(diff1.seq, diff1.state) :~> <~:[ResponseGetDifference]
       }
 
-      diff2.updates.length should beEqualTo(2)
-      diff2.updates.last.body.asInstanceOf[SeqUpdateMessage] should beAnInstanceOf[UserAvatarChanged]
+      updates2.length should beEqualTo(2)
+      updates2.last.body.asInstanceOf[SeqUpdate].body should beAnInstanceOf[UserAvatarChanged]
 
       val a = diff2.users.filter(_.uid == scope2.user.uid)(0).avatar.get
 
@@ -138,7 +139,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
 
       RequestRemoveAvatar() :~> <~:[ResponseSeq]
 
-      dbAvatarData.avatar       should beNone
+      dbUser.avatar       should beNone
     }
   }
 
@@ -195,13 +196,10 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
     rsp
   }
 
-  private def dbUserAvatar =
-    persist.User.getEntityWithAvatar(scope.user.uid, scope.user.authId).sync().get
+  private def dbUser =
+    persist.User.getEntity(scope.user.uid, scope.user.authId).sync().get
 
-  private def dbUser = dbUserAvatar._1
-  private def dbAvatarData = dbUserAvatar._2
-
-  private def dbAvatar = dbAvatarData.avatar.get
+  private def dbAvatar = dbUser.avatar.get
   private def dbFullImage = dbAvatar.fullImage.get
   private def dbLargeImage = dbAvatar.largeImage.get
   private def dbSmallImage = dbAvatar.smallImage.get

@@ -2,34 +2,18 @@ package com.secretapp.backend.models
 
 import scala.collection.immutable
 
-object AvatarData {
-  def empty: AvatarData = AvatarData(
-    smallAvatarFileId = None,
-    smallAvatarFileHash = None,
-    smallAvatarFileSize = None,
-    largeAvatarFileId = None,
-    largeAvatarFileHash = None,
-    largeAvatarFileSize = None,
-    fullAvatarFileId = None,
-    fullAvatarFileHash = None,
-    fullAvatarFileSize = None,
-    fullAvatarWidth = None,
-    fullAvatarHeight = None
-  )
-}
-
 case class AvatarData(
-  smallAvatarFileId: Option[Int],
-  smallAvatarFileHash: Option[Long],
-  smallAvatarFileSize: Option[Int],
-  largeAvatarFileId: Option[Int],
-  largeAvatarFileHash: Option[Long],
-  largeAvatarFileSize: Option[Int],
-  fullAvatarFileId: Option[Int],
-  fullAvatarFileHash: Option[Long],
-  fullAvatarFileSize: Option[Int],
-  fullAvatarWidth: Option[Int],
-  fullAvatarHeight: Option[Int]
+  smallAvatarFileId: Option[Int] = None,
+  smallAvatarFileHash: Option[Long] = None,
+  smallAvatarFileSize: Option[Int] = None,
+  largeAvatarFileId: Option[Int] = None,
+  largeAvatarFileHash: Option[Long] = None,
+  largeAvatarFileSize: Option[Int] = None,
+  fullAvatarFileId: Option[Int] = None,
+  fullAvatarFileHash: Option[Long] = None,
+  fullAvatarFileSize: Option[Int] = None,
+  fullAvatarWidth: Option[Int] = None,
+  fullAvatarHeight: Option[Int] = None
 ) {
   lazy val smallAvatarImage =
     for (

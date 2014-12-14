@@ -1,19 +1,18 @@
 package com.secretapp.backend.services.rpc.contact
 
-import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
-import com.secretapp.backend.data.message.struct
-import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.util.ACL
 import com.websudos.util.testing._
-import java.security.MessageDigest
+import scodec.bits.BitVector
 import scala.collection.immutable
 import scalaz.Scalaz._
-import scodec.bits.BitVector
+import java.security.MessageDigest
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 
 class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
@@ -33,7 +32,7 @@ class ContactServiceSpec extends RpcSpec {
       val (users, seq, state) = expectRpcMsgByPF(withNewSession = true) {
         case r: ResponseImportContacts => (r.users, r.seq, r.state)
       }
-      users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, s"${contact.name}_wow1".some)))
+      users.should_==(Seq(struct.User.fromModel(contact, scope.authId, s"${contact.name}_wow1".some)))
     }
 
     "handle RPC import contacts requests" in {
@@ -73,7 +72,7 @@ class ContactServiceSpec extends RpcSpec {
         genTestScopeWithUser().user
       )
       val contactsListTuple = contacts.zipWithIndex.map {
-        case (c, index) => (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"${c.name}_$index".some), c.accessSalt)
+        case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
@@ -100,7 +99,7 @@ class ContactServiceSpec extends RpcSpec {
         genTestScopeWithUser().user
       )
       val contactsListTuple = contacts.zipWithIndex.map {
-        case (c, index) => (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"${c.name}_$index".some), c.accessSalt)
+        case (c, index) => (struct.User.fromModel(c, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
@@ -121,7 +120,7 @@ class ContactServiceSpec extends RpcSpec {
       val contact = genTestScopeWithUser().user
       val contacts = immutable.Seq(contact)
       val contactsListTuple = contacts.map { c =>
-        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"default_local_name".some), c.accessSalt)
+        (struct.User.fromModel(c, scope.authId, s"default_local_name".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
@@ -146,7 +145,7 @@ class ContactServiceSpec extends RpcSpec {
       val contact = genTestScopeWithUser().user
       val contacts = immutable.Seq(contact)
       val contactsListTuple = contacts.map { c =>
-        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId), c.accessSalt)
+        (struct.User.fromModel(c, scope.authId), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContactsList.insertNewContacts(currentUser.uid, contactsListTuple).sync()
@@ -185,7 +184,7 @@ class ContactServiceSpec extends RpcSpec {
           val users = expectRpcMsgByPF(withNewSession = index == 0) {
             case r: ResponseSearchContacts => r.users
           }
-          users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId)))
+          users.should_==(Seq(struct.User.fromModel(contact, scope.authId)))
       }
     }
 
@@ -199,7 +198,7 @@ class ContactServiceSpec extends RpcSpec {
       val reqSeq = expectRpcMsgByPF(withNewSession = true) {
         case r: ResponseSeq => r
       }
-      val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
+      val responseContacts = Seq(struct.User.fromModel(contact, scope.authId))
 
       sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
       val users = expectRpcMsgByPF() {

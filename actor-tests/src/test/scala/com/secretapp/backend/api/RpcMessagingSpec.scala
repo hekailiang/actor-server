@@ -191,7 +191,7 @@ class RpcMessagingSpec extends RpcSpec {
       val sndUID = 3000
       val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
       val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(sndPkHash))
-      persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
+      persist.User.insertEntityWithChildren(secondUser).sync()
 
       /**
         * This sleep is needed to let sharding things to initialize

@@ -30,7 +30,7 @@ class PublicKeysServiceSpec extends RpcSpec {
         authUser(user, phoneNumber)
         val secondUser = models.User(userId + 1, scope.authId + 1, pkHash, publicKey, phoneNumber + 1, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
-        persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
+        persist.User.insertEntityWithChildren(secondUser).sync()
 
         val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
         val rpcReq = RpcRequestBox(Request(RequestGetPublicKeys(reqKeys)))

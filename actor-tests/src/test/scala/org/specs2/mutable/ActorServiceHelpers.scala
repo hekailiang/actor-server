@@ -74,12 +74,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def addUser(authId: Long, sessionId: Long, u: models.User, phoneNumber: Long): Unit = blocking {
     persist.AuthId.insertEntity(models.AuthId(authId, None)).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.User.insertEntityWithChildren(u).sync()
   }
 
   def authUser(u: models.User, phoneNumber: Long): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.User.insertEntityWithChildren(u).sync()
     u
   }
 

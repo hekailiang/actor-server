@@ -41,14 +41,8 @@ trait UserHelpers {
     }
   }
 
-  def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] = {
-    for (opt <- persist.User.getEntityWithAvatar(userId)) yield {
-      opt map {
-        case (user, avatarData) =>
-          struct.User.fromModel(user, avatarData, authId)
-      }
-    }
-  }
+  def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] =
+    persist.User.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
 
   def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.UserOutPeer]] = {
     for {
