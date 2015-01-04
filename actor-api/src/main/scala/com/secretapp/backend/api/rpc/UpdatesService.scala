@@ -84,21 +84,18 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val state = if (updates.length > 0) Some(updates.last.key) else requestState
 
-    val usersFuture = mkUsers(currentAuthId, updates)
-    val groupsFuture = mkGroups(updates)
-
     for {
-      users <- usersFuture
-      groups <- groupsFuture
+      groups <- mkGroups(updates)
+      users <- mkUsers(currentAuthId, groups, updates)
     } yield {
       ResponseGetDifference(seq, state, users, groups,
         updates map { u => DifferenceUpdate(u.value) }, needMore)
     }
   }
 
-  protected def mkUsers(authId: Long, updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
+  protected def mkUsers(authId: Long, groups: immutable.Seq[struct.Group], updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     if (updates.length > 0) {
-      val userIds = updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)
+      val userIds: immutable.Set[Int] = (updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)) ++ (groups flatMap (_.members map (_.id)))
       Future.sequence(userIds.map(getUserStruct(_, authId)).toVector) map (_.flatten)
     } else { Future.successful(Vector.empty) }
   }
