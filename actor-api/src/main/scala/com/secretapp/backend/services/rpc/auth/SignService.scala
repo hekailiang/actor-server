@@ -256,21 +256,39 @@ trait SignService extends ContactHelpers with SocialHelpers {
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
-                            val pkHash = ec.PublicKey.keyHash(publicKey)
-                            val user = models.User(
-                              uid = rand.nextInt(java.lang.Integer.MAX_VALUE),
-                              authId = authId,
-                              publicKey = publicKey,
-                              publicKeyHash = pkHash,
-                              phoneNumber = phoneNumber,
-                              accessSalt = genUserAccessSalt,
-                              name = name,
-                              sex = models.NoSex,
-                              countryCode = countryCode,
-                              keyHashes = immutable.Set(pkHash))
-                            persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>
-                              pushContactRegisteredUpdates(user)
-                              auth(user)
+                            val userId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
+                            val phoneId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
+
+                            val userPhone = models.UserPhone(
+                              id = phoneId,
+                              userId = userId,
+                              accessSalt = genAccessSalt,
+                              number = phoneNumber,
+                              title = "Mobile phone"
+                            )
+
+                            persist.UserPhone.insertEntity(userPhone) flatMap { _ =>
+                              val pkHash = ec.PublicKey.keyHash(publicKey)
+                              val user = models.User(
+                                uid = userId,
+                                authId = authId,
+                                publicKey = publicKey,
+                                publicKeyHash = pkHash,
+                                phoneNumber = phoneNumber,
+                                accessSalt = genAccessSalt,
+                                name = name,
+                                sex = models.NoSex,
+                                countryCode = countryCode,
+                                phoneIds = immutable.Set(phoneId),
+                                emailIds = immutable.Set.empty,
+                                state = models.UserState.Registered,
+                                keyHashes = immutable.Set(pkHash)
+                              )
+
+                              persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>
+                                pushContactRegisteredUpdates(user)
+                                auth(user)
+                              }
                             }
                           }
                         }

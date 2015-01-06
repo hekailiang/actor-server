@@ -13,5 +13,7 @@ trait GeneratorService extends RandomService {
 
   def genUserAccessSalt = rand.nextString(30)
 
+  def genAccessSalt = rand.nextString(30)
+
   def genFileAccessSalt = rand.nextString(30)
 }

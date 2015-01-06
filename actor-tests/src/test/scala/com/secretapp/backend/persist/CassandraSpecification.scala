@@ -9,7 +9,7 @@ import org.specs2.matcher.ThrownExpectations
 import org.specs2.mutable._
 import org.specs2.specification.{ Fragments, Step }
 import scala.collection.JavaConversions._
-import scala.concurrent.Await
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
@@ -53,8 +53,6 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     }
 
     blocking {
-
-
       dropKeyspaceAsync(spaceName)
       dropKeyspace("test_akka")
       dropKeyspace("test_akka_snapshot")
@@ -65,7 +63,6 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     createKeySpace("test_akka")
     createKeySpace("test_akka_snapshot")
     createAndUseKeySpace(keySpace)
-    println("going to create tables")
     Await.result(DBConnector.createTables(csession), DurationInt(20).seconds)
   }
 

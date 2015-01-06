@@ -8,8 +8,10 @@ import com.secretapp.backend.data.message.struct
 @SerialVersionUID(1L)
 case class ResponseGetDifference(seq: Int,
   state: Option[UUID],
-  users: immutable.Seq[struct.User],
-  groups: immutable.Seq[struct.Group],
+  users: immutable.Seq[struct.User], // TODO: change to Set
+  groups: immutable.Seq[struct.Group], // TODO: change to Set
+  phones: immutable.Seq[struct.Phone],
+  emails: immutable.Seq[struct.Email],
   updates: immutable.Seq[DifferenceUpdate],
   needMore: Boolean) extends RpcResponseMessage {
   val header = ResponseGetDifference.header

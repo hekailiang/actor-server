@@ -36,12 +36,12 @@ object UserState {
   }
 }
 
-object UserNew extends ProtobufMessageObject[PBModels.User, UserNew] {
+object User extends ProtobufMessageObject[PBModels.User, User] {
   val parseMessageFrom = PBModels.User.parseFrom: Array[Byte] => PBModels.User
 
-  def fromMessage(m: PBModels.User): UserNew = {
-    UserNew(
-      userId = m.getUserId,
+  def fromMessage(m: PBModels.User): User = {
+    User(
+      uid = m.getUserId,
       authId = m.getAuthId,
       publicKeyHash = m.getPublicKeyHash,
       publicKey = BitVector(m.getPublicKey.toByteArray()),
@@ -59,8 +59,8 @@ object UserNew extends ProtobufMessageObject[PBModels.User, UserNew] {
 }
 
 @SerialVersionUID(1L)
-case class UserNew(
-  userId: Int,
+case class User(
+  uid: Int,
   authId: Long,
   publicKeyHash: Long,
   publicKey: BitVector,
@@ -76,7 +76,7 @@ case class UserNew(
 ) extends ProtobufMessage[PBModels.User] {
   override lazy val asMessage =
     PBModels.User.newBuilder()
-      .setUserId(userId)
+      .setUserId(uid)
       .setAuthId(authId)
       .setPublicKeyHash(publicKeyHash)
       .setPublicKey(ByteString.copyFrom(publicKey.toByteArray))
@@ -90,34 +90,4 @@ case class UserNew(
       .setState(PBModels.UserState.valueOf(state.toInt))
       .addAllKeyHashes(keyHashes map (long2Long) asJava)
       .build()
-}
-
-@SerialVersionUID(1L)
-case class User(
-  uid: Int,
-  authId: Long,
-  publicKeyHash: Long,
-  publicKey: BitVector,
-  phoneNumber: Long,
-  accessSalt: String,
-  name: String,
-  countryCode: String,
-  sex: Sex,
-  keyHashes: immutable.Set[Long] = immutable.Set()
-) {
-  def toUserNew(phoneIds: immutable.Set[Int]): UserNew = UserNew(
-    userId = uid,
-    authId = authId,
-    publicKeyHash = publicKeyHash,
-    publicKey = publicKey,
-    phoneNumber = phoneNumber,
-    accessSalt = accessSalt,
-    name = name,
-    countryCode = countryCode,
-    sex = sex,
-    phoneIds = phoneIds,
-    emailIds = immutable.Set.empty,
-    state = UserState.Registered,
-    keyHashes = keyHashes
-  )
 }

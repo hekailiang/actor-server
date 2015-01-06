@@ -24,6 +24,7 @@ import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Failure
 import scala.util.Success
 import scalaz._
@@ -62,7 +63,6 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
       difference <- persist.SeqUpdate.getDifference(
         currentAuthId, state, differenceSize + 1) flatMap (mkDifference(seq, state, _))
     } yield {
-      //handleActor ! PackageToSend(p.replyWith(messageId, RpcResponseBox(messageId, Ok(difference))).right)]
       Ok(difference)
     }
   }
@@ -84,12 +84,43 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     val updates = if (needMore) allUpdates.take(allUpdates.length - 1) else allUpdates
     val state = if (updates.length > 0) Some(updates.last.key) else requestState
 
+    // TODO: make emails and phones in one loop
     for {
       groups <- mkGroups(updates)
       users <- mkUsers(currentAuthId, groups, updates)
+      phones <- mkPhones(currentAuthId, users)
+      emails <- mkEmails(currentAuthId, users)
     } yield {
-      ResponseGetDifference(seq, state, users, groups,
-        updates map { u => DifferenceUpdate(u.value) }, needMore)
+      ResponseGetDifference(
+        seq,
+        state,
+        users,
+        groups,
+        phones,
+        emails,
+        updates map { u => DifferenceUpdate(u.value) },
+        needMore
+      )
+    }
+  }
+
+  protected def mkPhones(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Phone]] = {
+    val phoneModelsFuture = Future.sequence(
+      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.getEntity(u.uid, _))))
+    ) map (_.flatten.flatten)
+
+    for (phoneModels <- phoneModelsFuture) yield {
+      phoneModels map (struct.Phone.fromModel(authId, _)) toVector
+    }
+  }
+
+  protected def mkEmails(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Email]] = {
+    val emailModelsFuture = Future.sequence(
+      users map ( u => Future.sequence(u.emailIds map (persist.UserEmail.getEntity(u.uid, _))))
+    ) map (_.flatten.flatten)
+
+    for (emailModels <- emailModelsFuture) yield {
+      emailModels map (struct.Email.fromModel(authId, _)) toVector
     }
   }
 

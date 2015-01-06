@@ -26,10 +26,49 @@ class PublicKeysServiceSpec extends RpcSpec {
         val clientPhoneId = rand.nextLong()
         val phoneNumber = genPhoneNumber()
         val pkHash = ec.PublicKey.keyHash(publicKey)
-        val user = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
-        authUser(user, phoneNumber)
-        val secondUser = models.User(userId + 1, scope.authId + 1, pkHash, publicKey, phoneNumber + 1, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+
+        val phoneId = rand.nextInt
+        val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, phoneNumber, "Mobile phone")
+
+        val user = models.User(
+          userId,
+          scope.authId,
+          pkHash,
+          publicKey,
+          phoneNumber,
+          userSalt,
+          name,
+          "RU",
+          models.NoSex,
+          keyHashes = immutable.Set(pkHash),
+          phoneIds = immutable.Set(phoneId),
+          emailIds = immutable.Set.empty,
+          state = models.UserState.Registered
+        )
+
+        authUser(user, phone)
+
+        val sndPhoneId = rand.nextInt
+        val sndPhone = models.UserPhone(rand.nextInt, userId, phoneSalt, phoneNumber + 1, "Mobile phone")
+
+        val secondUser = models.User(
+          userId + 1,
+          scope.authId + 1,
+          pkHash,
+          publicKey,
+          phoneNumber + 1,
+          userSalt,
+          name,
+          "RU",
+          models.NoSex,
+          keyHashes = immutable.Set(pkHash),
+          phoneIds = immutable.Set(sndPhoneId),
+          emailIds = immutable.Set.empty,
+          state = models.UserState.Registered
+        )
+
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
+        persist.UserPhone.insertEntity(sndPhone)
         persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
 
         val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))

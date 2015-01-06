@@ -20,7 +20,7 @@ object DBConnector {
 
   val akkaKeySpace = akkaDbConfig.getString("keyspace")
 
-  val cluster =  Cluster.builder()
+  val cluster = Cluster.builder()
     .addContactPoints(dbConfig.getStringList("contact-points") :_*)
     .withPort(dbConfig.getInt("port"))
     .withoutJMXReporting()
@@ -42,9 +42,8 @@ object DBConnector {
     cluster.connect(akkaKeySpace)
   }
 
-  def createTables(session: Session)(implicit context: ExecutionContext with Executor) = {
-    println("creating tables")
-    val fileRecord = new File()(session, context)
+  def createTables(session: Session)(implicit ec: ExecutionContext with Executor) = {
+    val fileRecord = new File()(session, ec)
 
     Future.sequence(List(
       ApplePushCredentials.createTable(session),
@@ -61,6 +60,8 @@ object DBConnector {
       contact.UserContactsList.createTable(session),
       contact.UserContactsListCache.createTable(session),
       UserGroup.createTable(session),
+      UserPhone.createTable(session),
+      UserEmail.createTable(session),
       UserPublicKey.createTable(session),
       User.createTable(session),
       Dialog.createTable(session),
@@ -69,32 +70,4 @@ object DBConnector {
       fileRecord.createTable(session)
     ))
   }
-
-  def truncateTables(session: Session) =
-    Future.sequence(List(
-      ApplePushCredentials.truncateTable(session),
-      AuthId.truncateTable(session),
-      AuthSession.truncateTable(session),
-      DeletedAuthSession.truncateTable(session),
-      AuthSmsCode.truncateTable(session),
-      GooglePushCredentials.truncateTable(session),
-      Group.truncateTable(session),
-      GroupUser.truncateTable(session),
-      Phone.truncateTable(session),
-      SeqUpdate.truncateTable(session),
-      UnregisteredContact.truncateTable(session),
-      contact.UserContactsList.truncateTable(session),
-      contact.UserContactsListCache.truncateTable(session),
-      UserGroup.truncateTable(session),
-      UserPublicKey.truncateTable(session),
-      User.truncateTable(session),
-      Dialog.truncateTable(session),
-      DialogUnreadCounter.truncateTable(session),
-      HistoryMessage.truncateTable(session)
-    ))
-
-//  def dumpKeySpace() = blocking {
-//    session.execute(s"DESCRIBE KEYSPACE $secret;")
-//  }
-
 }

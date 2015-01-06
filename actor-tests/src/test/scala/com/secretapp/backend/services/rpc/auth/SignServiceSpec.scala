@@ -49,7 +49,22 @@ class SignServiceSpec extends RpcSpec {
 
         expectMsgByPF(withNewSession = true) {
           case RpcResponseBox(_, Ok(
-            ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
+            ResponseAuth(
+              `pkHash`,
+              struct.User(
+                _,
+                _,
+                `name`,
+                None,
+                `pkHashes`,
+                `phoneNumber`,
+                phoneIds,
+                _,
+                models.UserState.Registered,
+                None,
+                None
+              ), struct.Config(300)
+            ))) if (!phoneIds.isEmpty) =>
         }
       }
 
@@ -66,7 +81,21 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(
+            `pkHash`,
+            struct.User(
+              _,
+              _,
+              `name`,
+              None,
+              `pkHashes`,
+              `phoneNumber`,
+              phoneIds,
+              _,
+              models.UserState.Registered,
+              None,
+              None
+            ), struct.Config(300)))) if (!phoneIds.isEmpty) =>
         }
 
         Thread.sleep(2000) // let database save user
@@ -92,8 +121,27 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey, BitVector.empty, "app", 0, "key", false))
 
         val accessHash = ACL.userAccessHash(scope.authId, scope.user)
-        val newUser = struct.User(scope.user.uid, accessHash, scope.user.name, None, Set(newPublicKeyHash), scope.user.phoneNumber)
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, newUser, struct.Config(300))), withNewSession = true)
+        val keyHashes = Set(newPublicKeyHash)
+
+        expectMsgByPF(withNewSession = true) {
+          case RpcResponseBox(_, Ok(ResponseAuth(
+            newPublicKeyHash,
+            struct.User(
+              scope.user.uid,
+              accessHash,
+              scope.user.name,
+              None,
+              keyHashes,
+              scope.user.phoneNumber,
+              phoneIds,
+              _,
+              models.UserState.Registered,
+              None,
+              None
+            ),
+            struct.Config(300)
+          ))) if (!phoneIds.isEmpty) =>
+        }
       }
 
       "succeed with new public key and new authId" in {
@@ -135,7 +183,21 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`publicKeyHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), struct.Config(300)))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(
+            `publicKeyHash`,
+            struct.User(
+              _,
+              _,
+              `name`,
+              None,
+              `pkHashes`,
+              `phoneNumber`,
+              phoneIds,
+              _,
+              models.UserState.Registered,
+              None,
+              None
+            ), struct.Config(300)))) if (!phoneIds.isEmpty) =>
         }
       }
 
@@ -278,8 +340,26 @@ class SignServiceSpec extends RpcSpec {
         val name = "Timothy Klim"
         val userId = rand.nextInt()
         val pkHash = ec.PublicKey.keyHash(publicKey)
-        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
-        addUser(authId, session.id, user, phoneNumber)
+
+        val phoneId = rand.nextInt
+        val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
+
+        val user = models.User(
+          userId,
+          authId,
+          pkHash,
+          publicKey,
+          phoneNumber,
+          userSalt,
+          name,
+          "RU",
+          models.NoSex,
+          keyHashes = immutable.Set(pkHash),
+          phoneIds = immutable.Set(phoneId),
+          emailIds = immutable.Set.empty,
+          state = models.UserState.Registered
+        )
+        addUser(authId, session.id, user, phone)
 
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -311,8 +391,26 @@ class SignServiceSpec extends RpcSpec {
         val name = "Timothy Klim"
         val userId = rand.nextInt()
         val pkHash = ec.PublicKey.keyHash(publicKey)
-        val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
-        addUser(authId, session.id, user, phoneNumber)
+
+        val phoneId = rand.nextInt
+        val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
+
+        val user = models.User(
+          userId,
+          authId,
+          pkHash,
+          publicKey,
+          phoneNumber,
+          userSalt,
+          name,
+          "RU",
+          models.NoSex,
+          keyHashes = immutable.Set(pkHash),
+          phoneIds = immutable.Set(phoneId),
+          emailIds = immutable.Set.empty,
+          state = models.UserState.Registered
+        )
+        addUser(authId, session.id, user, phone)
 
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -346,7 +444,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val keyHashes = Set(newPublicKeyHash)
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, struct.User(_, _, _, _, `keyHashes`, _, _, _), _ ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`newPublicKeyHash`, struct.User(_, _, _, _, `keyHashes`, _, _, _, _, _, _), _ ))) =>
         }
       }
 
@@ -381,7 +479,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector(1), "app1", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, _), _ ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, _, _, _, None, _), _ ))) =>
         }
 
         Thread.sleep(2000) // let database save user
@@ -393,7 +491,7 @@ class SignServiceSpec extends RpcSpec {
         var userId: Integer = null
 
         expectMsgByPF() {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(registeredUserId, _, `name`, None, `pkHashes`, `phoneNumber`, None, _), _ ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(registeredUserId, _, `name`, None, `pkHashes`, `phoneNumber`, _, _, _, None, _), _ ))) =>
             userId = registeredUserId
         }
 
@@ -437,7 +535,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector(1), "app1", 0, "key", false))
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, None, None), _ ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`pkHash`, struct.User(_, _, `name`, None, `pkHashes`, `phoneNumber`, _, _, _, None, None), _ ))) =>
         }
 
         Thread.sleep(2000) // let database save user
@@ -453,7 +551,7 @@ class SignServiceSpec extends RpcSpec {
         var userId: Integer = null
 
         expectMsgByPF() {
-          case RpcResponseBox(_, Ok(ResponseAuth(`newPkHash`, struct.User(registeredUserId, _, `name`, None, `newPkHashes`, `phoneNumber`, None, _), _ ))) =>
+          case RpcResponseBox(_, Ok(ResponseAuth(`newPkHash`, struct.User(registeredUserId, _, `name`, None, `newPkHashes`, `phoneNumber`, _, _, _, None, _), _ ))) =>
             userId = registeredUserId
         }
 

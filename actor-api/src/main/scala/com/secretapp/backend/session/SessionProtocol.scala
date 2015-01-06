@@ -20,10 +20,23 @@ object SessionProtocol {
   case class HandleMTMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
 
   @SerialVersionUID(1L)
-  case class AuthorizeUser(user: models.User) extends SessionMessage
+  case class AuthorizeUser(user: models.User) extends SessionMessage with ProtobufMessage[PBSession.AuthorizeUser] {
+    def asMessage =
+      PBSession.AuthorizeUser.newBuilder.setUser(user.asMessage).build
+  }
+
+  object AuthorizeUser extends ProtobufMessageObject[PBSession.AuthorizeUser, AuthorizeUser] {
+    val parseMessageFrom = PBSession.AuthorizeUser.parseFrom: Array[Byte] => PBSession.AuthorizeUser
+
+    def fromMessage(m: PBSession.AuthorizeUser) = AuthorizeUser(models.User.fromMessage(m.getUser))
+  }
+
+  /**
+    * AuthorizeUserNew is needed for compatibility with PersistentMessages migrated from java-serialized ones
+    */
 
   @SerialVersionUID(1L)
-  case class AuthorizeUserNew(user: models.UserNew) extends SessionMessage with ProtobufMessage[PBSession.AuthorizeUser] {
+  case class AuthorizeUserNew(user: models.User) extends SessionMessage with ProtobufMessage[PBSession.AuthorizeUser] {
     def asMessage =
       PBSession.AuthorizeUser.newBuilder.setUser(user.asMessage).build
   }
@@ -31,7 +44,7 @@ object SessionProtocol {
   object AuthorizeUserNew extends ProtobufMessageObject[PBSession.AuthorizeUser, AuthorizeUserNew] {
     val parseMessageFrom = PBSession.AuthorizeUser.parseFrom: Array[Byte] => PBSession.AuthorizeUser
 
-    def fromMessage(m: PBSession.AuthorizeUser) = AuthorizeUserNew(models.UserNew.fromMessage(m.getUser))
+    def fromMessage(m: PBSession.AuthorizeUser) = AuthorizeUserNew(models.User.fromMessage(m.getUser))
   }
 
   @SerialVersionUID(1L)

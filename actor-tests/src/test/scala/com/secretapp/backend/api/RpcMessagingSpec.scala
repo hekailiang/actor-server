@@ -182,15 +182,47 @@ class RpcMessagingSpec extends RpcSpec {
       val publicKeyHash = ec.PublicKey.keyHash(publicKey)
       val name = "Timothy Klim"
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val user = models.User(userId, mockAuthId, pkHash, publicKey, defaultPhoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+      val phoneId = rand.nextInt
+      val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
+      val user = models.User(
+        userId,
+        mockAuthId,
+        pkHash,
+        publicKey,
+        defaultPhoneNumber,
+        userSalt,
+        name,
+        "RU",
+        models.NoSex,
+        keyHashes = immutable.Set(pkHash),
+        phoneIds = immutable.Set(phoneId),
+        emailIds = immutable.Set.empty,
+        state = models.UserState.Registered
+      )
       val accessHash = ACL.userAccessHash(scope.user.authId, userId, userSalt)
-      authUser(user, defaultPhoneNumber)
+      authUser(user, phone)
 
       // insert second user
       val sndPublicKey = hex"ac1d3000".bits
       val sndUID = 3000
       val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
-      val secondUser = models.User(sndUID, 333L, sndPkHash, sndPublicKey, defaultPhoneNumber, userSalt, name, "RU", models.NoSex, keyHashes = immutable.Set(sndPkHash))
+      val sndPhoneId = rand.nextInt
+      val sndPhone = models.UserPhone(sndPhoneId, sndUID, phoneSalt, defaultPhoneNumber, "Mobile phone")
+      val secondUser = models.User(
+        sndUID,
+        333L,
+        sndPkHash,
+        sndPublicKey,
+        defaultPhoneNumber,
+        userSalt,
+        name,
+        "RU",
+        models.NoSex,
+        keyHashes = immutable.Set(sndPkHash),
+        phoneIds = immutable.Set(sndPhoneId),
+        emailIds = immutable.Set.empty,
+        state = models.UserState.Registered
+      )
       persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
 
       /**

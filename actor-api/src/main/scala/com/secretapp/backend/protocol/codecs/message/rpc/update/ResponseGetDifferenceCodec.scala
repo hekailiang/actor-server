@@ -17,8 +17,16 @@ object ResponseGetDifferenceCodec extends Codec[ResponseGetDifference] with util
   def encode(d: ResponseGetDifference) = {
     d.updates.map(_.toProto).toList.sequenceU match {
       case \/-(updates) =>
-        val boxed = protobuf.ResponseGetDifference(d.seq, stateOpt.encodeValid(d.state), d.users.map(_.toProto),
-          d.groups.map(_.toProto), updates, d.needMore)
+        val boxed = protobuf.ResponseGetDifference(
+          d.seq,
+          stateOpt.encodeValid(d.state),
+          d.users.map(_.toProto),
+          d.groups.map(_.toProto),
+          d.phones.map(_.toProto),
+          d.emails.map(_.toProto),
+          updates,
+          d.needMore
+        )
         encodeToBitVector(boxed)
       case l@(-\/(_)) => l
     }
@@ -31,8 +39,16 @@ object ResponseGetDifferenceCodec extends Codec[ResponseGetDifference] with util
           case \/-(updates) =>
             stateOpt.decodeValue(r.state) match {
               case \/-(state) =>
-                ResponseGetDifference(r.seq, state, r.users.map(struct.User.fromProto),
-                  r.groups.map(struct.Group.fromProto), updates, r.needMore).right
+                ResponseGetDifference(
+                  r.seq,
+                  state,
+                  r.users.map(struct.User.fromProto),
+                  r.groups.map(struct.Group.fromProto),
+                  r.phones.map(struct.Phone.fromProto),
+                  r.emails.map(struct.Email.fromProto),
+                  updates,
+                  r.needMore
+                ).right
               case l @ (-\/(_)) => l
             }
           case l@(-\/(_)) => l

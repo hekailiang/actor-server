@@ -72,13 +72,15 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     persist.AuthId.insertEntity(models.AuthId(authId, userId)).sync()
   }
 
-  def addUser(authId: Long, sessionId: Long, u: models.User, phoneNumber: Long): Unit = blocking {
+  def addUser(authId: Long, sessionId: Long, u: models.User, phone: models.UserPhone): Unit = blocking {
+    persist.UserPhone.insertEntity(phone)
     persist.AuthId.insertEntity(models.AuthId(authId, None)).sync()
     persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
   }
 
-  def authUser(u: models.User, phoneNumber: Long): models.User = blocking {
+  def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
+    persist.UserPhone.insertEntity(phone).sync()
     persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
     u
   }
@@ -87,14 +89,31 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val publicKey = hex"ac1d".bits
     val name = s"Timothy${userId} Klim${userId}"
     val pkHash = ec.PublicKey.keyHash(publicKey)
-    val user = models.User(userId, authId, pkHash, publicKey, phoneNumber, "salt", name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
-    authUser(user, phoneNumber)
+    val phoneId = rand.nextInt
+    val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
+    val user = models.User(
+      userId,
+      authId,
+      pkHash,
+      publicKey,
+      phoneNumber,
+      "salt",
+      name,
+      "RU",
+      models.NoSex,
+      keyHashes = immutable.Set(pkHash),
+      phoneIds = immutable.Set(phoneId),
+      emailIds = immutable.Set.empty,
+      state = models.UserState.Registered
+    )
+    authUser(user, phone)
   }
 
   val smsCode = "test_sms_code"
   val smsHash = "test_sms_hash"
   val userId = 101
   val userSalt = "user_salt"
+  val phoneSalt = "phone_salt"
 
   private def inetAddr = new InetSocketAddress("localhost", 0)
 
@@ -125,8 +144,26 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     val salt = rand.nextString(25)
     val name = s"Timothy$userId Klim$userId"
     val pkHash = ec.PublicKey.keyHash(publicKey)
-    val userStruct = models.User(userId, scope.authId, pkHash, publicKey, phoneNumber, salt, name, "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
-    val user = authUser(userStruct, phoneNumber)
+
+    val phoneId = rand.nextInt
+    val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
+
+    val userStruct = models.User(
+      userId,
+      scope.authId,
+      pkHash,
+      publicKey,
+      phoneNumber,
+      salt,
+      name,
+      "RU",
+      models.NoSex,
+      keyHashes = immutable.Set(pkHash),
+      phoneIds = immutable.Set(phoneId),
+      emailIds = immutable.Set.empty,
+      state = models.UserState.Registered
+    )
+    val user = authUser(userStruct, phone)
     scope.copy(userOpt = user.some)
   }
 
@@ -158,13 +195,31 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
     def apply(userId: Int): TestScope = apply(userId, 79632740769L)
 
-    def apply(userId: Int, phone: Long): TestScope = {
+    def apply(userId: Int, phoneNumber: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
       implicit val session = SessionIdentifier()
       implicit val authId = rand.nextLong()
       val publicKey = BitVector.fromLong(rand.nextLong())
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val newUser = models.User(userId, authId, pkHash, publicKey, phone, "salt", s"Timothy_$userId Klim_$userId", "RU", models.NoSex, keyHashes = immutable.Set(pkHash))
+
+      val phoneId = rand.nextInt
+      val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
+
+      val newUser = models.User(
+        userId,
+        authId,
+        pkHash,
+        publicKey,
+        phoneNumber,
+        "salt",
+        s"Timothy_$userId Klim_$userId",
+        "RU",
+        models.NoSex,
+        keyHashes = immutable.Set(pkHash),
+        phoneIds = immutable.Set(phoneId),
+        emailIds = immutable.Set.empty,
+        state = models.UserState.Registered
+      )
       val user = authUser(newUser, phone)
       TestScope(probe, apiActor, session, user)
     }

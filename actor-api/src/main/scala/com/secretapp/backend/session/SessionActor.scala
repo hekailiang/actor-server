@@ -11,6 +11,7 @@ import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.update.WeakUpdate
 import com.secretapp.backend.data.transport.MessageBox
+import com.secretapp.backend.models
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
 import im.actor.util.logging.MDCActorLogging
@@ -226,6 +227,9 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
       }
     case AuthorizeUser(user) =>
+      currentUser = Some(user)
+      apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+    case AuthorizeUserNew(user) =>
       currentUser = Some(user)
       apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
     case SubscribeToUpdates =>
