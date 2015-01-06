@@ -1,0 +1,35 @@
+package protobuf;
+
+option java_package = "im.actor.server.protobuf";
+option optimize_for = SPEED;
+
+// TODO: share Sex and UserState between api and internal
+
+enum Sex {
+    UNKNOWN = 1;
+    MALE = 2;
+    FEMALE = 3;
+}
+
+enum UserState {
+    REGISTERED = 1;
+    EMAIL = 2;
+    DELETED = 3;
+}
+
+message User {
+    required int32 userId = 1;
+    required int64 authId = 2;
+    required int64 publicKeyHash = 3;
+    required bytes publicKey = 4;
+    required int64 phoneNumber = 5;
+    required string accessSalt = 6;
+    required string name = 7;
+    required string countryCode = 8;
+    required Sex sex = 9;
+    repeated int32 phoneIds = 10;
+    repeated int32 emailIds = 11;
+    required UserState state = 12;
+    repeated int64 keyHashes = 13;
+}
+

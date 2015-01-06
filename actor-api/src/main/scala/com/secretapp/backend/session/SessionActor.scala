@@ -11,7 +11,6 @@ import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.update.WeakUpdate
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.models.User
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
 import im.actor.util.logging.MDCActorLogging
@@ -19,39 +18,6 @@ import scala.collection.immutable
 import scala.concurrent.duration._
 import scalaz.Scalaz._
 import scodec.bits._
-
-object SessionProtocol {
-  // TODO: wrap all messages into Envelope
-  sealed trait SessionMessage
-
-  sealed trait HandleMessageBox {
-    val mb: MessageBox
-  }
-  @SerialVersionUID(1L)
-  case class HandleMTMessageBox(mb: MessageBox) extends HandleMessageBox with SessionMessage
-
-  @SerialVersionUID(1L)
-  case class AuthorizeUser(user: User) extends SessionMessage
-  case class SendRpcResponseBox(connector: ActorRef, rpcBox: RpcResponseBox) extends SessionMessage
-  @SerialVersionUID(1L)
-  case object SubscribeToUpdates extends SessionMessage
-  @SerialVersionUID(1L)
-  case class SubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
-
-  // TODO: remove in preference to UnsubscribeFromPresences
-  @SerialVersionUID(1L)
-  case class UnsubscribeToPresences(uids: immutable.Seq[Int]) extends SessionMessage
-
-  @SerialVersionUID(1L)
-  case class UnsubscribeFromPresences(uids: immutable.Seq[Int]) extends SessionMessage
-
-  @SerialVersionUID(1L)
-  case class SubscribeToGroupPresences(groupIds: immutable.Seq[Int]) extends SessionMessage
-  @SerialVersionUID(1L)
-  case class UnsubscribeFromGroupPresences(groupIds: immutable.Seq[Int]) extends SessionMessage
-
-  case class Envelope(authId: Long, sessionId: Long, payload: SessionMessage)
-}
 
 object SessionActor {
   import SessionProtocol._

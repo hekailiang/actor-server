@@ -10,9 +10,15 @@ import scala.concurrent. { blocking, Future }
 import scala.concurrent.ExecutionContext
 
 object DBConnector {
-  val dbConfig = ConfigFactory.load().getConfig("actor-server.cassandra")
+  val serverConfig = ConfigFactory.load().getConfig("actor-server")
+
+  val dbConfig = serverConfig.getConfig("cassandra")
 
   val keySpace = dbConfig.getString("keyspace")
+
+  val akkaDbConfig = serverConfig.getConfig("cassandra-journal")
+
+  val akkaKeySpace = akkaDbConfig.getString("keyspace")
 
   val cluster =  Cluster.builder()
     .addContactPoints(dbConfig.getStringList("contact-points") :_*)
@@ -32,7 +38,12 @@ object DBConnector {
     cluster.connect(keySpace)
   }
 
+  lazy val akkaSession = blocking {
+    cluster.connect(akkaKeySpace)
+  }
+
   def createTables(session: Session)(implicit context: ExecutionContext with Executor) = {
+    println("creating tables")
     val fileRecord = new File()(session, context)
 
     Future.sequence(List(

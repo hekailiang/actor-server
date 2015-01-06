@@ -13,3 +13,5 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
 addSbtPlugin("com.github.sbt" % "sbt-scalabuff" % "1.3.8-SNAPSHOT-SECRET")
 
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.3.6")
+
+addSbtPlugin("com.github.gseitz" % "sbt-protobuf" % "0.3.3")

@@ -21,7 +21,7 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
       val fupd = u match {
         case _: ContactRegistered | _: ContactsAdded =>
           val fuserStructs = u.userIds map { userId =>
-            persist.User.getEntity(userId) map (_ map (struct.User.fromModel(_, authId)))
+            persist.User.getEntityWithAvatar(userId) map (_ map (ua => struct.User.fromModel(ua._1, ua._2, authId)))
           }
           for { userStructs <- Future.sequence(fuserStructs) }
           yield FatSeqUpdate(seq, uuidCodec.encode(state).toOption.get, u, userStructs.flatten.toVector, Vector.empty)

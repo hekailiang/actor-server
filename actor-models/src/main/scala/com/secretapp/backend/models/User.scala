@@ -1,7 +1,96 @@
 package com.secretapp.backend.models
 
+import com.google.protobuf.ByteString
+import im.actor.server.protobuf.{ ProtobufMessage, ProtobufMessageObject }
+import im.actor.server.protobuf.{ Models => PBModels }
+import net.sandrogrzicic.scalabuff.Message
 import scala.collection.immutable
+import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scodec.bits.BitVector
+
+sealed trait UserState {
+  def toInt: Int
+}
+
+object UserState {
+  @SerialVersionUID(1L)
+  case object Registered extends UserState {
+    def toInt = 1
+  }
+
+  @SerialVersionUID(1L)
+  case object Email extends UserState {
+    def toInt = 2
+  }
+
+  @SerialVersionUID(1L)
+  case object Deleted extends UserState {
+    def toInt = 3
+  }
+
+  def fromInt(i: Int): UserState = i match {
+    case 1 => Registered
+    case 2 => Email
+    case 3 => Deleted
+  }
+}
+
+object UserNew extends ProtobufMessageObject[PBModels.User, UserNew] {
+  val parseMessageFrom = PBModels.User.parseFrom: Array[Byte] => PBModels.User
+
+  def fromMessage(m: PBModels.User): UserNew = {
+    UserNew(
+      userId = m.getUserId,
+      authId = m.getAuthId,
+      publicKeyHash = m.getPublicKeyHash,
+      publicKey = BitVector(m.getPublicKey.toByteArray()),
+      phoneNumber = m.getPhoneNumber,
+      accessSalt = m.getAccessSalt,
+      name = m.getName,
+      countryCode = m.getCountryCode,
+      sex = Sex.fromInt(m.getSex.getNumber),
+      phoneIds = m.getPhoneIdsList().asScala.toSet map (Integer2int),
+      emailIds = m.getEmailIdsList().asScala.toSet.toSet map (Integer2int),
+      state = UserState.fromInt(m.getState.getNumber),
+      keyHashes = m.getKeyHashesList().asScala.toSet map (Long2long)
+    )
+  }
+}
+
+@SerialVersionUID(1L)
+case class UserNew(
+  userId: Int,
+  authId: Long,
+  publicKeyHash: Long,
+  publicKey: BitVector,
+  phoneNumber: Long,
+  accessSalt: String,
+  name: String,
+  countryCode: String,
+  sex: Sex,
+  phoneIds: immutable.Set[Int],
+  emailIds: immutable.Set[Int],
+  state: UserState,
+  keyHashes: immutable.Set[Long]
+) extends ProtobufMessage[PBModels.User] {
+  override lazy val asMessage =
+    PBModels.User.newBuilder()
+      .setUserId(userId)
+      .setAuthId(authId)
+      .setPublicKeyHash(publicKeyHash)
+      .setPublicKey(ByteString.copyFrom(publicKey.toByteArray))
+      .setPhoneNumber(phoneNumber)
+      .setAccessSalt(accessSalt)
+      .setName(name)
+      .setCountryCode(countryCode)
+      .setSex(PBModels.Sex.valueOf(sex.toInt))
+      .addAllPhoneIds(phoneIds map (int2Integer) asJava)
+      .addAllEmailIds(emailIds map (int2Integer) asJava)
+      .setState(PBModels.UserState.valueOf(state.toInt))
+      .addAllKeyHashes(keyHashes map (long2Long) asJava)
+      .build()
+}
 
 @SerialVersionUID(1L)
 case class User(
@@ -14,46 +103,21 @@ case class User(
   name: String,
   countryCode: String,
   sex: Sex,
-  smallAvatarFileId: Option[Int] = None,
-  smallAvatarFileHash: Option[Long] = None,
-  smallAvatarFileSize: Option[Int] = None,
-  largeAvatarFileId: Option[Int] = None,
-  largeAvatarFileHash: Option[Long] = None,
-  largeAvatarFileSize: Option[Int] = None,
-  fullAvatarFileId: Option[Int] = None,
-  fullAvatarFileHash: Option[Long] = None,
-  fullAvatarFileSize: Option[Int] = None,
-  fullAvatarWidth: Option[Int] = None,
-  fullAvatarHeight: Option[Int] = None,
   keyHashes: immutable.Set[Long] = immutable.Set()
 ) {
-
-  lazy val smallAvatarImage =
-    for (
-      id <- smallAvatarFileId;
-      hash <- smallAvatarFileHash;
-      size <- smallAvatarFileSize
-    ) yield AvatarImage(FileLocation(id, hash), 100, 100, size)
-
-  lazy val largeAvatarImage =
-    for (
-      id <- largeAvatarFileId;
-      hash <- largeAvatarFileHash;
-      size <- largeAvatarFileSize
-    ) yield AvatarImage(FileLocation(id, hash), 200, 200, size)
-
-  lazy val fullAvatarImage =
-    for (
-      id <- fullAvatarFileId;
-      hash <- fullAvatarFileHash;
-      size <- fullAvatarFileSize;
-      w <- fullAvatarWidth;
-      h <- fullAvatarHeight
-    ) yield AvatarImage(FileLocation(id, hash), w, h, size)
-
-  lazy val avatar =
-    if (immutable.Seq(smallAvatarImage, largeAvatarImage, fullAvatarImage).exists(_.isDefined))
-      Some(Avatar(smallAvatarImage, largeAvatarImage, fullAvatarImage))
-    else
-      None
+  def toUserNew(phoneIds: immutable.Set[Int]): UserNew = UserNew(
+    userId = uid,
+    authId = authId,
+    publicKeyHash = publicKeyHash,
+    publicKey = publicKey,
+    phoneNumber = phoneNumber,
+    accessSalt = accessSalt,
+    name = name,
+    countryCode = countryCode,
+    sex = sex,
+    phoneIds = phoneIds,
+    emailIds = immutable.Set.empty,
+    state = UserState.Registered,
+    keyHashes = keyHashes
+  )
 }

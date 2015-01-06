@@ -65,6 +65,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
     createKeySpace("test_akka")
     createKeySpace("test_akka_snapshot")
     createAndUseKeySpace(keySpace)
+    println("going to create tables")
     Await.result(DBConnector.createTables(csession), DurationInt(20).seconds)
   }
 

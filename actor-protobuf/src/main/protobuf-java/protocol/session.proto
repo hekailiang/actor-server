@@ -1,0 +1,11 @@
+package protobuf;
+
+option java_package = "im.actor.server.protobuf.protocol";
+option optimize_for = SPEED;
+
+import "models.proto";
+
+message AuthorizeUser {
+    required User user = 1;
+}
+

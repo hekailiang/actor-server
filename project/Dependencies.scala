@@ -62,9 +62,11 @@ object Dependencies {
 
   val deploy    = Seq(traceAkka)
 
-  val models    = common ++ Seq(scodecBits)
+  val models    = common ++ Seq(scodecBits, akkaPersistence)
 
-  val persist   = common ++ Seq(scodecBits, phantomDsl, scalazCore)
+  val messages  = Seq(akkaActor)
+
+  val persist   = common ++ Seq(akkaActor, scodecBits, phantomDsl, scalazCore)
 
   val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
 

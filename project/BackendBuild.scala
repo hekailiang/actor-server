@@ -1,10 +1,11 @@
 import sbt._
 import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
-import akka.sbt.AkkaKernelPlugin.{Dist, outputDirectory, distJvmOptions, distBootClass}
-import spray.revolver.RevolverPlugin._
-import scalabuff.ScalaBuffPlugin._
+import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, distBootClass }
 import play.PlayScala
+import sbtprotobuf.{ ProtobufPlugin => PB }
+import scalabuff.ScalaBuffPlugin._
+import spray.revolver.RevolverPlugin._
 
 object BackendBuild extends Build {
   val Organization = "Actor IM"
@@ -58,7 +59,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests)
+   .aggregate(actorTests, actorProtobuf)
 
   lazy val actorUtil = Project(
     id   = "actor-util",
@@ -68,17 +69,29 @@ object BackendBuild extends Build {
     )
   )
 
+  lazy val actorProtobuf = Project(
+    id       = "actor-protobuf",
+    base     = file("actor-protobuf"),
+    settings = defaultSettings ++ scalabuffSettings ++ PB.protobufSettings ++ Seq(
+      //sourceDirectory in PB.protobufConfig := file("src/main/protobuf-java"),
+      sourceDirectory in PB.protobufConfig <<= (sourceDirectory in Compile) { _ / "protobuf-java" },
+      libraryDependencies ++= Dependencies.messages
+    )
+  ).configs(ScalaBuff)
+
   lazy val actorModels = Project(
     id       = "actor-models",
     base     = file("actor-models"),
     settings = defaultSettings
-  ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+  )
+    .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+    .dependsOn(actorProtobuf)
 
   lazy val actorPersist = Project(
     id       = "actor-persist",
     base     = file("actor-persist"),
     settings = defaultSettings
-  ).dependsOn(actorModels)
+  ).dependsOn(actorModels, actorProtobuf)
 
   lazy val actorRestApi = Project(
     id       = "actor-restapi",
@@ -94,8 +107,8 @@ object BackendBuild extends Build {
   lazy val actorApi = Project(
     id       = "actor-api",
     base     = file("actor-api"),
-    settings = defaultSettings ++ scalabuffSettings
-  ).dependsOn(actorPersist, actorUtil).configs(ScalaBuff)
+    settings = defaultSettings
+  ).dependsOn(actorPersist, actorUtil, actorProtobuf)
 
   lazy val actorTests = Project(
     id       = "actor-tests",

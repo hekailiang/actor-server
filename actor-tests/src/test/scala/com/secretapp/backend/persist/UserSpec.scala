@@ -26,7 +26,7 @@ class UserSpec extends Specification with CassandraSpecification with NoConcurre
         "RU",
         models.Male,
         keyHashes = immutable.Set(pkHash))
-      val insertFuture = User.insertEntityWithChildren(entity)
+      val insertFuture = User.insertEntityWithChildren(entity, models.AvatarData.empty)
 
       val chain = for {
         insertDone <- insertFuture

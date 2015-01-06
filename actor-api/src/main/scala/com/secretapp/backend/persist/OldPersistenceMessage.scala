@@ -1,12 +1,18 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
-import scala.concurrent.Future
-import scodec.bits._
+import akka.actor._
+import akka.persistence._
+import akka.serialization._
 import com.secretapp.backend.models
+import com.secretapp.backend.session.SessionProtocol
+import com.websudos.phantom.Implicits._
+import scala.collection.immutable
+import scala.concurrent.Future
+import scala.util.{ Failure, Success, Try }
+import scodec.bits._
 
-sealed class PersistenceMessage extends CassandraTable[PersistenceMessage, models.PersistenceMessage] {
-  override val tableName = "messages"
+sealed class OldPersistenceMessage extends CassandraTable[OldPersistenceMessage, models.PersistenceMessage] {
+  override val tableName = "old_messages"
 
   object processorId extends StringColumn(this) with PartitionKey[String] {
     override lazy val name = "processor_id"
@@ -30,30 +36,7 @@ sealed class PersistenceMessage extends CassandraTable[PersistenceMessage, model
     )
 }
 
-object PersistenceMessage extends PersistenceMessage {
-  def processMessages(processorId: String, partitionNr: Long, optMarker: Option[String] = None)(f: models.PersistenceMessage => Any)(implicit session: Session) = {
-    def process(sequenceNr: Long): Unit = {
-      val baseQuery = select
-        .where(_.processorId eqs processorId).and(_.partitionNr eqs partitionNr)
-        .and(_.sequenceNr eqs sequenceNr)
-      val query = optMarker match {
-        case Some(marker) =>
-          baseQuery.and(_.marker eqs marker)
-        case None => baseQuery
-      }
-
-      query.one() map {
-        case Some(message) =>
-          f(message)
-          process(sequenceNr + 1)
-        case None =>
-          println(s"stopped at $sequenceNr")
-      }
-    }
-
-    process(1)
-  }
-
+object OldPersistenceMessage extends OldPersistenceMessage {
   def upsertMessage(m: models.PersistenceMessage)(implicit session: Session): Future[ResultSet] =
     update
       .where(_.processorId eqs m.processorId)
