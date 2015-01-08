@@ -30,6 +30,9 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     case r: RequestRemoveAvatar => authorizedRequest {
       handleRemoveAvatar(currentUser.get)
     }
+    case r: RequestChangePhoneTitle => authorizedRequest {
+      handleChangePhoneTitle(currentUser.get, r)
+    }
   }
 
   private def handleEditAvatar(user: models.User, r: RequestEditAvatar): Future[RpcResponse] = {
@@ -83,6 +86,22 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
       }
 
       broadcastCUUpdateAndGetState(currentUser.get, update) map {
+        case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
+      }
+    }
+
+  def handleChangePhoneTitle(user: models.User, r: RequestChangePhoneTitle): Future[RpcResponse] =
+    persist.UserPhone.editTitle(user.uid, r.phoneId, r.title) flatMap { _ =>
+      val update = PhoneTitleChanged(r.phoneId, r.title)
+
+      withRelatedAuthIds(user.uid) { authIds =>
+        authIds foreach { authId =>
+          if (authId != currentUser.get.authId)
+            writeNewUpdate(authId, update)
+        }
+      }
+
+      broadcastCUUpdateAndGetState(user, update) map {
         case (seq, state) => Ok(ResponseSeq(seq, Some(state)))
       }
     }

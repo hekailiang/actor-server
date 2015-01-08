@@ -40,6 +40,7 @@ object RequestCodec extends Codec[Request] {
     .\(RequestEditGroupTitle.header) { case r: RequestEditGroupTitle => r}(protoPayload(RequestEditGroupTitleCodec))
     .\(RequestEditName.header) { case r: RequestEditName => r}(protoPayload(RequestEditNameCodec))
     .\(RequestEditUserLocalName.header) { case r: RequestEditUserLocalName => r}(protoPayload(RequestEditUserLocalNameCodec))
+    .\(RequestChangePhoneTitle.header) { case r: RequestChangePhoneTitle => r }(protoPayload(RequestChangePhoneTitleCodec))
     .\(RequestEncryptedRead.header) { case r: RequestEncryptedRead => r}(protoPayload(RequestEncryptedReadCodec))
     .\(RequestEncryptedReceived.header) { case r: RequestEncryptedReceived => r}(protoPayload(RequestEncryptedReceivedCodec))
     .\(RequestGetAuthSessions.header) { case r: RequestGetAuthSessions => r}(protoPayload(RequestGetAuthSessionsCodec))

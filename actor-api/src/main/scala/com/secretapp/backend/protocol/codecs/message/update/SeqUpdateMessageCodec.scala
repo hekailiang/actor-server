@@ -38,6 +38,7 @@ object SeqUpdateMessageCodec {
       case u: LocalNameChanged  => LocalNameChangedCodec.encode(u)
       case u: ChatDelete        => ChatDeleteCodec.encode(u)
       case u: ChatClear         => ChatClearCodec.encode(u)
+      case u: PhoneTitleChanged => PhoneTitleChangedCodec.encode(u)
     }
   }
 
@@ -69,6 +70,7 @@ object SeqUpdateMessageCodec {
       case LocalNameChanged.header  => LocalNameChangedCodec.decode(buf)
       case ChatDelete.header        => ChatDeleteCodec.decode(buf)
       case ChatClear.header         => ChatClearCodec.decode(buf)
+      case PhoneTitleChanged.header => PhoneTitleChangedCodec.decode(buf)
     })
     tried match {
       case Success(res) => res match {

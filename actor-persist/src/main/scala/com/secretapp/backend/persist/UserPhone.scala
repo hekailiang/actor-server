@@ -54,6 +54,11 @@ object UserPhone extends UserPhone with TableOps {
   def fetchUserPhoneIds(userId: Int)(implicit session: Session): Future[Seq[Int]] =
     select(_.phoneId).where(_.userId eqs userId).fetch()
 
+  def editTitle(userId: Int, phoneId: Int, title: String)(implicit session: Session): Future[ResultSet] =
+    update
+      .where(_.userId eqs userId).and(_.phoneId eqs phoneId)
+      .modify(_.title setTo title).future()
+
   def migrate_createUserPhones()(implicit session: Session) = {
     val rand = new util.Random()
 
