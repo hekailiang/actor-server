@@ -105,19 +105,23 @@ sealed class User extends CassandraTable[User, models.User] {
   def fromRowWithAvatar(row: Row): (models.User, models.AvatarData) = {
     (
       fromRow(row),
-      models.AvatarData(
-        smallAvatarFileId   = smallAvatarFileId(row),
-        smallAvatarFileHash = smallAvatarFileHash(row),
-        smallAvatarFileSize = smallAvatarFileSize(row),
-        largeAvatarFileId   = largeAvatarFileId(row),
-        largeAvatarFileHash = largeAvatarFileHash(row),
-        largeAvatarFileSize = largeAvatarFileSize(row),
-        fullAvatarFileId    = fullAvatarFileId(row),
-        fullAvatarFileHash  = fullAvatarFileHash(row),
-        fullAvatarFileSize  = fullAvatarFileSize(row),
-        fullAvatarWidth     = fullAvatarWidth(row),
-        fullAvatarHeight    = fullAvatarHeight(row)
-      )
+      fromRowAvatar(row)
+    )
+  }
+
+  def fromRowAvatar(row: Row): models.AvatarData = {
+    models.AvatarData(
+      smallAvatarFileId   = smallAvatarFileId(row),
+      smallAvatarFileHash = smallAvatarFileHash(row),
+      smallAvatarFileSize = smallAvatarFileSize(row),
+      largeAvatarFileId   = largeAvatarFileId(row),
+      largeAvatarFileHash = largeAvatarFileHash(row),
+      largeAvatarFileSize = largeAvatarFileSize(row),
+      fullAvatarFileId    = fullAvatarFileId(row),
+      fullAvatarFileHash  = fullAvatarFileHash(row),
+      fullAvatarFileSize  = fullAvatarFileSize(row),
+      fullAvatarWidth     = fullAvatarWidth(row),
+      fullAvatarHeight    = fullAvatarHeight(row)
     )
   }
 
@@ -127,6 +131,30 @@ sealed class User extends CassandraTable[User, models.User] {
       QueryBuilder.select().from(tableName),
       this.asInstanceOf[User].fromRowWithAvatar
     )
+
+  def selectAvatar: SelectQuery[User, models.AvatarData] = {
+    val columns = Vector(
+      smallAvatarFileId,
+      smallAvatarFileHash,
+      smallAvatarFileSize,
+      largeAvatarFileId,
+      largeAvatarFileHash,
+      largeAvatarFileSize,
+      fullAvatarFileId,
+      fullAvatarFileHash,
+      fullAvatarFileSize,
+      fullAvatarWidth,
+      fullAvatarHeight
+    ) map (_.name)
+
+    new SelectQuery[User, models.AvatarData](
+      this.asInstanceOf[User],
+      QueryBuilder
+        .select(columns: _*)
+        .from(tableName),
+      this.asInstanceOf[User].fromRowAvatar
+    )
+  }
 }
 
 object User extends User with TableOps {
@@ -256,6 +284,9 @@ object User extends User with TableOps {
 
   def getEntityWithAvatar(userId: Int, authId: Long)(implicit session: Session): Future[Option[(models.User, models.AvatarData)]] =
     selectWithAvatar.where(_.userId eqs userId).and(_.authId eqs authId).one()
+
+  def getAvatar(userId: Int)(implicit session: Session): Future[Option[models.AvatarData]] =
+    selectAvatar.where(_.userId eqs userId).one()
 
   def getAccessSaltAndPhone(userId: Int)(implicit session: Session): Future[Option[(String, Long)]] =
     select(_.accessSalt, _.phoneNumber).where(_.userId eqs userId).one()

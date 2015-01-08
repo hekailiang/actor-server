@@ -155,7 +155,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           log.info(s"Authenticate currentUser=$u")
           this.currentUser = Some(u)
 
-          persist.AuthSession.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) map { authItems =>
+          persist.AuthSession.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
             for (authItem <- authItems) {
               logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
             }
@@ -169,7 +169,17 @@ trait SignService extends ContactHelpers with SocialHelpers {
             )
 
             sessionActor ! SessionProtocol.AuthorizeUser(u)
-            Ok(ResponseAuth(u.publicKeyHash, struct.User.fromModel(u, models.AvatarData.empty, authId), struct.Config(300)))
+
+            for {
+              avatarData <- persist.User.getAvatar(u.uid)
+            } yield {
+              Ok(
+                ResponseAuth(
+                  u.publicKeyHash,
+                  struct.User.fromModel(u, avatarData getOrElse(models.AvatarData.empty), authId), struct.Config(300)
+                )
+              )
+            }
           }
         }
 
