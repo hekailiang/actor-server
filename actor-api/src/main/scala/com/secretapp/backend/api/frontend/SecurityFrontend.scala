@@ -20,11 +20,11 @@ object SecurityFrontend {
 class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) extends Actor
 with ActorLogging
 {
-  import context.dispatcher
   import context.system
+  implicit val ec = context.dispatcher
 
   val receiveBuffer = new java.util.LinkedList[Any]()
-  val authRecF = persist.AuthId.getEntityWithUser(authId)
+  val authRecF = persist.AuthId.findWithUser(authId)
 
   override def preStart(): Unit = {
     super.preStart()

@@ -47,7 +47,7 @@ object DBConnector {
 
     Future.sequence(List(
       ApplePushCredentials.createTable(session),
-      AuthId.createTable(session),
+      //AuthId.createTable(session),
       AuthSession.createTable(session),
       DeletedAuthSession.createTable(session),
       AuthSmsCode.createTable(session),

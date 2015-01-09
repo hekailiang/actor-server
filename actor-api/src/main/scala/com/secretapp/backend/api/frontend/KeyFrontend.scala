@@ -23,6 +23,8 @@ object KeyFrontend {
 class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit csession: CSession) extends Actor with ActorLogging with RandomService {
   import KeyFrontend._
 
+  implicit val ec = context.dispatcher
+
   def silentClose(reason: String): Unit = {
     log.error(s"KeyFrontend.silentClose: $reason")
     // TODO
@@ -41,7 +43,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit
               dropClient(message.messageId, "sessionId must equal to 0", p.sessionId)
             case RequestAuthId() =>
               val newAuthId = rand.nextLong()
-              persist.AuthId.insertEntity(models.AuthId(newAuthId, None))
+              persist.AuthId.create(newAuthId, None)
               val pkg = transport.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
               connection ! ResponseToClient(pkg.encode)
             case _ =>

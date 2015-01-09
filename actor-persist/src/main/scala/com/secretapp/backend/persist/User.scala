@@ -201,7 +201,7 @@ object User extends User with TableOps {
       .future()
       .flatMap(_ => Phone.insertEntity(phone))
       .flatMap(_ => UserPublicKey.insertEntity(userPK))
-      .flatMap(_ => AuthId.insertEntity(models.AuthId(entity.authId, Some(entity.uid))))
+      .flatMap(_ => AuthId.createOrUpdate(entity.authId, Some(entity.uid)))
       .map( _ => entity)
   }
 
@@ -217,7 +217,7 @@ object User extends User with TableOps {
       .future()
       .flatMap(_ => addKeyHash(userId, publicKeyHash, phoneNumber))
       .flatMap(_ => UserPublicKey.insertEntityRow(userId, publicKeyHash, publicKey, authId))
-      .flatMap(_ => AuthId.insertEntity(models.AuthId(authId, Some(userId))))
+      .flatMap(_ => AuthId.createOrUpdate(authId, Some(userId)))
       .flatMap(_ => Phone.updateUserName(phoneNumber, name))
 
   private def addKeyHash(userId: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =

@@ -2,6 +2,7 @@ import sbt._
 import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, distBootClass }
+import org.flywaydb.sbt.FlywayPlugin._
 import play.PlayScala
 import sbtprotobuf.{ ProtobufPlugin => PB }
 import scalabuff.ScalaBuffPlugin._
@@ -59,7 +60,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests, actorProtobuf)
+   .aggregate(actorTests, actorPersist, actorProtobuf)
 
   lazy val actorUtil = Project(
     id   = "actor-util",
@@ -90,7 +91,13 @@ object BackendBuild extends Build {
   lazy val actorPersist = Project(
     id       = "actor-persist",
     base     = file("actor-persist"),
-    settings = defaultSettings
+    settings = defaultSettings ++ flywaySettings ++ Seq(
+      flywayUrl := "jdbc:postgresql://localhost:5432/actor",
+      flywayUser := "postgres",
+      flywayPassword := "",
+      flywaySchemas := Seq("public"),
+      flywayLocations := Seq("sql/migration")
+    )
   ).dependsOn(actorModels, actorProtobuf)
 
   lazy val actorRestApi = Project(

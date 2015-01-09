@@ -9,8 +9,9 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.services.common.RandomService
+import im.actor.server.persist.unit.SqlSpec
 import org.specs2.mutable.{ActorReceiveHelpers, ActorLikeSpecification, ActorServiceHelpers}
 import scala.util.Random
 
-trait RpcSpec extends ActorLikeSpecification with ActorReceiveHelpers with CassandraSpecification
+trait RpcSpec extends ActorLikeSpecification with ActorReceiveHelpers with CassandraSpecification with SqlSpec
   with ActorServiceHelpers with RpcSpecHelpers

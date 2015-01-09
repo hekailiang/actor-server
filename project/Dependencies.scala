@@ -33,12 +33,19 @@ object Dependencies {
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
     val logbackLogstash = "net.logstash.logback"          % "logstash-logback-encoder"       % "3.3"
+
+    val scalalikeAsync  = "org.scalikejdbc"               %% "scalikejdbc-async"             % "0.5.+"
+    val postgresAsync   = "com.github.mauricio"           %% "postgresql-async"              % "0.2.+"
+
+    val postgresJdbc    = "postgresql"                    %  "postgresql"                    % "9.1-901-1.jdbc4"
+
+    val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
   }
 
   object Test {
     val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka               % "test"
     val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
-    val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"             % "test"
+    val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"
     val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
     val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"             % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
     val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"              % "test"
@@ -66,7 +73,10 @@ object Dependencies {
 
   val messages  = Seq(akkaActor)
 
-  val persist   = common ++ Seq(akkaActor, scodecBits, phantomDsl, scalazCore)
+  val persist   = common ++ Seq(
+    akkaActor, flywayCore, scodecBits, phantomDsl, scalazCore, scalalikeAsync, postgresAsync, postgresJdbc,
+    specs2
+  )
 
   val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
 

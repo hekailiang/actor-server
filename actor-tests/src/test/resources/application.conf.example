@@ -1,21 +1,5 @@
-sms {
-  clickatell {
-    user = "invalid"
-    password = "invalid"
-    api-id = "invalid"
-  }
-}
-
-gcm {
-  token = "AIzaSyCAFyk6KvcLGsI2gfoIe-ODBLjyyhch5s0"
-  dry-run = true
-}
-
-secret {
-  apns {
-    cert {
-      path = "apns/apns-dev.pfx"
-      password = "private"
-    }
+actor-server {
+  sql {
+    user = "john"
   }
 }

@@ -21,7 +21,7 @@ class SignServiceSpec extends RpcSpec {
 
   transportForeach { implicit transport =>
     "auth code" should {
-      "send sms code" in {
+      "send sms code" in new sqlDb {
         implicit val scope = genTestScope()
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
@@ -35,7 +35,7 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign up" should {
-      "succeed" in {
+      "succeed" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -68,7 +68,7 @@ class SignServiceSpec extends RpcSpec {
         }
       }
 
-      "succeed and handle logout" in {
+      "succeed and handle logout" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -112,7 +112,7 @@ class SignServiceSpec extends RpcSpec {
 
         expectRpcMsg(Ok(ResponseVoid()))
       }
-      "succeed with new public key and same authId" in {
+      "succeed with new public key and same authId" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
@@ -144,7 +144,7 @@ class SignServiceSpec extends RpcSpec {
         }
       }
 
-      "succeed with new public key and new authId" in {
+      "succeed with new public key and new authId" in new sqlDb {
         val scope = genTestScopeWithUser()
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
@@ -153,7 +153,7 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = SessionIdentifier()
         implicit val newScope = scope.copy(authId = newAuthId, session = newSessionId)
-        persist.AuthId.insertEntity(models.AuthId(newAuthId, scope.user.uid.some)).sync()
+        persist.AuthId.create(newAuthId, scope.user.uid.some).sync()
         sendRpcMsg(RequestSignUp(scope.user.phoneNumber, smsHash, smsCode, scope.user.name, newPublicKey, BitVector.empty, "app", 0, "key", false))
 
         val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
@@ -168,7 +168,7 @@ class SignServiceSpec extends RpcSpec {
         users must be_== (expectUsers).await
       }
 
-      "succeed if name contains cyrillic characters" in {
+      "succeed if name contains cyrillic characters" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val publicKeyHash = ec.PublicKey.keyHash(publicKey)
@@ -201,7 +201,7 @@ class SignServiceSpec extends RpcSpec {
         }
       }
 
-      "fail with invalid sms code" in {
+      "fail with invalid sms code" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
@@ -213,7 +213,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
       }
 
-      "fail with invalid sms hash" in {
+      "fail with invalid sms hash" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
@@ -225,7 +225,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
       }
 
-      "fail with invalid first name if it is empty" in {
+      "fail with invalid first name if it is empty" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
@@ -238,7 +238,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "NAME_INVALID", "Should be nonempty", false), withNewSession = true)
       }
 
-      "fail with invalid first name if it contains non printable characters" in {
+      "fail with invalid first name if it contains non printable characters" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val phoneNumber = genPhoneNumber()
@@ -251,7 +251,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "NAME_INVALID", "Should contain printable characters only", false), withNewSession = true)
       }
 
-      "fail with invalid public key if public key is empty" in {
+      "fail with invalid public key if public key is empty" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = BitVector.empty
         val phoneNumber = genPhoneNumber()
@@ -264,7 +264,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "INVALID_KEY", "", false), withNewSession = true)
       }
 
-//      "fail with invalid public key if public key is invalid" in {
+//      "fail with invalid public key if public key is invalid" in new sqlDb {
 //        implicit val scope = genTestScope()
 //        val publicKey = BitVector(hex"ac1d")
 //        val phoneNumber = genPhoneNumber()
@@ -281,7 +281,7 @@ class SignServiceSpec extends RpcSpec {
 //        expectMsgWithAck(expectMsg)
 //      }
 
-      "send ContactRegistered notifications" in {
+      "send ContactRegistered notifications" in new sqlDb {
         val unregPhone = genPhoneNumber()
         val registered = genTestScopeWithUser()
         val unregistered = genTestScope()
@@ -322,7 +322,7 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign in" should {
-      "success" in {
+      "success" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
@@ -331,7 +331,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, struct.User.fromModel(scope.user, models.AvatarData.empty, scope.authId), struct.Config(300))), withNewSession = true)
       }
 
-      "success with second public key and authId" in {
+      "success with second public key and authId" in new sqlDb {
         val session = SessionIdentifier()
         val authId = rand.nextLong()
         val publicKey = genPublicKey
@@ -365,7 +365,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
-        persist.AuthId.insertEntity(models.AuthId(newAuthId, userId.some)).sync()
+        persist.AuthId.create(newAuthId, userId.some).sync()
         persist.User.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name, "RU").sync()
 
         val newUser = user.copy(keyHashes = Set(publicKeyHash, newPublicKeyHash))
@@ -382,7 +382,7 @@ class SignServiceSpec extends RpcSpec {
         }
       }
 
-      "remove old public key on sign up with the same authId and new public key" in {
+      "remove old public key on sign up with the same authId and new public key" in new sqlDb {
         val session = new SessionIdentifier(rand.nextLong)
         val authId = rand.nextLong()
         val publicKey = genPublicKey
@@ -415,7 +415,7 @@ class SignServiceSpec extends RpcSpec {
         val newPublicKey = genPublicKey
         val newPublicKeyHash = ec.PublicKey.keyHash(newPublicKey)
 
-        persist.AuthId.insertEntity(models.AuthId(authId, userId.some)).sync()
+        persist.AuthId.createOrUpdate(authId, userId.some).sync()
 
         val newUser = user.copy(publicKey = newPublicKey, keyHashes = Set(newPublicKeyHash))
 
@@ -435,7 +435,7 @@ class SignServiceSpec extends RpcSpec {
 
       }
 
-      "success with new public key and valid authId" in {
+      "success with new public key and valid authId" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         val newPublicKey = genPublicKey
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
@@ -448,7 +448,7 @@ class SignServiceSpec extends RpcSpec {
         }
       }
 
-      "failed with invalid sms hash" in {
+      "failed with invalid sms hash" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
@@ -457,7 +457,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
       }
 
-      "failed with invalid sms code" in {
+      "failed with invalid sms code" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         persist.AuthSmsCode.insertEntity(models.AuthSmsCode(scope.user.phoneNumber, smsHash, smsCode)).sync()
 
@@ -466,7 +466,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
       }
 
-      "remove previous auth but keep keyHash on sign in with the same deviceHash and same keyHash" in {
+      "remove previous auth but keep keyHash on sign in with the same deviceHash and same keyHash" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -522,7 +522,7 @@ class SignServiceSpec extends RpcSpec {
         deletedPkeys.length should_== 0
       }
 
-      "remove previous auth and mark keyHash as deleted on sign in with the same deviceHash" in {
+      "remove previous auth and mark keyHash as deleted on sign in with the same deviceHash" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -584,7 +584,7 @@ class SignServiceSpec extends RpcSpec {
         deletedPKeys.head.publicKeyHash should_== pkHash
       }
 
-//      "failed with invalid public key" in {
+//      "failed with invalid public key" in new sqlDb {
 //        implicit val (probe, apiActor) = probeAndActor()
 //        implicit val sessionId = SessionIdentifier()
 //        implicit val authId = rand.nextLong()
