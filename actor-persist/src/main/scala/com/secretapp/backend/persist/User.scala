@@ -168,9 +168,9 @@ object User extends User with TableOps {
 
     val userPK = models.UserPublicKey(
       userId = entity.uid,
-      publicKeyHash = entity.publicKeyHash,
+      hash = entity.publicKeyHash,
       userAccessSalt = entity.accessSalt,
-      publicKey = entity.publicKey,
+      data = entity.publicKey,
       authId = entity.authId)
 
     insert

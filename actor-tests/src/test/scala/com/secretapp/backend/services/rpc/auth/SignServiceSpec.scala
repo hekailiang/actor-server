@@ -577,11 +577,11 @@ class SignServiceSpec extends RpcSpec {
 
         val pkeys = persist.UserPublicKey.getEntitiesByUserId(userId).sync()
         pkeys.length should_== 1
-        pkeys.head.publicKeyHash should_== newPkHash
+        pkeys.head.hash should_== newPkHash
 
         val deletedPKeys = persist.UserPublicKey.getDeletedEntitiesByUserId(userId).sync()
         deletedPKeys.length should_== 1
-        deletedPKeys.head.publicKeyHash should_== pkHash
+        deletedPKeys.head.hash should_== pkHash
       }
 
 //      "failed with invalid public key" in new sqlDb {

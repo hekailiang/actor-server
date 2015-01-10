@@ -34,12 +34,12 @@ trait PublicKeysService {
       pkeys <- persist.UserPublicKey.getEntitiesByPublicKeyHash(keys.map(k => (k.userId, k.keyHash)))
     } yield {
       val items = pkeys.filter { k =>
-        val hkey = k.userId * k.publicKeyHash
+        val hkey = k.userId * k.hash
         val ahash = ACL.userAccessHash(authId, k.userId, k.userAccessSalt)
         keysMap(hkey) == ahash
       }
       val pubKeys = items.map { key =>
-        PublicKeyResponse(key.userId, key.publicKeyHash, key.publicKey)
+        PublicKeyResponse(key.userId, key.hash, key.data)
       }
       Ok(ResponseGetPublicKeys(pubKeys))
     }

@@ -38,10 +38,10 @@ sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPubl
   override def fromRow(row: Row): models.UserPublicKey =
     models.UserPublicKey(
       userId = uid(row),
-      publicKeyHash = publicKeyHash(row),
-      publicKey = BitVector(publicKey(row)),
-      authId = authId(row),
-      userAccessSalt = userAccessSalt(row)
+      hash = publicKeyHash(row),
+      userAccessSalt = userAccessSalt(row),
+      data = BitVector(publicKey(row)),
+      authId = authId(row)
     )
 }
 
@@ -52,8 +52,8 @@ object UserPublicKey extends UserPublicKey with TableOps {
   def insertEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.uid, entity.userId)
-      .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, entity.publicKey.toByteBuffer)
+      .value(_.publicKeyHash, entity.hash)
+      .value(_.publicKey, entity.data.toByteBuffer)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.authId, entity.authId)
       .value(_.isDeleted, false)
@@ -62,8 +62,8 @@ object UserPublicKey extends UserPublicKey with TableOps {
   def insertDeletedEntity(entity: models.UserPublicKey)(implicit session: Session): Future[ResultSet] =
     insert
       .value(_.uid, entity.userId)
-      .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, entity.publicKey.toByteBuffer)
+      .value(_.publicKeyHash, entity.hash)
+      .value(_.publicKey, entity.data.toByteBuffer)
       .value(_.userAccessSalt, entity.userAccessSalt)
       .value(_.authId, entity.authId)
       .value(_.isDeleted, true)
