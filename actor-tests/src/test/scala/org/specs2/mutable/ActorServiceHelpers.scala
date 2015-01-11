@@ -101,7 +101,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -158,7 +158,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -215,7 +215,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
         s"Timothy_$userId Klim_$userId",
         "RU",
         models.NoSex,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered

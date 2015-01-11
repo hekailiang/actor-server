@@ -29,7 +29,7 @@ class UserSpec extends Specification with CassandraSpecification with GeneratorS
         "Wayne Brain",
         "RU",
         models.Male,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered

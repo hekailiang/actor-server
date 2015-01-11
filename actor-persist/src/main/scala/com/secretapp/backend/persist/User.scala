@@ -90,8 +90,8 @@ sealed class User extends CassandraTable[User, models.User] {
       uid                 = userId(row),
       authId              = authId(row),
       publicKeyHash       = publicKeyHash(row),
-      publicKey           = BitVector(publicKey(row)),
-      keyHashes           = keyHashes(row),
+      publicKeyData       = BitVector(publicKey(row)),
+      publicKeyHashes     = keyHashes(row),
       accessSalt          = accessSalt(row),
       phoneNumber         = phoneNumber(row),
       name                = name(row),
@@ -170,14 +170,14 @@ object User extends User with TableOps {
       userId = entity.uid,
       hash = entity.publicKeyHash,
       userAccessSalt = entity.accessSalt,
-      data = entity.publicKey,
+      data = entity.publicKeyData,
       authId = entity.authId)
 
     insert
       .value(_.userId, entity.uid)
       .value(_.authId, entity.authId)
       .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, entity.publicKey.toByteBuffer)
+      .value(_.publicKey, entity.publicKeyData.toByteBuffer)
       .value(_.keyHashes, immutable.Set(entity.publicKeyHash))
       .value(_.accessSalt, entity.accessSalt)
       .value(_.phoneNumber, entity.phoneNumber)

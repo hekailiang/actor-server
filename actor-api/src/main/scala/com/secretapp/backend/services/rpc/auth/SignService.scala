@@ -215,17 +215,17 @@ trait SignService extends ContactHelpers with SocialHelpers {
                   val user = userR.get
                   val userName = getUserName(user.name)
                   updateUserRecord(userName)
-                  val keyHashes = user.keyHashes + publicKeyHash
-                  val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
-                    keyHashes = keyHashes, name = userName)
+                  val keyHashes = user.publicKeyHashes + publicKeyHash
+                  val newUser = user.copy(authId = authId, publicKeyData = publicKey, publicKeyHash = publicKeyHash,
+                    publicKeyHashes = keyHashes, name = userName)
                   auth(newUser)
                 case Some(userAuth) =>
                   val userName = getUserName(userAuth.name)
-                  if (userAuth.publicKey != publicKey) {
+                  if (userAuth.publicKeyData != publicKey) {
                     updateUserRecord(userName)
                     persist.User.removeKeyHash(userAuth.uid, userAuth.publicKeyHash, Some(currentUser.get.authId)) flatMap { _ =>
-                      val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-                      val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                      val keyHashes = userAuth.publicKeyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
+                      val newUser = userAuth.copy(publicKeyData = publicKey, publicKeyHash = publicKeyHash, publicKeyHashes = keyHashes,
                         name = userName)
                       auth(newUser)
                     }
@@ -282,7 +282,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                               val user = models.User(
                                 uid = userId,
                                 authId = authId,
-                                publicKey = publicKey,
+                                publicKeyData = publicKey,
                                 publicKeyHash = pkHash,
                                 phoneNumber = phoneNumber,
                                 accessSalt = genAccessSalt,
@@ -292,7 +292,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                                 phoneIds = immutable.Set(phoneId),
                                 emailIds = immutable.Set.empty,
                                 state = models.UserState.Registered,
-                                keyHashes = immutable.Set(pkHash)
+                                publicKeyHashes = immutable.Set(pkHash)
                               )
 
                               persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>

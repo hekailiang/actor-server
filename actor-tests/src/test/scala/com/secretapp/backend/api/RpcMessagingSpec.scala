@@ -194,7 +194,7 @@ class RpcMessagingSpec extends RpcSpec {
         name,
         "RU",
         models.NoSex,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered
@@ -218,7 +218,7 @@ class RpcMessagingSpec extends RpcSpec {
         name,
         "RU",
         models.NoSex,
-        keyHashes = immutable.Set(sndPkHash),
+        publicKeyHashes = immutable.Set(sndPkHash),
         phoneIds = immutable.Set(sndPhoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered

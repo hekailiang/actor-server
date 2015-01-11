@@ -40,7 +40,7 @@ class PublicKeysServiceSpec extends RpcSpec {
           name,
           "RU",
           models.NoSex,
-          keyHashes = immutable.Set(pkHash),
+          publicKeyHashes = immutable.Set(pkHash),
           phoneIds = immutable.Set(phoneId),
           emailIds = immutable.Set.empty,
           state = models.UserState.Registered
@@ -61,7 +61,7 @@ class PublicKeysServiceSpec extends RpcSpec {
           name,
           "RU",
           models.NoSex,
-          keyHashes = immutable.Set(pkHash),
+          publicKeyHashes = immutable.Set(pkHash),
           phoneIds = immutable.Set(sndPhoneId),
           emailIds = immutable.Set.empty,
           state = models.UserState.Registered
@@ -75,7 +75,7 @@ class PublicKeysServiceSpec extends RpcSpec {
         val rpcReq = RpcRequestBox(Request(RequestGetPublicKeys(reqKeys)))
         sendMsg(rpcReq)
 
-        val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))
+        val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKeyData))
         expectRpcMsg(Ok(ResponseGetPublicKeys(resKeys)), withNewSession = true)
       }
     }
