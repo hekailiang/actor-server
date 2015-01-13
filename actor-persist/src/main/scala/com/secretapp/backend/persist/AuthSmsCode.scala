@@ -1,52 +1,53 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.{ Session => CSession }
-import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scalikejdbc._, async._, FutureImplicits._
 
-sealed class AuthSmsCode extends CassandraTable[AuthSmsCode, models.AuthSmsCode] {
+object AuthSmsCode extends SQLSyntaxSupport[models.AuthSmsCode] with ShortenedNames {
   override val tableName = "auth_sms_codes"
+  override val columnNames = Seq(
+    "phone_number", "sms_hash", "sms_code"
+  )
 
-  object phoneNumber extends LongColumn(this) with PartitionKey[Long] {
-    override lazy val name = "phone_number"
-  }
-  object smsHash extends StringColumn(this) { // TODO: with PartitionKey[Long]
-    override lazy val name = "sms_hash"
-  }
-  object smsCode extends StringColumn(this) {
-    override lazy val name = "sms_code"
-  }
+  lazy val a = AuthSmsCode.syntax("auth_sms_codes")
 
-  override def fromRow(row: Row): models.AuthSmsCode =
-    models.AuthSmsCode(phoneNumber(row), smsHash(row), smsCode(row))
-}
+  def apply(a: SyntaxProvider[models.AuthSmsCode])(rs: WrappedResultSet): models.AuthSmsCode = apply(a.resultName)(rs)
 
-object AuthSmsCode extends AuthSmsCode with TableOps {
-  def insertEntity(entity: models.AuthSmsCode)(implicit session: CSession): Future[models.AuthSmsCode] =
-    insert
-      .value(_.phoneNumber, entity.phoneNumber)
-      .value(_.smsHash, entity.smsHash)
-      .value(_.smsCode, entity.smsCode)
-      .ttl(15.minutes.toSeconds.toInt)
-      .future().map(_ => entity)
+  def apply(a: ResultName[models.AuthSmsCode])(rs: WrappedResultSet): models.AuthSmsCode = models.AuthSmsCode(
+    phoneNumber = rs.long(a.phoneNumber),
+    smsHash = rs.string(a.smsHash),
+    smsCode = rs.string(a.smsCode)
+  )
 
-  def getEntity(phoneNumber: Long)(implicit session: CSession): Future[Option[models.AuthSmsCode]] =
-    select.where(_.phoneNumber eqs phoneNumber).one()
+  def findBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.AuthSmsCode]] = withSQL {
+    select.from(AuthSmsCode as a)
+      .where.append(sqls"${where}")
+      .limit(1)
+  } map (AuthSmsCode(a))
 
-  def dropEntity(phoneNumber: Long)(implicit session: CSession) =
-    delete.where(_.phoneNumber eqs phoneNumber).future()
+  def findByPhoneNumber(phoneNumber: Long)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.AuthSmsCode]] = findBy(sqls.eq(a.phoneNumber, phoneNumber))
 
-  def list(startPhoneExclusive: Long, count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
-    select.where(_.phoneNumber gtToken startPhoneExclusive).limit(count).fetch()
+  def create(phoneNumber: Long, smsHash: String, smsCode: String)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[models.AuthSmsCode] = for {
+    _ <- withSQL {
+      insert.into(AuthSmsCode).namedValues(
+        column.phoneNumber -> phoneNumber,
+        column.smsHash -> smsHash,
+        column.smsCode -> smsCode
+      )
+    }.execute.future
+  } yield models.AuthSmsCode(phoneNumber, smsHash, smsCode)
 
-  def list(count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
-    select.one flatMap {
-      case Some(first) => select.where(_.phoneNumber gteToken first.phoneNumber).limit(count).fetch()
-      case _           => Future.successful(Seq())
-    }
-
-  def list(startPhoneExclusive: Option[Long], count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
-    startPhoneExclusive.fold(list(count))(list(_, count))
+  def destroy(phoneNumber: Long)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Boolean] = withSQL {
+    delete.from(AuthSmsCode)
+      .where.eq(column.phoneNumber, phoneNumber)
+  }.execute.future
 }

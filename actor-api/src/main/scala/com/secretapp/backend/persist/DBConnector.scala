@@ -50,7 +50,7 @@ object DBConnector {
       //AuthId.createTable(session),
       //AuthSession.createTable(session),
       //DeletedAuthSession.createTable(session),
-      AuthSmsCode.createTable(session),
+      //AuthSmsCode.createTable(session),
       GooglePushCredentials.createTable(session),
       Group.createTable(session),
       GroupUser.createTable(session),

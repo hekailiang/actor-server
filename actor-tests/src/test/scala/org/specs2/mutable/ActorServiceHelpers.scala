@@ -147,7 +147,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     authUser(user, phone)
   }
 
-  val smsCode = "test_sms_code"
+  val smsCode = "102030"
   val smsHash = "test_sms_hash"
   val userId = 101
   val userSalt = "user_salt"

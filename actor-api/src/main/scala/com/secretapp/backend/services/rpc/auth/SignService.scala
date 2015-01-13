@@ -120,7 +120,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
-          smsR <- persist.AuthSmsCode.getEntity(phoneNumber)
+          smsR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
           phoneR <- persist.Phone.getEntity(phoneNumber)
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
@@ -134,7 +134,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case _ => genSmsCode
               }
               singletons.smsEngines ! SmsEnginesProtocol.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
-              for { _ <- persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)) }
+              for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
               yield Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
           }
         }
@@ -152,7 +152,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
       case Some((phoneNumber, countryCode)) =>
         @inline
         def auth(u: models.User): Future[RpcResponse] = {
-          persist.AuthSmsCode.dropEntity(phoneNumber)
+          persist.AuthSmsCode.destroy(phoneNumber)
           log.info(s"Authenticate currentUser=$u")
           this.currentUser = Some(u)
 
@@ -264,7 +264,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
         else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
         else {
           val f = for {
-            smsCodeR <- persist.AuthSmsCode.getEntity(phoneNumber)
+            smsCodeR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
             phoneR <- persist.Phone.getEntity(phoneNumber)
           } yield (smsCodeR, phoneR)
           f flatMap tupled {
@@ -278,11 +278,11 @@ trait SignService extends ContactHelpers with SocialHelpers {
                     case -\/(_: RequestSignIn) => phoneR match {
                       case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
                       case Some(rec) =>
-                        persist.AuthSmsCode.dropEntity(phoneNumber)
+                        persist.AuthSmsCode.destroy(phoneNumber)
                         signIn(rec.userId) // user must be persisted before sign in
                     }
                     case \/-(req: RequestSignUp) =>
-                      persist.AuthSmsCode.dropEntity(phoneNumber)
+                      persist.AuthSmsCode.destroy(phoneNumber)
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
