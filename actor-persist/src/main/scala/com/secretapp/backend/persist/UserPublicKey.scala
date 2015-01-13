@@ -115,7 +115,7 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
       select.from(UserPublicKey as pk)
         .where.append(isNotDeleted)
         .and.eq(pk.userId, userId)
-    }.map(rs => rs.long(pk.resultName.hash)).list.apply
+    }.map(rs => rs.long(column.hash)).list.apply
   }
 
   def findAllByUserIdHashPairs(pairs: immutable.Seq[(Int, Long)])(
@@ -140,8 +140,8 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
   ): Future[List[(Long, Long)]] = Future {
     withSQL {
       select(column.hash, column.authId).from(UserPublicKey as pk)
-        .where.append(isNotDeleted).eq(column.userId, userId)
-    }.map(rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
+        .where.append(isNotDeleted).and.eq(pk.userId, userId)
+    }.map(rs => (rs.long(column.hash), rs.long(column.authId)))
       .list.apply
   }
 
@@ -151,8 +151,8 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
     withSQL {
       select(column.hash, column.authId).from(UserPublicKey as pk)
         .where.append(isDeleted)
-        .and.eq(column.userId, userId)
-        .and.in(column.hash, keyHashes.toSeq)
+        .and.eq(pk.userId, userId)
+        .and.in(pk.hash, keyHashes.toSeq)
     }.map(rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
       .list.apply
   }
