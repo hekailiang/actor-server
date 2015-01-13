@@ -89,7 +89,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     }
 
   def handleChangePhoneTitle(user: models.User, r: RequestChangePhoneTitle): Future[RpcResponse] =
-    persist.UserPhone.editTitle(user.uid, r.phoneId, r.title) flatMap { _ =>
+    persist.UserPhone.updateTitle(userId = user.uid, id = r.phoneId, title = r.title) flatMap { _ =>
       val update = PhoneTitleChanged(r.phoneId, r.title)
 
       withRelatedAuthIds(user.uid) { authIds =>

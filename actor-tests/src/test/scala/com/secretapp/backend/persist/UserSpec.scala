@@ -23,7 +23,6 @@ class UserSpec extends Specification with CassandraSpecification with SqlSpec wi
 
       val phoneNumber = 79817796093L
 
-      val phone = models.UserPhone(phoneId, userId, "phone_salt", phoneNumber, "Mobile phone")
       val entity = models.User(
         userId,
         10L,
@@ -40,7 +39,13 @@ class UserSpec extends Specification with CassandraSpecification with SqlSpec wi
         state = models.UserState.Registered
       )
 
-      val insertPhoneFuture = UserPhone.insertEntity(phone)
+      val insertPhoneFuture = UserPhone.create(
+        id = phoneId,
+        userId = userId,
+        accessSalt = "phone_salt",
+        number = phoneNumber,
+        title = "Mobile phone"
+      )
 
       val insertUserFuture = User.create(
         id = entity.uid,

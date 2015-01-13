@@ -25,7 +25,7 @@ class UserServiceChangePhoneTitleSpec extends RpcSpec with BeforeExample  {
     "update phone title" in {
       changePhoneTitleShouldBeOk
 
-      persist.UserPhone.fetchUserPhones(scope.user.uid).sync.head.title should_== newTitle
+      persist.UserPhone.findAllByUserId(scope.user.uid).sync.head.title should_== newTitle
     }
 
     "append update to chain" in {

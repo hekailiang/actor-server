@@ -60,7 +60,7 @@ object DBConnector {
       contact.UserContactsList.createTable(session),
       contact.UserContactsListCache.createTable(session),
       UserGroup.createTable(session),
-      UserPhone.createTable(session),
+      //UserPhone.createTable(session),
       UserEmail.createTable(session),
       //UserPublicKey.createTable(session),
       //User.createTable(session),

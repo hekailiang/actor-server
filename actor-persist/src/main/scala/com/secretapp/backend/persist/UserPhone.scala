@@ -1,61 +1,78 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
-import scala.collection.immutable
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
+import scalikejdbc._, async._, FutureImplicits._
 
-sealed class UserPhone extends CassandraTable[UserPhone, models.UserPhone] {
+object UserPhone extends SQLSyntaxSupport[models.UserPhone] with ShortenedNames {
   override val tableName = "user_phones"
+  override val columnNames = Seq("user_id", "id", "access_salt", "number", "title")
 
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override val name = "user_id"
-  }
+  lazy val up = UserPhone.syntax("up")
 
-  object phoneId extends IntColumn(this) with PrimaryKey[Int] {
-    override val name = "phone_id"
-  }
+  def apply(a: SyntaxProvider[models.UserPhone])(rs: WrappedResultSet): models.UserPhone = apply(up.resultName)(rs)
 
-  object accessSalt extends StringColumn(this) {
-    override val name = "access_salt"
-  }
+  def apply(a: ResultName[models.UserPhone])(rs: WrappedResultSet): models.UserPhone = models.UserPhone(
+    id = rs.int(a.id),
+    userId = rs.int(a.userId),
+    accessSalt = rs.string(a.accessSalt),
+    number = rs.long(a.number),
+    title = rs.string(a.title)
+  )
 
-  object number extends LongColumn(this)
+  def findBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.UserPhone]] = withSQL {
+    select.from(UserPhone as up)
+      .where.append(sqls"${where}")
+      .limit(1)
+  } map (UserPhone(up))
 
-  object title extends StringColumn(this)
+  def findAllBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.UserPhone]] = withSQL {
+    select.from(UserPhone as up)
+      .where.append(sqls"${where}")
+  } map (UserPhone(up))
 
-  override def fromRow(row: Row): models.UserPhone =
-    models.UserPhone(
-      id = phoneId(row),
-      userId = userId(row),
-      accessSalt = accessSalt(row),
-      number = number(row),
-      title = title(row)
+  def findAllByUserId(userId: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.UserPhone]] = findAllBy(sqls.eq(up.userId, userId))
+
+  def findByUserIdAndId(userId: Int, id: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.UserPhone]] = findBy(
+    sqls.eq(up.userId, userId)
+      .and.eq(up.id, id)
+  )
+
+  def create(userId: Int, id: Int, accessSalt: String, number: Long, title: String)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[models.UserPhone] = for {
+    _ <- withSQL {
+      insert.into(UserPhone).namedValues(
+        column.userId -> userId,
+        column.id -> id,
+        column.accessSalt -> accessSalt,
+        column.number -> number,
+        column.title -> title
+      )
+    }.execute.future
+  } yield models.UserPhone(
+    id = id,
+    userId = userId,
+    accessSalt = accessSalt,
+    number = number,
+    title = title
+  )
+
+  def updateTitle(userId: Int, id: Int, title: String)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Int] = withSQL {
+    update(UserPhone).set(
+      column.title -> title
     )
-}
-
-object UserPhone extends UserPhone with TableOps {
-  def insertEntity(entity: models.UserPhone)(implicit session: Session): Future[ResultSet] =
-    insert
-      .value(_.userId, entity.userId)
-      .value(_.phoneId, entity.id)
-      .value(_.accessSalt, entity.accessSalt)
-      .value(_.number, entity.number)
-      .value(_.title, entity.title)
-      .future()
-
-  def getEntity(userId: Int, phoneId: Int)(implicit session: Session): Future[Option[models.UserPhone]] =
-    select.where(_.userId eqs userId).and(_.phoneId eqs phoneId).one()
-
-  def fetchUserPhones(userId: Int)(implicit session: Session): Future[Seq[models.UserPhone]] =
-    select.where(_.userId eqs userId).fetch()
-
-  def fetchUserPhoneIds(userId: Int)(implicit session: Session): Future[Seq[Int]] =
-    select(_.phoneId).where(_.userId eqs userId).fetch()
-
-  def editTitle(userId: Int, phoneId: Int, title: String)(implicit session: Session): Future[ResultSet] =
-    update
-      .where(_.userId eqs userId).and(_.phoneId eqs phoneId)
-      .modify(_.title setTo title).future()
+      .where.eq(column.userId, userId)
+      .and.eq(column.id, id)
+  }.update.future
 }

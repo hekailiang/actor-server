@@ -289,15 +289,13 @@ trait SignService extends ContactHelpers with SocialHelpers {
                             val userId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
                             val phoneId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
 
-                            val userPhone = models.UserPhone(
+                            persist.UserPhone.create(
                               id = phoneId,
                               userId = userId,
                               accessSalt = genAccessSalt,
                               number = phoneNumber,
                               title = "Mobile phone"
-                            )
-
-                            persist.UserPhone.insertEntity(userPhone) flatMap { _ =>
+                            ) flatMap { _ =>
                               val pkHash = ec.PublicKey.keyHash(publicKey)
                               val user = models.User(
                                 uid = userId,

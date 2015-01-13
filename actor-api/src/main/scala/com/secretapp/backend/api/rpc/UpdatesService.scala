@@ -106,7 +106,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
   protected def mkPhones(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Phone]] = {
     val phoneModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.getEntity(u.uid, _))))
+      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.findByUserIdAndId(u.uid, _))))
     ) map (_.flatten.flatten)
 
     for (phoneModels <- phoneModelsFuture) yield {

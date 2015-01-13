@@ -49,7 +49,6 @@ class PublicKeysServiceSpec extends RpcSpec {
         authUser(user, phone)
 
         val sndPhoneId = rand.nextInt
-        val sndPhone = models.UserPhone(rand.nextInt, userId, phoneSalt, phoneNumber + 1, "Mobile phone")
 
         val secondUser = models.User(
           userId + 1,
@@ -68,7 +67,15 @@ class PublicKeysServiceSpec extends RpcSpec {
         )
 
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
-        persist.UserPhone.insertEntity(sndPhone)
+
+        val sndPhone = persist.UserPhone.create(
+          id = sndPhoneId,
+          userId = userId,
+          accessSalt = phoneSalt,
+          number = phoneNumber + 1,
+          title = "Mobile phone"
+        ).sync()
+
         persist.User.create(
           id = secondUser.uid,
           accessSalt = secondUser.accessSalt,

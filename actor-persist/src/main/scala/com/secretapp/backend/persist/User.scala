@@ -131,7 +131,7 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
         ) = (
           UserPublicKey.findByUserIdAndAuthId(userId = id, authId),
           UserPublicKey.findAllByUserId(userId = id),
-          UserPhone.fetchUserPhones(userId = id),
+          UserPhone.findAllByUserId(userId = id),
           UserEmail.fetchUserEmails(userId = id)
         )
 
