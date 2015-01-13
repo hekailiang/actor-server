@@ -35,6 +35,7 @@ import scala.collection.{ immutable, mutable }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.Random
 import scalaz.Scalaz._
@@ -91,22 +92,24 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     )(
       authId = u.authId,
       publicKeyHash = u.publicKeyHash,
-      publicKeyData = u.publicKeyData,
-      phoneNumber = u.phoneNumber
+      publicKeyData = u.publicKeyData
     ).sync()
     persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
   }
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    persist.UserPhone.create(
+    val createPhoneFuture = persist.UserPhone.create(
       userId = phone.userId,
       id = phone.id,
       accessSalt = phone.accessSalt,
       number = phone.number,
       title = phone.title
-    ).sync()
-    persist.User.create(
+    )
+
+    val createAvatarDataFuture = persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty)
+
+    val createUserFuture = persist.User.create(
       id = u.uid,
       accessSalt = u.accessSalt,
       name = u.name,
@@ -116,10 +119,16 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     )(
       authId = u.authId,
       publicKeyHash = u.publicKeyHash,
-      publicKeyData = u.publicKeyData,
-      phoneNumber = u.phoneNumber
-    ).sync()
-    persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
+      publicKeyData = u.publicKeyData
+    )
+
+    Future.sequence(Seq(
+      createPhoneFuture,
+      createUserFuture,
+      createAvatarDataFuture
+    )).sync()
+    println(s"User created ${System.currentTimeMillis}")
+
     u
   }
 

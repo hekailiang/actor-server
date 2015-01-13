@@ -66,7 +66,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
     val phoneNumbers = filteredPhones.map(_.phoneNumber).map(PhoneNumber.normalizeLong(_, currentUser.countryCode)).flatten.toSet
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
-      phones <- persist.Phone.getEntities(phoneNumbers)
+      phones <- persist.UserPhone.findAllByNumbers(phoneNumbers)
       ignoredContactsId <- persist.contact.UserContactsListCache.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
       usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
@@ -195,7 +195,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
       case Some(phoneNumber) =>
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
-          phones <- persist.Phone.getEntities(filteredPhones)
+          phones <- persist.UserPhone.findAllByNumbers(filteredPhones)
           usersAvatars <- Future.sequence(phones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten)
         } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId)).toIndexedSeq))
     }

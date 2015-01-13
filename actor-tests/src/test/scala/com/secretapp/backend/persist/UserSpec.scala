@@ -57,8 +57,7 @@ class UserSpec extends Specification with CassandraSpecification with SqlSpec wi
       )(
         authId = entity.authId,
         publicKeyHash = entity.publicKeyHash,
-        publicKeyData = entity.publicKeyData,
-        phoneNumber = entity.phoneNumber
+        publicKeyData = entity.publicKeyData
       )
 
       val chain = for {

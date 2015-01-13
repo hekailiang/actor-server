@@ -121,7 +121,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
           smsR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
-          phoneR <- persist.Phone.getEntity(phoneNumber)
+          phoneR <- persist.UserPhone.findByNumber(phoneNumber)
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
@@ -265,7 +265,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
         else {
           val f = for {
             smsCodeR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
-            phoneR <- persist.Phone.getEntity(phoneNumber)
+            phoneR <- persist.UserPhone.findByNumber(phoneNumber)
           } yield (smsCodeR, phoneR)
           f flatMap tupled {
             (smsCodeR, phoneR) =>
@@ -325,8 +325,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                               )(
                                 authId = user.authId,
                                 publicKeyHash = user.publicKeyHash,
-                                publicKeyData = user.publicKeyData,
-                                phoneNumber = user.phoneNumber
+                                publicKeyData = user.publicKeyData
                               ) flatMap { _ =>
                                 pushContactRegisteredUpdates(user)
                                 auth(user)

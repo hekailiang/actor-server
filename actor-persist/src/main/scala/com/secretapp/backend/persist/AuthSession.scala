@@ -2,11 +2,11 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
 import org.joda.time.DateTime
-import scala.concurrent.Future
-import scalikejdbc._, async._, FutureImplicits._
+import scala.concurrent.{ ExecutionContext, Future }
+import scalikejdbc._
 import scodec.bits._
 
-object AuthSession extends SQLSyntaxSupport[models.AuthSession] with ShortenedNames {
+object AuthSession extends SQLSyntaxSupport[models.AuthSession] {
   override val tableName = "auth_sessions"
   override val columnNames = Seq(
     "id",
@@ -50,49 +50,55 @@ object AuthSession extends SQLSyntaxSupport[models.AuthSession] with ShortenedNa
   )
 
   def findAllBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[models.AuthSession]] = withSQL {
-    select.from(AuthSession as a)
-      .where.append(isNotDeleted).and.append(sqls"${where}")
-  } map (AuthSession(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
+  ): Future[List[models.AuthSession]] = Future {
+    withSQL {
+      select.from(AuthSession as a)
+        .where.append(isNotDeleted).and.append(sqls"${where}")
+    }.map(AuthSession(a)).list.apply
+  }
 
   def findBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.AuthSession]] = withSQL {
-    select.from(AuthSession as a)
-      .where.append(isNotDeleted)
-      .and.append(sqls"${where}")
-      .limit(1)
-  } map (AuthSession(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
+  ): Future[Option[models.AuthSession]] = Future {
+    withSQL {
+      select.from(AuthSession as a)
+        .where.append(isNotDeleted)
+        .and.append(sqls"${where}")
+        .limit(1)
+    }.map(AuthSession(a)).single.apply
+  }
 
   def findAllByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
   ): Future[List[models.AuthSession]] = findAllBy(sqls.eq(a.column("user_id"), userId))
 
   def findAllByUserIdAndDeviceHash(userId: Int, deviceHash: BitVector)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
   ): Future[List[models.AuthSession]] = findAllBy(
     sqls.eq(a.column("user_id"), userId)
       .and.eq(a.deviceHash, deviceHash.toByteArray)
   )
 
   def findAllDeletedByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[models.AuthSession]] = withSQL {
-    select.from(AuthSession as a)
-      .where.append(isDeleted)
-      .and.eq(column.column("user_id"), userId)
-  } map (AuthSession(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
+  ): Future[List[models.AuthSession]] = Future {
+    withSQL {
+      select.from(AuthSession as a)
+        .where.append(isDeleted)
+        .and.eq(column.column("user_id"), userId)
+    }.map(AuthSession(a)).list.apply
+  }
 
   def findByUserIdAndPublicKeyHash(userId: Int, publicKeyHash: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
   ): Future[Option[models.AuthSession]] = findBy(
     sqls.eq(a.column("user_id"), userId)
       .and.eq(a.publicKeyHash, publicKeyHash)
   )
 
   def findByUserIdAndId(userId: Int, id: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
   ): Future[Option[models.AuthSession]] = findBy(
     sqls.eq(a.column("user_id"), userId)
       .and.eq(a.id, id)
@@ -112,9 +118,9 @@ object AuthSession extends SQLSyntaxSupport[models.AuthSession] with ShortenedNa
     latitude: Option[Double],
     longitude: Option[Double]
   )(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.AuthSession] = for {
-    _ <- withSQL {
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
+  ): Future[models.AuthSession] = Future {
+    withSQL {
       insert.into(AuthSession).namedValues(
         column.column("user_id") -> userId,
         column.id -> id,
@@ -129,26 +135,29 @@ object AuthSession extends SQLSyntaxSupport[models.AuthSession] with ShortenedNa
         column.latitude -> latitude,
         column.longitude -> longitude
       )
-    }.execute.future
-  } yield models.AuthSession(
-    id = id,
-    appId = appId,
-    appTitle = appTitle,
-    authId = authId,
-    publicKeyHash = publicKeyHash,
-    deviceHash = deviceHash,
-    deviceTitle = deviceTitle,
-    authTime = authTime,
-    authLocation = authLocation,
-    latitude = latitude,
-    longitude = longitude
-  )
+    }.execute.apply
+    models.AuthSession(
+      id = id,
+      appId = appId,
+      appTitle = appTitle,
+      authId = authId,
+      publicKeyHash = publicKeyHash,
+      deviceHash = deviceHash,
+      deviceTitle = deviceTitle,
+      authTime = authTime,
+      authLocation = authLocation,
+      latitude = latitude,
+      longitude = longitude
+    )
+  }
 
   def destroy(userId: Int, id: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Int] = {
-    update(AuthSession).set(column.column("deleted_at") -> DateTime.now)
-      .where.eq(column.column("user_id"), userId)
-      .and.eq(column.id, id)
+    implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(AuthSession).set(column.column("deleted_at") -> DateTime.now)
+        .where.eq(column.column("user_id"), userId)
+        .and.eq(column.id, id)
+    }.update.apply
   }
 }

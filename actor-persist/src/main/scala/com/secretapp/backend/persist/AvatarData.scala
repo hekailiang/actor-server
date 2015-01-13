@@ -1,10 +1,11 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scalikejdbc._, async._, FutureImplicits._
+import scalikejdbc._
 
-object AvatarData extends SQLSyntaxSupport[models.AvatarData] with ShortenedNames {
+object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
   override val tableName = "avatar_datas"
   override val columnNames = Seq(
     "entity_id",
@@ -21,8 +22,6 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] with ShortenedName
     "full_avatar_width",
     "full_avatar_height"
   )
-
-
 
   lazy val ad = AvatarData.syntax("ad")
 
@@ -50,29 +49,31 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] with ShortenedName
   def find[T](id: Long)(
     implicit
       impl: KindValImpl[T],
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[Option[models.AvatarData]] = find(id, kindVal[T])
 
   def find(id: Long, kind: Int)(
     implicit
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.AvatarData]] = withSQL {
-    select.from(AvatarData as ad)
-      .where.eq(ad.column("entity_id"), id)
-      .and.eq(ad.column("entity_kind"), kind)
-  } map (AvatarData(ad))
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
+  ): Future[Option[models.AvatarData]] = Future {
+    withSQL {
+      select.from(AvatarData as ad)
+        .where.eq(ad.column("entity_id"), id)
+        .and.eq(ad.column("entity_kind"), kind)
+    }.map(AvatarData(ad)).single.apply
+  }
 
   def create[T](id: Long, data: models.AvatarData)(
     implicit
       impl: KindValImpl[T],
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[models.AvatarData] = create(id, kindVal[T], data)
 
   def create(id: Long, kind: Int, data: models.AvatarData)(
     implicit
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.AvatarData] = for {
-    _ <- withSQL {
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
+  ): Future[models.AvatarData] = Future {
+    withSQL {
       insert.into(AvatarData).namedValues(
         column.column("entity_id") -> id,
         column.column("entity_kind") -> kind,
@@ -88,33 +89,36 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] with ShortenedName
         column.fullAvatarWidth -> data.fullAvatarWidth,
         column.fullAvatarHeight -> data.fullAvatarHeight
       )
-    }.execute.future
-  } yield data
+    }.execute.apply
+    data
+  }
 
   def save[T](id: Long, data: models.AvatarData)(
     implicit
       impl: KindValImpl[T],
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[Int] = save(id, kindVal[T], data)
 
   def save(id: Long, kind: Int, data: models.AvatarData)(
     implicit
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Int] = withSQL {
-    update(AvatarData).set(
-      ad.smallAvatarFileId -> data.smallAvatarFileId,
-      ad.smallAvatarFileHash -> data.smallAvatarFileHash,
-      ad.smallAvatarFileSize -> data.smallAvatarFileSize,
-      ad.largeAvatarFileId -> data.largeAvatarFileId,
-      ad.largeAvatarFileHash -> data.largeAvatarFileHash,
-      ad.largeAvatarFileSize -> data.largeAvatarFileSize,
-      ad.fullAvatarFileId -> data.fullAvatarFileId,
-      ad.fullAvatarFileHash -> data.fullAvatarFileHash,
-      ad.fullAvatarFileSize -> data.fullAvatarFileSize,
-      ad.fullAvatarWidth -> data.fullAvatarWidth,
-      ad.fullAvatarHeight -> data.fullAvatarHeight
-    )
-      .where.eq(ad.column("entity_id"), id)
-      .and.eq(ad.column("entity_kind"), kind)
-  }.update.future
+      ec: ExecutionContext, session: DBSession = AvatarData.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(AvatarData).set(
+        ad.smallAvatarFileId -> data.smallAvatarFileId,
+        ad.smallAvatarFileHash -> data.smallAvatarFileHash,
+        ad.smallAvatarFileSize -> data.smallAvatarFileSize,
+        ad.largeAvatarFileId -> data.largeAvatarFileId,
+        ad.largeAvatarFileHash -> data.largeAvatarFileHash,
+        ad.largeAvatarFileSize -> data.largeAvatarFileSize,
+        ad.fullAvatarFileId -> data.fullAvatarFileId,
+        ad.fullAvatarFileHash -> data.fullAvatarFileHash,
+        ad.fullAvatarFileSize -> data.fullAvatarFileSize,
+        ad.fullAvatarWidth -> data.fullAvatarWidth,
+        ad.fullAvatarHeight -> data.fullAvatarHeight
+      )
+        .where.eq(ad.column("entity_id"), id)
+        .and.eq(ad.column("entity_kind"), kind)
+    }.update.apply
+  }
 }

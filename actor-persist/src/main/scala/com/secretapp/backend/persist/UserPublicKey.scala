@@ -4,13 +4,14 @@ import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
 import java.time._
 import org.joda.time.DateTime
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.collection.immutable
 import scalaz._; import Scalaz._
-import scalikejdbc._, async._, FutureImplicits._
+import scalikejdbc._
 import scodec.bits._
 
-object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] with ShortenedNames {
+object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
   override val tableName = "public_keys"
   override val columnNames = Seq("user_id", "hash", "data", "auth_id", "deleted_at")
 
@@ -33,78 +34,92 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] with Shorten
   )
 
   def create(userId: Int, hash: Long, data: BitVector, authId: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.UserPublicKey] = for {
-    _ <- withSQL {
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[models.UserPublicKey] = Future {
+    withSQL {
       insert.into(UserPublicKey).namedValues(
         column.userId -> userId,
         column.hash -> hash,
         column.data -> data.toByteArray,
         column.authId -> authId
       )
-    }.execute.future
-  } yield models.UserPublicKey(userId, hash, data, authId)
+    }.execute.apply
+    models.UserPublicKey(userId, hash, data, authId)
+  }
 
   def findByUserIdAndHash(userId: Int, hash: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.UserPublicKey]] = withSQL {
-    select.from(UserPublicKey as pk)
-      .where.eq(pk.userId, userId)
-      .and.eq(pk.hash, hash)
-      .and.append(isNotDeleted)
-  } map (UserPublicKey(pk))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[models.UserPublicKey]] = Future {
+    withSQL {
+      select.from(UserPublicKey as pk)
+        .where.eq(pk.userId, userId)
+        .and.eq(pk.hash, hash)
+        .and.append(isNotDeleted)
+    }.map(UserPublicKey(pk)).single.apply
+  }
 
   def findByUserIdAndAuthId(userId: Int, authId: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.UserPublicKey]] = withSQL {
-    select.from(UserPublicKey as pk)
-      .where.eq(pk.userId, userId)
-      .and.eq(pk.authId, authId)
-      .and.append(isNotDeleted)
-  } map (UserPublicKey(pk))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[models.UserPublicKey]] = Future{
+    withSQL {
+      select.from(UserPublicKey as pk)
+        .where.eq(pk.userId, userId)
+        .and.eq(pk.authId, authId)
+        .and.append(isNotDeleted)
+    }.map(UserPublicKey(pk)).single.apply
+  }
 
   def findAuthIdByUserIdAndHash(userId: Int, hash: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[Long \/ Long]] = withSQL {
-    select(column.authId, column.column("deleted_at")).from(UserPublicKey as pk)
-      .where.eq(column.userId, userId)
-      .and.eq(column.hash, hash)
-  } map { rs =>
-    val authId = rs.long(pk.resultName.authId)
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[Long \/ Long]] = Future {
+    withSQL {
+      select(column.authId, column.column("deleted_at")).from(UserPublicKey as pk)
+        .where.eq(column.userId, userId)
+        .and.eq(column.hash, hash)
+    }.map { rs =>
+      val authId = rs.long(pk.resultName.authId)
 
-    rs.get[Option[DateTime]](pk.resultName.column("deleted_at")) match {
-      case Some(_) => authId.right
-      case None => authId.left
-    }
+      rs.get[Option[DateTime]](pk.resultName.column("deleted_at")) match {
+        case Some(_) => authId.right
+        case None => authId.left
+      }
+    }.single.apply
   }
 
   def findAllBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession): Future[List[models.UserPublicKey]] = withSQL {
-    select.from(UserPublicKey as pk)
-      .where.append(isNotDeleted).and.append(sqls"${where}")
-  } map (UserPublicKey(pk))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession): Future[List[models.UserPublicKey]] =
+    Future {
+      withSQL {
+        select.from(UserPublicKey as pk)
+          .where.append(isNotDeleted).and.append(sqls"${where}")
+      }.map(UserPublicKey(pk)).list.apply()
+    }
 
   def findAllByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = findAllBy(sqls.eq(pk.userId, userId))
 
   def findAllDeletedByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[models.UserPublicKey]] = withSQL {
-    select.from(UserPublicKey as pk)
-      .where.append(isDeleted)
-  } map (UserPublicKey(pk))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[List[models.UserPublicKey]] = Future {
+    withSQL {
+      select.from(UserPublicKey as pk)
+        .where.append(isDeleted)
+    }.map(UserPublicKey(pk)).list.apply
+  }
 
   def findAllHashesByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[Long]] = withSQL {
-    select.from(UserPublicKey as pk)
-      .where.append(isNotDeleted)
-      .and.eq(pk.userId, userId)
-  } map (rs => rs.long(pk.resultName.hash))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[List[Long]] = Future {
+    withSQL {
+      select.from(UserPublicKey as pk)
+        .where.append(isNotDeleted)
+        .and.eq(pk.userId, userId)
+    }.map(rs => rs.long(pk.resultName.hash)).list.apply
+  }
 
   def findAllByUserIdHashPairs(pairs: immutable.Seq[(Int, Long)])(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = {
     if (pairs.isEmpty)
       throw new RuntimeException("pairs should not be empty")
@@ -121,26 +136,34 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] with Shorten
   }
 
   def findAllAuthIdsOfActiveKeys(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[(Long, Long)]] = withSQL {
-    select(column.hash, column.authId).from(UserPublicKey as pk)
-      .where.append(isNotDeleted).eq(column.userId, userId)
-  } map (rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[List[(Long, Long)]] = Future {
+    withSQL {
+      select(column.hash, column.authId).from(UserPublicKey as pk)
+        .where.append(isNotDeleted).eq(column.userId, userId)
+    }.map(rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
+      .list.apply
+  }
 
   def findAllAuthIdsOfDeletedKeys(userId: Int, keyHashes: immutable.Set[Long])(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[(Long, Long)]] = withSQL {
-    select(column.hash, column.authId).from(UserPublicKey as pk)
-      .where.append(isDeleted)
-      .and.eq(column.userId, userId)
-      .and.in(column.hash, keyHashes.toSeq)
-  } map (rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[List[(Long, Long)]] = Future {
+    withSQL {
+      select(column.hash, column.authId).from(UserPublicKey as pk)
+        .where.append(isDeleted)
+        .and.eq(column.userId, userId)
+        .and.in(column.hash, keyHashes.toSeq)
+    }.map(rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
+      .list.apply
+  }
 
   def destroy(userId: Int, hash: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Int] = {
-    update(UserPublicKey).set(column.column("deleted_at") -> DateTime.now)
-      .where.eq(column.userId, userId)
-      .and.eq(column.hash, hash)
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(UserPublicKey).set(column.column("deleted_at") -> DateTime.now)
+        .where.eq(column.userId, userId)
+        .and.eq(column.hash, hash)
+    }.update.apply
   }
 }

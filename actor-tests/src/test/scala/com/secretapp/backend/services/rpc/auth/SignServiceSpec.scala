@@ -198,7 +198,7 @@ class SignServiceSpec extends RpcSpec {
         val name = "Тимоти Клим"
         insertAuthId(scope.authId)
         persist.AuthSmsCode.create(phoneNumber, smsHash, smsCode).sync()
-        persist.Phone.dropEntity(phoneNumber)
+        //persist.Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, name, publicKey, BitVector.empty, "app", 0, "key", false))
 
@@ -251,7 +251,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         persist.AuthSmsCode.create(phoneNumber, smsHash, smsCode).sync()
-        persist.Phone.dropEntity(phoneNumber)
+        //persist.Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "   ", publicKey, BitVector.empty, "app", 0, "key", false))
 
@@ -264,7 +264,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         persist.AuthSmsCode.create(phoneNumber, smsHash, smsCode).sync()
-        persist.Phone.dropEntity(phoneNumber)
+        //persist.Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "inv\u0001alid", publicKey, BitVector.empty, "app", 0, "key", false))
 
@@ -277,7 +277,7 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         insertAuthId(scope.authId)
         persist.AuthSmsCode.create(phoneNumber, smsHash, smsCode).sync()
-        persist.Phone.dropEntity(phoneNumber)
+        //persist.Phone.dropEntity(phoneNumber)
 
         sendRpcMsg(RequestSignUp(phoneNumber, smsHash, smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key", false))
 

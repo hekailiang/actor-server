@@ -2,10 +2,10 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
-import scala.concurrent.Future
-import scalikejdbc._, async._, FutureImplicits._
+import scala.concurrent.{ ExecutionContext, Future }
+import scalikejdbc._
 
-object AuthId extends SQLSyntaxSupport[models.AuthId] with ShortenedNames {
+object AuthId extends SQLSyntaxSupport[models.AuthId] {
   override val tableName = "auth_ids"
   override val columnNames = Seq("id", "user_id")
 
@@ -19,13 +19,15 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] with ShortenedNames {
   )
 
   def find(id: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.AuthId]] = withSQL {
-    select.from(AuthId as a).where.eq(a.id, id)
-  } map (AuthId(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
+  ): Future[Option[models.AuthId]] = Future {
+    withSQL {
+      select.from(AuthId as a).where.eq(a.id, id)
+    }.map(AuthId(a)).single.apply
+  }
 
   def findWithUser(id: Long)(
-    implicit ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, csession: CSession, session: DBSession = AuthId.autoSession
   ): Future[Option[(models.AuthId, Option[models.User])]] = {
     def user(authId: models.AuthId): Future[Option[models.User]] =
       authId.userId match {
@@ -42,54 +44,66 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] with ShortenedNames {
   // TODO: remove this method when we will move authId away from User model
   // it is used in User.find
   def findFirstIdByUserId(userId: Long)(
-    implicit ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[Long]] = withSQL {
-    select.from(AuthId as a)
-      .where.eq(a.userId, userId).limit(1)
-  } map (rs => rs.long(a.resultName.id))
+    implicit ec: ExecutionContext, csession: CSession, session: DBSession = AuthId.autoSession
+  ): Future[Option[Long]] = Future {
+    withSQL {
+      select.from(AuthId as a)
+        .where.eq(a.userId, userId).limit(1)
+    }.map(rs => rs.long(a.resultName.id)).single.apply
+  }
 
   def findAllBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession): Future[List[models.AuthId]] = withSQL {
-    select.from(AuthId as a)
-      .where.append(sqls"${where}")
-  } map (AuthId(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession): Future[List[models.AuthId]] =
+    Future {
+      withSQL {
+        select.from(AuthId as a)
+          .where.append(sqls"${where}")
+      }.map(AuthId(a)).list.apply
+    }
 
   def findAllIdsByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[Long]] = withSQL {
-    select(column.id).from(AuthId as a)
-      .where.eq(a.userId, userId)
-  } map (rs => rs.long(column.id))
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
+  ): Future[List[Long]] = Future {
+    withSQL {
+      select(column.id).from(AuthId as a)
+        .where.eq(a.userId, userId)
+    }.map(rs => rs.long(column.id)).list.apply
+  }
 
   def create(id: Long, userId: Option[Int])(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.AuthId] = for {
-    _ <- withSQL {
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
+  ): Future[models.AuthId] = Future {
+    withSQL {
       insert.into(AuthId).namedValues(
         column.id -> id,
         column.userId -> userId
       )
-    }.execute.future
-  } yield models.AuthId(id, userId)
+    }.execute.apply()
+  } map (_ => models.AuthId(id, userId))
 
   def save(authId: models.AuthId)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.AuthId] = withSQL {
-    update(AuthId).set(
-      column.userId -> authId.userId
-    ).where.eq(column.id, authId.id)
-  }.update.future.map(_ => authId)
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
+  ): Future[models.AuthId] = Future {
+    withSQL {
+      update(AuthId).set(
+        column.userId -> authId.userId
+      ).where.eq(column.id, authId.id)
+    }.update.apply
+    authId
+  }
 
   def createOrUpdate(id: Long, userId: Option[Int])(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
   ): Future[models.AuthId] = find(id) flatMap { // TODO: don't select all rows, it's just a row presence check
     case Some(_) => save(models.AuthId(id, userId))
     case None => create(id, userId)
   }
 
   def destroy(id: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Boolean] = withSQL {
-    delete.from(AuthId).where.eq(column.id, id)
-  }.execute.future
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
+  ): Future[Boolean] = Future {
+    withSQL {
+      delete.from(AuthId).where.eq(column.id, id)
+    }.execute.apply
+  }
 }

@@ -86,8 +86,7 @@ class PublicKeysServiceSpec extends RpcSpec {
         )(
           authId = secondUser.authId,
           publicKeyHash = secondUser.publicKeyHash,
-          publicKeyData = secondUser.publicKeyData,
-          phoneNumber = secondUser.phoneNumber
+          publicKeyData = secondUser.publicKeyData
         ).sync()
         persist.AvatarData.create[models.User](secondUser.uid, models.AvatarData.empty).sync()
 

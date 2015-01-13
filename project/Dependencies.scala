@@ -34,10 +34,11 @@ object Dependencies {
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
     val logbackLogstash = "net.logstash.logback"          % "logstash-logback-encoder"       % "3.3"
 
+    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
     val scalikeAsync    = "org.scalikejdbc"               %% "scalikejdbc-async"             % "0.5.4"
     val postgresAsync   = "com.github.mauricio"           %% "postgresql-async"              % "0.2.16"
 
-    val postgresJdbc    = "postgresql"                    %  "postgresql"                    % "9.1-901-1.jdbc4"
+    val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
 
     val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
 
@@ -77,7 +78,7 @@ object Dependencies {
 
   val persist   = common ++ Seq(
     akkaActor, flywayCore, scodecBits, phantomDsl, scalazCore,
-    scalikeAsync, postgresAsync, postgresJdbc,
+    scalike, postgresJdbc, scalikeAsync, postgresAsync,
     specs2
   )
 

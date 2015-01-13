@@ -3,14 +3,15 @@ package com.secretapp.backend.persist
 import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
 import org.joda.time.DateTime
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.collection.immutable
 import scalaz._; import Scalaz._
 import scala.language.postfixOps
-import scalikejdbc._, async._, FutureImplicits._
+import scalikejdbc._
 import scodec.bits._
 
-object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
+object User extends SQLSyntaxSupport[models.User] {
   override val tableName = "users"
   override val columnNames = Seq("id", "access_salt", "name", "country_code", "sex", "state")
 
@@ -64,32 +65,24 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
   def create(id: Int, accessSalt: String, name: String, countryCode: String, sex: models.Sex, state: models.UserState)(
     authId: Long,
     publicKeyHash: Long,
-    publicKeyData: BitVector,
-    phoneNumber: Long
+    publicKeyData: BitVector
   )(
     implicit
-    ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Unit] = {
-    val phone = models.Phone(
-      number = phoneNumber,
-      userId = id,
-      userAccessSalt = accessSalt,
-      userName = name,
-      userSex = sex
-    )
+    ec: ExecutionContext, session: DBSession = User.autoSession
+  ): Future[Unit] = Future {
+    withSQL {
+      insert.into(User).namedValues(
+        column.column("id") -> id,
+        column.accessSalt -> accessSalt,
+        column.name -> name,
+        column.countryCode -> countryCode,
+        column.sex -> sex.toInt,
+        column.column("state") -> state.toInt
+      )
+    }.execute.apply
 
     for {
-      _ <- withSQL {
-        insert.into(User).namedValues(
-          column.column("id") -> id,
-          column.accessSalt -> accessSalt,
-          column.name -> name,
-          column.countryCode -> countryCode,
-          column.sex -> sex.toInt,
-          column.column("state") -> state.toInt
-        )
-      }.execute.future
-      _ <- Phone.insertEntity(phone)
+      //_ <- Phone.insertEntity(phone)
       _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
       _ <- AuthId.createOrUpdate(authId, Some(id))
     } yield ()
@@ -102,24 +95,25 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
     phoneNumber: Long
   )(
     implicit
-      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
   ): Future[Unit] = {
+    withSQL {
+      update(User).set(
+        column.name -> name,
+        column.countryCode -> countryCode
+      ).where.eq(column.column("id"), id)
+    }.update.apply
+
     for {
-      _ <- withSQL {
-        update(User).set(
-          column.name -> name,
-          column.countryCode -> countryCode
-        ).where.eq(column.column("id"), id)
-      }.update.future
       _ <- AuthId.createOrUpdate(authId, Some(id))
-      _ <- Phone.updateUserName(phoneNumber, name)
+      //_ <- Phone.updateUserName(phoneNumber, name)
       _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
     } yield ()
   }
 
   def find(id: Int)(authId: Option[Long])(
     implicit
-      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
   ): Future[Option[models.User]] = {
     authId map (i => Future.successful(Some(i))) getOrElse (AuthId.findFirstIdByUserId(userId = id)) flatMap {
       case Some(authId) =>
@@ -146,12 +140,12 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
           }
         }
 
-        extraDataFuture flatMap {
+        extraDataFuture map {
           case Some((pk, keys, phones, emails)) =>
             withSQL {
               select.from(User as u)
                 .where.eq(u.column("id"), id)
-            } map (User(
+            }.map(User(
               authId = authId,
               publicKeyHash = pk.hash,
               publicKeyData = pk.data,
@@ -159,8 +153,8 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
               phoneIds = phones map (_.id) toSet,
               emailIds = emails map (_.id) toSet,
               publicKeyHashes = keys map (_.hash) toSet
-            )(u))
-          case None => Future.successful(None)
+            )(u)).single.apply
+          case None => None
         }
       case None => Future.successful(None)
     }
@@ -168,15 +162,18 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
 
   def findAllSaltsByIds(ids: immutable.Seq[Int])(
     implicit
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[(Int, String)]] = withSQL {
-    select(column.column("id"), column.accessSalt).from(User as u)
-      .where.in(u.column("id"), ids)
-  } map (rs => (rs.int(u.resultName.column("id")), rs.string(u.resultName.accessSalt)))
+      ec: ExecutionContext, session: DBSession = User.autoSession
+  ): Future[List[(Int, String)]] = Future {
+    withSQL {
+      select(column.column("id"), column.accessSalt).from(User as u)
+        .where.in(u.column("id"), ids)
+    }.map(rs => (rs.int(u.resultName.column("id")), rs.string(u.resultName.accessSalt)))
+      .list.apply
+  }
 
   def findWithAvatar(userId: Int)(authId: Option[Long] = None)(
     implicit
-      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
   ): Future[Option[(models.User, models.AvatarData)]] = {
     for {
       userOpt <- find(userId)(authId)
@@ -190,10 +187,12 @@ object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
 
   def updateName(userId: Int, name: String)(
     implicit
-      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Int] = withSQL {
-    update(User).set(
-      column.name -> name
-    ).where.eq(column.column("id"), userId)
-  }.update.future
+      ec: ExecutionContext, session: DBSession = User.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(User).set(
+        column.name -> name
+      ).where.eq(column.column("id"), userId)
+    }.update.apply
+  }
 }

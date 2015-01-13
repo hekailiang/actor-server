@@ -1,10 +1,12 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scalikejdbc._, async._, FutureImplicits._
+import scala.collection.immutable
+import scalikejdbc._
 
-object UserPhone extends SQLSyntaxSupport[models.UserPhone] with ShortenedNames {
+object UserPhone extends SQLSyntaxSupport[models.UserPhone] {
   override val tableName = "user_phones"
   override val columnNames = Seq("user_id", "id", "access_salt", "number", "title")
 
@@ -21,35 +23,47 @@ object UserPhone extends SQLSyntaxSupport[models.UserPhone] with ShortenedNames 
   )
 
   def findBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.UserPhone]] = withSQL {
-    select.from(UserPhone as up)
-      .where.append(sqls"${where}")
-      .limit(1)
-  } map (UserPhone(up))
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Option[models.UserPhone]] = Future {
+    withSQL {
+      select.from(UserPhone as up)
+        .where.append(sqls"${where}")
+        .limit(1)
+    }.map(UserPhone(up)).single.apply
+  }
 
   def findAllBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[List[models.UserPhone]] = withSQL {
-    select.from(UserPhone as up)
-      .where.append(sqls"${where}")
-  } map (UserPhone(up))
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[List[models.UserPhone]] = Future {
+    withSQL {
+      select.from(UserPhone as up)
+        .where.append(sqls"${where}")
+    }.map(UserPhone(up)).list.apply
+  }
 
   def findAllByUserId(userId: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
   ): Future[List[models.UserPhone]] = findAllBy(sqls.eq(up.userId, userId))
 
+  def findAllByNumbers(numbers: immutable.Set[Long])(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[List[models.UserPhone]] = findAllBy(sqls.in(up.number, numbers.toSeq))
+
+  def findByNumber(number: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Option[models.UserPhone]] = findBy(sqls.eq(column.number, number))
+
   def findByUserIdAndId(userId: Int, id: Int)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
   ): Future[Option[models.UserPhone]] = findBy(
     sqls.eq(up.userId, userId)
       .and.eq(up.id, id)
   )
 
   def create(userId: Int, id: Int, accessSalt: String, number: Long, title: String)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.UserPhone] = for {
-    _ <- withSQL {
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[models.UserPhone] = Future {
+    withSQL {
       insert.into(UserPhone).namedValues(
         column.userId -> userId,
         column.id -> id,
@@ -57,22 +71,25 @@ object UserPhone extends SQLSyntaxSupport[models.UserPhone] with ShortenedNames 
         column.number -> number,
         column.title -> title
       )
-    }.execute.future
-  } yield models.UserPhone(
-    id = id,
-    userId = userId,
-    accessSalt = accessSalt,
-    number = number,
-    title = title
-  )
+    }.execute.apply
+    models.UserPhone(
+      id = id,
+      userId = userId,
+      accessSalt = accessSalt,
+      number = number,
+      title = title
+    )
+  }
 
   def updateTitle(userId: Int, id: Int, title: String)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Int] = withSQL {
-    update(UserPhone).set(
-      column.title -> title
-    )
-      .where.eq(column.userId, userId)
-      .and.eq(column.id, id)
-  }.update.future
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(UserPhone).set(
+        column.title -> title
+      )
+        .where.eq(column.userId, userId)
+        .and.eq(column.id, id)
+    }.update.apply
+  }
 }

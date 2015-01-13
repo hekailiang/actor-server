@@ -54,7 +54,7 @@ object DBConnector {
       GooglePushCredentials.createTable(session),
       Group.createTable(session),
       GroupUser.createTable(session),
-      Phone.createTable(session),
+      //Phone.createTable(session),
       SeqUpdate.createTable(session),
       UnregisteredContact.createTable(session),
       contact.UserContactsList.createTable(session),

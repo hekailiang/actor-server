@@ -19,7 +19,7 @@ class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
 
   "ContactService" should {
-    "handle RPC import contacts request" in {
+    "handle RPC import contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
@@ -36,7 +36,7 @@ class ContactServiceSpec extends RpcSpec {
       users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, s"${contact.name}_wow1".some)))
     }
 
-    "handle RPC import contacts requests" in {
+    "handle RPC import contacts requests" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = (1 to 10).toList.map { _ =>
@@ -62,7 +62,7 @@ class ContactServiceSpec extends RpcSpec {
       cacheEntity.contactsId.to[immutable.SortedSet].should_==(sortedContactsId)
     }
 
-    "handle RPC get contacts request" in {
+    "handle RPC get contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = immutable.Seq(
@@ -89,7 +89,7 @@ class ContactServiceSpec extends RpcSpec {
       }.toSet)
     }
 
-    "handle RPC get contacts request when isNotChanged" in {
+    "handle RPC get contacts request when isNotChanged" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = immutable.Seq(
@@ -115,7 +115,7 @@ class ContactServiceSpec extends RpcSpec {
       users.isEmpty.should_==(true)
     }
 
-    "handle RPC edit name contact request" in {
+    "handle RPC edit name contact request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
@@ -140,7 +140,7 @@ class ContactServiceSpec extends RpcSpec {
       userLocalName.should_==("new_local_name".some)
     }
 
-    "handle RPC delete contact request" in {
+    "handle RPC delete contact request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
@@ -172,7 +172,7 @@ class ContactServiceSpec extends RpcSpec {
       importedUsers.isEmpty.should_==(true)
     }
 
-    "handle RPC find contacts request" in {
+    "handle RPC find contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val contact = genTestScopeWithUser().user
       val phoneUtil = PhoneNumberUtil.getInstance()
@@ -189,7 +189,7 @@ class ContactServiceSpec extends RpcSpec {
       }
     }
 
-    "handle RPC add contacts request" in {
+    "handle RPC add contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user

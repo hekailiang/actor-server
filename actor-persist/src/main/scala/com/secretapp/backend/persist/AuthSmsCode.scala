@@ -1,10 +1,10 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import scala.concurrent.Future
-import scalikejdbc._, async._, FutureImplicits._
+import scala.concurrent.{ ExecutionContext, Future }
+import scalikejdbc._
 
-object AuthSmsCode extends SQLSyntaxSupport[models.AuthSmsCode] with ShortenedNames {
+object AuthSmsCode extends SQLSyntaxSupport[models.AuthSmsCode] {
   override val tableName = "auth_sms_codes"
   override val columnNames = Seq(
     "phone_number", "sms_hash", "sms_code"
@@ -21,33 +21,38 @@ object AuthSmsCode extends SQLSyntaxSupport[models.AuthSmsCode] with ShortenedNa
   )
 
   def findBy(where: SQLSyntax)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Option[models.AuthSmsCode]] = withSQL {
-    select.from(AuthSmsCode as a)
-      .where.append(sqls"${where}")
-      .limit(1)
-  } map (AuthSmsCode(a))
+    implicit ec: ExecutionContext, session: DBSession = AuthSmsCode.autoSession
+  ): Future[Option[models.AuthSmsCode]] = Future {
+    withSQL {
+      select.from(AuthSmsCode as a)
+        .where.append(sqls"${where}")
+        .limit(1)
+    }.map(AuthSmsCode(a)).single.apply
+  }
 
   def findByPhoneNumber(phoneNumber: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+    implicit ec: ExecutionContext, session: DBSession = AuthSmsCode.autoSession
   ): Future[Option[models.AuthSmsCode]] = findBy(sqls.eq(a.phoneNumber, phoneNumber))
 
   def create(phoneNumber: Long, smsHash: String, smsCode: String)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[models.AuthSmsCode] = for {
-    _ <- withSQL {
+    implicit ec: ExecutionContext, session: DBSession = AuthSmsCode.autoSession
+  ): Future[models.AuthSmsCode] = Future {
+    withSQL {
       insert.into(AuthSmsCode).namedValues(
         column.phoneNumber -> phoneNumber,
         column.smsHash -> smsHash,
         column.smsCode -> smsCode
       )
-    }.execute.future
-  } yield models.AuthSmsCode(phoneNumber, smsHash, smsCode)
+    }.execute.apply
+    models.AuthSmsCode(phoneNumber, smsHash, smsCode)
+  }
 
   def destroy(phoneNumber: Long)(
-    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
-  ): Future[Boolean] = withSQL {
-    delete.from(AuthSmsCode)
-      .where.eq(column.phoneNumber, phoneNumber)
-  }.execute.future
+    implicit ec: ExecutionContext, session: DBSession = AuthSmsCode.autoSession
+  ): Future[Boolean] = Future {
+    withSQL {
+      delete.from(AuthSmsCode)
+        .where.eq(column.phoneNumber, phoneNumber)
+    }.execute.apply
+  }
 }
