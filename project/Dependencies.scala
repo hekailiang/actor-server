@@ -40,6 +40,8 @@ object Dependencies {
     val postgresJdbc    = "postgresql"                    %  "postgresql"                    % "9.1-901-1.jdbc4"
 
     val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
+
+    val jodaTime        = "joda-time"                     %  "joda-time" % "2.7"
   }
 
   object Test {
@@ -64,12 +66,12 @@ object Dependencies {
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
-    sprayClient
+    sprayClient, jodaTime
   )
 
   val deploy    = Seq(traceAkka)
 
-  val models    = common ++ Seq(scodecBits, akkaPersistence)
+  val models    = common ++ Seq(scodecBits, akkaPersistence, jodaTime)
 
   val messages  = Seq(akkaActor)
 

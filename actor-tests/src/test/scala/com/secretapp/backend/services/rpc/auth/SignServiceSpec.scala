@@ -530,12 +530,12 @@ class SignServiceSpec extends RpcSpec {
           )))) =>
         }
 
-        val authItems = persist.AuthSession.getEntitiesByUserId(userId).sync()
+        val authItems = persist.AuthSession.findAllByUserId(userId).sync()
 
         authItems.length should_== 1
         authItems.head.deviceTitle should_== "app2"
 
-        val deletedAuthSessions = persist.DeletedAuthSession.getEntitiesByUserId(userId).sync()
+        val deletedAuthSessions = persist.AuthSession.findAllDeletedByUserId(userId).sync()
 
         deletedAuthSessions.length should_== 1
         deletedAuthSessions.head.deviceTitle should_== "app1"
@@ -590,12 +590,12 @@ class SignServiceSpec extends RpcSpec {
           )))) =>
         }
 
-        val authItems = persist.AuthSession.getEntitiesByUserId(userId).sync()
+        val authItems = persist.AuthSession.findAllByUserId(userId).sync()
 
         authItems.length should_== 1
         authItems.head.deviceTitle should_== "app2"
 
-        val deletedAuthSessions = persist.DeletedAuthSession.getEntitiesByUserId(userId).sync()
+        val deletedAuthSessions = persist.AuthSession.findAllDeletedByUserId(userId).sync()
 
         deletedAuthSessions.length should_== 1
         deletedAuthSessions.head.deviceTitle should_== "app1"

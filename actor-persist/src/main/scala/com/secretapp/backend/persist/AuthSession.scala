@@ -1,155 +1,154 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
-import java.nio.ByteBuffer
 import org.joda.time.DateTime
 import scala.concurrent.Future
+import scalikejdbc._, async._, FutureImplicits._
 import scodec.bits._
 
-trait AbstractAuthSession[T <: CassandraTable[T, R], R] extends CassandraTable[T, R] {
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "user_id"
-  }
-
-  object id extends IntColumn(this) with PrimaryKey[Int]
-
-  object appId extends IntColumn(this) {
-    override lazy val name = "app_id"
-  }
-
-  object appTitle extends StringColumn(this) {
-    override lazy val name = "app_title"
-  }
-
-  object deviceTitle extends StringColumn(this) {
-    override lazy val name = "device_title"
-  }
-
-  object authTime extends IntColumn(this) {
-    override lazy val name = "auth_time"
-  }
-
-  object authLocation extends StringColumn(this) {
-    override lazy val name = "auth_location"
-  }
-
-  object latitude extends OptionalDoubleColumn(this)
-
-  object longitude extends OptionalDoubleColumn(this)
-}
-
-sealed class AuthSession extends AbstractAuthSession[AuthSession, models.AuthSession] {
+object AuthSession extends SQLSyntaxSupport[models.AuthSession] with ShortenedNames {
   override val tableName = "auth_sessions"
+  override val columnNames = Seq(
+    "id",
+    "user_id",
+    "app_id",
+    "app_title",
+    "auth_id",
+    "public_key_hash",
+    "device_hash",
+    "device_title",
+    "auth_time",
+    "auth_location",
+    "latitude",
+    "longitude",
+    "deleted_at"
+  )
 
-  object deviceHash extends BlobColumn(this) with Index[ByteBuffer] {
-    override lazy val name = "device_hash"
-  }
+  lazy val a = AuthSession.syntax("a")
+  private val isNotDeleted = sqls.isNull(a.column("deleted_at"))
+  private val isDeleted = sqls.isNotNull(a.column("deleted_at"))
 
-  object authId extends LongColumn(this) {
-    override lazy val name = "auth_id"
-  }
+  def apply(a: SyntaxProvider[models.AuthSession])(rs: WrappedResultSet): models.AuthSession = apply(a.resultName)(rs)
 
-  object publicKeyHash extends LongColumn(this) with Index[Long] {
-    override lazy val name = "public_key_hash"
-  }
+  def apply(a: ResultName[models.AuthSession])(rs: WrappedResultSet): models.AuthSession = models.AuthSession(
+    id = rs.int(a.id),
+    appId = rs.int(a.appId),
+    appTitle = rs.string(a.appTitle),
+    authId = rs.long(a.authId),
+    publicKeyHash = rs.long(a.publicKeyHash),
+    deviceHash = {
+      val bs = rs.binaryStream(a.deviceHash)
+      val bv = BitVector.fromInputStream(bs, chunkSizeInBytes = 8192)
+      bs.close()
+      bv
+    },
+    deviceTitle = rs.string(a.deviceTitle),
+    authTime = rs.get[DateTime](a.authTime),
+    authLocation = rs.string(a.authLocation),
+    latitude = rs.doubleOpt(a.latitude),
+    longitude = rs.doubleOpt(a.longitude)
+  )
 
-  override def fromRow(row: Row): models.AuthSession =
-    models.AuthSession(
-      id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-      authLocation(row), latitude(row), longitude(row),
-      authId(row), publicKeyHash(row), BitVector(deviceHash(row))
-    )
-}
+  def findAllBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.AuthSession]] = withSQL {
+    select.from(AuthSession as a)
+      .where.append(isNotDeleted).and.append(sqls"${where}")
+  } map (AuthSession(a))
 
-sealed class DeletedAuthSession extends AbstractAuthSession[DeletedAuthSession, models.AuthSession] {
-  override val tableName = "deleted_auth_sessions"
+  def findBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.AuthSession]] = withSQL {
+    select.from(AuthSession as a)
+      .where.append(isNotDeleted)
+      .and.append(sqls"${where}")
+      .limit(1)
+  } map (AuthSession(a))
 
-  object deviceHash extends BlobColumn(this) with Index[ByteBuffer] {
-    override lazy val name = "device_hash"
-  }
+  def findAllByUserId(userId: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.AuthSession]] = findAllBy(sqls.eq(a.column("user_id"), userId))
 
-  object authId extends LongColumn(this) {
-    override lazy val name = "auth_id"
-  }
+  def findAllByUserIdAndDeviceHash(userId: Int, deviceHash: BitVector)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.AuthSession]] = findAllBy(
+    sqls.eq(a.column("user_id"), userId)
+      .and.eq(a.deviceHash, deviceHash.toByteArray)
+  )
 
-  object publicKeyHash extends LongColumn(this) with Index[Long] {
-    override lazy val name = "public_key_hash"
-  }
+  def findAllDeletedByUserId(userId: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[models.AuthSession]] = withSQL {
+    select.from(AuthSession as a)
+      .where.append(isDeleted)
+      .and.eq(column.column("user_id"), userId)
+  } map (AuthSession(a))
 
-  object deletedAt extends DateTimeColumn(this) {
-    override lazy val name = "deleted_at"
-  }
+  def findByUserIdAndPublicKeyHash(userId: Int, publicKeyHash: Long)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.AuthSession]] = findBy(
+    sqls.eq(a.column("user_id"), userId)
+      .and.eq(a.publicKeyHash, publicKeyHash)
+  )
 
-  override def fromRow(row: Row): models.AuthSession =
-    models.AuthSession(
-      id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
-      authLocation(row), latitude(row), longitude(row),
-      authId(row), publicKeyHash(row), BitVector(deviceHash(row))
-    )
-}
+  def findByUserIdAndId(userId: Int, id: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.AuthSession]] = findBy(
+    sqls.eq(a.column("user_id"), userId)
+      .and.eq(a.id, id)
+  )
 
-object DeletedAuthSession extends DeletedAuthSession with TableOps {
-  private def insertQuery(item: models.AuthSession, userId: Int) = {
-    insert.value(_.userId, userId).value(_.id, item.id)
-      .value(_.deviceHash, item.deviceHash.toByteBuffer)
-      .value(_.publicKeyHash, item.publicKeyHash)
-      .value(_.authId, item.authId)
-      .value(_.appId, item.appId).value(_.appTitle, item.appTitle)
-      .value(_.deviceTitle, item.deviceTitle).value(_.authTime, item.authTime)
-      .value(_.authLocation, item.authLocation).value(_.latitude, item.latitude).value(_.longitude, item.longitude)
-  }
+  def create(
+    userId: Int,
+    id: Int,
+    appId: Int,
+    appTitle: String,
+    authId: Long,
+    publicKeyHash: Long,
+    deviceHash: BitVector,
+    deviceTitle: String,
+    authTime: DateTime,
+    authLocation: String,
+    latitude: Option[Double],
+    longitude: Option[Double]
+  )(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[models.AuthSession] = for {
+    _ <- withSQL {
+      insert.into(AuthSession).namedValues(
+        column.column("user_id") -> userId,
+        column.id -> id,
+        column.appId -> appId,
+        column.appTitle -> appTitle,
+        column.authId -> authId,
+        column.publicKeyHash -> publicKeyHash,
+        column.deviceHash -> deviceHash.toByteArray,
+        column.deviceTitle -> deviceTitle,
+        column.authTime -> authTime,
+        column.authLocation -> authLocation,
+        column.latitude -> latitude,
+        column.longitude -> longitude
+      )
+    }.execute.future
+  } yield models.AuthSession(
+    id = id,
+    appId = appId,
+    appTitle = appTitle,
+    authId = authId,
+    publicKeyHash = publicKeyHash,
+    deviceHash = deviceHash,
+    deviceTitle = deviceTitle,
+    authTime = authTime,
+    authLocation = authLocation,
+    latitude = latitude,
+    longitude = longitude
+  )
 
-  def insertEntity(item: models.AuthSession, userId: Int)(implicit session: Session): Future[ResultSet] = {
-    insertQuery(item, userId).value(_.deletedAt, new DateTime).future()
-  }
-
-  def getEntitiesByUserId(userId: Int)(implicit session: Session): Future[Seq[models.AuthSession]] = {
-    select.where(_.userId eqs userId).fetch()
-  }
-}
-
-object AuthSession extends AuthSession with TableOps {
-  private def insertQuery(item: models.AuthSession, userId: Int) = {
-    insert.value(_.userId, userId).value(_.id, item.id)
-      .value(_.deviceHash, item.deviceHash.toByteBuffer)
-      .value(_.publicKeyHash, item.publicKeyHash)
-      .value(_.authId, item.authId)
-      .value(_.appId, item.appId).value(_.appTitle, item.appTitle)
-      .value(_.deviceTitle, item.deviceTitle).value(_.authTime, item.authTime)
-      .value(_.authLocation, item.authLocation).value(_.latitude, item.latitude).value(_.longitude, item.longitude)
-  }
-
-  def insertEntity(item: models.AuthSession, userId: Int)(implicit session: Session): Future[ResultSet] = {
-    AuthSession.insertQuery(item, userId).future()
-  }
-
-  def getEntity(userId: Int, id: Int)(implicit session: Session): Future[Option[models.AuthSession]] =
-    select.where(_.userId eqs userId).and(_.id eqs id).one()
-
-  def getEntityByUserIdAndPublicKeyHash(userId: Int, publicKeyHash: Long)(implicit session: Session): Future[Option[models.AuthSession]] = {
-    select.where(_.userId eqs userId).and(_.publicKeyHash eqs publicKeyHash).one()
-  }
-
-  def getEntitiesByUserId(userId: Int)(implicit session: Session): Future[Seq[models.AuthSession]] = {
-    select.where(_.userId eqs userId).fetch()
-  }
-
-  def getEntitiesByUserIdAndDeviceHash(userId: Int, deviceHash: BitVector)(implicit session: Session): Future[Seq[models.AuthSession]] = {
-    select.where(_.userId eqs userId).and(_.deviceHash eqs deviceHash.toByteBuffer).fetch()
-  }
-
-  def getEntities(userId: Int)(implicit session: Session): Future[Seq[models.AuthSession]] =
-    select.where(_.userId eqs userId).fetch()
-
-  def setDeleted(userId: Int, id: Int)(implicit session: Session): Future[Option[Long]] = {
-    select.where(_.userId eqs userId).and(_.id eqs id).one() flatMap {
-      case Some(authItem) =>
-        DeletedAuthSession.insertEntity(authItem, userId) flatMap { _ =>
-          delete.where(_.userId eqs userId).and(_.id eqs id).future() map (_ => Some(authItem.authId))
-        }
-      case None =>
-        Future.successful(None)
-    }
+  def destroy(userId: Int, id: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Int] = {
+    update(AuthSession).set(column.column("deleted_at") -> DateTime.now)
+      .where.eq(column.column("user_id"), userId)
+      .and.eq(column.id, id)
   }
 }

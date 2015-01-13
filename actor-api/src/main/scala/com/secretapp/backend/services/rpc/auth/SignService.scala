@@ -16,6 +16,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.SmsEnginesProtocol
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.{ Success, Failure }
@@ -72,14 +73,14 @@ trait SignService extends ContactHelpers with SocialHelpers {
 
   def handleRequestGetAuthSessions(): Future[RpcResponse] = {
     for {
-      authItems <- persist.AuthSession.getEntities(currentUser.get.uid)
+      authItems <- persist.AuthSession.findAllByUserId(currentUser.get.uid)
     } yield {
       Ok(ResponseGetAuthSessions(authItems.toVector map (struct.AuthSession.fromModel(_, currentUser.get.authId))))
     }
   }
 
   def handleRequestSignOut(): Future[RpcResponse] = {
-    persist.AuthSession.getEntityByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
+    persist.AuthSession.findByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -90,7 +91,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   }
 
   def handleRequestTerminateSession(id: Int): Future[RpcResponse] = {
-    persist.AuthSession.getEntity(currentUser.get.uid, id) flatMap {
+    persist.AuthSession.findByUserIdAndId(currentUser.get.uid, id) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -101,7 +102,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   }
 
   def handleRequestTerminateAllSessions(): Future[RpcResponse] = {
-    persist.AuthSession.getEntities(currentUser.get.uid) map { authItems =>
+    persist.AuthSession.findAllByUserId(currentUser.get.uid) map { authItems =>
       authItems foreach {
         case authItem =>
           if (authItem.authId != currentUser.get.authId) {
@@ -155,17 +156,24 @@ trait SignService extends ContactHelpers with SocialHelpers {
           log.info(s"Authenticate currentUser=$u")
           this.currentUser = Some(u)
 
-          persist.AuthSession.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+          persist.AuthSession.findAllByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
             for (authItem <- authItems) {
               logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
             }
 
-            persist.AuthSession.insertEntity(
-              models.AuthSession.build(
-                id = rand.nextInt(java.lang.Integer.MAX_VALUE), appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-                authLocation = "", latitude = None, longitude = None,
-                authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
-              ), u.uid
+            persist.AuthSession.create(
+              userId = u.uid,
+              id = rand.nextInt(java.lang.Integer.MAX_VALUE),
+              appId = appId,
+              appTitle = models.AuthSession.appTitleOf(appId),
+              authId = u.authId,
+              publicKeyHash = u.publicKeyHash,
+              deviceHash = deviceHash,
+              deviceTitle = deviceTitle,
+              authTime = DateTime.now,
+              authLocation = "",
+              latitude = None,
+              longitude = None
             )
 
             sessionActor ! SessionProtocol.AuthorizeUser(u)
@@ -417,7 +425,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     Future.sequence(Seq(
       persist.AuthId.destroy(authItem.authId),
       persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash),
-      persist.AuthSession.setDeleted(currentUser.uid, authItem.id)
+      persist.AuthSession.destroy(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemovedDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
@@ -441,7 +449,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     Future.sequence(Seq(
       frmKeyHash,
       frmAuthId,
-      persist.AuthSession.setDeleted(currentUser.uid, authItem.id)
+      persist.AuthSession.destroy(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemovedDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
