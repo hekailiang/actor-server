@@ -16,7 +16,7 @@ import scodec.bits._
 class PublicKeysServiceSpec extends RpcSpec {
   transportForeach { implicit transport =>
     "PublicKeysService" should {
-      "return public keys" in {
+      "return public keys" in new sqlDb {
         implicit val scope = genTestScope()
 
         val messageId = getMessageId()

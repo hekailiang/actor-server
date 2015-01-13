@@ -167,7 +167,7 @@ object User extends SQLSyntaxSupport[models.User] {
     withSQL {
       select(column.column("id"), column.accessSalt).from(User as u)
         .where.in(u.column("id"), ids)
-    }.map(rs => (rs.int(u.resultName.column("id")), rs.string(u.resultName.accessSalt)))
+    }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt)))
       .list.apply
   }
 
