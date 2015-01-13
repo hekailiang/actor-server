@@ -11,6 +11,7 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
 import com.websudos.util.testing._
 import scala.collection.immutable
+import scala.concurrent.Future
 import scala.language.{ postfixOps, higherKinds }
 import scalaz.{State => _, _}
 import Scalaz._
@@ -163,8 +164,27 @@ class SignServiceSpec extends RpcSpec {
 
         def sortU(users: Seq[models.User]) = users.map(_.copy(publicKeyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
-        val users = persist.User.byUid(scope.user.uid).map(usrs => sortU(usrs))
+        val users = persist.UserPublicKey.findAllByUserId(scope.user.uid) flatMap { keys =>
+          keys match {
+            case firstKey :: _ =>
+              for {
+                userOpt <- persist.User.find(scope.user.uid)(authId = Some(firstKey.authId))
+              } yield userOpt map { user =>
+                keys map { key =>
+                  user.copy(
+                    authId = key.authId,
+                    publicKeyHash = key.hash,
+                    publicKeyData = key.data
+                  )
+                }
+              } getOrElse (Seq.empty)
+            case Nil => Future.successful(Seq.empty)
+          }
+        } map sortU
+
+        //val users = persist.User.byUid(scope.user.uid).map(usrs => sortU(usrs))
         val expectUsers = sortU(immutable.Seq(scope.user, newUser))
+
         users must be_== (expectUsers).await
       }
 
@@ -342,7 +362,7 @@ class SignServiceSpec extends RpcSpec {
         val pkHash = ec.PublicKey.keyHash(publicKey)
 
         val phoneId = rand.nextInt
-        val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
+        val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
 
         val user = models.User(
           userId,
@@ -366,7 +386,12 @@ class SignServiceSpec extends RpcSpec {
         val newAuthId = rand.nextLong()
         val newSessionId = rand.nextLong()
         persist.AuthId.create(newAuthId, userId.some).sync()
-        persist.User.insertEntityRowWithChildren(userId, newAuthId, newPublicKey, newPublicKeyHash, phoneNumber, name, "RU").sync()
+        persist.User.savePartial(id = userId, name = name, countryCode = "RU")(
+          authId = newAuthId,
+          publicKeyHash = newPublicKeyHash,
+          publicKeyData = newPublicKey,
+          phoneNumber = phoneNumber
+        ).sync()
 
         val newUser = user.copy(publicKeyHashes = Set(publicKeyHash, newPublicKeyHash))
         val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
@@ -393,7 +418,7 @@ class SignServiceSpec extends RpcSpec {
         val pkHash = ec.PublicKey.keyHash(publicKey)
 
         val phoneId = rand.nextInt
-        val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
+        val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
 
         val user = models.User(
           userId,
@@ -427,9 +452,9 @@ class SignServiceSpec extends RpcSpec {
 
         expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, authId), struct.Config(300))), withNewSession = true)
 
-        persist.UserPublicKey.getEntitiesByUserId(newUser.uid).sync() should equalTo(Seq(
+        persist.UserPublicKey.findAllByUserId(newUser.uid).sync() should equalTo(Seq(
           models.UserPublicKey(
-            newUser.uid, newPublicKeyHash, newUser.accessSalt, newPublicKey, authId
+            newUser.uid, newPublicKeyHash, newPublicKey, authId
           )
         ))
 
@@ -515,10 +540,10 @@ class SignServiceSpec extends RpcSpec {
         deletedAuthSessions.length should_== 1
         deletedAuthSessions.head.deviceTitle should_== "app1"
 
-        val pkeys = persist.UserPublicKey.getEntitiesByUserId(userId).sync()
+        val pkeys = persist.UserPublicKey.findAllByUserId(userId).sync()
         pkeys.length should_== 1
 
-        val deletedPkeys = persist.UserPublicKey.getDeletedEntitiesByUserId(userId).sync()
+        val deletedPkeys = persist.UserPublicKey.findAllDeletedByUserId(userId).sync()
         deletedPkeys.length should_== 0
       }
 
@@ -575,11 +600,11 @@ class SignServiceSpec extends RpcSpec {
         deletedAuthSessions.length should_== 1
         deletedAuthSessions.head.deviceTitle should_== "app1"
 
-        val pkeys = persist.UserPublicKey.getEntitiesByUserId(userId).sync()
+        val pkeys = persist.UserPublicKey.findAllByUserId(userId).sync()
         pkeys.length should_== 1
         pkeys.head.hash should_== newPkHash
 
-        val deletedPKeys = persist.UserPublicKey.getDeletedEntitiesByUserId(userId).sync()
+        val deletedPKeys = persist.UserPublicKey.findAllDeletedByUserId(userId).sync()
         deletedPKeys.length should_== 1
         deletedPKeys.head.hash should_== pkHash
       }

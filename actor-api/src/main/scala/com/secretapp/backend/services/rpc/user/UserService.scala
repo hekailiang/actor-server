@@ -43,7 +43,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
         Future successful Error(400, "FILE_TOO_BIG", "", false)
       else
         AvatarUtils.scaleAvatar(fileRecord, r.fileLocation) flatMap { a =>
-          persist.User.updateAvatar(user.uid, a) flatMap { _ =>
+          persist.AvatarData.save[models.User](user.uid, a.avatarData) flatMap { _ =>
             withRelatedAuthIds(user.uid) { authIds =>
               authIds foreach { authId =>
                 updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, UserAvatarChanged(user.uid, Some(a)))
@@ -64,9 +64,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
   }
 
   private def handleRemoveAvatar(user: models.User): Future[RpcResponse] = {
-    val emptyAvatar = models.Avatar(None, None, None)
-
-    persist.User.updateAvatar(user.uid, emptyAvatar) flatMap { _ =>
+    persist.AvatarData.save[models.User](user.uid, models.AvatarData.empty) flatMap { _ =>
       broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, None)) map {
         case (seq, state) =>
           Ok(ResponseSeq(seq, Some(state)))

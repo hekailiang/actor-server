@@ -196,7 +196,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbUserAvatar =
-    persist.User.getEntityWithAvatar(scope.user.uid, scope.user.authId).sync().get
+    persist.User.findWithAvatar(scope.user.uid)(Some(scope.user.authId)).sync().get
 
   private def dbUser = dbUserAvatar._1
   private def dbAvatarData = dbUserAvatar._2

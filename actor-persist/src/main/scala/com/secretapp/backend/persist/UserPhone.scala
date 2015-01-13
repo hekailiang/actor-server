@@ -58,44 +58,4 @@ object UserPhone extends UserPhone with TableOps {
     update
       .where(_.userId eqs userId).and(_.phoneId eqs phoneId)
       .modify(_.title setTo title).future()
-
-  def migrate_createUserPhones()(implicit session: Session) = {
-    val rand = new util.Random()
-
-    for {
-      users <- User.list(java.lang.Integer.MAX_VALUE)
-    } yield {
-      users foreach { user =>
-        Phone.getEntity(user.phoneNumber)(session) onComplete {
-          case Success(Some(phone)) =>
-            val phoneId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
-            val userPhone = phone.toUserPhone(
-              id = phoneId,
-              userId = user.uid,
-              accessSalt = rand.nextString(30)
-            )
-            UserPhone.insertEntity(userPhone) onComplete {
-              case Success(_) =>
-                User.addPhoneId(user.uid, phoneId) onFailure {
-                  case e =>
-                    println(s"[E] Failed to add phoneId $phoneId to user ${user.uid}")
-                }
-
-                User.setState(user.uid, models.UserState.Registered) onFailure {
-                  case e =>
-                    println(s"[E] Failed to set user state to Registered ${user.uid}")
-                }
-              case Failure(e) =>
-                println(s"[E] Failed to insert $userPhone")
-                throw e
-            }
-          case Success(None) =>
-            println(s"[E] Cannot find phone for user $user")
-          case Failure(e) =>
-            println(s"[E] Failed to find phone for user $user")
-            throw e
-        }
-      }
-    }
-  }
 }

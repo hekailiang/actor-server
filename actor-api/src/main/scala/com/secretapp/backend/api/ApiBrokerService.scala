@@ -89,10 +89,9 @@ with PublicKeysService with PresenceService with TypingService with UserService 
   }
 
   protected def withAuthIds(userId: Int)(f: Seq[Long] => Unit): Unit =
-    persist.UserPublicKey.fetchAuthIdsByUserId(userId)(session) onComplete {
+    persist.AuthId.findAllIdsByUserId(userId) onComplete {
       case Success(authIds) =>
         f(authIds)
-
       case Failure(e) =>
         log.error(s"Failed to get authIds for uid=$userId to push new device updates")
         throw e

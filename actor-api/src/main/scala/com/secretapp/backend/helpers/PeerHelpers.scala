@@ -21,7 +21,7 @@ trait PeerHelpers extends UserHelpers {
 
     outPeer.typ match {
       case struct.PeerType.Private =>
-        persist.User.getEntity(outPeer.id) flatMap {
+        persist.User.find(outPeer.id)(authId = None) flatMap {
           case Some(userEntity) =>
             if (ACL.userAccessHash(currentUser.authId, userEntity) != outPeer.accessHash) {
               Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -95,7 +95,7 @@ trait PeerHelpers extends UserHelpers {
 
   private def checkUserPeer(userId: Int, accessHash: Long, currentUser: models.User): Future[Option[Boolean]] = {
     for {
-      userOpt <- persist.User.getEntity(userId)
+      userOpt <- persist.User.find(userId)(authId = None)
     } yield {
       userOpt map (ACL.userAccessHash(currentUser.authId, _) == accessHash)
     }

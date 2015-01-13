@@ -6,7 +6,6 @@ import scodec.bits.BitVector
 case class UserPublicKey(
   userId: Int,
   hash: Long,
-  userAccessSalt: String,
   data: BitVector,
   authId: Long
 )

@@ -8,7 +8,7 @@ import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.helpers.{ ContactHelpers, UpdatesHelpers }
+import com.secretapp.backend.helpers.{ ContactHelpers, UpdatesHelpers, UserHelpers }
 import com.secretapp.backend.services.{ UserManagerService, GeneratorService }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist
@@ -23,7 +23,7 @@ import Scalaz._
 import scodec.bits.BitVector
 import scodec.codecs.uuid
 
-trait ContactService extends UpdatesHelpers with ContactHelpers {
+trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
 
   implicit val session: CSession
@@ -69,7 +69,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
       phones <- persist.Phone.getEntities(phoneNumbers)
       ignoredContactsId <- persist.contact.UserContactsListCache.getContactsAndDeletedId(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
-      usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.getEntityWithAvatar(p.userId))).map(_.flatten) // TODO: OPTIMIZE!!!
+      usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
       usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
         case ((usersTuple, newContactsId, registeredPhones), (user, avatarData)) =>
@@ -118,7 +118,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
       } else {
         for {
           contactList <- persist.contact.UserContactsList.getEntitiesWithLocalName(currentUser.uid)
-          usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.getEntityWithAvatar(c._1) }).map(_.flatten) // TODO: OPTIMIZE!!!
+          usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.findWithAvatar(c._1)(None) }).map(_.flatten) // TODO: OPTIMIZE!!!
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
           val users = usersFutureSeq.map {
@@ -164,7 +164,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
   def handleRequestEditUserLocalName(contactId: Int, accessHash: Long, name: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.User.getEntity(contactId) flatMap {
+    persist.User.find(contactId)(None) flatMap {
       case Some(user) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, user.accessSalt)) {
           val clFuture = persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
@@ -196,7 +196,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
           phones <- persist.Phone.getEntities(filteredPhones)
-          usersAvatars <- Future.sequence(phones map (p => persist.User.getEntityWithAvatar(p.userId))).map(_.flatten)
+          usersAvatars <- Future.sequence(phones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten)
         } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId)).toIndexedSeq))
     }
   }
@@ -207,7 +207,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers {
     if (userId == currentUser.uid) {
       Future.successful(RpcErrors.cantAddSelf)
     } else {
-      persist.User.getEntity(userId) flatMap {
+      persist.User.find(userId)(None) flatMap {
         case Some(user) =>
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
             persist.contact.UserContactsList.getContact(currentUser.uid, userId) flatMap {

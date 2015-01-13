@@ -1,317 +1,199 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.secretapp.backend.models
-import com.websudos.phantom.Implicits._
-import com.websudos.phantom.query.SelectQuery
-import scala.collection.immutable
+import com.datastax.driver.core.{ Session => CSession }
+import org.joda.time.DateTime
 import scala.concurrent.Future
-import scodec.bits.BitVector
+import scala.collection.immutable
+import scalaz._; import Scalaz._
+import scala.language.postfixOps
+import scalikejdbc._, async._, FutureImplicits._
+import scodec.bits._
 
-sealed class User extends CassandraTable[User, models.User] {
+object User extends SQLSyntaxSupport[models.User] with ShortenedNames {
   override val tableName = "users"
+  override val columnNames = Seq("id", "access_salt", "name", "country_code", "sex", "state")
 
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "user_id"
-  }
-  object authId extends LongColumn(this) with PrimaryKey[Long] {
-    override lazy val name = "auth_id"
-  }
-  object publicKeyHash extends LongColumn(this) {
-    override lazy val name = "public_key_hash"
-  }
-  object publicKey extends BlobColumn(this) {
-    override lazy val name = "public_key"
-  }
-  object keyHashes extends SetColumn[User, models.User, Long](this) with StaticColumn[Set[Long]] {
-    override lazy val name = "key_hashes"
-  }
-  object accessSalt extends StringColumn(this) with StaticColumn[String] {
-    override lazy val name = "access_salt"
-  }
-  object phoneNumber extends LongColumn(this) with StaticColumn[Long] {
-    override lazy val name = "phone_number"
-  }
-  object name extends StringColumn(this) with StaticColumn[String] {
-    override lazy val name = "name"
-  }
+  lazy val u = User.syntax("u")
 
-  object sex extends IntColumn(this) with StaticColumn[Int]
+  def apply(
+    authId: Long,
+    publicKeyHash: Long,
+    publicKeyData: BitVector,
+    phoneNumber: Long,
+    phoneIds: immutable.Set[Int],
+    emailIds: immutable.Set[Int],
+    publicKeyHashes: immutable.Set[Long]
+  )(u: SyntaxProvider[models.User])(rs: WrappedResultSet): models.User = apply1(
+    authId,
+    publicKeyHash,
+    publicKeyData,
+    phoneNumber,
+    phoneIds,
+    emailIds,
+    publicKeyHashes
+  )(u.resultName)(rs)
 
-  object phoneIds extends SetColumn[User, models.User, Int](this) with StaticColumn[Set[Long]] {
-    override val name = "phone_ids"
-  }
+  // rename to apply when we will get rid of first parameters mess
+  def apply1(
+    authId: Long,
+    publicKeyHash: Long,
+    publicKeyData: BitVector,
+    phoneNumber: Long,
+    phoneIds: immutable.Set[Int],
+    emailIds: immutable.Set[Int],
+    publicKeyHashes: immutable.Set[Long]
+  )(u: ResultName[models.User])(
+    rs: WrappedResultSet
+  ): models.User = models.User(
+    uid = rs.int(u.column("id")),
+    authId = authId,
+    publicKeyHash = publicKeyHash,
+    publicKeyData = publicKeyData,
+    phoneNumber = phoneNumber,
+    accessSalt = rs.string(u.accessSalt),
+    name = rs.string(u.name),
+    countryCode = rs.string(u.countryCode),
+    sex = models.Sex.fromInt(rs.int(u.sex)),
+    phoneIds = phoneIds,
+    emailIds = emailIds,
+    state = models.UserState.fromInt(rs.int(u.column("state"))),
+    publicKeyHashes = publicKeyHashes
+  )
 
-  object emailIds extends SetColumn[User, models.User, Int](this) with StaticColumn[Set[Long]] {
-    override val name = "email_ids"
-  }
-
-  object state extends IntColumn(this) with StaticColumn[Int]
-
-  object countryCode extends StringColumn(this) with StaticColumn[String] {
-    override lazy val name = "country_code"
-  }
-  object smallAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "small_avatar_file_id"
-  }
-  object smallAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
-    override lazy val name = "small_avatar_file_hash"
-  }
-  object smallAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "small_avatar_file_size"
-  }
-  object largeAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "large_avatar_file_id"
-  }
-  object largeAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
-    override lazy val name = "large_avatar_file_hash"
-  }
-  object largeAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "large_avatar_file_size"
-  }
-  object fullAvatarFileId extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "full_avatar_file_id"
-  }
-  object fullAvatarFileHash extends OptionalLongColumn(this) with StaticColumn[Option[Long]] {
-    override lazy val name = "full_avatar_file_hash"
-  }
-  object fullAvatarFileSize extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "full_avatar_file_size"
-  }
-  object fullAvatarWidth extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "full_avatar_width"
-  }
-  object fullAvatarHeight extends OptionalIntColumn(this) with StaticColumn[Option[Int]] {
-    override lazy val name = "full_avatar_height"
-  }
-
-  override def fromRow(row: Row): models.User =
-    models.User(
-      uid                 = userId(row),
-      authId              = authId(row),
-      publicKeyHash       = publicKeyHash(row),
-      publicKeyData       = BitVector(publicKey(row)),
-      publicKeyHashes     = keyHashes(row),
-      accessSalt          = accessSalt(row),
-      phoneNumber         = phoneNumber(row),
-      name                = name(row),
-      sex                 = models.Sex.fromInt(sex(row)),
-      phoneIds            = phoneIds(row),
-      emailIds            = emailIds(row),
-      state               = models.UserState.fromInt(state(row)),
-      countryCode         = countryCode(row)
-    )
-
-  def fromRowWithAvatar(row: Row): (models.User, models.AvatarData) = {
-    (
-      fromRow(row),
-      fromRowAvatar(row)
-    )
-  }
-
-  def fromRowAvatar(row: Row): models.AvatarData = {
-    models.AvatarData(
-      smallAvatarFileId   = smallAvatarFileId(row),
-      smallAvatarFileHash = smallAvatarFileHash(row),
-      smallAvatarFileSize = smallAvatarFileSize(row),
-      largeAvatarFileId   = largeAvatarFileId(row),
-      largeAvatarFileHash = largeAvatarFileHash(row),
-      largeAvatarFileSize = largeAvatarFileSize(row),
-      fullAvatarFileId    = fullAvatarFileId(row),
-      fullAvatarFileHash  = fullAvatarFileHash(row),
-      fullAvatarFileSize  = fullAvatarFileSize(row),
-      fullAvatarWidth     = fullAvatarWidth(row),
-      fullAvatarHeight    = fullAvatarHeight(row)
-    )
-  }
-
-  def selectWithAvatar: SelectQuery[User, (models.User, models.AvatarData)] =
-    new SelectQuery[User, (models.User, models.AvatarData)](
-      this.asInstanceOf[User],
-      QueryBuilder.select().from(tableName),
-      this.asInstanceOf[User].fromRowWithAvatar
-    )
-
-  def selectAvatar: SelectQuery[User, models.AvatarData] = {
-    val columns = Vector(
-      smallAvatarFileId,
-      smallAvatarFileHash,
-      smallAvatarFileSize,
-      largeAvatarFileId,
-      largeAvatarFileHash,
-      largeAvatarFileSize,
-      fullAvatarFileId,
-      fullAvatarFileHash,
-      fullAvatarFileSize,
-      fullAvatarWidth,
-      fullAvatarHeight
-    ) map (_.name)
-
-    new SelectQuery[User, models.AvatarData](
-      this.asInstanceOf[User],
-      QueryBuilder
-        .select(columns: _*)
-        .from(tableName),
-      this.asInstanceOf[User].fromRowAvatar
-    )
-  }
-}
-
-object User extends User with TableOps {
-  def insertEntityWithChildren(entity: models.User, ad: models.AvatarData)(implicit session: Session): Future[models.User] = {
+  def create(id: Int, accessSalt: String, name: String, countryCode: String, sex: models.Sex, state: models.UserState)(
+    authId: Long,
+    publicKeyHash: Long,
+    publicKeyData: BitVector,
+    phoneNumber: Long
+  )(
+    implicit
+    ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Unit] = {
     val phone = models.Phone(
-      number = entity.phoneNumber,
-      userId = entity.uid,
-      userAccessSalt = entity.accessSalt,
-      userName = entity.name,
-      userSex = entity.sex)
+      number = phoneNumber,
+      userId = id,
+      userAccessSalt = accessSalt,
+      userName = name,
+      userSex = sex
+    )
 
-    val userPK = models.UserPublicKey(
-      userId = entity.uid,
-      hash = entity.publicKeyHash,
-      userAccessSalt = entity.accessSalt,
-      data = entity.publicKeyData,
-      authId = entity.authId)
-
-    insert
-      .value(_.userId, entity.uid)
-      .value(_.authId, entity.authId)
-      .value(_.publicKeyHash, entity.publicKeyHash)
-      .value(_.publicKey, entity.publicKeyData.toByteBuffer)
-      .value(_.keyHashes, immutable.Set(entity.publicKeyHash))
-      .value(_.accessSalt, entity.accessSalt)
-      .value(_.phoneNumber, entity.phoneNumber)
-      .value(_.name, entity.name)
-      .value(_.sex, entity.sex.toInt)
-      .value(_.countryCode, entity.countryCode)
-      .value(_.phoneIds, entity.phoneIds)
-      .value(_.emailIds, entity.emailIds)
-      .value(_.state, entity.state.toInt)
-      .value(_.smallAvatarFileId, ad.smallAvatarFileId)
-      .value(_.smallAvatarFileHash, ad.smallAvatarFileHash)
-      .value(_.smallAvatarFileSize, ad.smallAvatarFileSize)
-      .value(_.largeAvatarFileId, ad.largeAvatarFileId)
-      .value(_.largeAvatarFileHash, ad.largeAvatarFileHash)
-      .value(_.largeAvatarFileSize, ad.largeAvatarFileSize)
-      .value(_.fullAvatarFileId, ad.fullAvatarFileId)
-      .value(_.fullAvatarFileHash, ad.fullAvatarFileHash)
-      .value(_.fullAvatarFileSize, ad.fullAvatarFileSize)
-      .value(_.fullAvatarWidth, ad.fullAvatarWidth)
-      .value(_.fullAvatarHeight, ad.fullAvatarHeight)
-      .future()
-      .flatMap(_ => Phone.insertEntity(phone))
-      .flatMap(_ => UserPublicKey.insertEntity(userPK))
-      .flatMap(_ => AuthId.createOrUpdate(entity.authId, Some(entity.uid)))
-      .map( _ => entity)
+    for {
+      _ <- withSQL {
+        insert.into(User).namedValues(
+          column.column("id") -> id,
+          column.accessSalt -> accessSalt,
+          column.name -> name,
+          column.countryCode -> countryCode,
+          column.sex -> sex.toInt,
+          column.column("state") -> state.toInt
+        )
+      }.execute.future
+      _ <- Phone.insertEntity(phone)
+      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+      _ <- AuthId.createOrUpdate(authId, Some(id))
+    } yield ()
   }
 
-  def insertEntityRowWithChildren(userId: Int, authId: Long, publicKey: BitVector, publicKeyHash: Long, phoneNumber: Long, name: String, countryCode: String, sex: models.Sex = models.NoSex)
-                                 (implicit session: Session): Future[ResultSet] =
-    insert.value(_.userId, userId)
-      .value(_.authId, authId)
-      .value(_.publicKeyHash, publicKeyHash)
-      .value(_.publicKey, publicKey.toByteBuffer)
-      .value(_.name, name)
-      .value(_.sex, sex.toInt)
-      .value(_.countryCode, countryCode)
-      .future()
-      .flatMap(_ => addKeyHash(userId, publicKeyHash, phoneNumber))
-      .flatMap(_ => UserPublicKey.insertEntityRow(userId, publicKeyHash, publicKey, authId))
-      .flatMap(_ => AuthId.createOrUpdate(authId, Some(userId)))
-      .flatMap(_ => Phone.updateUserName(phoneNumber, name))
+  def savePartial(id: Int, name: String, countryCode: String)(
+    authId: Long,
+    publicKeyHash: Long,
+    publicKeyData: BitVector,
+    phoneNumber: Long
+  )(
+    implicit
+      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Unit] = {
+    for {
+      _ <- withSQL {
+        update(User).set(
+          column.name -> name,
+          column.countryCode -> countryCode
+        ).where.eq(column.column("id"), id)
+      }.update.future
+      _ <- AuthId.createOrUpdate(authId, Some(id))
+      _ <- Phone.updateUserName(phoneNumber, name)
+      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+    } yield ()
+  }
 
-  private def addKeyHash(userId: Int, publicKeyHash: Long, phoneNumber: Long)(implicit session: Session) =
-    update.where(_.userId eqs userId).modify(_.keyHashes add publicKeyHash).future()
-
-  /**
-   * Marks keyHash as deleted in [[UserPublicKey]] and, if result is success,
-   * removes keyHash from the following records: [[UserPublicKey]], [[Phone]].
-   *
-   * @param userId user id
-   * @param publicKeyHash user public key hash
-   * @param optKeepAuthId authId value to protect its row in UserRecord from deletion
-   * @return a Future containing Some(authId) if removal succeeded and None if keyHash was not found
-   */
-  def removeKeyHash(userId: Int, publicKeyHash: Long, optKeepAuthId: Option[Long])(implicit session: Session): Future[Option[Long]] = {
-    UserPublicKey.setDeleted(userId, publicKeyHash) flatMap {
+  def find(id: Int)(authId: Option[Long])(
+    implicit
+      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[models.User]] = {
+    authId map (i => Future.successful(Some(i))) getOrElse (AuthId.findFirstIdByUserId(userId = id)) flatMap {
       case Some(authId) =>
-        val frmUser = optKeepAuthId match {
-          case Some(keepAuthId) if keepAuthId == authId =>
-            Future.successful()
-          case _ =>
-            delete.where(_.userId eqs userId).and(_.authId eqs authId).future()
+        val (
+          pkOptFuture,
+          keysFuture,
+          phonesFuture,
+          emailsFuture
+        ) = (
+          UserPublicKey.findByUserIdAndAuthId(userId = id, authId),
+          UserPublicKey.findAllByUserId(userId = id),
+          UserPhone.fetchUserPhones(userId = id),
+          UserEmail.fetchUserEmails(userId = id)
+        )
+
+        val extraDataFuture = for {
+          pkOpt <- pkOptFuture
+          keys <- keysFuture
+          phones <- phonesFuture
+          emails <- emailsFuture
+        } yield {
+          pkOpt map { pk =>
+            (pk, keys, phones, emails)
+          }
         }
 
-        Future.sequence(
-          Vector(
-            update.where(_.userId eqs userId).modify(_.keyHashes remove publicKeyHash).future(),
-            frmUser
-          )
-        ) map (_ => Some(authId))
-      case None =>
-        Future.successful(None)
+        extraDataFuture flatMap {
+          case Some((pk, keys, phones, emails)) =>
+            withSQL {
+              select.from(User as u)
+                .where.eq(u.column("id"), id)
+            } map (User(
+              authId = authId,
+              publicKeyHash = pk.hash,
+              publicKeyData = pk.data,
+              phoneNumber = phones.head.number,
+              phoneIds = phones map (_.id) toSet,
+              emailIds = emails map (_.id) toSet,
+              publicKeyHashes = keys map (_.hash) toSet
+            )(u))
+          case None => Future.successful(None)
+        }
+      case None => Future.successful(None)
     }
   }
 
-  def updateAvatar(userId: Int, avatar: models.Avatar)(implicit session: Session) =
-    update.where(_.userId eqs userId)
-      .modify(_.smallAvatarFileId   setTo avatar.smallImage.map(_.fileLocation.fileId.toInt))
-      .and   (_.smallAvatarFileHash setTo avatar.smallImage.map(_.fileLocation.accessHash))
-      .and   (_.smallAvatarFileSize setTo avatar.smallImage.map(_.fileSize))
-      .and   (_.largeAvatarFileId   setTo avatar.largeImage.map(_.fileLocation.fileId.toInt))
-      .and   (_.largeAvatarFileHash setTo avatar.largeImage.map(_.fileLocation.accessHash))
-      .and   (_.largeAvatarFileSize setTo avatar.largeImage.map(_.fileSize))
-      .and   (_.fullAvatarFileId    setTo avatar.fullImage.map(_.fileLocation.fileId.toInt))
-      .and   (_.fullAvatarFileHash  setTo avatar.fullImage.map(_.fileLocation.accessHash))
-      .and   (_.fullAvatarFileSize  setTo avatar.fullImage.map(_.fileSize))
-      .and   (_.fullAvatarWidth     setTo avatar.fullImage.map(_.width))
-      .and   (_.fullAvatarHeight    setTo avatar.fullImage.map(_.height))
-      .future
+  def findAllSaltsByIds(ids: immutable.Seq[Int])(
+    implicit
+      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[(Int, String)]] = withSQL {
+    select(column.column("id"), column.accessSalt).from(User as u)
+      .where.in(u.column("id"), ids)
+  } map (rs => (rs.int(u.resultName.column("id")), rs.string(u.resultName.accessSalt)))
 
-  def updateName(userId: Int, name: String)(implicit session: Session) =
-    update.where(_.userId eqs userId)
-      .modify(_.name setTo name)
-      .future
-
-  def getEntity(userId: Int)(implicit session: Session): Future[Option[models.User]] =
-    select.where(_.userId eqs userId).one()
-
-  def getEntity(userId: Int, authId: Long)(implicit session: Session): Future[Option[models.User]] =
-    select.where(_.userId eqs userId).and(_.authId eqs authId).one()
-
-  def getEntityWithAvatar(userId: Int)(implicit session: Session): Future[Option[(models.User, models.AvatarData)]] =
-    selectWithAvatar.where(_.userId eqs userId).one()
-
-  def getEntityWithAvatar(userId: Int, authId: Long)(implicit session: Session): Future[Option[(models.User, models.AvatarData)]] =
-    selectWithAvatar.where(_.userId eqs userId).and(_.authId eqs authId).one()
-
-  def getAvatar(userId: Int)(implicit session: Session): Future[Option[models.AvatarData]] =
-    selectAvatar.where(_.userId eqs userId).one()
-
-  def getAccessSaltAndPhone(userId: Int)(implicit session: Session): Future[Option[(String, Long)]] =
-    select(_.accessSalt, _.phoneNumber).where(_.userId eqs userId).one()
-
-  def byUid(userId: Int)(implicit session: Session): Future[Seq[models.User]] =
-    select.where(_.userId eqs userId).fetch()
-
-  def dropEntity(uid: Int)(implicit session: Session): Future[Unit] =
-    delete.where(_.userId eqs uid).future() map (_ => ())
-
-  def list(startUidExclusive: Int, count: Int)(implicit session: Session): Future[Seq[models.User]] =
-    select.where(_.userId gtToken startUidExclusive).limit(count).fetch()
-
-  def list(count: Int)(implicit session: Session): Future[Seq[models.User]] =
-    select.one flatMap {
-      case Some(first) => select.where(_.userId gteToken first.uid).limit(count).fetch()
-      case _           => Future.successful(Seq())
+  def findWithAvatar(userId: Int)(authId: Option[Long] = None)(
+    implicit
+      ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[(models.User, models.AvatarData)]] = {
+    for {
+      userOpt <- find(userId)(authId)
+      adOpt <- AvatarData.find(id = userId, kind = AvatarData.kindVal[models.User])
+    } yield {
+      userOpt map (
+        (_, adOpt getOrElse (models.AvatarData.empty))
+      )
     }
+  }
 
-  def list(startUidExclusive: Option[Int], count: Int)(implicit session: Session): Future[Seq[models.User]] =
-    startUidExclusive.fold(list(count))(list(_, count))
-
-  private[persist] def addPhoneId(userId: Int, phoneId: Int)(implicit session: Session): Future[ResultSet] =
-    update.where(_.userId eqs userId).modify(_.phoneIds add phoneId).future()
-
-  private[persist] def setState(userId: Int, state: models.UserState)(implicit session: Session): Future[ResultSet] =
-    update.where(_.userId eqs userId).modify(_.state setTo state.toInt).future()
+  def updateName(userId: Int, name: String)(
+    implicit
+      ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Int] = withSQL {
+    update(User).set(
+      column.name -> name
+    ).where.eq(column.column("id"), userId)
+  }.update.future
 }

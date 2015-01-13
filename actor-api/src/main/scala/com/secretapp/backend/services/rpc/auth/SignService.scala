@@ -171,7 +171,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
             sessionActor ! SessionProtocol.AuthorizeUser(u)
 
             for {
-              avatarData <- persist.User.getAvatar(u.uid)
+              avatarData <- persist.AvatarData.find[models.User](u.uid)
             } yield {
               Ok(
                 ResponseAuth(
@@ -188,9 +188,18 @@ trait SignService extends ContactHelpers with SocialHelpers {
           val publicKeyHash = ec.PublicKey.keyHash(publicKey)
 
           @inline
-          def updateUserRecord(name: String): Unit = {
-            persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name, countryCode) onSuccess {
-              case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+          def updateUserRecord(name: String): Future[Unit] = {
+            persist.User.savePartial(
+              id = userId,
+              name = name,
+              countryCode = countryCode
+            )(
+              authId = authId,
+              publicKeyHash = publicKeyHash,
+              publicKeyData = publicKey,
+              phoneNumber = phoneNumber
+            ) andThen {
+              case Success(_) => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
             }
           }
 
@@ -203,9 +212,9 @@ trait SignService extends ContactHelpers with SocialHelpers {
           // TODO: use sequence from shapeless-contrib
 
           val (fuserAuthR, fuserR) = (
-            persist.User.getEntity(userId, authId),
-            persist.User.getEntity(userId) // remove it when it cause bottleneck
-            )
+            persist.User.find(userId)(Some(authId)),
+            persist.User.find(userId)(None) // remove it when it cause bottleneck
+          )
 
           fuserAuthR flatMap { userAuthR =>
             fuserR flatMap { userR =>
@@ -214,16 +223,19 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case None =>
                   val user = userR.get
                   val userName = getUserName(user.name)
-                  updateUserRecord(userName)
-                  val keyHashes = user.publicKeyHashes + publicKeyHash
-                  val newUser = user.copy(authId = authId, publicKeyData = publicKey, publicKeyHash = publicKeyHash,
-                    publicKeyHashes = keyHashes, name = userName)
-                  auth(newUser)
+                  updateUserRecord(userName) flatMap { _ =>
+                    val keyHashes = user.publicKeyHashes + publicKeyHash
+                    val newUser = user.copy(authId = authId, publicKeyData = publicKey, publicKeyHash = publicKeyHash,
+                      publicKeyHashes = keyHashes, name = userName)
+                    auth(newUser)
+                  }
                 case Some(userAuth) =>
                   val userName = getUserName(userAuth.name)
                   if (userAuth.publicKeyData != publicKey) {
-                    updateUserRecord(userName)
-                    persist.User.removeKeyHash(userAuth.uid, userAuth.publicKeyHash, Some(currentUser.get.authId)) flatMap { _ =>
+                    Future.sequence(Seq(
+                      updateUserRecord(userName),
+                      persist.UserPublicKey.destroy(userAuth.uid, userAuth.publicKeyHash)
+                    )) flatMap { _ =>
                       val keyHashes = userAuth.publicKeyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
                       val newUser = userAuth.copy(publicKeyData = publicKey, publicKeyHash = publicKeyHash, publicKeyHashes = keyHashes,
                         name = userName)
@@ -295,7 +307,21 @@ trait SignService extends ContactHelpers with SocialHelpers {
                                 publicKeyHashes = immutable.Set(pkHash)
                               )
 
-                              persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>
+                              persist.AvatarData.create[models.User](user.uid, models.AvatarData.empty)
+
+                              persist.User.create(
+                                id = user.uid,
+                                accessSalt = user.accessSalt,
+                                name = user.name,
+                                countryCode = user.countryCode,
+                                sex = user.sex,
+                                state = user.state
+                              )(
+                                authId = user.authId,
+                                publicKeyHash = user.publicKeyHash,
+                                publicKeyData = user.publicKeyData,
+                                phoneNumber = user.phoneNumber
+                              ) flatMap { _ =>
                                 pushContactRegisteredUpdates(user)
                                 auth(user)
                               }
@@ -334,7 +360,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
 
   private def pushNewDeviceUpdates(authId: Long, userId: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
     // Push NewFullDevice updates
-    persist.UserPublicKey.fetchAuthIdsByUserId(userId) onComplete {
+    persist.AuthId.findAllIdsByUserId(userId) onComplete {
       case Success(authIds) =>
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
@@ -350,7 +376,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     getRelations(userId) onComplete {
       case Success(userIds) =>
         for (targetUserId <- userIds) {
-          persist.UserPublicKey.fetchAuthIdsByUserId(targetUserId) onComplete {
+          persist.AuthId.findAllIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash, None, System.currentTimeMillis()))
@@ -390,7 +416,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
       persist.AuthId.destroy(authItem.authId),
-      persist.User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
+      persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash),
       persist.AuthSession.setDeleted(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
@@ -406,7 +432,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     }
 
     val frmKeyHash = if (currentUser.publicKeyHash != authItem.publicKeyHash) {
-      persist.User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId))
+      persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash)
     } else {
       Future.successful()
     }

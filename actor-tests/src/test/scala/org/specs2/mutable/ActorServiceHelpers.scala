@@ -75,13 +75,39 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   def addUser(authId: Long, sessionId: Long, u: models.User, phone: models.UserPhone): Unit = blocking {
     persist.UserPhone.insertEntity(phone)
     persist.AuthId.create(authId, None).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.User.create(
+      id = u.uid,
+      accessSalt = u.accessSalt,
+      name = u.name,
+      countryCode = u.countryCode,
+      sex = u.sex,
+      state = u.state
+    )(
+      authId = u.authId,
+      publicKeyHash = u.publicKeyHash,
+      publicKeyData = u.publicKeyData,
+      phoneNumber = u.phoneNumber
+    ).sync()
+    persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
   }
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
     persist.UserPhone.insertEntity(phone).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.User.create(
+      id = u.uid,
+      accessSalt = u.accessSalt,
+      name = u.name,
+      countryCode = u.countryCode,
+      sex = u.sex,
+      state = u.state
+    )(
+      authId = u.authId,
+      publicKeyHash = u.publicKeyHash,
+      publicKeyData = u.publicKeyData,
+      phoneNumber = u.phoneNumber
+    ).sync()
+    persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
     u
   }
 

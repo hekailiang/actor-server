@@ -25,7 +25,7 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
     "update user name" in {
       editNameShouldBeOk
 
-      persist.User.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
+      persist.User.find(scope.user.uid)(Some(scope.user.authId)).sync.get.name should_== newName
     }
 
     "append update to chain" in {

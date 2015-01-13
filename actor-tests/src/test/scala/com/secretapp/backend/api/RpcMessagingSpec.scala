@@ -223,7 +223,21 @@ class RpcMessagingSpec extends RpcSpec {
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered
       )
-      persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
+      persist.User.create(
+        id = secondUser.uid,
+        accessSalt = secondUser.accessSalt,
+        name = secondUser.name,
+        countryCode = secondUser.countryCode,
+        sex = secondUser.sex,
+        state = secondUser.state
+      )(
+        authId = secondUser.authId,
+        publicKeyHash = secondUser.publicKeyHash,
+        publicKeyData = secondUser.publicKeyData,
+        phoneNumber = secondUser.phoneNumber
+      ).sync()
+
+      persist.AvatarData.create[models.User](secondUser.uid, models.AvatarData.empty).sync()
 
       /**
         * This sleep is needed to let sharding things to initialize
@@ -376,7 +390,7 @@ class RpcMessagingSpec extends RpcSpec {
       catchNewSession(scope2)
       catchNewSession(scope2_2)
 
-      Await.result(persist.UserPublicKey.setDeleted(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
+      Await.result(persist.UserPublicKey.destroy(scope2.user.uid, scope2.user.publicKeyHash), DurationInt(3).seconds)
 
       {
         implicit val scope = scope1

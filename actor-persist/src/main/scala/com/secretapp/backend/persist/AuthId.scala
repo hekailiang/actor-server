@@ -22,14 +22,14 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] with ShortenedNames {
     implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
   ): Future[Option[models.AuthId]] = withSQL {
     select.from(AuthId as a).where.eq(a.id, id)
-  }.map(AuthId(a))
+  } map (AuthId(a))
 
   def findWithUser(id: Long)(
     implicit ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
   ): Future[Option[(models.AuthId, Option[models.User])]] = {
     def user(authId: models.AuthId): Future[Option[models.User]] =
       authId.userId match {
-        case Some(uid) => User.getEntity(uid, authId.id)
+        case Some(userId) => User.find(userId)(Some(authId.id))
         case None => Future.successful(None)
       }
 
@@ -38,6 +38,28 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] with ShortenedNames {
       case None => Future.successful(None)
     }
   }
+
+  // TODO: remove this method when we will move authId away from User model
+  // it is used in User.find
+  def findFirstIdByUserId(userId: Long)(
+    implicit ec: EC, csession: CSession, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[Option[Long]] = withSQL {
+    select.from(AuthId as a)
+      .where.eq(a.userId, userId).limit(1)
+  } map (rs => rs.long(a.resultName.id))
+
+  def findAllBy(where: SQLSyntax)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession): Future[List[models.AuthId]] = withSQL {
+    select.from(AuthId as a)
+      .where.append(sqls"${where}")
+  } map (AuthId(a))
+
+  def findAllIdsByUserId(userId: Int)(
+    implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
+  ): Future[List[Long]] = withSQL {
+    select(column.id).from(AuthId as a)
+      .where.eq(a.userId, userId)
+  } map (rs => rs.long(column.id))
 
   def create(id: Long, userId: Option[Int])(
     implicit ec: EC, session: AsyncDBSession = AsyncDB.sharedSession
