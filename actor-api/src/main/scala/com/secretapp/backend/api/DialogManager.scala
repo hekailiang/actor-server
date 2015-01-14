@@ -15,6 +15,7 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.{persist => p}
 import java.util.UUID
 import im.actor.util.logging._
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -81,12 +82,12 @@ class DialogManager(implicit val session: CSession) extends Actor {
         date
       }
       lastDate = newDate
-      //p.HistoryMessage.insertEntity(userId, peer, newDate, randomId, senderUserId, message)
+      p.HistoryMessage.create(userId, peer, new DateTime(newDate), randomId, senderUserId, message)
       p.DialogUnreadCounter.increment(userId, peer)
       p.Dialog.updateEntity(userId, peer, senderUserId, randomId, newDate, message)
     case Envelope(userId, peer, MessageRead(date)) =>
-      p.HistoryMessage.fetchCountBefore(userId, peer, date) map (p.DialogUnreadCounter.decrement(userId, peer, _))
+      p.HistoryMessage.countBefore(userId, peer, new DateTime(date * 1000)) map (p.DialogUnreadCounter.decrement(userId, peer, _))
     case Envelope(userId, peer, MessageDelete(randomIds)) =>
-      randomIds map (p.HistoryMessage.setDeleted(userId, peer, _))
+      randomIds map (p.HistoryMessage.destroy(userId, peer, _))
   }
 }

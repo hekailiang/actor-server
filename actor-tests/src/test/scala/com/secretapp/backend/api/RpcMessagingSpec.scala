@@ -18,6 +18,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -49,7 +50,6 @@ class RpcMessagingSpec extends RpcSpec {
   }
 
   "RpcMessaging" should {
-    /*
     "deliver unencrypted messages" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
@@ -64,14 +64,14 @@ class RpcMessagingSpec extends RpcSpec {
           message = TextMessage("Yolo!")
         ) :~> <~:[ResponseSeqDate]
 
+        Thread.sleep(1000)
+
         val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
 
         diff.updates.length should beEqualTo(1)
         val upd = diff.updates.last.body.assertInstanceOf[MessageSent]
         upd.peer should_==(struct.Peer.privat(scope2.user.uid))
       }
-
-      Thread.sleep(1000)
 
       {
         implicit val scope = scope2
@@ -114,6 +114,8 @@ class RpcMessagingSpec extends RpcSpec {
           date = date
         ) :~> <~:[ResponseVoid]
       }
+
+      Thread.sleep(1000)
 
       {
         implicit val scope = scope1
@@ -179,55 +181,7 @@ class RpcMessagingSpec extends RpcSpec {
     "reply to SendMessage and push to sequence" in new sqlDb {
       //implicit val (probe, apiActor) = probeAndActor()
       //implicit val sessionId = SessionIdentifier()
-      implicit val scope = TestScope()
-
-      val publicKey = hex"ac1d".bits
-      val publicKeyHash = ec.PublicKey.keyHash(publicKey)
-      val name = "Timothy Klim"
-      val pkHash = ec.PublicKey.keyHash(publicKey)
-      val phoneId = rand.nextInt
-      val phone = models.UserPhone(rand.nextInt, userId, phoneSalt, defaultPhoneNumber, "Mobile phone")
-      val user = models.User(
-        userId,
-        mockAuthId,
-        pkHash,
-        publicKey,
-        defaultPhoneNumber,
-        userSalt,
-        name,
-        "RU",
-        models.NoSex,
-        publicKeyHashes = immutable.Set(pkHash),
-        phoneIds = immutable.Set(phoneId),
-        emailIds = immutable.Set.empty,
-        state = models.UserState.Registered
-      )
-      val accessHash = ACL.userAccessHash(scope.user.authId, userId, userSalt)
-      authUser(user, phone)
-
-      // insert second user
-      val sndPublicKey = hex"ac1d3000".bits
-      val sndUID = rand.nextInt
-      val sndPkHash = ec.PublicKey.keyHash(sndPublicKey)
-      val sndPhoneId = rand.nextInt
-      val sndPhone = models.UserPhone(sndPhoneId, sndUID, phoneSalt, defaultPhoneNumber, "Mobile phone")
-      val secondUser = models.User(
-        sndUID,
-        333L,
-        sndPkHash,
-        sndPublicKey,
-        defaultPhoneNumber,
-        userSalt,
-        name,
-        "RU",
-        models.NoSex,
-        publicKeyHashes = immutable.Set(sndPkHash),
-        phoneIds = immutable.Set(sndPhoneId),
-        emailIds = immutable.Set.empty,
-        state = models.UserState.Registered
-      )
-
-      authUser(secondUser, sndPhone)
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
 
       /**
         * This sleep is needed to let sharding things to initialize
@@ -236,43 +190,49 @@ class RpcMessagingSpec extends RpcSpec {
         */
       Thread.sleep(1000)
 
-      catchNewSession(scope)
-
-      // get initial state
-      val (initialState, _) = getState
-
-      val rq = RequestSendEncryptedMessage(
-        struct.OutPeer.privat(secondUser.uid, ACL.userAccessHash(scope.user.authId, secondUser)),
-        randomId = 555L,
-        encryptedMessage = BitVector(1, 2, 3),
-        keys = immutable.Seq(
-          EncryptedAESKey(
-            secondUser.publicKeyHash, BitVector(1, 0, 1, 0)
-          )
-        ),
-        ownKeys = immutable.Seq(
-          EncryptedAESKey(
-            scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
-          )
-        )
-      )
-
-      val (resp, _) = rq :~> <~:[ResponseSeqDate]
-      resp.seq should beEqualTo(initialState.seq + 2)
-
-      val (state, _) = getState
-      state.seq must equalTo(initialState.seq + 2)
-      getDifference(initialState.seq, initialState.state).updates.length must equalTo(2)
+      catchNewSession(scope1)
 
       {
-        // same randomId
+        implicit val scope = scope1
+
+        // get initial state
+        val (initialState, _) = getState
+
+        val rq = RequestSendEncryptedMessage(
+          struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 555L,
+          encryptedMessage = BitVector(1, 2, 3),
+          keys = immutable.Seq(
+            EncryptedAESKey(
+              scope2.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          ),
+          ownKeys = immutable.Seq(
+            EncryptedAESKey(
+              scope.user.publicKeyHash, BitVector(1, 0, 1, 0)
+            )
+          )
+        )
+
         val (resp, _) = rq :~> <~:[ResponseSeqDate]
         resp.seq should beEqualTo(initialState.seq + 2)
+
+        Thread.sleep(1000)
+
+        val (state, _) = getState
+        state.seq must equalTo(initialState.seq + 2)
+        getDifference(initialState.seq, initialState.state).updates.length must equalTo(2)
+
+        {
+          // same randomId
+          val (resp, _) = rq :~> <~:[ResponseSeqDate]
+          resp.seq should beEqualTo(initialState.seq + 2)
+        }
+
+        Thread.sleep(1000)
+
+        getState._1.seq must equalTo(initialState.seq + 2)
       }
-
-      Thread.sleep(1000)
-
-      getState._1.seq must equalTo(initialState.seq + 2)
     }
 
     "send UpdateMessageReceived on RequestMessageReceived" in new sqlDb {
@@ -440,7 +400,7 @@ class RpcMessagingSpec extends RpcSpec {
         ))
       }
     }
-     */
+
     "load history of unencrypted messages" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
@@ -506,7 +466,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer, new DateTime(0), 10).sync().length should_== 0
       }
 
     }
@@ -535,7 +495,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.fetchByPeer(scope.user.uid, outPeer.asPeer, 0, 10).sync().length should_== 0
+        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer, new DateTime(0), 10).sync().length should_== 0
         persist.Dialog.fetchDialogs(scope.user.uid, 0, 0).sync().length should_== 0
       }
 

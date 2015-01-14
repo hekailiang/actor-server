@@ -16,6 +16,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.{ACL, AvatarUtils}
 import java.util.UUID
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -79,7 +80,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
+      persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer)
 
       val update = updateProto.ChatClear(outPeer.asPeer)
 
@@ -99,7 +100,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
   protected def handleRequestDeleteChat(
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = withOutPeer(outPeer, currentUser) {
-    persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
+    persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer)
     persist.Dialog.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
     persist.DialogUnreadCounter.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
 
@@ -196,7 +197,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     limit: Int
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.fetchByPeer(currentUser.uid, outPeer.asPeer, startDate, limit) flatMap { messages =>
+      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer, new DateTime(startDate * 1000), limit) flatMap { messages =>
         val userIds = messages.foldLeft(Set.empty[Int]) { (res, message) =>
           if (message.senderUserId != currentUser.uid)
             res + message.senderUserId

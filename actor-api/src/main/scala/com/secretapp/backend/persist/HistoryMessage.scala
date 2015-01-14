@@ -1,143 +1,146 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.utils.UUIDs
 import im.actor.messenger.{ api => protobuf }
-import com.secretapp.backend.data.message.struct
+import com.google.protobuf.ByteString
 import com.secretapp.backend.data.message.rpc.history
 import com.secretapp.backend.data.message.rpc.messaging.MessageContent
+import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.models
-import com.websudos.phantom.Implicits._
-import scala.concurrent.Future
-import com.google.protobuf.ByteString
+import org.joda.time.DateTime
+import scala.concurrent._
+import scalikejdbc._
+import scodec.bits._
 
-// TODO: use model here instead of history.HistoryMessage
-
-sealed class HistoryMessage extends CassandraTable[HistoryMessage, history.HistoryMessage] {
+object HistoryMessage extends SQLSyntaxSupport[history.HistoryMessage] {
   override val tableName = "history_messages"
+  override val columnNames = Seq(
+    "user_id",
+    "peer_type",
+    "peer_id",
+    "date",
+    "random_id",
+    "sender_user_id",
+    "message_content_header",
+    "message_content_data",
+    "is_deleted"
+  )
 
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "user_id"
-  }
-  object peerType extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "peer_type"
-  }
-  object peerId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "peer_id"
-  }
-  object date extends LongColumn(this) with PrimaryKey[Long] {
-    override lazy val name = "date"
-  }
-  object randomId extends LongColumn(this) with Index[Long] {
-    override lazy val name = "random_id"
-  }
-  object senderUserId extends IntColumn(this) {
-    override lazy val name = "sender_user_id"
-  }
-  object messageContentHeader extends IntColumn(this) {
-    override lazy val name = "message_content_header"
-  }
-  object messageContentBytes extends BlobColumn(this) {
-    override lazy val name = "message_content_bytes"
-  }
-  object isDeleted extends BooleanColumn(this) with Index[Boolean] {
-    override lazy val name = "is_deleted"
-  }
+  lazy val hm = HistoryMessage.syntax("hm")
+  private val isNotDeleted = sqls.eq(hm.column("is_deleted"), false)
 
-  override def fromRow(row: Row): history.HistoryMessage = {
-    history.HistoryMessage(
-      senderUserId = senderUserId(row),
-      randomId = randomId(row),
-      date = date(row),
-      message = MessageContent.fromProto(
-        protobuf.MessageContent(
-          `type` = messageContentHeader(row),
-          content = ByteString.copyFrom(messageContentBytes(row))
-        )
+  def apply(hm: SyntaxProvider[history.HistoryMessage])(rs: WrappedResultSet): history.HistoryMessage = apply(hm.resultName)(rs)
+
+  def apply(hm: ResultName[history.HistoryMessage])(rs: WrappedResultSet): history.HistoryMessage = history.HistoryMessage(
+    senderUserId = rs.int(hm.senderUserId),
+    randomId = rs.long(hm.randomId),
+    date = rs.get[DateTime](hm.date).getMillis / 1000,
+    message = MessageContent.fromProto(
+      protobuf.MessageContent(
+        `type` = rs.int(hm.column("message_content_header")),
+        content = ByteString.copyFrom({
+          val bs = rs.binaryStream(hm.column("message_content_data"))
+          // TODO: don't use BitVector
+          val bv = BitVector.fromInputStream(bs)
+          bs.close()
+          bv.toByteArray
+        })
       )
     )
-  }
-}
+  )
 
-object HistoryMessage extends HistoryMessage with TableOps {
-  def insertEntity(
+  def create(
     userId: Int,
     peer: struct.Peer,
-    date: Long,
+    date: DateTime,
     randomId: Long,
     senderUserId: Int,
     message: MessageContent
-  )(implicit session: Session): Future[ResultSet] = {
-    insert
-      .value(_.userId, userId)
-      .value(_.peerType, peer.typ.intType)
-      .value(_.peerId, peer.id)
-      .value(_.date, date)
-      .value(_.randomId, randomId)
-      .value(_.senderUserId, senderUserId)
-      .value(_.messageContentHeader, message.header)
-      .value(_.messageContentBytes, message.toProto.content.asReadOnlyByteBuffer)
-      .value(_.isDeleted, false)
-      .future()
+  )(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[history.HistoryMessage] = Future {
+    blocking {
+      withSQL {
+        insert.into(HistoryMessage).namedValues(
+          column.column("user_id") -> userId,
+          column.column("peer_type") -> peer.typ.intType,
+          column.column("peer_id") -> peer.id,
+          column.column("date") -> date,
+          column.randomId -> randomId,
+          column.senderUserId -> senderUserId,
+          column.column("message_content_header") -> message.header,
+          column.column("message_content_data") -> message.toProto.content.toByteArray
+        )
+      }.execute.apply
+
+      history.HistoryMessage(senderUserId, randomId, date.getMillis / 1000, message)
+    }
   }
 
-  def deleteByPeer(userId: Int, peer: struct.Peer)(implicit session: Session): Future[ResultSet] = {
-    delete
-      .where(_.userId eqs userId)
-      .and(_.peerType eqs peer.typ.intType)
-      .and(_.peerId eqs peer.id)
-      .future()
+  def findAllBy(where: SQLSyntax)(
+    implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession
+  ): Future[List[history.HistoryMessage]] =
+    Future {
+      withSQL {
+        select.from(HistoryMessage as hm)
+          .where.append(isNotDeleted)
+          .and.append(sqls"${where}")
+      }.map(HistoryMessage(hm)).list.apply()
+    }
+
+  def findAll(userId: Int, peer: struct.Peer, startDate: DateTime, limit: Int)(
+    implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession
+  ): Future[List[history.HistoryMessage]] =
+    findAllBy(
+      sqls.eq(hm.column("user_id"), userId)
+        .and.eq(hm.column("peer_type"), peer.typ.intType)
+        .and.eq(hm.column("peer_id"), peer.id)
+        .and.ge(hm.column("date"), startDate)
+        .limit(limit)
+    )
+
+  def countBefore(userId: Int, peer: struct.Peer, date: DateTime)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[Long] = Future {
+    blocking {
+      withSQL {
+        select(sqls.count).from(HistoryMessage as hm)
+          .where.append(isNotDeleted)
+          .and.eq(hm.column("user_id"), userId)
+          .and.eq(hm.column("peer_type"), peer.typ.intType)
+          .and.eq(hm.column("peer_id"), peer.id)
+          .and.le(hm.date, date)
+      }.map(_.long(1)).single.apply() getOrElse (0)
+    }
   }
 
-  def fetchByPeer(userId: Int, peer: struct.Peer, startDate: Long, limit: Int)(implicit session: Session): Future[Seq[history.HistoryMessage]] = {
-    select
-      .where(_.userId eqs userId)
-      .and(_.peerType eqs peer.typ.intType)
-      .and(_.peerId eqs peer.id)
-      .and(_.date gte startDate)
-      .and(_.isDeleted eqs false)
-      .limit(limit)
-      .fetch()
+  def destroy(userId: Int, peer: struct.Peer, randomId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[Int] = Future {
+    blocking {
+      withSQL {
+        update(HistoryMessage).set(
+          column.column("is_deleted") -> true
+        )
+          .where.eq(column.column("user_id"), userId)
+          .and.eq(column.column("peer_type"), peer.typ.intType)
+          .and.eq(column.column("peer_id"), peer.id)
+          .and.eq(column.randomId, randomId)
+      }.update.apply
+    }
   }
 
-  def fetchOneBefore(userId: Int, peer: struct.Peer, beforeDate: Long)(implicit session: Session): Future[Option[history.HistoryMessage]] = {
-    select
-      .where(_.userId eqs userId)
-      .and(_.peerType eqs peer.typ.intType)
-      .and(_.peerId eqs peer.id)
-      .and(_.date lte beforeDate)
-      .one()
-  }
-
-  @deprecated("count is not accurate in cassandra", "")
-  def fetchCountBefore(userId: Int, peer: struct.Peer, beforeDate: Long)(implicit session: Session): Future[Long] = {
-    count
-      .where(_.userId eqs userId)
-      .and(_.peerType eqs peer.typ.intType)
-      .and(_.peerId eqs peer.id)
-      .and(_.date lte beforeDate)
-      .and(_.isDeleted eqs false)
-      .one() map (_.getOrElse(0))
-  }
-
-  // rethink this
-  def setDeleted(userId: Int, peer: struct.Peer, randomId: Long)(implicit session: Session): Future[Unit] = {
-    select(_.date)
-      .where(_.userId eqs userId)
-      .and(_.peerType eqs peer.typ.intType)
-      .and(_.peerId eqs peer.id)
-      .and(_.randomId eqs randomId)
-      .one() flatMap {
-      case Some(date) =>
-        insert
-          .value(_.userId, userId)
-          .value(_.peerType, peer.typ.intType)
-          .value(_.peerId, peer.id)
-          .value(_.date, date)
-          .value(_.randomId, randomId)
-          .value(_.isDeleted, false)
-          .future() map (_ => ())
-      case None =>
-        Future.successful(())
+  def destroyAll(userId: Int, peer: struct.Peer)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[Int] = Future {
+    blocking {
+      withSQL {
+        update(HistoryMessage).set(
+          column.column("is_deleted") -> true
+        )
+          .where.eq(column.column("user_id"), userId)
+          .and.eq(column.column("peer_type"), peer.typ.intType)
+          .and.eq(column.column("peer_id"), peer.id)
+      }.update.apply
     }
   }
 }
