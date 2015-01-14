@@ -101,8 +101,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = withOutPeer(outPeer, currentUser) {
     persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer)
-    persist.Dialog.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
-    persist.DialogUnreadCounter.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
+    persist.Dialog.destroy(currentUser.uid, outPeer.asPeer)
 
     val update = updateProto.ChatDelete(outPeer.asPeer)
 
@@ -123,47 +122,39 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     startDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
-    persist.Dialog.fetchDialogs(currentUser.uid, startDate, limit) flatMap { dialogs =>
-      val fullDialogsWithUnreadZero = dialogs.foldLeft(Vector.empty[Dialog]) {
-        case (res, persist.DialogMeta(peer, senderUserId, randomId, date, message)) =>
+    persist.Dialog.findAllWithUnreadCount(currentUser.uid, new DateTime(startDate * 1000), limit) flatMap { dmWithUnread =>
+      val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
+        case (res, Tuple2(persist.DialogMeta(peer, senderUserId, randomId, date, message), unreadCount)) =>
           if (res.isEmpty)
             res :+ Dialog(
               peer = peer,
-              unreadCount = 0,
-              sortDate = date,
+              unreadCount = unreadCount.toInt,
+              sortDate = date.getMillis / 1000,
               senderUserId = senderUserId,
               randomId = randomId,
-              date = date,
+              date = date.getMillis / 1000,
               message = message
             )
           else {
             val sortDate = if (date != res.last.date)
-              date
+              date.getMillis / 1000
             else
-              date + 1
+              date.getMillis / 1000 + 1
 
             res :+ Dialog(
               peer = peer,
-              unreadCount = 0,
+              unreadCount = unreadCount.toInt,
               sortDate = sortDate,
               senderUserId = senderUserId,
               randomId = randomId,
-              date = date,
+              date = date.getMillis / 1000,
               message = message
             )
           }
 
       }
 
-      val fullDialogsF = Future.sequence(
-        fullDialogsWithUnreadZero map { dialog =>
-          persist.DialogUnreadCounter.getCount(currentUser.uid, dialog.peer) map { count =>
-            dialog.copy(unreadCount = count.toInt)
-          }
-        }
-      )
-
-      val (usersFutures, groupsFutures) = fullDialogsWithUnreadZero.foldLeft((Vector.empty[Future[Option[struct.User]]], Vector.empty[Future[Option[struct.Group]]])) {
+      val (usersFutures, groupsFutures) = dialogs.foldLeft((Vector.empty[Future[Option[struct.User]]], Vector.empty[Future[Option[struct.Group]]])) {
         case (res, dialog) =>
           dialog.peer.typ match {
             case struct.PeerType.Private =>
@@ -178,7 +169,6 @@ trait HistoryHandlers extends RandomService with UserHelpers {
       }
 
       for {
-        dialogs <- fullDialogsF
         users <- Future.sequence(usersFutures)
         groups <- Future.sequence(groupsFutures)
       } yield {

@@ -13,7 +13,7 @@ case class Dialog(peer: struct.Peer,
                   date: Long,
                   message: MessageContent) extends ProtobufMessage {
   def toProto =
-    protobuf.Dialog(peer.toProto, unreadCount, sortDate, senderUserId, randomId, date, message.toProto)
+    protobuf.Dialog(peer.toProto, unreadCount, sortDate, senderUserId, randomId, date, message.toProto, protobuf.MessageState.SENT)
 }
 
 object Dialog {

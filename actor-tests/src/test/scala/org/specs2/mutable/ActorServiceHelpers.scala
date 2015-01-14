@@ -249,12 +249,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     }
 
     def pair(uid1: Int, uid2: Int): (TestScope, TestScope) = {
-      (apply(uid1, 79632740769L), apply(uid2, 79853867016L))
+      (apply(uid1, 79632740769L + uid1), apply(uid2, 79853867016L + uid2))
     }
 
     def apply(): TestScope = apply(1, 79632740769L)
 
-    def apply(userId: Int): TestScope = apply(userId, 79632740769L)
+    def apply(userId: Int): TestScope = apply(userId, 79632740769L + userId)
 
     def apply(userId: Int, phoneNumber: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()

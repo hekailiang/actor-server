@@ -82,11 +82,10 @@ class DialogManager(implicit val session: CSession) extends Actor {
         date
       }
       lastDate = newDate
-      p.HistoryMessage.create(userId, peer, new DateTime(newDate), randomId, senderUserId, message)
-      p.DialogUnreadCounter.increment(userId, peer)
-      p.Dialog.updateEntity(userId, peer, senderUserId, randomId, newDate, message)
+      p.HistoryMessage.create(userId, peer, new DateTime(newDate * 1000), randomId, senderUserId, message)
+      p.Dialog.createOrUpdate(userId, peer, senderUserId, randomId, new DateTime(newDate * 1000), message)
     case Envelope(userId, peer, MessageRead(date)) =>
-      p.HistoryMessage.countBefore(userId, peer, new DateTime(date * 1000)) map (p.DialogUnreadCounter.decrement(userId, peer, _))
+      p.HistoryMessage.markAllAsRead(userId, peer, new DateTime(date * 1000))
     case Envelope(userId, peer, MessageDelete(randomIds)) =>
       randomIds map (p.HistoryMessage.destroy(userId, peer, _))
   }

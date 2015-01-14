@@ -18,7 +18,7 @@ package object utils {
       Try(res) match {
         case s@Success(_) => (BitVector.empty, f(s)).right
         case Failure(e) =>
-//          e.printStackTrace()
+          //e.printStackTrace()
           s"parse error: ${e.getMessage}".left
       }
     }

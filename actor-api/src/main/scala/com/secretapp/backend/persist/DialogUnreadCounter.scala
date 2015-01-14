@@ -1,4 +1,4 @@
-package com.secretapp.backend.persist
+/*package com.secretapp.backend.persist
 
 import com.datastax.driver.core.utils.UUIDs
 import im.actor.messenger.{ api => protobuf }
@@ -64,3 +64,4 @@ object DialogUnreadCounter extends DialogUnreadCounter with TableOps {
       .future()
   }
 }
+ */

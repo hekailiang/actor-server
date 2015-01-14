@@ -496,7 +496,7 @@ class RpcMessagingSpec extends RpcSpec {
         Thread.sleep(1000)
 
         persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer, new DateTime(0), 10).sync().length should_== 0
-        persist.Dialog.fetchDialogs(scope.user.uid, 0, 0).sync().length should_== 0
+        persist.Dialog.findAll(scope.user.uid, new DateTime(0), 0).sync().length should_== 0
       }
 
     }
@@ -544,7 +544,7 @@ class RpcMessagingSpec extends RpcSpec {
           message = TextMessage("Yolo from user1 to user2! #2")
         ) :~> <~:[ResponseSeqDate]
 
-        Thread.sleep(2000)
+        Thread.sleep(1000)
 
         {
           val (resp, _) = RequestLoadDialogs(

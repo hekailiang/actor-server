@@ -9,7 +9,7 @@ import scodec.Codec
 import scodec.codecs._
 import scalaz._
 import Scalaz._
-import scala.util.Success
+import scala.util.{ Failure, Success }
 import im.actor.messenger.{ api => protobuf }
 
 object ResponseLoadDialogsCodec extends Codec[ResponseLoadDialogs] with utils.ProtobufCodec {
@@ -19,6 +19,10 @@ object ResponseLoadDialogsCodec extends Codec[ResponseLoadDialogs] with utils.Pr
   }
 
   def decode(buf: BitVector) = {
+    println("bbbbbbb")
+    println(buf)
+    println(protobuf.ResponseLoadDialogs.parseFrom(buf.toByteArray))
+    println("go")
     decodeProtobuf(protobuf.ResponseLoadDialogs.parseFrom(buf.toByteArray)) {
       case Success(r: protobuf.ResponseLoadDialogs) =>
         ResponseLoadDialogs(r.groups.map(struct.Group.fromProto),

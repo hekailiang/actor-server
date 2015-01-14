@@ -64,8 +64,8 @@ object DBConnector {
       UserEmail.createTable(session),
       //UserPublicKey.createTable(session),
       //User.createTable(session),
-      Dialog.createTable(session),
-      DialogUnreadCounter.createTable(session),
+      //Dialog.createTable(session),
+      //DialogUnreadCounter.createTable(session),
       //HistoryMessage.createTable(session),
       fileRecord.createTable(session)
     ))
