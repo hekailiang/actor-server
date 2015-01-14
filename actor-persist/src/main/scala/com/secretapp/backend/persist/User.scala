@@ -178,7 +178,7 @@ object User extends SQLSyntaxSupport[models.User] {
   ): Future[Option[(models.User, models.AvatarData)]] = {
     for {
       userOpt <- find(userId)(authId)
-      adOpt <- AvatarData.find(id = userId, kind = AvatarData.kindVal[models.User])
+      adOpt <- AvatarData.find(id = userId, typ = AvatarData.typeVal[models.User])
     } yield {
       userOpt map (
         (_, adOpt getOrElse (models.AvatarData.empty))

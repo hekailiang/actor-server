@@ -61,7 +61,7 @@ trait UserHelpers {
   def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] = {
     for {
       userOpt <- persist.User.find(userId)(None)
-      adOpt <- persist.AvatarData.find(id = userId, kind = persist.AvatarData.kindVal[models.User])
+      adOpt <- persist.AvatarData.find(id = userId, typ = persist.AvatarData.typeVal[models.User])
     } yield {
       userOpt map (
         struct.User.fromModel(

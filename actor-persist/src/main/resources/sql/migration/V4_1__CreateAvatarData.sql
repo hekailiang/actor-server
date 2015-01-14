@@ -1,6 +1,6 @@
 CREATE TABLE avatar_datas (
        entity_id bigint NOT NULL,
-       entity_kind int NOT NULL,
+       entity_type int NOT NULL,
        small_avatar_file_id int,
        small_avatar_file_hash bigint,
        small_avatar_file_size int,
@@ -12,5 +12,5 @@ CREATE TABLE avatar_datas (
        full_avatar_file_size int,
        full_avatar_width int,
        full_avatar_height int,
-       PRIMARY KEY (entity_id, entity_kind)
+       PRIMARY KEY (entity_id, entity_type)
 );

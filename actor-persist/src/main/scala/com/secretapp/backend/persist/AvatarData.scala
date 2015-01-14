@@ -9,7 +9,7 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
   override val tableName = "avatar_datas"
   override val columnNames = Seq(
     "entity_id",
-    "entity_kind",
+    "entity_type",
     "small_avatar_file_id",
     "small_avatar_file_hash",
     "small_avatar_file_size",
@@ -41,42 +41,42 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
     fullAvatarHeight = rs.intOpt(ad.fullAvatarHeight)
   )
 
-  trait KindValImpl[T] { def apply[T](): Int }
-  implicit object kindValUser extends KindValImpl[models.User] { def apply[T]() = 1 }
-  implicit object kindValGroup extends KindValImpl[models.Group] { def apply[T]() = 2 }
-  def kindVal[T]()(implicit impl: KindValImpl[T]) = impl()
+  trait TypeValImpl[T] { def apply[T](): Int }
+  implicit object typeValUser extends TypeValImpl[models.User] { def apply[T]() = 1 }
+  implicit object typeValGroup extends TypeValImpl[models.Group] { def apply[T]() = 2 }
+  def typeVal[T]()(implicit impl: TypeValImpl[T]) = impl()
 
   def find[T](id: Long)(
     implicit
-      impl: KindValImpl[T],
+      impl: TypeValImpl[T],
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
-  ): Future[Option[models.AvatarData]] = find(id, kindVal[T])
+  ): Future[Option[models.AvatarData]] = find(id, typeVal[T])
 
-  def find(id: Long, kind: Int)(
+  def find(id: Long, typ: Int)(
     implicit
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[Option[models.AvatarData]] = Future {
     withSQL {
       select.from(AvatarData as ad)
         .where.eq(ad.column("entity_id"), id)
-        .and.eq(ad.column("entity_kind"), kind)
+        .and.eq(ad.column("entity_type"), typ)
     }.map(AvatarData(ad)).single.apply
   }
 
   def create[T](id: Long, data: models.AvatarData)(
     implicit
-      impl: KindValImpl[T],
+      impl: TypeValImpl[T],
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
-  ): Future[models.AvatarData] = create(id, kindVal[T], data)
+  ): Future[models.AvatarData] = create(id, typeVal[T], data)
 
-  def create(id: Long, kind: Int, data: models.AvatarData)(
+  def create(id: Long, typ: Int, data: models.AvatarData)(
     implicit
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[models.AvatarData] = Future {
     withSQL {
       insert.into(AvatarData).namedValues(
         column.column("entity_id") -> id,
-        column.column("entity_kind") -> kind,
+        column.column("entity_type") -> typ,
         column.smallAvatarFileId -> data.smallAvatarFileId,
         column.smallAvatarFileHash -> data.smallAvatarFileHash,
         column.smallAvatarFileSize -> data.smallAvatarFileSize,
@@ -95,11 +95,11 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
 
   def save[T](id: Long, data: models.AvatarData)(
     implicit
-      impl: KindValImpl[T],
+      impl: TypeValImpl[T],
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
-  ): Future[Int] = save(id, kindVal[T], data)
+  ): Future[Int] = save(id, typeVal[T], data)
 
-  def save(id: Long, kind: Int, data: models.AvatarData)(
+  def save(id: Long, typ: Int, data: models.AvatarData)(
     implicit
       ec: ExecutionContext, session: DBSession = AvatarData.autoSession
   ): Future[Int] = Future {
@@ -118,7 +118,7 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
         ad.fullAvatarHeight -> data.fullAvatarHeight
       )
         .where.eq(ad.column("entity_id"), id)
-        .and.eq(ad.column("entity_kind"), kind)
+        .and.eq(ad.column("entity_type"), typ)
     }.update.apply
   }
 }
