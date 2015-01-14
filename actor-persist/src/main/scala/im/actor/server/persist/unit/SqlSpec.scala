@@ -10,6 +10,7 @@ trait SqlSpec extends FlywayInit with DbInit {
 
   trait sqlDb extends Scope {
     val flyway = initFlyway(sqlConfig)
+
     flyway.clean
     flyway.migrate
 

@@ -99,35 +99,49 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    val createPhoneFuture = persist.UserPhone.create(
-      userId = phone.userId,
-      id = phone.id,
-      accessSalt = phone.accessSalt,
-      number = phone.number,
-      title = phone.title
-    )
+    val createPhoneFuture = persist.UserPhone.findByNumber(phone.number) map {
+      case Some(p) => p
+      case None =>
+        persist.UserPhone.create(
+          userId = phone.userId,
+          id = phone.id,
+          accessSalt = phone.accessSalt,
+          number = phone.number,
+          title = phone.title
+        )
+    }
 
-    val createAvatarDataFuture = persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty)
-
-    val createUserFuture = persist.User.create(
-      id = u.uid,
-      accessSalt = u.accessSalt,
-      name = u.name,
-      countryCode = u.countryCode,
-      sex = u.sex,
-      state = u.state
-    )(
-      authId = u.authId,
-      publicKeyHash = u.publicKeyHash,
-      publicKeyData = u.publicKeyData
-    )
+    val createUserFuture = persist.User.find(u.uid)(None) map {
+      case Some(exUser) =>
+        persist.User.savePartial(
+          id = u.uid,
+          name = u.name,
+          countryCode = u.countryCode
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData,
+          phoneNumber = u.phoneNumber
+        )
+      case None =>
+        persist.User.create(
+          id = u.uid,
+          accessSalt = u.accessSalt,
+          name = u.name,
+          countryCode = u.countryCode,
+          sex = u.sex,
+          state = u.state
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData
+        ) flatMap (_ => persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty))
+    }
 
     Future.sequence(Seq(
       createPhoneFuture,
-      createUserFuture,
-      createAvatarDataFuture
+      createUserFuture
     )).sync()
-    println(s"User created ${System.currentTimeMillis}")
 
     u
   }

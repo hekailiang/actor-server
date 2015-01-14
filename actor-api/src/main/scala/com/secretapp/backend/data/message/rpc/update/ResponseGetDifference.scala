@@ -1,6 +1,6 @@
 package com.secretapp.backend.data.message.rpc.update
 
-import java.util.UUID
+import com.eaio.uuid.UUID
 import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct

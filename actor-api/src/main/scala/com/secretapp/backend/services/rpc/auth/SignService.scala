@@ -421,7 +421,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
       persist.AuthId.destroy(authItem.authId),
-      persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash),
+      //persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash), should be destroyed by AuthId.destroy
       persist.AuthSession.destroy(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>

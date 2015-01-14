@@ -4,8 +4,7 @@ import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
 import java.time._
 import org.joda.time.DateTime
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent._
 import scala.collection.immutable
 import scalaz._; import Scalaz._
 import scalikejdbc._
@@ -36,55 +35,37 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
   def create(userId: Int, hash: Long, data: BitVector, authId: Long)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[models.UserPublicKey] = Future {
-    withSQL {
-      insert.into(UserPublicKey).namedValues(
-        column.userId -> userId,
-        column.hash -> hash,
-        column.data -> data.toByteArray,
-        column.authId -> authId
-      )
-    }.execute.apply
+    blocking {
+      withSQL {
+        insert.into(UserPublicKey).namedValues(
+          column.userId -> userId,
+          column.hash -> hash,
+          column.data -> data.toByteArray,
+          column.authId -> authId
+        )
+      }.execute.apply
+    }
+
     models.UserPublicKey(userId, hash, data, authId)
   }
 
-  def findByUserIdAndHash(userId: Int, hash: Long)(
-    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
-  ): Future[Option[models.UserPublicKey]] = Future {
+  def findBySync(where: SQLSyntax)(
+    implicit session: DBSession = UserPublicKey.autoSession
+  ): Option[models.UserPublicKey] =
     withSQL {
       select.from(UserPublicKey as pk)
-        .where.eq(pk.userId, userId)
-        .and.eq(pk.hash, hash)
-        .and.append(isNotDeleted)
-    }.map(UserPublicKey(pk)).single.apply
-  }
+        .where.append(isNotDeleted).and.append(sqls"${where}")
+        .limit(1)
+    }.map(UserPublicKey(pk)).single.apply()
 
-  def findByUserIdAndAuthId(userId: Int, authId: Long)(
+  def findBy(where: SQLSyntax)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
-  ): Future[Option[models.UserPublicKey]] = Future{
-    withSQL {
-      select.from(UserPublicKey as pk)
-        .where.eq(pk.userId, userId)
-        .and.eq(pk.authId, authId)
-        .and.append(isNotDeleted)
-    }.map(UserPublicKey(pk)).single.apply
-  }
-
-  def findAuthIdByUserIdAndHash(userId: Int, hash: Long)(
-    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
-  ): Future[Option[Long \/ Long]] = Future {
-    withSQL {
-      select(column.authId, column.column("deleted_at")).from(UserPublicKey as pk)
-        .where.eq(column.userId, userId)
-        .and.eq(column.hash, hash)
-    }.map { rs =>
-      val authId = rs.long(pk.resultName.authId)
-
-      rs.get[Option[DateTime]](pk.resultName.column("deleted_at")) match {
-        case Some(_) => authId.right
-        case None => authId.left
+  ): Future[Option[models.UserPublicKey]] =
+    Future {
+      blocking {
+        findBySync(where)
       }
-    }.single.apply
-  }
+    }
 
   def findAllBy(where: SQLSyntax)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession): Future[List[models.UserPublicKey]] =
@@ -95,6 +76,73 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
       }.map(UserPublicKey(pk)).list.apply()
     }
 
+  def findByUserIdAndHash(userId: Int, hash: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[models.UserPublicKey]] =
+    findBy(sqls.eq(pk.userId, userId).and.eq(pk.hash, hash))
+
+  def findByUserIdAndHashSync(userId: Int, hash: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Option[models.UserPublicKey] =
+    findBySync(sqls.eq(pk.userId, userId).and.eq(pk.hash, hash))
+
+  def findByUserIdAndAuthId(userId: Int, authId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[models.UserPublicKey]] = Future {
+    blocking {
+      withSQL {
+        select.from(UserPublicKey as pk)
+          .where.eq(pk.userId, userId)
+          .and.eq(pk.authId, authId)
+          .and.append(isNotDeleted)
+      }.map(UserPublicKey(pk)).single.apply
+    }
+  }
+
+  def findByAuthIdSync(authId: Long)(
+    implicit session: DBSession = UserPublicKey.autoSession
+  ): Option[models.UserPublicKey] = findBySync(
+    sqls.eq(pk.authId, authId)
+  )
+
+  def findByAuthId(authId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[models.UserPublicKey]] = Future {
+    blocking { findByAuthIdSync(authId) }
+  }
+
+  def findFirstActiveAuthIdByUserId(userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[Long]] = Future {
+    blocking {
+      withSQL {
+        select(column.authId).from(UserPublicKey as pk)
+          .where.append(isNotDeleted)
+          .and.eq(pk.userId, userId)
+          .limit(1)
+      }.map(rs => rs.long(column.authId)).single.apply
+    }
+  }
+
+  def findAuthIdByUserIdAndHash(userId: Int, hash: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+  ): Future[Option[Long \/ Long]] = Future {
+    blocking {
+      withSQL {
+        select(column.authId, column.column("deleted_at")).from(UserPublicKey as pk)
+          .where.eq(column.userId, userId)
+          .and.eq(column.hash, hash)
+      }.map { rs =>
+        val authId = rs.long(pk.resultName.authId)
+
+        rs.get[Option[DateTime]](pk.resultName.column("deleted_at")) match {
+          case Some(_) => authId.right
+          case None => authId.left
+        }
+      }.single.apply
+    }
+  }
+
   def findAllByUserId(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = findAllBy(sqls.eq(pk.userId, userId))
@@ -102,20 +150,24 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
   def findAllDeletedByUserId(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = Future {
-    withSQL {
-      select.from(UserPublicKey as pk)
-        .where.append(isDeleted)
-    }.map(UserPublicKey(pk)).list.apply
+    blocking {
+      withSQL {
+        select.from(UserPublicKey as pk)
+          .where.append(isDeleted)
+      }.map(UserPublicKey(pk)).list.apply
+    }
   }
 
   def findAllHashesByUserId(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[Long]] = Future {
-    withSQL {
-      select.from(UserPublicKey as pk)
-        .where.append(isNotDeleted)
-        .and.eq(pk.userId, userId)
-    }.map(rs => rs.long(column.hash)).list.apply
+    blocking {
+      withSQL {
+        select.from(UserPublicKey as pk)
+          .where.append(isNotDeleted)
+          .and.eq(pk.userId, userId)
+      }.map(rs => rs.long(column.hash)).list.apply
+    }
   }
 
   def findAllByUserIdHashPairs(pairs: immutable.Seq[(Int, Long)])(
@@ -138,32 +190,44 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
   def findAllAuthIdsOfActiveKeys(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[(Long, Long)]] = Future {
-    withSQL {
-      select(column.hash, column.authId).from(UserPublicKey as pk)
-        .where.append(isNotDeleted).and.eq(pk.userId, userId)
-    }.map(rs => (rs.long(column.hash), rs.long(column.authId)))
-      .list.apply
+    blocking {
+      withSQL {
+        select(column.hash, column.authId).from(UserPublicKey as pk)
+          .where.append(isNotDeleted).and.eq(pk.userId, userId)
+      }.map(rs => (rs.long(column.hash), rs.long(column.authId)))
+        .list.apply
+    }
   }
 
   def findAllAuthIdsOfDeletedKeys(userId: Int, keyHashes: immutable.Set[Long])(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[(Long, Long)]] = Future {
-    withSQL {
-      select(column.hash, column.authId).from(UserPublicKey as pk)
-        .where.append(isDeleted)
-        .and.eq(pk.userId, userId)
-        .and.in(pk.hash, keyHashes.toSeq)
-    }.map(rs => (rs.long(pk.resultName.hash), rs.long(pk.resultName.authId)))
-      .list.apply
+    blocking {
+      withSQL {
+        select(column.hash, column.authId).from(UserPublicKey as pk)
+          .where.append(isDeleted)
+          .and.eq(pk.userId, userId)
+          .and.in(pk.hash, keyHashes.toSeq)
+      }
+        .map(rs => (rs.long(column.hash), rs.long(column.authId)))
+        .list.apply
+    }
   }
 
   def destroy(userId: Int, hash: Long)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[Int] = Future {
+    blocking {
+      destroySync(userId, hash)
+    }
+  }
+
+  def destroySync(userId: Int, hash: Long)(
+    implicit session: DBSession = UserPublicKey.autoSession
+  ): Int =
     withSQL {
       update(UserPublicKey).set(column.column("deleted_at") -> DateTime.now)
         .where.eq(column.userId, userId)
         .and.eq(column.hash, hash)
     }.update.apply
-  }
 }

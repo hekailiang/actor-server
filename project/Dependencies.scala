@@ -42,7 +42,10 @@ object Dependencies {
 
     val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
 
-    val jodaTime        = "joda-time"                     %  "joda-time" % "2.7"
+    val jodaTime        = "joda-time"                     %  "joda-time"                     % "2.7"
+    val jodaConvert     = "org.joda"                      %  "joda-convert"                  % "1.7"
+
+    val uuid            = "com.eaio.uuid"                 %  "uuid"                          % "3.4"
   }
 
   object Test {
@@ -60,14 +63,14 @@ object Dependencies {
 
   import Compile._, Test._, Deploy._
 
-  val common    = Seq(logbackClassic, logbackLogstash)
+  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert)
 
   val util      = Seq(akkaActor, akkaSlf4j)
 
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
-    sprayClient, jodaTime
+    sprayClient, uuid
   )
 
   val deploy    = Seq(traceAkka)

@@ -6,13 +6,13 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.persistence._
+import com.eaio.uuid.UUID
 import com.datastax.driver.core.{ Session => CSession }
 import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.{persist => p}
-import java.util.UUID
 import im.actor.util.logging._
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -109,9 +109,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
 
   private def pushUpdate(authId: Long, updateSeq: Int, update: updateProto.SeqUpdateMessage): Future[StrictState] = {
     // FIXME: Handle errors!
-    val uuid = UUIDs.timeBased
-
-    p.SeqUpdate.push(uuid, authId, update)(session) map { _ =>
+    p.SeqUpdate.push(authId, update) map { uuid =>
       withMDC(Map(
         "authId" -> authId
       )) {

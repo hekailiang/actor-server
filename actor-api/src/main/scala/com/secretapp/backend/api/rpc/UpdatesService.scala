@@ -20,7 +20,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import java.util.UUID
+import com.eaio.uuid.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._

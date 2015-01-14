@@ -104,6 +104,7 @@ object User extends SQLSyntaxSupport[models.User] {
       ).where.eq(column.column("id"), id)
     }.update.apply
 
+    println(s"sssaving $publicKeyHash")
     for {
       _ <- AuthId.createOrUpdate(authId, Some(id))
       //_ <- Phone.updateUserName(phoneNumber, name)
@@ -115,7 +116,7 @@ object User extends SQLSyntaxSupport[models.User] {
     implicit
       ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
   ): Future[Option[models.User]] = {
-    authId map (i => Future.successful(Some(i))) getOrElse (AuthId.findFirstIdByUserId(userId = id)) flatMap {
+    authId map (i => Future.successful(Some(i))) getOrElse (UserPublicKey.findFirstActiveAuthIdByUserId(userId = id)) flatMap {
       case Some(authId) =>
         val (
           pkOptFuture,
