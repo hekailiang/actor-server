@@ -30,7 +30,7 @@ class GroupMessagingSpec extends RpcSpec {
   }
 
   "GroupMessaging" should {
-    "send invites on group creation" in {
+    "send invites on group creation"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -61,7 +61,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send invites on group invitation" in {
+    "send invites on group invitation"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -118,7 +118,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "not allow to invite user twice" in {
+    "not allow to invite user twice"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -145,7 +145,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on group leave" in {
+    "send updates on group leave"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -182,7 +182,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on group kick" in {
+    "send updates on group kick"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -222,7 +222,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "deliver messages into group" in {
+    "deliver messages into group"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
 
       catchNewSession(scope1)
@@ -260,7 +260,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on title change" in {
+    "send updates on title change"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -296,7 +296,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on name change" in {
+    "send updates on name change"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
       catchNewSession(scope2)

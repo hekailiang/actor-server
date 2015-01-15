@@ -20,3 +20,7 @@ case class Avatar(
     fullAvatarHeight = fullImage map (_.height)
   )
 }
+
+object Avatar {
+  def empty = Avatar(None, None, None)
+}

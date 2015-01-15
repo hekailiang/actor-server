@@ -33,7 +33,7 @@ trait PeerHelpers extends UserHelpers {
         }
       case struct.PeerType.Group =>
         // TODO: use withGroupOutPeer here
-        persist.Group.getEntity(outPeer.id) flatMap {
+        persist.Group.find(outPeer.id) flatMap {
           case Some(groupEntity) =>
             if (groupEntity.accessHash != outPeer.accessHash) {
               Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -47,7 +47,7 @@ trait PeerHelpers extends UserHelpers {
   }
 
   protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
-    persist.Group.getEntity(groupOutPeer.id) flatMap {
+    persist.Group.find(groupOutPeer.id) flatMap {
       case Some(group) =>
         if (group.accessHash != groupOutPeer.accessHash) {
           Future.successful(Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false))
@@ -103,7 +103,7 @@ trait PeerHelpers extends UserHelpers {
 
   private def checkGroupPeer(groupId: Int, accessHash: Long): Future[Option[Boolean]] = {
     for {
-      groupOpt <- persist.Group.getEntity(groupId)
+      groupOpt <- persist.Group.find(groupId)
     } yield {
       groupOpt map (_.accessHash == accessHash)
     }

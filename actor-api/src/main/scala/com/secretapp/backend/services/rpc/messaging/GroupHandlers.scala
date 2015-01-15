@@ -16,7 +16,8 @@ import com.secretapp.backend.models
 import com.secretapp.backend.helpers._
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
-import com.secretapp.backend.util.{ACL, AvatarUtils}
+import com.secretapp.backend.util.{ ACL, AvatarUtils }
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -56,12 +57,20 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = {
     val id = rand.nextInt(java.lang.Integer.MAX_VALUE)
 
-    val date = System.currentTimeMillis
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
-    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, date)
+    val group = models.Group(id, currentUser.uid, rand.nextLong(), title, dateTime)
 
     withUserOutPeers(users, currentUser) {
-      val createGroupModelF = persist.Group.insertEntity(group, randomId)
+      val createGroupModelF = persist.Group.create(
+        id = group.id,
+        creatorUserId = group.creatorUserId,
+        accessHash = group.accessHash,
+        title = group.title,
+        createdAt = group.createdAt,
+        randomId = randomId
+      )
 
       val userIds = (users map (_.id) toSet) + currentUser.uid
 
@@ -128,7 +137,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
-    val groupWithMetaFuture = persist.Group.getEntityWithAvatarAndChangeMeta(groupId)
+    val groupWithMetaFuture = persist.Group.findWithAvatarAndChangeMeta(groupId)
 
     val membersAuthIdsF = getGroupMembersWithAuthIds(groupOutPeer.id)
 
@@ -169,14 +178,14 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
                         randomId = titleChangeMeta.randomId,
                         userId = titleChangeMeta.userId,
                         group.title,
-                        date = titleChangeMeta.date
+                        date = titleChangeMeta.date.getMillis
                       ),
                       GroupAvatarChanged(
                         groupId = groupId,
                         randomId = avatarChangeMeta.randomId,
                         userId = avatarChangeMeta.userId,
                         avatar = avatarData.avatar,
-                        date = titleChangeMeta.date
+                        date = titleChangeMeta.date.getMillis
                       ),
                       GroupMembersUpdate(
                         groupId = groupId,
@@ -306,10 +315,11 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
     val groupAuthIdsFuture = getGroupUserAuthIds(groupId)
 
-    val date = System.currentTimeMillis
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      persist.Group.updateTitle(groupId, title, currentUser.uid, randomId, date) flatMap { _ =>
+      persist.Group.updateTitle(groupId, title, currentUser.uid, randomId, dateTime) flatMap { _ =>
         val titleChangedUpdate =  GroupTitleChanged(
           groupId = groupId,
           randomId = randomId,
@@ -345,7 +355,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     fileLocation: models.FileLocation
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
-    val date = System.currentTimeMillis()
+
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
       val sizeLimit: Long = 1024 * 1024 // TODO: configurable
@@ -359,7 +371,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           date
         )
 
-        persist.Group.updateAvatar(groupId, a, currentUser.uid, randomId, date) flatMap { _ =>
+        persist.Group.updateAvatar(groupId, a, currentUser.uid, randomId, dateTime) flatMap { _ =>
 
           foreachGroupUserAuthId(groupId) { authId =>
             if (authId != currentUser.authId)
@@ -379,7 +391,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     randomId: Long
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
-    val date = System.currentTimeMillis()
+
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
 
@@ -391,7 +405,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
         date = date
       )
 
-      persist.Group.removeAvatar(groupId, currentUser.uid, randomId, date) flatMap { _ =>
+      persist.Group.removeAvatar(groupId, currentUser.uid, randomId, dateTime) flatMap { _ =>
 
         foreachGroupUserAuthId(groupId) { authId =>
           if (authId != currentUser.authId)

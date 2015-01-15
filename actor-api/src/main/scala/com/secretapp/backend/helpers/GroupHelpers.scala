@@ -24,7 +24,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
 
   def getGroupStruct(groupId: Int, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.Group]] = {
     for {
-      optGroupModelWithAvatar <- persist.Group.getEntityWithAvatar(groupId)
+      optGroupModelWithAvatar <- persist.Group.findWithAvatar(groupId)
       groupUserMembers <- persist.GroupUser.getUserIdsWithMeta(groupId)
     } yield {
       optGroupModelWithAvatar map {
