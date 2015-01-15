@@ -74,13 +74,9 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
       val userIds = (users map (_.id) toSet) + currentUser.uid
 
-      val addUsersF = userIds map { userId =>
-        // TODO: use shapeless-contrib here after upgrading to scala 2.11
-        Future.sequence(Seq(
-          persist.GroupUser.addUser(group.id, userId, currentUser.uid, date),
-          persist.UserGroup.addGroup(userId, group.id)
-        ))
-      }
+      val addUsersF = userIds map (
+        persist.GroupUser.addGroupUser(group.id, _, currentUser.uid, dateTime)
+      )
 
       // use shapeless, shapeless everywhere!
       val groupCreatedF = for {
@@ -141,7 +137,8 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
     val membersAuthIdsF = getGroupMembersWithAuthIds(groupOutPeer.id)
 
-    val date = System.currentTimeMillis()
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
       withUserOutPeer(user, currentUser) {
@@ -149,11 +146,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
           val userIds = membersAuthIds.map(_._1.id).toSet
 
           if (!userIds.contains(user.id)) {
-            // TODO: use shapeless-contrib here after upgrading to scala 2.11
-            val addUserF = Future.sequence(Seq(
-              persist.GroupUser.addUser(groupId, user.id, currentUser.uid, date),
-              persist.UserGroup.addGroup(user.id, groupId)
-            ))
+            val addUserF = persist.GroupUser.addGroupUser(groupId, user.id, currentUser.uid, dateTime)
 
             // FIXME: add user AFTER we got Some(groupWithMeta)
             addUserF flatMap { _ =>
@@ -264,11 +257,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
 
         userIdsAuthIdsF flatMap { userIdsAuthIds =>
           if (userIdsAuthIds.keySet.contains(kickedUserId)) {
-            // TODO: use shapeless-contrib here after upgrading to scala 2.11
-            val removeUserF = Future.sequence(Seq(
-              persist.GroupUser.removeUser(groupId, kickedUserId),
-              persist.UserGroup.removeGroup(kickedUserId, groupId)
-            ))
+            val removeUserF = persist.GroupUser.removeGroupUser(groupId, kickedUserId)
 
             removeUserF flatMap { _ =>
               val userKickUpdate = GroupUserKick(

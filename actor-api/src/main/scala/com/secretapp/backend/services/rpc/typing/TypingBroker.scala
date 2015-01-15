@@ -127,7 +127,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case BrokerType.Group =>
           //log.debug(s"Publishing UserTypingGroup ${userId}")
           for {
-            groupUserIds <- persist.GroupUser.getUserIds(selfId)
+            groupUserIds <- persist.GroupUser.findGroupUserIds(selfId)
             pairs <- Future.sequence(
               groupUserIds filterNot(_ == userId) map { targetUserId =>
                 getAuthIds(targetUserId) map (_ map ((targetUserId, _)))

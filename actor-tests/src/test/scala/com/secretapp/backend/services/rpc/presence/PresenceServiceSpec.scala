@@ -23,7 +23,7 @@ class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "presence service" should {
-    "return ResponseVoid for subscribe" in {
+    "return ResponseVoid for subscribe"in new sqlDb {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -35,7 +35,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "return ResponseVoid for unsubscribe" in {
+    "return ResponseVoid for unsubscribe"in new sqlDb {
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -46,7 +46,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "subscribe to updates and receive them" in {
+    "subscribe to updates and receive them"in new sqlDb {
       val (scope1, scope2) = TestScope.pair(5, 6)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -83,7 +83,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "tell presences on subscription" in {
+    "tell presences on subscription"in new sqlDb {
       val (scope1, scope2) = TestScope.pair(7, 8)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -110,7 +110,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 /*
-    "count group presences" in {
+    "count group presences"in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 

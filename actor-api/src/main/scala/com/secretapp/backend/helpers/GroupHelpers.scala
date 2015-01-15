@@ -25,7 +25,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   def getGroupStruct(groupId: Int, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.Group]] = {
     for {
       optGroupModelWithAvatar <- persist.Group.findWithAvatar(groupId)
-      groupUserMembers <- persist.GroupUser.getUserIdsWithMeta(groupId)
+      groupUserMembers <- persist.GroupUser.findGroupUserIdsWithMeta(groupId)
     } yield {
       optGroupModelWithAvatar map {
         case (group, avatarData) =>
@@ -33,7 +33,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
             group = group,
             groupMembers = groupUserMembers.toVector map {
               case (userId, persist.GroupUserMeta(inviterUserId, date)) =>
-                struct.Member(userId, inviterUserId, date)
+                struct.Member(userId, inviterUserId, date.getMillis)
             },
             isMember = groupUserMembers.find(_._1 == currentUserId).isDefined,
             optAvatar = avatarData.avatar
@@ -43,11 +43,11 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   }
 
   def getGroupUserIds(groupId: Int): Future[Seq[Int]] = {
-    persist.GroupUser.getUserIds(groupId)
+    persist.GroupUser.findGroupUserIds(groupId)
   }
 
   def getGroupUserIdsWithAuthIds(groupId: Int): Future[Seq[(Int, Seq[Long])]] = {
-    persist.GroupUser.getUserIds(groupId) flatMap { userIds =>
+    persist.GroupUser.findGroupUserIds(groupId) flatMap { userIds =>
       Future.sequence(
         userIds map { userId =>
           getAuthIds(userId) map ((userId, _))
@@ -57,11 +57,11 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   }
 
   def getGroupMembersWithAuthIds(groupId: Int): Future[Seq[(struct.Member, Seq[Long])]] = {
-    persist.GroupUser.getUserIdsWithMeta(groupId) flatMap { userIdsWithMeta =>
+    persist.GroupUser.findGroupUserIdsWithMeta(groupId) flatMap { userIdsWithMeta =>
       Future.sequence(
         userIdsWithMeta map {
           case (userId, persist.GroupUserMeta(inviterUserId, date)) =>
-            getAuthIds(userId) map ((struct.Member(userId, inviterUserId, date), _))
+            getAuthIds(userId) map ((struct.Member(userId, inviterUserId, date.getMillis), _))
         }
       )
     }
@@ -115,10 +115,7 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
 
     userIdsAuthIdsF flatMap { userIdsAuthIds =>
       if (userIdsAuthIds.toMap.contains(currentUser.uid)) {
-        val rmUserF = Future.sequence(Seq(
-          persist.GroupUser.removeUser(groupId, currentUser.uid),
-          persist.UserGroup.removeGroup(currentUser.uid, groupId)
-        ))
+        val rmUserF = persist.GroupUser.removeGroupUser(groupId, currentUser.uid)
 
         val userLeaveUpdate = GroupUserLeave(
           groupId = groupId,
