@@ -400,7 +400,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   private def pushContactRegisteredUpdates(u: models.User): Unit = {
     import com.secretapp.backend.api.SocialProtocol._
 
-    persist.UnregisteredContact.byNumber(u.phoneNumber) map { contacts =>
+    persist.UnregisteredContact.findAllByPhoneNumber(u.phoneNumber) map { contacts =>
       log.debug(s"unregistered ${u.phoneNumber} is in contacts of users: $contacts")
       contacts foreach { c =>
         socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
@@ -413,7 +413,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           }
         }
       }
-      persist.UnregisteredContact.removeEntities(u.phoneNumber)
+      persist.UnregisteredContact.destroyAllByPhoneNumber(u.phoneNumber)
     }
   }
 

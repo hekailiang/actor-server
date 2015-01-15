@@ -56,7 +56,7 @@ object DBConnector {
       //GroupUser.createTable(session),
       //Phone.createTable(session),
       //SeqUpdate.createTable(session),
-      UnregisteredContact.createTable(session),
+      //UnregisteredContact.createTable(session),
       contact.UserContactsList.createTable(session),
       contact.UserContactsListCache.createTable(session),
       //UserGroup.createTable(session),
