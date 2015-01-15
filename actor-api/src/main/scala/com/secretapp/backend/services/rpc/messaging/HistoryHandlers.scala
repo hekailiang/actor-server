@@ -122,24 +122,24 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     startDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
-    persist.Dialog.findAllWithUnreadCount(currentUser.uid, new DateTime(startDate * 1000), limit) flatMap { dmWithUnread =>
+    persist.Dialog.findAllWithUnreadCount(currentUser.uid, new DateTime(startDate), limit) flatMap { dmWithUnread =>
       val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
         case (res, Tuple2(persist.DialogMeta(peer, senderUserId, randomId, date, message), unreadCount)) =>
           if (res.isEmpty)
             res :+ Dialog(
               peer = peer,
               unreadCount = unreadCount.toInt,
-              sortDate = date.getMillis / 1000,
+              sortDate = date.getMillis,
               senderUserId = senderUserId,
               randomId = randomId,
-              date = date.getMillis / 1000,
+              date = date.getMillis,
               message = message
             )
           else {
             val sortDate = if (date != res.last.date)
-              date.getMillis / 1000
+              date.getMillis
             else
-              date.getMillis / 1000 + 1
+              date.getMillis + 1
 
             res :+ Dialog(
               peer = peer,
@@ -147,7 +147,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
               sortDate = sortDate,
               senderUserId = senderUserId,
               randomId = randomId,
-              date = date.getMillis / 1000,
+              date = date.getMillis,
               message = message
             )
           }
@@ -187,7 +187,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     limit: Int
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer, new DateTime(startDate * 1000), limit) flatMap { messages =>
+      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer, new DateTime(startDate), limit) flatMap { messages =>
         val userIds = messages.foldLeft(Set.empty[Int]) { (res, message) =>
           if (message.senderUserId != currentUser.uid)
             res + message.senderUserId

@@ -34,7 +34,7 @@ object HistoryMessage extends SQLSyntaxSupport[history.HistoryMessage] {
   def apply(hm: ResultName[history.HistoryMessage])(rs: WrappedResultSet): history.HistoryMessage = history.HistoryMessage(
     senderUserId = rs.int(hm.senderUserId),
     randomId = rs.long(hm.randomId),
-    date = rs.get[DateTime](hm.date).getMillis / 1000,
+    date = rs.get[DateTime](hm.date).getMillis,
     message = MessageContent.fromProto(
       protobuf.MessageContent(
         `type` = rs.int(hm.column("message_content_header")),
@@ -73,7 +73,7 @@ object HistoryMessage extends SQLSyntaxSupport[history.HistoryMessage] {
         )
       }.execute.apply
 
-      history.HistoryMessage(senderUserId, randomId, date.getMillis / 1000, message)
+      history.HistoryMessage(senderUserId, randomId, date.getMillis, message)
     }
   }
 
