@@ -1,51 +1,88 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import com.websudos.phantom.Implicits._
-import scala.concurrent.Future
+import scala.concurrent._
+import scalikejdbc._
 
-sealed class GooglePushCredentials extends CassandraTable[GooglePushCredentials, models.GooglePushCredentials] {
-
+object GooglePushCredentials extends SQLSyntaxSupport[models.GooglePushCredentials] {
   override val tableName = "google_push_credentials"
+  override val columnNames = Seq("auth_id", "project_id", "reg_id")
 
-  object authId extends LongColumn(this) with PartitionKey[Long] {
-    override lazy val name = "auth_id"
-  }
-  object projectId extends LongColumn(this) {
-    override lazy val name = "project_id"
-  }
-  object regId extends StringColumn(this) with Index[String] {
-    override lazy val name = "reg_id"
-  }
+  lazy val gcreds = GooglePushCredentials.syntax("gcreds")
 
-  override def fromRow(r: Row): models.GooglePushCredentials =
-    models.GooglePushCredentials(authId(r), projectId(r), regId(r))
-}
+  def apply(gcreds: SyntaxProvider[models.GooglePushCredentials])(
+    rs: WrappedResultSet
+  ): models.GooglePushCredentials = apply(gcreds.resultName)(rs)
 
-object GooglePushCredentials extends GooglePushCredentials with TableOps {
+  def apply(gcreds: ResultName[models.GooglePushCredentials])(
+    rs: WrappedResultSet
+  ): models.GooglePushCredentials = models.GooglePushCredentials(
+    authId = rs.long(gcreds.authId),
+    projectId = rs.long(gcreds.projectId),
+    regId = rs.string(gcreds.regId)
+  )
 
-  def set(c: models.GooglePushCredentials)(implicit s: Session): Future[ResultSet] = {
-    @inline def doInsert() =
-      insert.value(_.authId, c.authId).value(_.projectId, c.projectId).value(_.regId, c.regId).future()
-
-    select(_.authId).where(_.regId eqs c.regId).one() flatMap {
-      case Some(authId) =>
-        delete.where(_.authId eqs authId).future() flatMap { _ =>
-          doInsert()
-        }
-      case None =>
-        doInsert()
+  def find(authId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = GooglePushCredentials.autoSession
+  ): Future[Option[models.GooglePushCredentials]] = Future {
+    blocking {
+      withSQL {
+        select.from(GooglePushCredentials as gcreds)
+          .where.eq(gcreds.column("auth_id"), authId)
+          .limit(1)
+      }.map(GooglePushCredentials(gcreds)).single.apply
     }
   }
 
+  def existsSync(authId: Long)(
+    implicit session: DBSession
+  ): Boolean =
+    sql"""
+      select exists (
+        select 1 from google_push_credentials where auth_id = ${authId}
+      )
+      """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
 
-  def remove(authId: Long)(implicit s: Session): Future[ResultSet] =
-    delete
-      .where(_.authId eqs authId)
-      .future
+  def createOrUpdate(authId: Long, projectId: Long, regId: String)(
+    implicit ec: ExecutionContext, session: DBSession = GooglePushCredentials.autoSession
+  ): Future[models.GooglePushCredentials] = Future {
+    blocking {
+      val isRemoved = withSQL {
+        delete.from(GooglePushCredentials)
+          .where.eq(column.regId, regId)
+      }.execute.apply
 
-  def get(authId: Long)(implicit s: Session): Future[Option[models.GooglePushCredentials]] =
-    select
-      .where(_.authId eqs authId)
-      .one()
+      existsSync(authId) match {
+        case true =>
+          withSQL {
+            update(GooglePushCredentials).set(
+              column.projectId -> projectId,
+              column.regId -> regId
+            )
+              .where.eq(column.authId, authId)
+          }.update.apply
+        case false =>
+          withSQL {
+            insert.into(GooglePushCredentials).namedValues(
+              column.authId -> authId,
+              column.projectId -> projectId,
+              column.regId -> regId
+            )
+          }.execute.apply
+      }
+
+      models.GooglePushCredentials(authId, projectId, regId)
+    }
+  }
+
+  def destroy(authId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = GooglePushCredentials.autoSession
+  ): Future[Boolean] = Future {
+    blocking {
+      withSQL {
+        delete.from(GooglePushCredentials)
+          .where.eq(column.authId, authId)
+      }.execute.apply
+    }
+  }
 }

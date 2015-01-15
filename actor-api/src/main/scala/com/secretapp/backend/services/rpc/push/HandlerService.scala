@@ -11,7 +11,7 @@ trait HandlerService {
   import context.dispatcher
 
   protected def handleRequestRegisterGooglePush(projectId: Long, regId: String): Future[RpcResponse] =
-    persist.GooglePushCredentials.set(models.GooglePushCredentials(currentAuthId, projectId, regId)) map { _ =>
+    persist.GooglePushCredentials.createOrUpdate(currentAuthId, projectId, regId) map { _ =>
       Ok(ResponseVoid())
     }
 
@@ -22,7 +22,7 @@ trait HandlerService {
 
   protected def handleRequestUnregisterPush: Future[RpcResponse] =
     Future.sequence(Seq(
-      persist.GooglePushCredentials.remove(currentAuthId),
+      persist.GooglePushCredentials.destroy(currentAuthId),
       persist.ApplePushCredentials.remove(currentAuthId)
     )) map { _ =>
       Ok(ResponseVoid())
