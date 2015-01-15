@@ -138,7 +138,7 @@ object HistoryMessage extends SQLSyntaxSupport[history.HistoryMessage] {
         update(HistoryMessage).set(
           column.column("is_read") -> true
         )
-          .where.append(isNotDeleted)
+          .where.eq(column.column("is_deleted"), false)
           .and.eq(column.column("user_id"), userId)
           .and.eq(column.column("peer_type"), peer.typ.intType)
           .and.eq(column.column("peer_id"), peer.id)
