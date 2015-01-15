@@ -46,7 +46,7 @@ object DBConnector {
     val fileRecord = new File()(session, ec)
 
     Future.sequence(List(
-      ApplePushCredentials.createTable(session),
+      //ApplePushCredentials.createTable(session),
       //AuthId.createTable(session),
       //AuthSession.createTable(session),
       //DeletedAuthSession.createTable(session),

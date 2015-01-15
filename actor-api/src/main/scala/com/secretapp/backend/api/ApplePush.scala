@@ -52,7 +52,7 @@ trait ApplePush {
     } none Future.successful()
 
   def deliverApplePush(authId: Long, seq: Int, text: Option[String])(implicit ec: ExecutionContext, s: CSession): Future[Unit] =
-    persist.ApplePushCredentials.get(authId) flatMap {
+    persist.ApplePushCredentials.find(authId) flatMap {
       deliverApplePush(_, seq, text)
     }
 
