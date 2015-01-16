@@ -48,7 +48,7 @@ class FilesServiceSpec extends RpcSpec {
   }
 
   "files service" should {
-    "respond to RequestUploadStart" in {
+    "respond to RequestUploadStart" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
@@ -58,7 +58,7 @@ class FilesServiceSpec extends RpcSpec {
       }
     }
 
-    "respond to RequestUploadFile" in {
+    "respond to RequestUploadFile" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
@@ -69,7 +69,7 @@ class FilesServiceSpec extends RpcSpec {
       }
     }
 
-    "respond to RequestCompleteUpload" in {
+    "respond to RequestCompleteUpload" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
@@ -85,7 +85,7 @@ class FilesServiceSpec extends RpcSpec {
       }
     }
 
-    "upload two files in a row" in {
+    "upload two files in a row" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
@@ -104,7 +104,7 @@ class FilesServiceSpec extends RpcSpec {
       }
     }
 
-    "respond to RequestGetFile" in {
+    "respond to RequestGetFile" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
