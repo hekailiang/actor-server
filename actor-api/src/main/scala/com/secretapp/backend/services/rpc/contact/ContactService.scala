@@ -91,7 +91,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
             persist.UnregisteredContact.create(phoneNumber, currentUser.uid)
           }
 
-          val clFuture = persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
+          val clFuture = persist.contact.UserContact.createAll(currentUser.uid, usersTuple)
           val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
           val responseFuture = broadcastCUUpdateAndGetState(
             currentUser,
@@ -117,7 +117,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
         Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
       } else {
         for {
-          contactList <- persist.contact.UserContactsList.getEntitiesWithLocalName(currentUser.uid)
+          contactList <- persist.contact.UserContact.findAllContactIdsWithLocalNames(currentUser.uid)
           usersFutureSeq <- Future.sequence(contactList.map { c => persist.User.findWithAvatar(c._1)(None) }).map(_.flatten) // TODO: OPTIMIZE!!!
         } yield {
           val localNames = immutable.HashMap(contactList :_*)
@@ -134,10 +134,10 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
   def handleRequestRemoveContact(contactId: Int, accessHash: Long): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
+    persist.contact.UserContact.find(ownerUserId = currentUser.uid, contactUserId = contactId) flatMap {
       case Some(contact) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, contact.accessSalt)) {
-          val clFuture = persist.contact.UserContactsList.removeContact(currentUser.uid, contactId)
+          val clFuture = persist.contact.UserContact.destroy(currentUser.uid, contactId)
 
           getAuthIds(currentUser.uid) flatMap { authIds =>
             authIds foreach { authId =>
@@ -167,9 +167,11 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
     persist.User.find(contactId)(None) flatMap {
       case Some(user) =>
         if (accessHash == ACL.userAccessHash(authId, contactId, user.accessSalt)) {
-          val clFuture = persist.contact.UserContactsList.getContact(currentUser.uid, contactId) flatMap {
+          val clFuture = persist.contact.UserContact.find(ownerUserId = currentUser.uid, contactUserId = contactId) flatMap {
             case Some(contact) =>
-              persist.contact.UserContactsList.insertContact(currentUser.uid, user.uid, user.phoneNumber, name, user.accessSalt)
+              persist.contact.UserContact.save(models.contact.UserContact(
+                currentUser.uid, user.uid, user.phoneNumber, name, user.accessSalt
+              ))
             case None =>
               addContactSendUpdate(currentUser, user.uid, user.phoneNumber, name, user.accessSalt)
           }
@@ -210,7 +212,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
       persist.User.find(userId)(None) flatMap {
         case Some(user) =>
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
-            persist.contact.UserContactsList.getContact(currentUser.uid, userId) flatMap {
+            persist.contact.UserContact.find(ownerUserId = currentUser.uid, contactUserId = userId) flatMap {
               case None =>
                 addContactSendUpdate(currentUser, user.uid, user.phoneNumber, "", user.accessSalt) map {
                   case (seq, state) => Ok(ResponseSeq(seq, state.some))

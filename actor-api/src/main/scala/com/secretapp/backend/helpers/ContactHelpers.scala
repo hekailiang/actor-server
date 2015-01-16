@@ -24,7 +24,7 @@ trait ContactHelpers extends UpdatesHelpers {
     accessSalt: String
   ): Future[Unit] = {
     val newContactsId = Set(userId)
-    val clFuture = persist.contact.UserContactsList.insertContact(ownerUserId, userId, phoneNumber, name, accessSalt)
+    val clFuture = persist.contact.UserContact.create(ownerUserId, userId, phoneNumber, name, accessSalt)
     val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(ownerUserId, newContactsId)
 
     for {
