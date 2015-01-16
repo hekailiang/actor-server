@@ -139,18 +139,18 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
     existsSync(id, typ) match {
       case true =>
         withSQL {
-          update(AvatarData).set(
-            ad.smallAvatarFileId -> data.smallAvatarFileId,
-            ad.smallAvatarFileHash -> data.smallAvatarFileHash,
-            ad.smallAvatarFileSize -> data.smallAvatarFileSize,
-            ad.largeAvatarFileId -> data.largeAvatarFileId,
-            ad.largeAvatarFileHash -> data.largeAvatarFileHash,
-            ad.largeAvatarFileSize -> data.largeAvatarFileSize,
-            ad.fullAvatarFileId -> data.fullAvatarFileId,
-            ad.fullAvatarFileHash -> data.fullAvatarFileHash,
-            ad.fullAvatarFileSize -> data.fullAvatarFileSize,
-            ad.fullAvatarWidth -> data.fullAvatarWidth,
-            ad.fullAvatarHeight -> data.fullAvatarHeight
+          update(AvatarData as ad).set(
+            column.smallAvatarFileId -> data.smallAvatarFileId,
+            column.smallAvatarFileHash -> data.smallAvatarFileHash,
+            column.smallAvatarFileSize -> data.smallAvatarFileSize,
+            column.largeAvatarFileId -> data.largeAvatarFileId,
+            column.largeAvatarFileHash -> data.largeAvatarFileHash,
+            column.largeAvatarFileSize -> data.largeAvatarFileSize,
+            column.fullAvatarFileId -> data.fullAvatarFileId,
+            column.fullAvatarFileHash -> data.fullAvatarFileHash,
+            column.fullAvatarFileSize -> data.fullAvatarFileSize,
+            column.fullAvatarWidth -> data.fullAvatarWidth,
+            column.fullAvatarHeight -> data.fullAvatarHeight
           )
             .where.eq(ad.column("entity_id"), id)
             .and.eq(ad.column("entity_type"), typ)
@@ -165,7 +165,9 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
   ): Boolean =
     sql"""
       select exists (
-        select 1 from avatar_data where id = ${id} and typ = ${typ}
+        select 1 from ${AvatarData.table}
+        where ${column.column("entity_id")}   = ${id}
+        and   ${column.column("entity_type")} = ${typ}
       )
       """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
 }

@@ -16,15 +16,19 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
 
-class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
+class UserServiceEditAvatarSpec extends RpcSpec {
   "valid avatar" should {
-    "have proper size" in {
+    "have proper size" in new sqlDb {
+      initScopeAndStoreImages()
+
       validOrigBytes must have size 112527
     }
   }
 
   "user service on receiving `RequestSetAvatar`" should {
-    "respond with `ResponseAvatarUploaded`" in {
+    "respond with `ResponseAvatarUploaded`" in new sqlDb {
+      initScopeAndStoreImages()
+
       val r = setValidAvatarShouldBeOk
 
       r.avatar.fullImage.get.width          should_== validOrigDimensions._1
@@ -43,7 +47,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbImageBytes(r.avatar.largeImage.get) should_== validLargeBytes
     }
 
-    "update user avatar" in {
+    "update user avatar" in new sqlDb {
+      initScopeAndStoreImages()
+
       setValidAvatarShouldBeOk
 
       dbAvatarData.avatar       should beSome
@@ -52,7 +58,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbAvatar.largeImage should beSome
     }
 
-    "store full image in user avatar" in {
+    "store full image in user avatar" in new sqlDb {
+      initScopeAndStoreImages()
+
       setValidAvatarShouldBeOk
 
       dbFullImage.width         should_== validOrigDimensions._1
@@ -61,7 +69,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbFullImage) should_== validOrigBytes
     }
 
-    "store large image in user avatar" in {
+    "store large image in user avatar" in new sqlDb {
+      initScopeAndStoreImages()
+
       setValidAvatarShouldBeOk
 
       dbLargeImage.width         should_== validLargeDimensions._1
@@ -70,7 +80,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbLargeImage) should_== validLargeBytes
     }
 
-    "store small image in user avatar" in {
+    "store small image in user avatar" in new sqlDb {
+      initScopeAndStoreImages()
+
       setValidAvatarShouldBeOk
 
       dbSmallImage.width         should_== validSmallDimensions._1
@@ -79,7 +91,9 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbImageBytes(dbSmallImage) should_== validSmallBytes
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      initScopeAndStoreImages()
+
       val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -123,17 +137,23 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
       dbImageBytes(a.largeImage.get) should_== validLargeBytes
     }
 
-    "respond with IMAGE_LOAD_ERROR if invalid image passed" in {
+    "respond with IMAGE_LOAD_ERROR if invalid image passed" in new sqlDb {
+      initScopeAndStoreImages()
+
       RequestEditAvatar(invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
     }
 
-    "respond with FILE_TOO_BIG if huge image passed" in {
+    "respond with FILE_TOO_BIG if huge image passed" in new sqlDb {
+      initScopeAndStoreImages()
+
       RequestEditAvatar(tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
     }
   }
 
   "user service on receiving `RequestSetAvatar`" should {
-    "remove user avatar" in {
+    "remove user avatar" in new sqlDb {
+      initScopeAndStoreImages()
+
       setValidAvatarShouldBeOk
 
       RequestRemoveAvatar() :~> <~:[ResponseSeq]
@@ -151,7 +171,7 @@ class UserServiceEditAvatarSpec extends RpcSpec with BeforeExample {
   private var invalidFileLocation: models.FileLocation = _
   private var tooLargeFileLocation: models.FileLocation = _
 
-  override def before = {
+  def initScopeAndStoreImages() = {
     scope = TestScope()
     catchNewSession(scope)
     validFileLocation = storeImage(42, validOrigBytes)
