@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 
 trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
   protected val keySpace: String = s"secret_test_${System.nanoTime()}"
-  private val dbConfig = ConfigFactory.load().getConfig("cassandra")
+  private val dbConfig = ConfigFactory.load().getConfig("actor-server.cassandra")
   private val cassandraSpecLog = Logger(LoggerFactory.getLogger(this.getClass))
 
   private val cluster = Cluster.builder()
