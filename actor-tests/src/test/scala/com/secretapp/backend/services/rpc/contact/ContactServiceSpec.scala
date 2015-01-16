@@ -19,7 +19,6 @@ class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
 
   "ContactService" should {
-    /*
     "handle RPC import contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
@@ -58,9 +57,9 @@ class ContactServiceSpec extends RpcSpec {
       val sortedContactsId = contacts.map(_.uid).to[immutable.SortedSet]
       users.map(_.uid).to[immutable.SortedSet].should_==(sortedContactsId)
 
-      val cacheEntity = persist.contact.UserContactsListCache.getEntity(currentUser.uid).sync().get
-      cacheEntity.contactsId.size.should_==(sortedContactsId.size)
-      cacheEntity.contactsId.to[immutable.SortedSet].should_==(sortedContactsId)
+      val contactIds = persist.contact.UserContact.findAllContactIds(currentUser.uid).sync()
+      contactIds.size.should_==(sortedContactsId.size)
+      contactIds.to[immutable.SortedSet].should_==(sortedContactsId)
     }
 
     "handle RPC get contacts request" in new sqlDb {
@@ -78,8 +77,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
         case r: ResponseGetContacts => (r.users, !r.isNotChanged)
@@ -105,8 +103,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
-      val sha1Hash = persist.contact.UserContactsListCache.getSHA1Hash(contactsList.map(_.uid).toSet)
+      val sha1Hash = persist.contact.UserContact.getSHA1Hash(contactsList.map(_.uid).toSet)
       sendRpcMsg(RequestGetContacts(sha1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
@@ -126,7 +123,6 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestEditUserLocalName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
       // TODO
@@ -134,13 +130,12 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseSeq => r
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
       val userLocalName = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users.headOption.map(_.localName).flatten
       }
       userLocalName.should_==("new_local_name".some)
     }
-     */
 
     "handle RPC delete contact request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
@@ -152,7 +147,6 @@ class ContactServiceSpec extends RpcSpec {
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
-      persist.contact.UserContactsListCache.addContactsId(currentUser.uid, contactsList.map(_.uid).toSet).sync()
       sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 
       // TODO
@@ -160,7 +154,7 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseSeq => r
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
       val (users, isChanged) = expectRpcMsgByPF() {
         case r: ResponseGetContacts => (r.users, !r.isNotChanged)
       }
@@ -173,7 +167,7 @@ class ContactServiceSpec extends RpcSpec {
       }
       importedUsers.isEmpty.should_==(true)
     }
-/*
+
     "handle RPC find contacts request" in new sqlDb {
       implicit val scope = genTestScopeWithUser()
       val contact = genTestScopeWithUser().user
@@ -195,7 +189,6 @@ class ContactServiceSpec extends RpcSpec {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
-      persist.contact.UserContactsListCache.insertEntity(currentUser.uid, Set(), Set(contact.uid)).sync()
 
       sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
       val reqSeq = expectRpcMsgByPF(withNewSession = true) {
@@ -203,13 +196,13 @@ class ContactServiceSpec extends RpcSpec {
       }
       val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
       val users = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users
       }
       users.should_==(responseContacts)
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
       val importedUsers = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users
       }
@@ -220,11 +213,11 @@ class ContactServiceSpec extends RpcSpec {
         case r: ResponseSeq => r
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContactsListCache.emptySHA1Hash))
+      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
       val contactsUsers = expectRpcMsgByPF() {
         case r: ResponseGetContacts => r.users
       }
       contactsUsers.isEmpty.should_==(true)
-    }*/
+    }
   }
 }

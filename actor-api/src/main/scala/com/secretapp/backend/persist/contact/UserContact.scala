@@ -2,12 +2,25 @@ package com.secretapp.backend.persist.contact
 
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.models
+import java.security.MessageDigest
 import scala.collection.immutable
 import scala.concurrent._
 import scala.language.postfixOps
 import scalikejdbc._
+import scodec.bits._
 
-object UserContact extends SQLSyntaxSupport[models.contact.UserContact] {
+trait UserContactHelpers {
+  private lazy val mdSha256 = MessageDigest.getInstance("SHA-256")
+
+  def getSHA1Hash(ids: immutable.Set[Int]): String = {
+    val uids = ids.to[immutable.SortedSet].mkString(",")
+    BitVector(mdSha256.digest(uids.getBytes)).toHex
+  }
+
+  lazy val emptySHA1Hash = getSHA1Hash(Set())
+}
+
+object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with UserContactHelpers {
   override val tableName = "user_contacts"
   override val columnNames = Seq(
     "owner_user_id",
@@ -78,6 +91,29 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] {
         name = name,
         accessSalt = accessSalt
       )
+    }
+  }
+
+  def findAllContactIds(ownerUserId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
+  ): Future[immutable.Set[Int]] = Future {
+    blocking {
+      withSQL {
+        select(uc.contactUserId).from(UserContact as uc)
+          .where.append(isNotDeleted)
+          .and.eq(uc.ownerUserId, ownerUserId)
+      }.map(rs => rs.int(column.contactUserId)).list.apply.toSet
+    }
+  }
+
+  def findAllContactIdsAndDeleted(ownerUserId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
+  ): Future[immutable.Set[Int]] = Future {
+    blocking {
+      withSQL {
+        select(uc.contactUserId).from(UserContact as uc)
+          .where.eq(uc.ownerUserId, ownerUserId)
+      }.map(rs => rs.int(column.contactUserId)).list.apply.toSet
     }
   }
 

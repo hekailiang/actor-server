@@ -67,7 +67,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
     val usersSeq = for {
       phones <- persist.UserPhone.findAllByNumbers(phoneNumbers)
-      ignoredContactsId <- persist.contact.UserContactsListCache.getContactsAndDeletedId(currentUser.uid)
+      ignoredContactsId <- persist.contact.UserContact.findAllContactIdsAndDeleted(currentUser.uid)
       uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
       usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
@@ -92,7 +92,6 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
           }
 
           val clFuture = persist.contact.UserContact.createAll(currentUser.uid, usersTuple)
-          val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
           val responseFuture = broadcastCUUpdateAndGetState(
             currentUser,
             updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
@@ -102,7 +101,6 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
 
           for {
             _ <- clFuture
-            _ <- clCacheFuture
             response <- responseFuture
           } yield response
         } else Future.successful(Ok(ResponseImportContacts(immutable.Seq[struct.User](), 0, None)))
@@ -112,8 +110,8 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
   def handleRequestGetContacts(contactsHash: String): Future[RpcResponse] = {
     val authId = currentAuthId
     val currentUser = getUser.get
-    persist.contact.UserContactsListCache.getContactsId(currentUser.uid) flatMap { contactsId =>
-      if (contactsHash == persist.contact.UserContactsListCache.getSHA1Hash(contactsId)) {
+    persist.contact.UserContact.findAllContactIds(currentUser.uid) flatMap { contactsId =>
+      if (contactsHash == persist.contact.UserContact.getSHA1Hash(contactsId)) {
         Future.successful(Ok(ResponseGetContacts(immutable.Seq[struct.User](), isNotChanged = true)))
       } else {
         for {
