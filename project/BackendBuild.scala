@@ -70,6 +70,14 @@ object BackendBuild extends Build {
     )
   )
 
+  lazy val actorTestkit = Project(
+    id   = "actor-testkit",
+    base = file("actor-testkit"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.testkit
+    )
+  )
+
   lazy val actorProtobuf = Project(
     id       = "actor-protobuf",
     base     = file("actor-protobuf"),
@@ -98,7 +106,7 @@ object BackendBuild extends Build {
       flywaySchemas := Seq("public"),
       flywayLocations := Seq("sql/migration")
     )
-  ).dependsOn(actorModels, actorProtobuf)
+  ).dependsOn(actorModels, actorProtobuf, actorTestkit % "test")
 
   lazy val actorRestApi = Project(
     id       = "actor-restapi",

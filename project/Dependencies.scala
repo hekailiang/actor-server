@@ -49,7 +49,7 @@ object Dependencies {
   }
 
   object Test {
-    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka               % "test"
+    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka
     val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
     val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"
     val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
@@ -66,6 +66,13 @@ object Dependencies {
   val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert)
 
   val util      = Seq(akkaActor, akkaSlf4j)
+
+  val testkit   = Seq(
+    akkaActor,
+    akkaSlf4j,
+    akkaTestkit,
+    specs2
+  )
 
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
