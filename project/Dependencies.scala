@@ -77,7 +77,7 @@ object Dependencies {
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
-    sprayClient, uuid
+    sprayClient, uuid, postgresAsync
   )
 
   val deploy    = Seq(traceAkka)

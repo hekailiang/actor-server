@@ -2,4 +2,8 @@ actor-server {
   sql {
     user = "john"
   }
+
+  akka-persistence-sql-async {
+    user = "john"
+  }
 }

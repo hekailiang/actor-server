@@ -62,6 +62,8 @@ object BackendBuild extends Build {
    .dependsOn(actorApi, actorModels, actorPersist)
    .aggregate(actorTests, actorPersist, actorProtobuf)
 
+  lazy val akkaPersistenceSqlAsync = uri("git://github.com/prettynatty/akka-persistence-sql-async.git")
+
   lazy val actorUtil = Project(
     id   = "actor-util",
     base = file("actor-util"),
@@ -123,11 +125,11 @@ object BackendBuild extends Build {
     id       = "actor-api",
     base     = file("actor-api"),
     settings = defaultSettings
-  ).dependsOn(actorPersist, actorUtil, actorProtobuf)
+  ).dependsOn(actorPersist, actorUtil, actorProtobuf, akkaPersistenceSqlAsync)
 
   lazy val actorTests = Project(
     id       = "actor-tests",
     base     = file("actor-tests"),
     settings = defaultSettings
-  ).dependsOn(actorApi, actorModels, actorPersist)
+  ).dependsOn(actorApi, actorModels, actorPersist, actorTestkit % "test")
 }
