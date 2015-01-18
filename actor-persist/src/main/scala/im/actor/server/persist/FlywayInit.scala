@@ -1,9 +1,9 @@
-package im.actor.server.persist.unit
+package im.actor.server.persist
 
 import com.typesafe.config._
 import org.flywaydb.core.Flyway
 
-private[unit] trait FlywayInit {
+trait FlywayInit {
   def initFlyway(sqlConfig: Config) = {
     val flyway = new Flyway()
     flyway.setDataSource(sqlConfig.getString("url"), sqlConfig.getString("user"), sqlConfig.getString("password"))

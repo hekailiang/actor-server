@@ -16,9 +16,9 @@ object DBConnector {
 
   val keySpace = dbConfig.getString("keyspace")
 
-  val akkaDbConfig = serverConfig.getConfig("cassandra-journal")
+  /*val akkaDbConfig = serverConfig.getConfig("cassandra-journal")
 
-  val akkaKeySpace = akkaDbConfig.getString("keyspace")
+  val akkaKeySpace = akkaDbConfig.getString("keyspace")*/
 
   val cluster = Cluster.builder()
     .addContactPoints(dbConfig.getStringList("contact-points") :_*)
@@ -37,10 +37,10 @@ object DBConnector {
   lazy val session = blocking {
     cluster.connect(keySpace)
   }
-
+/*
   lazy val akkaSession = blocking {
     cluster.connect(akkaKeySpace)
-  }
+  }*/
 
   def createTables(session: Session)(implicit ec: ExecutionContext with Executor) = {
     //val fileRecord = new File()(session, ec)

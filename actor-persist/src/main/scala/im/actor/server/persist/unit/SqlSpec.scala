@@ -1,6 +1,7 @@
 package im.actor.server.persist.unit
 
 import com.typesafe.config._
+import im.actor.server.persist.{ FlywayInit, DbInit }
 import org.specs2.execute.AsResult
 import org.specs2.mutable.Before
 import org.specs2.specification._

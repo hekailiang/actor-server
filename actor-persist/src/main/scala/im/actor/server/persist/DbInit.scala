@@ -1,9 +1,9 @@
-package im.actor.server.persist.unit
+package im.actor.server.persist
 
 import com.typesafe.config._
 import scalikejdbc._, async._
 
-private[unit] trait DbInit {
+trait DbInit {
   protected def sqlConfig: Config
 
   def initDb(sqlConfig: Config) = {
