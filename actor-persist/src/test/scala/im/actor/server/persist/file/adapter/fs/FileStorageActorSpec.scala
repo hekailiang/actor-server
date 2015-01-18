@@ -11,7 +11,18 @@ import org.specs2.mutable
 import scala.concurrent.duration._
 
 class FileStorageActorSpec extends ActorSpecification(
-  ActorSystem("actor-server-test", ConfigFactory.load().getConfig("actor-server"))
+  ActorSystem(
+    "actor-server-test",
+    ConfigFactory.parseString("""
+       actor-server {
+         file-storage {
+           close-timeout = 3 seconds
+         }
+       }
+    """)
+      .withFallback(ConfigFactory.load())
+      .getConfig("actor-server")
+  )
 ) {
   import FileStorageProtocol._
 
@@ -40,6 +51,7 @@ class FileStorageActorSpec extends ActorSpecification(
   }
 
   "FileStorageActor" should {
+
     "create file on write" in new cleaner {
       fsActor ! Write(fileName, 0, ByteString("one two"))
       fsActor ! Write(fileName, 7, ByteString(" three".getBytes))
@@ -59,6 +71,9 @@ class FileStorageActorSpec extends ActorSpecification(
     }
 
     "write bytes in proper order" in new cleaner {
+      // Let closer to close fileopened in prev spec and removed by cleaner
+      Thread.sleep(3500)
+
       fsActor ! Write(fileName, 10, ByteString("one two three"))
       fsActor ! Write(fileName, 0, ByteString("0123456789"))
 

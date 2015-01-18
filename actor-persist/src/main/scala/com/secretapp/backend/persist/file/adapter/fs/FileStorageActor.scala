@@ -73,7 +73,7 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
       raf.seek(offset)
       raf.write(bytes.toArray)
 
-      rescheduleCloseRW(name)
+      cacheAndScheduleCloseRW(name, raf)
 
       sender ! Wrote
     case Read(name, offset, length) =>
@@ -84,7 +84,7 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
 
           sender ! ReadBytes(name, ByteString(bytes))
 
-          rescheduleCloseR(name)
+          cacheAndScheduleCloseR(name, raf)
         case Failure(_) =>
           sender ! FileNotExists
       }
@@ -103,11 +103,11 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
   }
 
   private def getOrOpenRW(name: String): RandomAccessFile = {
-    filesRW.get(name).getOrElse(openWithCloserRW(name))._1
+    filesRW.get(name).map(_._1).getOrElse(openRW(name))
   }
 
   private def getOrOpenR(name: String): Try[RandomAccessFile] = {
-    filesR.get(name).map(Success(_)).getOrElse(openWithCloserR(name)) map (_._1)
+    filesR.get(name).map(fc => Success(fc._1)).getOrElse(openR(name))
   }
 
   private def mkFile(name: String): File = {
@@ -128,24 +128,18 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
     basePath.resolve(pathStr).toFile
   }
 
-  private def openWithCloserRW(name: String): FileWithCloser = {
+  private def openRW(name: String): RandomAccessFile = {
     val file = mkFile(name)
     file.getParentFile.mkdirs()
 
-    (
-      new RandomAccessFile(file, "rw"),
-      scheduleCloseRW(name)
-    )
+    new RandomAccessFile(file, "rw")
   }
 
-  private def openWithCloserR(name: String): Try[FileWithCloser] = {
+  private def openR(name: String): Try[RandomAccessFile] = {
     val file = mkFile(name)
 
     Try {
-      (
-        new RandomAccessFile(file, "r"),
-        scheduleCloseR(name)
-      )
+      new RandomAccessFile(file, "r")
     }
   }
 
@@ -167,6 +161,7 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
     doRead(length, new Array[Byte](0))
   }
 
+  /*
   private def rescheduleCloseRW(name: String): Unit = {
     filesRW.get(name) map {
       case (raf, closer) =>
@@ -194,6 +189,7 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
         )
     }
   }
+   */
 
   private def scheduleCloseRW(name: String): Cancellable = {
     context.system.scheduler.scheduleOnce(closeTimeout, self, CloseRW(name))
@@ -201,5 +197,21 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
 
   private def scheduleCloseR(name: String): Cancellable = {
     context.system.scheduler.scheduleOnce(closeTimeout, self, CloseR(name))
+  }
+
+  private def cacheAndScheduleCloseRW(name: String, raf: RandomAccessFile): Unit = {
+    filesRW.get(name).map(_._2.cancel())
+    filesRW = filesRW + Tuple2(
+      name,
+      (raf, scheduleCloseRW(name))
+    )
+  }
+
+  private def cacheAndScheduleCloseR(name: String, raf: RandomAccessFile): Unit = {
+    filesR.get(name).map(_._2.cancel())
+    filesR = filesR + Tuple2(
+      name,
+      (raf, scheduleCloseR(name))
+    )
   }
 }
