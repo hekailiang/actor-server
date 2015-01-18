@@ -53,6 +53,7 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
 
 
   private val basePath = FileStorageAdapter.mkBasePath(basePathStr)
+  basePath.toFile.mkdir()
 
   val fsActor = system.actorOf(FileStorageActor.props(
     closeTimeout = closeTimeout,
