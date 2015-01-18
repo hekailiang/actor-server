@@ -24,9 +24,9 @@ object File {
     f
   }
 
-  private def withValidOL[A](offset:Int, limit: Int)(f: A): A = withValidOffsetLimit(offset, limit)(f)
+  private def withValidOL[A](offset:Int, limit: Int)(f: => A): A = withValidOffsetLimit(offset, limit)(f)
 
-  private def withValidOffsetLimit[A](offset: Int, limit: Int)(f: A): A = {
+  private def withValidOffsetLimit[A](offset: Int, limit: Int)(f: => A): A = {
     if (!offsetValid(offset))
       throw new OffsetInvalid
 
