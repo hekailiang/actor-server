@@ -3,10 +3,8 @@ package im.actor.server.persist.file.adapter.fs
 import akka.actor._
 import akka.util.ByteString
 import java.io.RandomAccessFile
-import java.net.URI
 import java.io.File
-import java.nio.file.{ Files, Paths }
-import java.security.MessageDigest
+import java.nio.file.{ Files, Path }
 import scala.collection.immutable
 import scala.collection.JavaConversions._
 import scala.concurrent._, duration._
@@ -31,24 +29,24 @@ object FileStorageProtocol {
   case class Read(name: String, offset: Int, length: Int) extends Message
 
   @SerialVersionUID(1L)
-  case class ReadBytes(name: String, bytes: ByteString) extends Message
+  case class ReadBytes(name: String, data: ByteString) extends Message
 
   @SerialVersionUID(1L)
   case object FileNotExists extends Message
 }
 
 object FileStorageActor {
-  def props(closeTimeout: FiniteDuration, basePathStr: String, pathDepth: Int): Props = {
+  def props(closeTimeout: FiniteDuration, basePath: Path, pathDepth: Int): Props = {
     val maxPathDepth = 15
 
     if (pathDepth > maxPathDepth)
       throw new Error(s"PathDepth can not be more than $maxPathDepth")
 
-    Props(classOf[FileStorageActor], closeTimeout, basePathStr, pathDepth)
+    Props(classOf[FileStorageActor], closeTimeout, basePath, pathDepth)
   }
 }
 
-class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDepth: Int = 6) extends Actor {
+class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: Int = 6) extends Actor with ActorLogging {
   import context.dispatcher
   import FileStorageProtocol._
 
@@ -56,13 +54,10 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
 
   private var filesRW: immutable.Map[String, FileWithCloser] = immutable.Map.empty
   private var filesR: immutable.Map[String, FileWithCloser] = immutable.Map.empty
-  private val md = MessageDigest.getInstance("md5")
-
-  private val rootURI = new URI("file:///")
-  private val basePath = Paths.get(rootURI).resolve(basePathStr)
 
   def receive = {
     case Write(name, offset, bytes) =>
+      //log.debug("Writing to {}", name)
       val raf = getOrOpenRW(name)
 
       val requiredLength = offset + bytes.length
@@ -110,33 +105,19 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePathStr: String, pathDe
     filesR.get(name).map(fc => Success(fc._1)).getOrElse(openR(name))
   }
 
-  private def mkFile(name: String): File = {
-    @inline
-    def bytesToHex(bytes: Array[Byte], sep: String = ""): String =
-      bytes.map("%02x".format(_)).mkString(sep)
-
-    @inline
-    def mkPathStr(digest: Array[Byte], depth: Int): String = {
-      val (dirNameBytes, fileNameBytes) = digest.splitAt(depth)
-
-      bytesToHex(dirNameBytes, "/") + "/" + bytesToHex(fileNameBytes)
-    }
-
-    val digest = md.digest(name.getBytes)
-
-    val pathStr = mkPathStr(digest, pathDepth)
-    basePath.resolve(pathStr).toFile
-  }
-
   private def openRW(name: String): RandomAccessFile = {
-    val file = mkFile(name)
+    val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
     file.getParentFile.mkdirs()
+
+    //log.debug("Opening file(rw) {}", file)
 
     new RandomAccessFile(file, "rw")
   }
 
   private def openR(name: String): Try[RandomAccessFile] = {
-    val file = mkFile(name)
+    val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
+
+    //log.debug("Opening file(r) {}", file)
 
     Try {
       new RandomAccessFile(file, "r")

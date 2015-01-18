@@ -2,6 +2,7 @@
 <configuration>
     <logger name="com.datastax" level="WARN"/>
     <logger name="com.websudos" level="WARN"/>
+    <logger name="org.flywaydb" level="WARN"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <withJansi>true</withJansi>

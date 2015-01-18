@@ -176,6 +176,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
               longitude = None
             )
 
+            log.debug("Sending AuthorizeUser to session actor")
             sessionActor ! SessionProtocol.AuthorizeUser(u)
 
             for {

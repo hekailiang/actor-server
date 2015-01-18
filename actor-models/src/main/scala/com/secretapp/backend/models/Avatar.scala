@@ -7,13 +7,13 @@ case class Avatar(
   fullImage: Option[AvatarImage]
 ) {
   lazy val avatarData = AvatarData(
-    smallAvatarFileId = smallImage map (_.fileLocation.fileId.toInt),
+    smallAvatarFileId = smallImage map (_.fileLocation.fileId),
     smallAvatarFileHash = smallImage map (_.fileLocation.accessHash),
     smallAvatarFileSize = smallImage map (_.fileSize),
-    largeAvatarFileId = largeImage map (_.fileLocation.fileId.toInt),
+    largeAvatarFileId = largeImage map (_.fileLocation.fileId),
     largeAvatarFileHash = largeImage map (_.fileLocation.accessHash),
     largeAvatarFileSize = largeImage map (_.fileSize),
-    fullAvatarFileId = fullImage map (_.fileLocation.fileId.toInt),
+    fullAvatarFileId = fullImage map (_.fileLocation.fileId),
     fullAvatarFileHash = fullImage map (_.fileLocation.accessHash),
     fullAvatarFileSize = fullImage map (_.fileSize),
     fullAvatarWidth = fullImage map (_.width),

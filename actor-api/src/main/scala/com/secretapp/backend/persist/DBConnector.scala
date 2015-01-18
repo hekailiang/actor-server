@@ -43,7 +43,7 @@ object DBConnector {
   }
 
   def createTables(session: Session)(implicit ec: ExecutionContext with Executor) = {
-    val fileRecord = new File()(session, ec)
+    //val fileRecord = new File()(session, ec)
 
     Future.sequence(List(
       //ApplePushCredentials.createTable(session),
@@ -61,13 +61,13 @@ object DBConnector {
       //contact.UserContactsListCache.createTable(session),
       //UserGroup.createTable(session),
       //UserPhone.createTable(session),
-      UserEmail.createTable(session),
+      UserEmail.createTable(session)
       //UserPublicKey.createTable(session),
       //User.createTable(session),
       //Dialog.createTable(session),
       //DialogUnreadCounter.createTable(session),
       //HistoryMessage.createTable(session),
-      fileRecord.createTable(session)
+      //fileRecord.createTable(session)
     ))
   }
 }

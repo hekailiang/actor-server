@@ -23,6 +23,7 @@ import com.secretapp.backend.session._
 import com.websudos.util.testing._
 import java.net.InetSocketAddress
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
+import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -53,8 +54,10 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   protected var incMessageId = 0L
 
   val singletons = new Singletons
+  val fileAdapter = new FileStorageAdapter(system)
+
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, csession)
+  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system, csession)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
@@ -99,8 +102,8 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    val createPhoneFuture = persist.UserPhone.findByNumber(phone.number) map {
-      case Some(p) => p
+    val createPhoneFuture = persist.UserPhone.findByNumber(phone.number) flatMap {
+      case Some(p) => Future successful p
       case None =>
         persist.UserPhone.create(
           userId = phone.userId,
@@ -111,7 +114,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
         )
     }
 
-    val createUserFuture = persist.User.find(u.uid)(None) map {
+    val createUserFuture = persist.User.find(u.uid)(None) flatMap {
       case Some(exUser) =>
         persist.User.savePartial(
           id = u.uid,

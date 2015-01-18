@@ -1,12 +1,12 @@
 package com.secretapp.backend.services.rpc.user
 
-import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference, ResponseSeq }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.util.{ACL, AvatarUtils}
+import java.nio.file.{ Files, Paths }
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
@@ -19,7 +19,7 @@ import com.websudos.util.testing._
 class UserServiceEditAvatarSpec extends RpcSpec {
   "valid avatar" should {
     "have proper size" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       validOrigBytes must have size 112527
     }
@@ -27,7 +27,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
 
   "user service on receiving `RequestSetAvatar`" should {
     "respond with `ResponseAvatarUploaded`" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       val r = setValidAvatarShouldBeOk
 
@@ -45,10 +45,11 @@ class UserServiceEditAvatarSpec extends RpcSpec {
       r.avatar.largeImage.get.height        should_== validLargeDimensions._2
       r.avatar.largeImage.get.fileSize      should_== validLargeBytes.length
       dbImageBytes(r.avatar.largeImage.get) should_== validLargeBytes
+
     }
 
     "update user avatar" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       setValidAvatarShouldBeOk
 
@@ -59,7 +60,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     }
 
     "store full image in user avatar" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       setValidAvatarShouldBeOk
 
@@ -70,7 +71,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     }
 
     "store large image in user avatar" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       setValidAvatarShouldBeOk
 
@@ -81,7 +82,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     }
 
     "store small image in user avatar" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       setValidAvatarShouldBeOk
 
@@ -92,7 +93,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     }
 
     "append update to chain" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
@@ -138,13 +139,13 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     }
 
     "respond with IMAGE_LOAD_ERROR if invalid image passed" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       RequestEditAvatar(invalidFileLocation) :~> <~:(400, "IMAGE_LOAD_ERROR")
     }
 
     "respond with FILE_TOO_BIG if huge image passed" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       RequestEditAvatar(tooLargeFileLocation) :~> <~:(400, "FILE_TOO_BIG")
     }
@@ -152,7 +153,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
 
   "user service on receiving `RequestSetAvatar`" should {
     "remove user avatar" in new sqlDb {
-      initScopeAndStoreImages()
+      implicit val scope = initScopeAndStoreImages()
 
       setValidAvatarShouldBeOk
 
@@ -166,20 +167,18 @@ class UserServiceEditAvatarSpec extends RpcSpec {
 
   implicit val timeout = 5.seconds
 
-  private implicit var scope: TestScope = _
   private var validFileLocation: models.FileLocation = _
   private var invalidFileLocation: models.FileLocation = _
   private var tooLargeFileLocation: models.FileLocation = _
 
   def initScopeAndStoreImages() = {
-    scope = TestScope()
+    val scope = TestScope(rand.nextInt)
     catchNewSession(scope)
     validFileLocation = storeImage(42, validOrigBytes)
     invalidFileLocation = storeImage(43, invalidBytes)
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
+    scope
   }
-
-  private val fr = new persist.File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
@@ -197,14 +196,14 @@ class UserServiceEditAvatarSpec extends RpcSpec {
   private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
   private val validSmallDimensions = (100, 100)
 
-  private def storeImage(fileId: Int, bytes: Array[Byte]): models.FileLocation = {
+  private def storeImage(fileId: Long, bytes: Array[Byte]): models.FileLocation = {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
-      _    <- fr.createFile(fileId, fileSalt);
-      _    <- fr.write(fileId, 0, bytes);
-      hash <- ACL.fileAccessHash(fr, fileId);
-      fl    = models.FileLocation(fileId, hash)
+      _    <- persist.File.create(fileAdapter, fileId, fileSalt);
+      _    <- persist.File.write(fileAdapter, fileId, 0, bytes);
+      fdOpt<- persist.FileData.find(fileId);
+      fl    = models.FileLocation(fileId, ACL.fileAccessHash(fileId, fdOpt.get.accessSalt))
     ) yield fl
 
     ffl.sync()
@@ -215,19 +214,19 @@ class UserServiceEditAvatarSpec extends RpcSpec {
     rsp
   }
 
-  private def dbUserAvatar =
+  private def dbUserAvatar(implicit scope: TestScope) =
     persist.User.findWithAvatar(scope.user.uid)(Some(scope.user.authId)).sync().get
 
-  private def dbUser = dbUserAvatar._1
-  private def dbAvatarData = dbUserAvatar._2
+  private def dbUser(implicit scope: TestScope) = dbUserAvatar._1
+  private def dbAvatarData(implicit scope: TestScope) = dbUserAvatar._2
 
-  private def dbAvatar = dbAvatarData.avatar.get
-  private def dbFullImage = dbAvatar.fullImage.get
-  private def dbLargeImage = dbAvatar.largeImage.get
-  private def dbSmallImage = dbAvatar.smallImage.get
+  private def dbAvatar(implicit scope: TestScope) = dbAvatarData.avatar.get
+  private def dbFullImage(implicit scope: TestScope) = dbAvatar.fullImage.get
+  private def dbLargeImage(implicit scope: TestScope) = dbAvatar.largeImage.get
+  private def dbSmallImage(implicit scope: TestScope) = dbAvatar.smallImage.get
 
   private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
-    fr.getFile(a.fileLocation.fileId.toInt).sync()
+    persist.File.readAll(fileAdapter, a.fileLocation.fileId).sync()
 
   private def connectWithUser(u: models.User)(implicit scope: TestScope) = {
     val rq = RequestSendEncryptedMessage(

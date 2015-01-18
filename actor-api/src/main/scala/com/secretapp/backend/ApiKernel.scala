@@ -1,7 +1,6 @@
 package com.secretapp.backend
 
 import akka.cluster.Cluster
-import java.net.InetSocketAddress
 import akka.actor.{ ActorSystem, Props }
 import akka.io.{ IO, Tcp }
 import akka.kernel.Bootable
@@ -10,6 +9,8 @@ import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
 import com.typesafe.config._
+import java.net.InetSocketAddress
+import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import scala.concurrent.duration._
 import spray.can.Http
 import spray.can.server.UHttp
@@ -32,8 +33,10 @@ class ApiKernel extends Bootable {
     // Session bootstrap
     val singletons = new Singletons
 
+    val fileAdapter = new FileStorageAdapter(system)
+
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-    val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, session)
+    val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system, session)
 
     val serverConfig = system.settings.config.getConfig("server")
 

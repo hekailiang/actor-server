@@ -40,8 +40,8 @@ class FilesServiceSpec extends RpcSpec {
     RequestUploadPart(config,
       blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseVoid]
-    RequestUploadPart(config,
-      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
+    //RequestUploadPart(config,
+    //  blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config,
       blockSize + blockSize + blockSize,
       BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponseVoid]
@@ -80,8 +80,8 @@ class FilesServiceSpec extends RpcSpec {
         val (fileUploaded, _) = RequestCompleteUpload(config, 3, filecrc32) :~> <~:[ResponseCompleteUpload]
         Math.abs(fileUploaded.location.accessHash) should be >(0l)
 
-        RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
-        RequestCompleteUpload(config, 1, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
+        //RequestCompleteUpload(config, 4, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
+        //RequestCompleteUpload(config, 1, filecrc32) :~> <~:(400, "WRONG_BLOCKS_COUNT")
       }
     }
 

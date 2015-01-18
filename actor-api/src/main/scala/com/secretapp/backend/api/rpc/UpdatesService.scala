@@ -33,8 +33,11 @@ import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 
 class UpdatesServiceActor(
-  val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val subscribedToUpdates: Boolean,
-  val currentUserId: Int, val currentAuthId: Long
+  val sessionActor: ActorRef,
+  val updatesBrokerRegion: ActorRef,
+  val subscribedToUpdates: Boolean,
+  val currentUserId: Int,
+  val currentAuthId: Long
 )(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 

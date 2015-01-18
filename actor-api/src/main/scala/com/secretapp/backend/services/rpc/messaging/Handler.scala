@@ -9,6 +9,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import im.actor.server.persist.file.adapter.FileAdapter
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -16,7 +17,7 @@ class Handler(
   val updatesBrokerRegion: ActorRef,
   val socialBrokerRegion: ActorRef,
   val dialogManagerRegion: ActorRef,
-  val fileRecord: persist.File,
+  val fileAdapter: FileAdapter,
   val currentUser: models.User
 )(implicit val session: CSession)
   extends Actor with ActorLogging with MessagingHandlers with GroupHandlers with HistoryHandlers {

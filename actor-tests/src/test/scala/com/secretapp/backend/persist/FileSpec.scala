@@ -1,11 +1,15 @@
 package com.secretapp.backend.persist
 
+import akka.actor._
 import akka.util.Timeout
 import com.datastax.driver.core.ConsistencyLevel
-import com.websudos.phantom.Implicits._
-import com.websudos.util.testing._
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
+import com.typesafe.config._
+import com.websudos.phantom.Implicits._
+import com.websudos.util.testing._
+import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
+import im.actor.server.persist.unit.SqlSpec
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -16,26 +20,28 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 
-class FileSpec extends CassandraSpecification {
+class FileSpec extends CassandraSpecification with SqlSpec {
   "FileRecord" should {
-    "insert and get file" in {
-      val Record = new File
+    "insert and get file" in new sqlDb {
+      val system = ActorSystem("file-spec", ConfigFactory.load().getConfig("actor-server"))
+
+      val fa = new FileStorageAdapter(system)
 
       val fileId = 1
       val content = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
       val fileSize = content.length
 
-      val fResult = Record.write(fileId, 0, content) map { _ =>
+      val fResult = File.write(fa, fileId, 0, content) map { _ =>
 
         val (fv1, fv2, fv3, fv4, fv5, fv6, feverything1, feverything2) = (
-          Record.getFile(fileId, 0, 1024),
-          Record.getFile(fileId, 0, 8192),
-          Record.getFile(fileId, 0, 9216), // more than a blocksize
-          Record.getFile(fileId, 1024, 1024),
-          Record.getFile(fileId, 1024, 9216),
-          Record.getFile(fileId, fileSize - 1024, 1024),
-          Record.getFile(fileId, 0, fileSize),
-          Record.getFile(fileId)
+          File.read(fa, fileId, 0, 1024),
+          File.read(fa, fileId, 0, 8192),
+          File.read(fa, fileId, 0, 9216), // more than a blocksize
+          File.read(fa, fileId, 1024, 1024),
+          File.read(fa, fileId, 1024, 9216),
+          File.read(fa, fileId, fileSize - 1024, 1024),
+          File.read(fa, fileId, 0, fileSize),
+          File.readAll(fa, fileId)
         )
 
         val f = for {

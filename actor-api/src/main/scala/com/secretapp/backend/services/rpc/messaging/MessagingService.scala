@@ -29,7 +29,7 @@ trait MessagingService {
         updatesBrokerRegion,
         socialBrokerRegion,
         singletons.dialogManagerRegion,
-        fileRecord,
+        fileAdapter,
         currentUser.get
       )
     ), "messaging")

@@ -9,6 +9,7 @@ import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
+import im.actor.server.persist.file.adapter.FileAdapter
 import scala.util.{ Failure, Success }
 import scalaz._
 import Scalaz._
@@ -21,8 +22,13 @@ object ApiBrokerProtocol {
 }
 
 class ApiBrokerActor(
-  val currentAuthId: Long, val currentSessionId: Long, val singletons: Singletons,
-  val subscribedToUpdates: Boolean, val session: CSession) extends Actor with ActorLogging with ApiBrokerService {
+  val currentAuthId: Long,
+  val currentSessionId: Long,
+  val singletons: Singletons,
+  val fileAdapter: FileAdapter,
+  val subscribedToUpdates: Boolean,
+  val session: CSession
+) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 
   import context._

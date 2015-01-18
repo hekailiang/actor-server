@@ -8,15 +8,14 @@ import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Error}
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
-import com.secretapp.backend.models.FileLocation
 import com.secretapp.backend.persist
-import com.secretapp.backend.util.AvatarUtils
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
 import scalaz.Scalaz._
 
 trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   val context: ActorContext
+
   implicit val session: CSession
   implicit val timeout: Timeout
 
@@ -82,33 +81,6 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
     getGroupUserAuthIds(groupId) map {
       _ foreach f
     }
-
-  def withValidAvatar(fr: persist.File, fl: FileLocation)(f: => Future[RpcResponse]): Future[RpcResponse] =
-    fr.getFileLength(fl.fileId.toInt) flatMap { len =>
-      val sizeLimit: Long = 1024 * 1024 // TODO: configurable
-
-      if (len > sizeLimit)
-        Future successful Error(400, "FILE_TOO_BIG", "", false)
-      else
-        f
-    }
-
-  def withScaledAvatar(fr: persist.File, fl: FileLocation)
-                      (f: models.Avatar => Future[RpcResponse])
-                      (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[RpcResponse] =
-    AvatarUtils.scaleAvatar(fr, fl) flatMap f recover {
-      case e =>
-        log.warning(s"Failed while updating avatar: $e")
-        Error(400, "IMAGE_LOAD_ERROR", "", false)
-    }
-
-  def withValidScaledAvatar(fr: persist.File, fl: FileLocation)
-                           (f: models.Avatar => Future[RpcResponse])
-                           (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[RpcResponse] =
-    withValidAvatar(fr, fl) {
-      withScaledAvatar(fr, fl)(f)
-    }
-
   def leaveGroup(groupId: Int, randomId: Long, currentUser: models.User): Future[Error \/ UpdatesBroker.StrictState] = {
     val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
     val date = System.currentTimeMillis()

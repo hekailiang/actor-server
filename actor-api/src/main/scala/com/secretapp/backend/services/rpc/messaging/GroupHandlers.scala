@@ -25,7 +25,12 @@ import scalaz._
 import Scalaz._
 import scodec.bits._
 
-trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers with PeerHelpers with UpdatesHelpers {
+trait GroupHandlers extends RandomService
+    with UserHelpers
+    with GroupHelpers
+    with GroupAvatarHelpers
+    with PeerHelpers
+    with UpdatesHelpers {
   self: Handler =>
 
   import context.{ dispatcher, system }
@@ -351,7 +356,7 @@ trait GroupHandlers extends RandomService with UserHelpers with GroupHelpers wit
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
       val sizeLimit: Long = 1024 * 1024 // TODO: configurable
 
-      withValidScaledAvatar(fileRecord, fileLocation) { a =>
+      withValidScaledAvatar(fileLocation) { a =>
         val groupAvatarChangedUpdate = GroupAvatarChanged(
           groupId,
           randomId,

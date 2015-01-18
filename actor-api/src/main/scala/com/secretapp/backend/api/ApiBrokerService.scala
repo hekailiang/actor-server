@@ -20,6 +20,7 @@ import com.secretapp.backend.services.rpc.push.PushService
 import com.secretapp.backend.services.rpc.user.UserService
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.api.rpc._
+import im.actor.server.persist.file.adapter.FileAdapter
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{ Success, Failure }
@@ -29,14 +30,15 @@ import Scalaz._
 trait ApiError extends Exception
 case object UserNotAuthenticated extends ApiError
 
-trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with persist.CassandraRecords with RpcUpdatesService with MessagingService with ContactService with FilesService
-with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
+trait ApiBrokerService extends GeneratorService with UserManagerService with SignService with RpcUpdatesService with MessagingService with ContactService with FilesService
+    with PublicKeysService with PresenceService with TypingService with UserService with ActorLogging with PushService {
   self: ApiBrokerActor =>
   import SocialProtocol._
 
   val sessionActor: ActorRef
   val currentAuthId: Long
   val singletons: Singletons
+  val fileAdapter: FileAdapter
 
   val subscribedToUpdates: Boolean
 

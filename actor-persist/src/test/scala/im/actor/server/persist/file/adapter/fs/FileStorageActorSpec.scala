@@ -34,7 +34,7 @@ class FileStorageActorSpec extends ActorSpecification(
 
   val fsActor = system.actorOf(FileStorageActor.props(
     closeTimeout = fsConfig.getDuration("close-timeout", TimeUnit.MILLISECONDS).milliseconds,
-    basePathStr = fsConfig.getString("base-path"),
+    basePath = FileStorageAdapter.mkBasePath(fsConfig.getString("base-path")),
     pathDepth = fsConfig.getInt("path-depth")
   ), "fs")
 

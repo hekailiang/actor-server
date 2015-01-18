@@ -28,13 +28,13 @@ object AvatarData extends SQLSyntaxSupport[models.AvatarData] {
   def apply(ad: SyntaxProvider[models.AvatarData])(rs: WrappedResultSet): models.AvatarData = apply(ad.resultName)(rs)
 
   def apply(ad: ResultName[models.AvatarData])(rs: WrappedResultSet): models.AvatarData = models.AvatarData(
-    smallAvatarFileId = rs.intOpt(ad.smallAvatarFileId),
+    smallAvatarFileId = rs.longOpt(ad.smallAvatarFileId),
     smallAvatarFileHash = rs.longOpt(ad.smallAvatarFileHash),
     smallAvatarFileSize = rs.intOpt(ad.smallAvatarFileSize),
-    largeAvatarFileId = rs.intOpt(ad.largeAvatarFileId),
+    largeAvatarFileId = rs.longOpt(ad.largeAvatarFileId),
     largeAvatarFileHash = rs.longOpt(ad.largeAvatarFileHash),
     largeAvatarFileSize = rs.intOpt(ad.largeAvatarFileSize),
-    fullAvatarFileId = rs.intOpt(ad.fullAvatarFileId),
+    fullAvatarFileId = rs.longOpt(ad.fullAvatarFileId),
     fullAvatarFileHash = rs.longOpt(ad.fullAvatarFileHash),
     fullAvatarFileSize = rs.intOpt(ad.fullAvatarFileSize),
     fullAvatarWidth = rs.intOpt(ad.fullAvatarWidth),

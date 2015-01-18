@@ -1,12 +1,12 @@
 package com.secretapp.backend.services.rpc.user
 
-import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.util.{ACL, AvatarUtils}
+import java.nio.file.{ Files, Paths }
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
@@ -306,7 +306,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
-  private val fr = new persist.File
+  //private val fr = new persist.File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
@@ -328,10 +328,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
-      _    <- fr.createFile(fileId, fileSalt);
-      _    <- fr.write(fileId, 0, bytes);
-      hash <- ACL.fileAccessHash(fr, fileId);
-      fl    = models.FileLocation(fileId, hash)
+      _    <- persist.File.create(fileAdapter, fileId, fileSalt);
+      _    <- persist.File.write(fileAdapter, fileId, 0, bytes);
+      fdOpt<- persist.FileData.find(fileId);
+      fl   = models.FileLocation(fileId, ACL.fileAccessHash(fileId, fdOpt.get.accessSalt))
     ) yield fl
 
     ffl.sync()
@@ -356,7 +356,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
   private def dbSmallImage(groupId: Int) = dbAvatar(groupId).smallImage.get
 
   private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
-    fr.getFile(a.fileLocation.fileId.toInt).sync()
+    persist.File.readAll(fileAdapter, a.fileLocation.fileId).sync()
 
   private def createGroup(ownerScope: TestScope, scope2: TestScope) = {
     val rqCreateGroup = RequestCreateGroup(
