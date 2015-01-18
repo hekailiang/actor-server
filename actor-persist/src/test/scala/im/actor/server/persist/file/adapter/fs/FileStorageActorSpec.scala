@@ -16,7 +16,9 @@ class FileStorageActorSpec extends ActorSpecification(
     ConfigFactory.parseString("""
        actor-server {
          file-storage {
+           base-path = /tmp
            close-timeout = 3 seconds
+           path-depth = 5
          }
        }
     """)
