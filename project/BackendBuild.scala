@@ -32,11 +32,15 @@ object BackendBuild extends Build {
   lazy val defaultSettings =
     buildSettings ++
       Seq(
-        initialize                ~= { _ => sys.props("scalac.patmat.analysisBudget") = "off" },
+        initialize                ~= { _ =>
+          sys.props("scalac.patmat.analysisBudget") = "off"
+          if (sys.props("java.specification.version") != "1.8")
+            sys.error("Java 8 is required for this project.")
+        },
         resolvers                 ++= Resolvers.seq,
-        scalacOptions             ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
+        scalacOptions             ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
         javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),
-        javacOptions              ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
+        javacOptions              ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-Xlint:deprecation"),
         parallelExecution in Test :=  false,
         fork              in Test :=  true
       )

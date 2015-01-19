@@ -157,7 +157,6 @@ trait GroupHandlers extends RandomService
             addUserF flatMap { _ =>
               groupWithMetaFuture onFailure {
                 case e =>
-                  println(s"eeee $e")
               }
               for {
                 groupWithMetaOpt <- groupWithMetaFuture

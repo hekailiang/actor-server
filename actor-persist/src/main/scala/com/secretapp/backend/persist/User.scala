@@ -104,7 +104,6 @@ object User extends SQLSyntaxSupport[models.User] {
       ).where.eq(column.column("id"), id)
     }.update.apply
 
-    println(s"sssaving $publicKeyHash")
     for {
       _ <- AuthId.createOrUpdate(authId, Some(id))
       //_ <- Phone.updateUserName(phoneNumber, name)
