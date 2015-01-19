@@ -1,4 +1,10 @@
 actor-server {
+  file-storage {
+    close-timeout = 60 seconds
+    base-path = "/tmp/actor-storage"
+    path-depth = 5
+  }
+
   sql {
     url = "jdbc:postgresql://localhost:5432/actor"
     user = "postgres"
