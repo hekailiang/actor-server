@@ -41,6 +41,8 @@ with TestKitBase
 
   implicit lazy val system: ActorSystem = ActorSystem(systemName, config)
 
+  im.actor.testkit.ActorSpecification.cleanAkkaPersistence()
+
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)
     Thread.sleep(500)

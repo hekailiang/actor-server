@@ -9,3 +9,4 @@ actor-restapi/logs
 *.swp
 *~
 actor-tests/journal
+actor-tests/snapshots

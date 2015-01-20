@@ -11,6 +11,23 @@ import org.specs2.time.NoTimeConversions
 import org.specs2.specification.{ Step, Fragments }
 
 object ActorSpecification {
+  def cleanAkkaPersistence(): Unit = {
+    def delete(f: java.io.File): Unit = {
+      if (f.isDirectory()) {
+        for (c <- f.listFiles())
+          delete(c);
+      }
+      if (!f.delete())
+        throw new java.io.FileNotFoundException("Failed to delete file: " + f);
+    }
+
+    val journal = new java.io.File("journal")
+    val snapshots = new java.io.File("snapshots")
+
+    delete(journal)
+    delete(snapshots)
+  }
+
   def createSystem(systemName: String = "actor-server-test"): ActorSystem = {
     ActorSystem(systemName, createConfig(systemName))
   }
@@ -31,11 +48,13 @@ object ActorSpecification {
   }
 }
 
-abstract class ActorSpecification(system: ActorSystem = ActorSpecification.createSystem()) extends TestKit(system)
+abstract class ActorSpecification(system: ActorSystem = { ActorSpecification.createSystem() }) extends TestKit(system)
     with SpecificationLike
     with NoTimeConversions
     with ImplicitSender {
   sequential
+
+  ActorSpecification.cleanAkkaPersistence()
 
   implicit def anyToSuccess[T](a: T): org.specs2.execute.Result = Success()
 
