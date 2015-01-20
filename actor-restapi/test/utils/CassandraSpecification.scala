@@ -14,6 +14,7 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
   protected implicit lazy val session: Session = DbConnector.cluster.connect()
 
   private def createAndUseKeySpace(keySpace: String)(implicit session: Session): Unit = {
+
     Logger.trace(s"Creating keyspace $keySpace")
     session.execute(
       s"""

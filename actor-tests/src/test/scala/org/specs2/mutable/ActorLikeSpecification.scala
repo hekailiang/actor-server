@@ -1,6 +1,7 @@
 package org.specs2.mutable
 
 import akka.actor._
+import akka.cluster.Cluster
 import akka.io.Tcp._
 import akka.testkit._
 import com.secretapp.backend.api.counters._

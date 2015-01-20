@@ -31,7 +31,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit
     val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
     connection ! ResponseToClientWithDrop(pkg.encode)
     connection ! SilentClose
-//    context stop self
+//    context.stop(self)
   }
 
   def receive = {

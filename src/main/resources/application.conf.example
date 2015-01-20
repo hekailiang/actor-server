@@ -42,4 +42,24 @@ actor-server {
       password = "private"
     }
   }
+
+  smtpd {
+    certificate {
+      password = "password"
+      keystore = "keystore.jks"
+    }
+  }
+
+  akka {
+    remote {
+      netty.tcp {
+        port = 2553
+        hostname = 127.0.0.1
+      }
+    }
+
+    cluster {
+      seed-nodes = [ "akka.tcp://secret-api-server@127.0.0.1:2553" ]
+    }
+  }
 }

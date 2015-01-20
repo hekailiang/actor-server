@@ -9,7 +9,7 @@ import org.specs2.matcher.ThrownExpectations
 import org.specs2.mutable._
 import org.specs2.specification.{ Fragments, Step }
 import scala.collection.JavaConversions._
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._

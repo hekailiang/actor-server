@@ -19,14 +19,12 @@ class TcpServer(sessionRegion: ActorRef)(implicit csession: CSession) extends Ac
     IO(Tcp) ! Bind(self, new InetSocketAddress("localhost", 0))
   }
 
-  override def postRestart(thr: Throwable): Unit = context stop self
+  override def postRestart(thr: Throwable): Unit = context.stop(self)
 
   def receive = {
-    case b @ Bound(localAddress) =>
-      //log.debug(s"Bound: $b")
     case CommandFailed(_: Bind) =>
       //log.debug("CommandFailed")
-      context stop self
+      context.stop(self)
     case c @ Connected(remote, local) =>
       log.debug(s"Connected: $c")
       val connection = sender()

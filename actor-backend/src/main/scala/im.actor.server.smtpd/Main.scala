@@ -1,4 +1,4 @@
-package com.secretapp.backend
+package im.actor.backend
 
 // Just for repl and testing purposes
 object Main extends App {

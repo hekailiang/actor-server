@@ -1,4 +1,4 @@
-package com.secretapp.backend
+package im.actor.backend
 
 import akka.cluster.Cluster
 import akka.actor.{ ActorSystem, Props }
@@ -8,6 +8,8 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
+import com.secretapp.backend.persist
+import im.actor.server.smtpd.SMTPServer
 import com.typesafe.config._
 import java.net.InetSocketAddress
 import im.actor.server.persist.{ FlywayInit, DbInit }
@@ -35,10 +37,12 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
   import system.dispatcher
 
-  def startup = {
+  def startup() = {
     // C* initialize
     implicit val session = persist.DBConnector.session
     persist.DBConnector.createTables(session)
+
+    Cluster(system)
 
     // Session bootstrap
     val singletons = new Singletons
@@ -67,6 +71,9 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
     // Heating WS actors
     system.actorOf(Props(new WSHeatingUpActor(hostname, wsPort)), "ws-heat-service")
+
+    // SMTP service
+    SMTPServer.start(singletons)
   }
 
   def shutdown() = {

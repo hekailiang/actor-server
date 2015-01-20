@@ -9,7 +9,6 @@ import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.util.ACL
-import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps

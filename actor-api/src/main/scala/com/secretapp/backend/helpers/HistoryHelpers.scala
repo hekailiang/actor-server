@@ -5,11 +5,8 @@ import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.DialogManagerProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.models
-import com.secretapp.backend.persist
-import java.util.UUID
 import org.joda.time.DateTime
 import scala.collection.immutable
-import scala.concurrent.Future
 
 trait HistoryHelpers extends UserHelpers {
   import DialogManagerProtocol._

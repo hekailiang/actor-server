@@ -20,7 +20,7 @@ class WSHeatingUpActor(host: String, port: Int)(implicit as: ActorSystem) extend
         case _: BinaryFrame =>
           connection ! CloseFrame()
         case _: Http.ConnectionClosed =>
-          context stop self
+          context.stop(self)
       })
   }
 }

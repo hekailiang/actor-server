@@ -1,6 +1,6 @@
 package im.actor.util.logging
 
-import akka.actor._
+import akka.actor.Actor
 import akka.event.{ DiagnosticLoggingAdapter, Logging }
 
 trait MDCActorLogging {

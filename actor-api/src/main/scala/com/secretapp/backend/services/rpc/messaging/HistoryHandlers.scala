@@ -11,7 +11,7 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
-import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
+import com.secretapp.backend.helpers.{HistoryHelpers, GroupHelpers, UserHelpers}
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.{ACL, AvatarUtils}

@@ -2,7 +2,6 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
 import com.datastax.driver.core.{ Session => CSession }
-import org.joda.time.DateTime
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.collection.immutable
@@ -126,7 +125,7 @@ object User extends SQLSyntaxSupport[models.User] {
           UserPublicKey.findByUserIdAndAuthId(userId = id, authId),
           UserPublicKey.findAllByUserId(userId = id),
           UserPhone.findAllByUserId(userId = id),
-          UserEmail.fetchUserEmails(userId = id)
+          UserEmail.findAllByUserId(userId = id)
         )
 
         val extraDataFuture = for {
@@ -167,8 +166,7 @@ object User extends SQLSyntaxSupport[models.User] {
     withSQL {
       select(column.column("id"), column.accessSalt).from(User as u)
         .where.in(u.column("id"), ids)
-    }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt)))
-      .list.apply
+    }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt))).list().apply
   }
 
   def findWithAvatar(userId: Int)(authId: Option[Long] = None)(

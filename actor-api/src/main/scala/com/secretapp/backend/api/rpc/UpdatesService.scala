@@ -119,8 +119,8 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
   protected def mkEmails(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Email]] = {
     val emailModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.emailIds map (persist.UserEmail.getEntity(u.uid, _))))
-    ) map (_.flatten.flatten)
+      users map { u => persist.UserEmail.findAllByUserId(u.uid) }
+    ) map (_.flatten)
 
     for (emailModels <- emailModelsFuture) yield {
       emailModels map (struct.Email.fromModel(authId, _)) toVector

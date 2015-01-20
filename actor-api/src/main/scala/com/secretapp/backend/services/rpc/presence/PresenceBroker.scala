@@ -79,7 +79,9 @@ class PresenceBroker extends PersistentActor with ActorLogging {
         presence = PresenceType.Online
       }
     case UserOffline(authId) =>
+      scheduledOfflines.get(authId) map (_.cancel())
       scheduledOfflines -= authId
+
       if (scheduledOfflines.size == 0) {
         presence = PresenceType.Offline
         val update = lastSeen match {

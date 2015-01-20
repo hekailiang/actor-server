@@ -14,8 +14,8 @@ object BackendBuild extends Build {
   val ScalaVersion = "2.10.4"
 
   val appName = "backend"
-  val appClass = "com.secretapp.backend.ApiKernel"
-  val appClassMock = "com.secretapp.backend.Main"
+  val appClass = "im.actor.backend.ApiKernel"
+  val appClassMock = "im.actor.backend.Main"
 
 
   lazy val buildSettings =
@@ -39,7 +39,7 @@ object BackendBuild extends Build {
         },
         resolvers                 ++= Resolvers.seq,
         scalacOptions             ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
-        javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),
+        javaOptions               ++= Seq("-Dfile.encoding=UTF-8"),
         javacOptions              ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-Xlint:deprecation"),
         parallelExecution in Test :=  false,
         fork              in Test :=  true
@@ -63,8 +63,8 @@ object BackendBuild extends Build {
         scalacOptions        in (Compile,doc)     :=  Seq("-groups", "-implicits", "-diagrams")
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
-   .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests, actorPersist, actorProtobuf)
+   .dependsOn(actorBackend)
+   .aggregate(actorTests, actorProtobuf)
 
   lazy val akkaPersistenceSqlAsync = uri("git://github.com/prettynatty/akka-persistence-sql-async.git")
 
@@ -131,9 +131,31 @@ object BackendBuild extends Build {
     settings = defaultSettings
   ).dependsOn(actorPersist, actorUtil, actorProtobuf, akkaPersistenceSqlAsync)
 
+  lazy val actorSmtpd = Project(
+    id       = "actor-smtpd",
+    base     = file("actor-smtpd"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.smtpd
+    )
+  ).dependsOn(actorApi).configs(ScalaBuff)
+
+  lazy val actorBackend = Project(
+    id       = "actor-backend",
+    base     = file("actor-backend"),
+    settings = defaultSettings
+  ).dependsOn(actorApi, actorSmtpd).configs(ScalaBuff)
+
   lazy val actorTests = Project(
     id       = "actor-tests",
     base     = file("actor-tests"),
     settings = defaultSettings
   ).dependsOn(actorApi, actorModels, actorPersist, actorTestkit % "test")
+
+  lazy val actorSchema = Project(
+    id       = "actor-schema",
+    base     = file("actor-schema"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.schema
+    )
+  )
 }
