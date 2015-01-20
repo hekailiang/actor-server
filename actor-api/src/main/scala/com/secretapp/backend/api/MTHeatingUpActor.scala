@@ -16,8 +16,8 @@ class MTHeatingUpActor(remote: InetSocketAddress) extends Actor {
   context.setReceiveTimeout(5.seconds)
 
   def receive = {
-    case CommandFailed(_: Connect) =>
-      context stop self
+    case CommandFailed(_: Connect) | ReceiveTimeout =>
+      context.stop(self)
     case c @ Connected(_, local) =>
       val connection = sender()
       connection ! Register(self)
@@ -25,8 +25,8 @@ class MTHeatingUpActor(remote: InetSocketAddress) extends Actor {
       context become {
         case Received(_) =>
           connection ! Close
-        case PeerClosed | ErrorClosed | Closed =>
-          context stop self
+        case _: ConnectionClosed | ReceiveTimeout =>
+          context.stop(self)
       }
   }
 }

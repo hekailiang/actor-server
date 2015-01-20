@@ -14,6 +14,7 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.models
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
+import im.actor.server.persist.file.adapter.FileAdapter
 import im.actor.util.logging.MDCActorLogging
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -34,20 +35,31 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) = {
-    Props(new SessionActor(singletons, receiveTimeout, session))
+  def props(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration, session: CSession) = {
+    Props(new SessionActor(singletons, fileAdapter, receiveTimeout, session))
   }
 
-  def startRegion(singletons: Singletons, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
+  def startRegion(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(props(singletons, receiveTimeout, session)),
+      entryProps = Some(props(singletons, fileAdapter, receiveTimeout, session)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with MDCActorLogging {
+class SessionActor(
+  val singletons: Singletons,
+  val fileAdapter: FileAdapter,
+  receiveTimeout: FiniteDuration,
+  session: CSession
+) extends PersistentActor
+    with TransportSerializers
+    with SessionService
+    with PackageAckService
+    with RandomService
+    with MessageIdGenerator
+    with MDCActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -74,7 +86,12 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
   var lastConnector: Option[ActorRef] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, subscribedToUpdates, session)), "api-broker")
+  lazy val apiBroker = context.actorOf(
+    Props(
+      classOf[ApiBrokerActor],
+      authId, sessionId, singletons, fileAdapter, subscribedToUpdates, session
+    ), "api-broker"
+  )
 
   override protected def mdc = Map(
     "unit" -> "session",

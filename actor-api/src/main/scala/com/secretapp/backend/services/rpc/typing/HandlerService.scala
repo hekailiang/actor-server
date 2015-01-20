@@ -33,7 +33,7 @@ trait HandlerService extends UserHelpers {
   }
 
   protected def handleRequestGroupTyping(groupId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    persist.Group.getEntity(groupId)(session) map {
+    persist.Group.find(groupId) map {
       case Some(group) =>
         if (group.accessHash != accessHash) {
           Error(401, "ACCESS_HASH_INVALID", "Invalid access hash.", false)

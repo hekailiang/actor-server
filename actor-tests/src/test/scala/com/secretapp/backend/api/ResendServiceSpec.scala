@@ -18,7 +18,7 @@ class ResendServiceSpec extends RpcSpec {
   implicit val duration = DurationInt(5).seconds
 
   "session" should {
-    "resend unackd messages" in {
+    "resend unackd messages" in new sqlDb {
       val scopeOrigin = TestScope()
       catchNewSession(scopeOrigin)
 

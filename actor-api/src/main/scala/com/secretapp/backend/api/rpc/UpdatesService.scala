@@ -20,7 +20,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import java.util.UUID
+import com.eaio.uuid.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -33,8 +33,11 @@ import scodec.bits._
 import scodec.codecs.{ uuid => uuidCodec }
 
 class UpdatesServiceActor(
-  val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val subscribedToUpdates: Boolean,
-  val currentUserId: Int, val currentAuthId: Long
+  val sessionActor: ActorRef,
+  val updatesBrokerRegion: ActorRef,
+  val subscribedToUpdates: Boolean,
+  val currentUserId: Int,
+  val currentAuthId: Long
 )(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
@@ -106,7 +109,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
   protected def mkPhones(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Phone]] = {
     val phoneModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.getEntity(u.uid, _))))
+      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.findByUserIdAndId(u.uid, _))))
     ) map (_.flatten.flatten)
 
     for (phoneModels <- phoneModelsFuture) yield {
@@ -116,8 +119,8 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
   protected def mkEmails(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Email]] = {
     val emailModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.emailIds map (persist.UserEmail.getEntity(u.uid, _))))
-    ) map (_.flatten.flatten)
+      users map { u => persist.UserEmail.findAllByUserId(u.uid) }
+    ) map (_.flatten)
 
     for (emailModels <- emailModelsFuture) yield {
       emailModels map (struct.Email.fromModel(authId, _)) toVector

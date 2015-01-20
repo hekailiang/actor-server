@@ -31,8 +31,8 @@ trait NackActor { this: Actor with ActorLogging =>
       connection ! ResumeWriting
       context become buffering(ack)
 
-    case PeerClosed | ErrorClosed | Closed =>
-      if (storage.isEmpty) context stop self
+    case _: ConnectionClosed =>
+      if (storage.isEmpty) context.stop(self)
       else context become closing
   }
 
@@ -42,7 +42,7 @@ trait NackActor { this: Actor with ActorLogging =>
 
     {
       case WritingResumed         => writeFirst()
-      case PeerClosed | ErrorClosed | Closed => peerClosed = true
+      case _: ConnectionClosed => peerClosed = true
       case Ack(ack) if ack < nack => acknowledge(ack)
       case Ack(ack) =>
         acknowledge(ack)
@@ -56,7 +56,7 @@ trait NackActor { this: Actor with ActorLogging =>
             writeAll()
             context become (if (peerClosed) closing else writing)
           }
-        } else if (peerClosed) context stop self
+        } else if (peerClosed) context.stop(self)
         else context become writing
     }
   }
@@ -76,7 +76,7 @@ trait NackActor { this: Actor with ActorLogging =>
 
     case Ack(ack) =>
       acknowledge(ack)
-      if (storage.isEmpty) context stop self
+      if (storage.isEmpty) context.stop(self)
   }
 
   override def postStop(): Unit = {
@@ -101,7 +101,7 @@ trait NackActor { this: Actor with ActorLogging =>
 
     if (stored > maxStored) {
       log.warning(s"drop connection to [$remote] (buffer overrun)")
-      context stop self
+      context.stop(self)
 
     } else if (stored > highWatermark) {
       connection ! SuspendReading

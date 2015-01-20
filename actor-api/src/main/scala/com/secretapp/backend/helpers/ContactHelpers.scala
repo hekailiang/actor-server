@@ -4,7 +4,7 @@ import akka.actor._
 import akka.util.Timeout
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.UpdatesBroker
-import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.data.message.{update => updateProto, struct}
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import scala.collection.immutable
@@ -24,12 +24,10 @@ trait ContactHelpers extends UpdatesHelpers {
     accessSalt: String
   ): Future[Unit] = {
     val newContactsId = Set(userId)
-    val clFuture = persist.contact.UserContactsList.insertContact(ownerUserId, userId, phoneNumber, name, accessSalt)
-    val clCacheFuture = persist.contact.UserContactsListCache.addContactsId(ownerUserId, newContactsId)
+    val clFuture = persist.contact.UserContact.create(ownerUserId, userId, phoneNumber, name, accessSalt)
 
     for {
       _ <- clFuture
-      _ <- clCacheFuture
     } yield ()
   }
 
@@ -47,4 +45,14 @@ trait ContactHelpers extends UpdatesHelpers {
       )
     }
   }
+
+//  protected def insertContact(currentUser: models.User, newContactsId: Set[Int], usersTuple: immutable.Seq[(struct.User, String)])
+//                             (implicit timeout: Timeout) = for {
+//    _ <- persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
+//    _ <- persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
+//    state <- broadcastCUUpdateAndGetState(
+//      currentUser,
+//      updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
+//    )
+//  } yield state
 }

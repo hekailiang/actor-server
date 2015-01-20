@@ -60,7 +60,7 @@ class AckTrackerActor(authId: Long, sessionId: Long, sizeLimit: Int) extends Act
       if (newState.messagesSize > sizeLimit) {
         log.warning("Messages size overflow")
         sender() ! MessagesSizeOverflow(m.key)
-        context stop self
+        context.stop(self)
       } else {
         state = newState
       }

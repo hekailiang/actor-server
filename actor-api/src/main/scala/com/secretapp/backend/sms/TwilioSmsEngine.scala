@@ -2,12 +2,7 @@ package com.secretapp.backend.sms
 
 import akka.actor._
 import com.typesafe.config._
-
-import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
-
 import spray.http._
 import spray.client.pipelining._
 

@@ -13,7 +13,7 @@ object WSServer {
 
     override val supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
-    override def postRestart(thr: Throwable): Unit = context stop self
+    override def postRestart(thr: Throwable): Unit = context.stop(self)
 
     def receive = {
       case Http.Connected(remoteAddress, localAddress) =>

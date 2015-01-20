@@ -19,13 +19,13 @@ object AvatarData {
 }
 
 case class AvatarData(
-  smallAvatarFileId: Option[Int],
+  smallAvatarFileId: Option[Long],
   smallAvatarFileHash: Option[Long],
   smallAvatarFileSize: Option[Int],
-  largeAvatarFileId: Option[Int],
+  largeAvatarFileId: Option[Long],
   largeAvatarFileHash: Option[Long],
   largeAvatarFileSize: Option[Int],
-  fullAvatarFileId: Option[Int],
+  fullAvatarFileId: Option[Long],
   fullAvatarFileHash: Option[Long],
   fullAvatarFileSize: Option[Int],
   fullAvatarWidth: Option[Int],

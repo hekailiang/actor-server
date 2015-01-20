@@ -1,101 +1,95 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
-import scala.collection.immutable
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
+import scala.collection.immutable
+import scalikejdbc._
 
-sealed class UserPhone extends CassandraTable[UserPhone, models.UserPhone] {
+object UserPhone extends SQLSyntaxSupport[models.UserPhone] {
   override val tableName = "user_phones"
+  override val columnNames = Seq("user_id", "id", "access_salt", "number", "title")
 
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override val name = "user_id"
+  lazy val up = UserPhone.syntax("up")
+
+  def apply(a: SyntaxProvider[models.UserPhone])(rs: WrappedResultSet): models.UserPhone = apply(up.resultName)(rs)
+
+  def apply(a: ResultName[models.UserPhone])(rs: WrappedResultSet): models.UserPhone = models.UserPhone(
+    id = rs.int(a.id),
+    userId = rs.int(a.userId),
+    accessSalt = rs.string(a.accessSalt),
+    number = rs.long(a.number),
+    title = rs.string(a.title)
+  )
+
+  def findBy(where: SQLSyntax)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Option[models.UserPhone]] = Future {
+    withSQL {
+      select.from(UserPhone as up)
+        .where.append(sqls"${where}")
+        .limit(1)
+    }.map(UserPhone(up)).single.apply
   }
 
-  object phoneId extends IntColumn(this) with PrimaryKey[Int] {
-    override val name = "phone_id"
+  def findAllBy(where: SQLSyntax)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[List[models.UserPhone]] = Future {
+    withSQL {
+      select.from(UserPhone as up)
+        .where.append(sqls"${where}")
+    }.map(UserPhone(up)).list.apply
   }
 
-  object accessSalt extends StringColumn(this) {
-    override val name = "access_salt"
-  }
+  def findAllByUserId(userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[List[models.UserPhone]] = findAllBy(sqls.eq(up.userId, userId))
 
-  object number extends LongColumn(this)
+  def findAllByNumbers(numbers: immutable.Set[Long])(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[List[models.UserPhone]] = findAllBy(sqls.in(up.number, numbers.toSeq))
 
-  object title extends StringColumn(this)
+  def findByNumber(number: Long)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Option[models.UserPhone]] = findBy(sqls.eq(column.number, number))
 
-  override def fromRow(row: Row): models.UserPhone =
+  def findByUserIdAndId(userId: Int, id: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Option[models.UserPhone]] = findBy(
+    sqls.eq(up.userId, userId)
+      .and.eq(up.id, id)
+  )
+
+  def create(userId: Int, id: Int, accessSalt: String, number: Long, title: String)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[models.UserPhone] = Future {
+    withSQL {
+      insert.into(UserPhone).namedValues(
+        column.userId -> userId,
+        column.id -> id,
+        column.accessSalt -> accessSalt,
+        column.number -> number,
+        column.title -> title
+      )
+    }.execute.apply
     models.UserPhone(
-      id = phoneId(row),
-      userId = userId(row),
-      accessSalt = accessSalt(row),
-      number = number(row),
-      title = title(row)
+      id = id,
+      userId = userId,
+      accessSalt = accessSalt,
+      number = number,
+      title = title
     )
-}
+  }
 
-object UserPhone extends UserPhone with TableOps {
-  def insertEntity(entity: models.UserPhone)(implicit session: Session): Future[ResultSet] =
-    insert
-      .value(_.userId, entity.userId)
-      .value(_.phoneId, entity.id)
-      .value(_.accessSalt, entity.accessSalt)
-      .value(_.number, entity.number)
-      .value(_.title, entity.title)
-      .future()
-
-  def getEntity(userId: Int, phoneId: Int)(implicit session: Session): Future[Option[models.UserPhone]] =
-    select.where(_.userId eqs userId).and(_.phoneId eqs phoneId).one()
-
-  def fetchUserPhones(userId: Int)(implicit session: Session): Future[Seq[models.UserPhone]] =
-    select.where(_.userId eqs userId).fetch()
-
-  def fetchUserPhoneIds(userId: Int)(implicit session: Session): Future[Seq[Int]] =
-    select(_.phoneId).where(_.userId eqs userId).fetch()
-
-  def editTitle(userId: Int, phoneId: Int, title: String)(implicit session: Session): Future[ResultSet] =
-    update
-      .where(_.userId eqs userId).and(_.phoneId eqs phoneId)
-      .modify(_.title setTo title).future()
-
-  def migrate_createUserPhones()(implicit session: Session) = {
-    val rand = new util.Random()
-
-    for {
-      users <- User.list(java.lang.Integer.MAX_VALUE)
-    } yield {
-      users foreach { user =>
-        Phone.getEntity(user.phoneNumber)(session) onComplete {
-          case Success(Some(phone)) =>
-            val phoneId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
-            val userPhone = phone.toUserPhone(
-              id = phoneId,
-              userId = user.uid,
-              accessSalt = rand.nextString(30)
-            )
-            UserPhone.insertEntity(userPhone) onComplete {
-              case Success(_) =>
-                User.addPhoneId(user.uid, phoneId) onFailure {
-                  case e =>
-                    println(s"[E] Failed to add phoneId $phoneId to user ${user.uid}")
-                }
-
-                User.setState(user.uid, models.UserState.Registered) onFailure {
-                  case e =>
-                    println(s"[E] Failed to set user state to Registered ${user.uid}")
-                }
-              case Failure(e) =>
-                println(s"[E] Failed to insert $userPhone")
-                throw e
-            }
-          case Success(None) =>
-            println(s"[E] Cannot find phone for user $user")
-          case Failure(e) =>
-            println(s"[E] Failed to find phone for user $user")
-            throw e
-        }
-      }
-    }
+  def updateTitle(userId: Int, id: Int, title: String)(
+    implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
+  ): Future[Int] = Future {
+    withSQL {
+      update(UserPhone).set(
+        column.title -> title
+      )
+        .where.eq(column.userId, userId)
+        .and.eq(column.id, id)
+    }.update.apply
   }
 }

@@ -49,7 +49,7 @@ object Group {
       isMember = isMember,
       adminUid = group.creatorUserId,
       members = groupMembers,
-      createDate = group.createDate
+      createDate = group.createdAt.getMillis / 1000
     )
   }
 }

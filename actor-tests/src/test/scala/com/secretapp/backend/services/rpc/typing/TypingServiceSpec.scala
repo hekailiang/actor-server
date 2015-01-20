@@ -15,7 +15,7 @@ import scodec.bits._
 
 class TypingServiceSpec extends RpcSpec {
   "presence service" should {
-    "send typings on subscribtion and receive typing weak updates" in {
+    "send typings on subscribtion and receive typing weak updates" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -41,7 +41,7 @@ class TypingServiceSpec extends RpcSpec {
       }
     }
 
-    "send typings weak updates" in {
+    "send typings weak updates" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -68,7 +68,7 @@ class TypingServiceSpec extends RpcSpec {
       }
     }
 
-    "send group typings weak updates" in {
+    "send group typings weak updates" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)

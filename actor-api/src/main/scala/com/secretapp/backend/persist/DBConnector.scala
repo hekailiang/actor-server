@@ -10,40 +10,31 @@ import scala.concurrent. { blocking, Future }
 import scala.concurrent.ExecutionContext
 
 object DBConnector {
-  val serverConfig = ConfigFactory.load().getConfig("actor-server")
-
-  val dbConfig = serverConfig.getConfig("cassandra")
-
-  val keySpace = dbConfig.getString("keyspace")
-
-  val akkaDbConfig = serverConfig.getConfig("cassandra-journal")
-
-  val akkaKeySpace = akkaDbConfig.getString("keyspace")
-
-  val cluster = Cluster.builder()
-    .addContactPoints(dbConfig.getStringList("contact-points") :_*)
-    .withPort(dbConfig.getInt("port"))
-    .withoutJMXReporting()
-    .withoutMetrics()
-    .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
-    .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
-    .withPoolingOptions(new PoolingOptions()
+  lazy val (cluster, session) = {
+    val serverConfig = ConfigFactory.load().getConfig("actor-server")
+    val dbConfig = serverConfig.getConfig("cassandra")
+    val keySpace = dbConfig.getString("keyspace")
+    val cluster = Cluster.builder()
+      .addContactPoints(dbConfig.getStringList("contact-points"): _*)
+      .withPort(dbConfig.getInt("port"))
+      .withoutJMXReporting()
+      .withoutMetrics()
+      .withReconnectionPolicy(new ConstantReconnectionPolicy(100L))
+      .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
+      .withPoolingOptions(new PoolingOptions()
       .setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, dbConfig.getInt("pool.min-simutaneous-requests-per-connection-treshold"))
       .setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, dbConfig.getInt("pool.max-simutaneous-requests-per-connection-treshold"))
       .setCoreConnectionsPerHost(HostDistance.REMOTE, dbConfig.getInt("pool.core-connections-per-host"))
       .setMaxConnectionsPerHost(HostDistance.REMOTE, dbConfig.getInt("pool.max-connections-per-host")))
-    .build()
-
-  lazy val session = blocking {
-    cluster.connect(keySpace)
-  }
-
-  lazy val akkaSession = blocking {
-    cluster.connect(akkaKeySpace)
+      .build()
+    val session = blocking {
+      cluster.connect(keySpace)
+    }
+    (cluster, session)
   }
 
   def createTables(session: Session)(implicit ec: ExecutionContext with Executor) = {
-    val fileRecord = new File()(session, ec)
+    /* val fileRecord = new File()(session, ec)
 
     Future.sequence(List(
       ApplePushCredentials.createTable(session),
@@ -67,7 +58,9 @@ object DBConnector {
       Dialog.createTable(session),
       DialogUnreadCounter.createTable(session),
       HistoryMessage.createTable(session),
-      fileRecord.createTable(session)
-    ))
+      fileRecord.createTable(session),
+      smtpd.PlainMail.createTable(session)
+    )) */
+    Future.successful(List())
   }
 }

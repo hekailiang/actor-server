@@ -1,4 +1,4 @@
-package com.secretapp.backend.persist
+/*package com.secretapp.backend.persist
 
 import akka.actor.ActorContext
 import com.datastax.driver.core.{ Session => CSession }
@@ -11,3 +11,4 @@ trait CassandraRecords {
 
   val fileRecord = new File
 }
+ */

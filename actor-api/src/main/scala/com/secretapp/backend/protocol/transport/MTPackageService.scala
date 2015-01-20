@@ -33,11 +33,8 @@ trait MTPackageService {
           int32.decode(buf) match {
             case \/-((_, len)) =>
               val pLen = (intSize / byteSize + len) * byteSize // length of Package length and length of Package payload (with index and crc)
-              if (len <= maxPackageLen) {
-                parseByteStream(WrappedPackageParsing(pLen), buf)(f)
-              } else {
-                ParseError(s"received package size $len is bigger than $maxPackageLen bytes").left
-              }
+              if (len <= maxPackageLen) parseByteStream(WrappedPackageParsing(pLen), buf)(f)
+              else ParseError(s"received package size $len is bigger than $maxPackageLen bytes").left
             case -\/(e) => ParseError(e).left
           }
         } else (sp, buf).right

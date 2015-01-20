@@ -8,3 +8,5 @@ src/main/resources/application.conf
 actor-restapi/logs
 *.swp
 *~
+actor-tests/snapshots
+actor-tests/journal

@@ -28,11 +28,6 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
 
   context.setReceiveTimeout(15.minutes) // TODO
 
-  override  def postStop(): Unit = {
-    super.postStop()
-    //log.debug(s"$authId#postStop(): $remote, $connection")
-  }
-
   def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
       //log.debug(s"$authId#Received($data)")
@@ -45,6 +40,8 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
       silentClose(s"$authId#ResponseToClientWithDrop")
     case SilentClose =>
       silentClose("SilentClose")
+    case ReceiveTimeout =>
+      silentClose("ReceiveTimeout")
   }
 
   def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {

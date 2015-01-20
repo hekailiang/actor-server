@@ -2,7 +2,8 @@ import sbt._
 
 object Dependencies {
   object V {
-    val akka    = "2.3.7"
+    val akka    = "2.3.8"
+    val akkaExperimental = "1.0-M2"
     val phantom = "1.4.0"
     val scalaz  = "7.1.0"
   }
@@ -18,9 +19,10 @@ object Dependencies {
     val akkaPersistenceCassandra = "com.github.krasserm"           %% "akka-persistence-cassandra"    % "0.3.4"
     val akkaRemote      = "com.typesafe.akka"             %% "akka-remote"                   % V.akka
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
-    val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % "0.4"
+    val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % V.akkaExperimental
     val sprayWebSocket  = "com.wandoulabs.akka"           %% "spray-websocket"               % "0.1.4-SNAPSHOT" excludeAll(ExclusionRule(organization = "com.chuusai"))
     val sprayClient     = "io.spray"                      %% "spray-client"                  % "1.3.2"
+    val json4s          = "org.json4s"                    %% "json4s-jackson"                % "3.2.11"
     // we need this because commons-codec 1.2 jar is broken (apns dependency)
     val commonsCodec    = "commons-codec"                 %  "commons-codec"                 % "1.3"
     val dispatchCore    = "net.databinder.dispatch"       %% "dispatch-core"                 % "0.11.1"
@@ -31,14 +33,31 @@ object Dependencies {
     val clinkedhashmap  = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2_jdk5"
     val phantomDsl      = "com.websudos"                  %% "phantom-dsl"                   % V.phantom
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
+    val scalazConcurrent = "org.scalaz"                   %% "scalaz-concurrent"             % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
     val logbackLogstash = "net.logstash.logback"          % "logstash-logback-encoder"       % "3.3"
+
+    val commonsEmail    = "org.apache.commons"            % "commons-email"                  % "1.3.3"
+    val emailReplyParser = "com.edlio.emailreplyparser"   % "EmailReplyParser"               % "1.1"
+
+    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
+    val scalikeAsync    = "org.scalikejdbc"               %% "scalikejdbc-async"             % "0.5.4"
+    val postgresAsync   = "com.github.mauricio"           %% "postgresql-async"              % "0.2.16"
+
+    val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
+
+    val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
+
+    val jodaTime        = "joda-time"                     %  "joda-time"                     % "2.7"
+    val jodaConvert     = "org.joda"                      %  "joda-convert"                  % "1.7"
+
+    val uuid            = "com.eaio.uuid"                 %  "uuid"                          % "3.4"
   }
 
   object Test {
-    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka               % "test"
+    val akkaTestkit       = "com.typesafe.akka"          %% "akka-testkit"                  % V.akka
     val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
-    val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"             % "test"
+    val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"
     val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
     val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"             % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
     val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"              % "test"
@@ -50,23 +69,34 @@ object Dependencies {
 
   import Compile._, Test._, Deploy._
 
-  val common    = Seq(logbackClassic, logbackLogstash)
+  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert)
 
   val util      = Seq(akkaActor, akkaSlf4j)
+
+  val testkit   = Seq(
+    akkaActor,
+    akkaSlf4j,
+    akkaTestkit,
+    specs2
+  )
 
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
-    sprayClient
+    sprayClient, uuid, postgresAsync
   )
 
   val deploy    = Seq(traceAkka)
 
-  val models    = common ++ Seq(scodecBits, akkaPersistence)
+  val models    = common ++ Seq(scodecBits, akkaPersistence, jodaTime)
 
   val messages  = Seq(akkaActor)
 
-  val persist   = common ++ Seq(akkaActor, scodecBits, phantomDsl, scalazCore)
+  val persist   = common ++ Seq(
+    akkaActor, flywayCore, scodecBits, phantomDsl, scalazCore,
+    scalike, postgresJdbc, scalikeAsync, postgresAsync,
+    specs2
+  )
 
   val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
 
@@ -77,4 +107,8 @@ object Dependencies {
 
   val restApi   = Seq(phantomDsl, scodecBits, bcprov, specs2, scalazCore)
 
+  val schema    = Seq(json4s)
+
+  val smtpd    = Seq(akkaActor, akkaContrib, akkaStream, akkaKernel, akkaPersistence, akkaCluster, akkaSlf4j,
+    akkaPersistenceCassandra, commonsEmail, emailReplyParser, scalazCore, scalazConcurrent)
 }

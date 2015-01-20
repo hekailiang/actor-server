@@ -23,6 +23,7 @@ import com.secretapp.backend.session._
 import com.websudos.util.testing._
 import java.net.InetSocketAddress
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
+import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -35,6 +36,7 @@ import scala.collection.{ immutable, mutable }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.Random
 import scalaz.Scalaz._
@@ -52,8 +54,10 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   protected var incMessageId = 0L
 
   val singletons = new Singletons
+  val fileAdapter = new FileStorageAdapter(system)
+
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, csession)
+  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system, csession)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
@@ -69,19 +73,79 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   }
 
   def insertAuthId(authId: Long, userId: Option[Int] = None): Unit = blocking {
-    persist.AuthId.insertEntity(models.AuthId(authId, userId)).sync()
+    persist.AuthId.create(authId, userId).sync()
   }
 
   def addUser(authId: Long, sessionId: Long, u: models.User, phone: models.UserPhone): Unit = blocking {
-    persist.UserPhone.insertEntity(phone)
-    persist.AuthId.insertEntity(models.AuthId(authId, None)).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.UserPhone.create(
+      userId = phone.userId,
+      id = phone.id,
+      accessSalt = phone.accessSalt,
+      number = phone.number,
+      title = phone.title
+    ).sync()
+    persist.AuthId.create(authId, None).sync()
+    persist.User.create(
+      id = u.uid,
+      accessSalt = u.accessSalt,
+      name = u.name,
+      countryCode = u.countryCode,
+      sex = u.sex,
+      state = u.state
+    )(
+      authId = u.authId,
+      publicKeyHash = u.publicKeyHash,
+      publicKeyData = u.publicKeyData
+    ).sync()
+    persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
   }
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    persist.UserPhone.insertEntity(phone).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    val createPhoneFuture = persist.UserPhone.findByNumber(phone.number) flatMap {
+      case Some(p) => Future successful p
+      case None =>
+        persist.UserPhone.create(
+          userId = phone.userId,
+          id = phone.id,
+          accessSalt = phone.accessSalt,
+          number = phone.number,
+          title = phone.title
+        )
+    }
+
+    val createUserFuture = persist.User.find(u.uid)(None) flatMap {
+      case Some(exUser) =>
+        persist.User.savePartial(
+          id = u.uid,
+          name = u.name,
+          countryCode = u.countryCode
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData,
+          phoneNumber = u.phoneNumber
+        )
+      case None =>
+        persist.User.create(
+          id = u.uid,
+          accessSalt = u.accessSalt,
+          name = u.name,
+          countryCode = u.countryCode,
+          sex = u.sex,
+          state = u.state
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData
+        ) flatMap (_ => persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty))
+    }
+
+    Future.sequence(Seq(
+      createPhoneFuture,
+      createUserFuture
+    )).sync()
+
     u
   }
 
@@ -101,7 +165,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -109,7 +173,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     authUser(user, phone)
   }
 
-  val smsCode = "test_sms_code"
+  val smsCode = "102030"
   val smsHash = "test_sms_hash"
   val userId = 101
   val userSalt = "user_salt"
@@ -158,7 +222,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -188,12 +252,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     }
 
     def pair(uid1: Int, uid2: Int): (TestScope, TestScope) = {
-      (apply(uid1, 79632740769L), apply(uid2, 79853867016L))
+      (apply(uid1, 79632740769L + uid1), apply(uid2, 79853867016L + uid2))
     }
 
     def apply(): TestScope = apply(1, 79632740769L)
 
-    def apply(userId: Int): TestScope = apply(userId, 79632740769L)
+    def apply(userId: Int): TestScope = apply(userId, 79632740769L + userId)
 
     def apply(userId: Int, phoneNumber: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
@@ -215,7 +279,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
         s"Timothy_$userId Klim_$userId",
         "RU",
         models.NoSex,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered

@@ -15,20 +15,23 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._
 
-class UserServiceChangePhoneTitleSpec extends RpcSpec with BeforeExample  {
+class UserServiceChangePhoneTitleSpec extends RpcSpec {
 
   "user service on receiving `RequestChangePhoneTitle`" should {
-    "respond with `ResponseSeq`" in {
+    "respond with `ResponseSeq`" in new sqlDb {
+      initScope()
       changePhoneTitleShouldBeOk
     }
 
-    "update phone title" in {
+    "update phone title" in new sqlDb {
+      initScope()
       changePhoneTitleShouldBeOk
 
-      persist.UserPhone.fetchUserPhones(scope.user.uid).sync.head.title should_== newTitle
+      persist.UserPhone.findAllByUserId(scope.user.uid).sync.head.title should_== newTitle
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      initScope()
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -67,7 +70,7 @@ class UserServiceChangePhoneTitleSpec extends RpcSpec with BeforeExample  {
 
   private implicit var scope: TestScope = _
 
-  override def before = {
+  def initScope() = {
     scope = TestScope()
     catchNewSession(scope)
   }

@@ -15,20 +15,29 @@ import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scodec.bits._
 
-class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
+class UserServiceEditNameSpec extends RpcSpec {
 
   "user service on receiving `RequestEditName`" should {
-    "respond with `ResponseVoid`" in {
+    "respond with `ResponseVoid`" in new sqlDb {
+      scope = TestScope()
+      catchNewSession(scope)
+
       editNameShouldBeOk
     }
 
-    "update user name" in {
+    "update user name" in new sqlDb {
+      scope = TestScope()
+      catchNewSession(scope)
+
       editNameShouldBeOk
 
-      persist.User.getEntity(scope.user.uid, scope.user.authId).sync.get.name should_== newName
+      persist.User.find(scope.user.uid)(Some(scope.user.authId)).sync.get.name should_== newName
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      scope = TestScope()
+      catchNewSession(scope)
+
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -66,11 +75,6 @@ class UserServiceEditNameSpec extends RpcSpec with BeforeExample  {
   implicit val timeout = 5.seconds
 
   private implicit var scope: TestScope = _
-
-  override def before = {
-    scope = TestScope()
-    catchNewSession(scope)
-  }
 
   private val newName = "John The New"
 

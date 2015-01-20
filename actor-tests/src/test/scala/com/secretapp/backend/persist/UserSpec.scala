@@ -5,40 +5,64 @@ import com.websudos.phantom.Implicits._
 import scodec.bits._
 import com.secretapp.backend.models
 import com.secretapp.backend.crypto.ec
+import im.actor.server.persist.unit.SqlSpec
 import org.specs2.mutable.Specification
 import org.specs2.matcher.NoConcurrentExecutionContext
 import scala.collection.immutable
+import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
-class UserSpec extends Specification with CassandraSpecification with GeneratorService with NoConcurrentExecutionContext {
+class UserSpec extends Specification with CassandraSpecification with SqlSpec with GeneratorService with NoConcurrentExecutionContext {
   "UserRecord" should {
-    "insert/get User Entity" in {
+    "insert/get User Entity" in new sqlDb {
       val publicKey = hex"ac1d".bits
       val pkHash = ec.PublicKey.keyHash(publicKey)
-      val userId = 100
+      val userId = rand.nextInt
       val phoneId = rand.nextInt
-      val phone = models.UserPhone(rand.nextInt, userId, "phone_salt", 79817796093L, "Mobile phone")
+
+      val phoneNumber = 79817796093L
+
       val entity = models.User(
         userId,
         10L,
         pkHash,
         publicKey,
-        79853867016L,
+        phoneNumber,
         "salt",
         "Wayne Brain",
         "RU",
         models.Male,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered
       )
-      val insertFuture = User.insertEntityWithChildren(entity, models.AvatarData.empty)
+
+      val insertPhoneFuture = UserPhone.create(
+        id = phoneId,
+        userId = userId,
+        accessSalt = "phone_salt",
+        number = phoneNumber,
+        title = "Mobile phone"
+      )
+
+      val insertUserFuture = User.create(
+        id = entity.uid,
+        accessSalt = entity.accessSalt,
+        name = entity.name,
+        countryCode = entity.countryCode,
+        sex = entity.sex,
+        state = entity.state
+      )(
+        authId = entity.authId,
+        publicKeyHash = entity.publicKeyHash,
+        publicKeyData = entity.publicKeyData
+      )
 
       val chain = for {
-        insertDone <- insertFuture
-        oneSelect <- User.getEntity(entity.uid)
+        insertDone <- Future.sequence(Seq(insertPhoneFuture, insertUserFuture))
+        oneSelect <- User.find(entity.uid)(None)
       } yield oneSelect
 
       chain must be_== (entity.some).await

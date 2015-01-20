@@ -52,7 +52,7 @@ trait GooglePush {
 
   def deliverGooglePush(authId: Long, seq: Int)
                        (implicit s: CSession): Future[Unit] =
-    persist.GooglePushCredentials.get(authId) flatMap {
+    persist.GooglePushCredentials.find(authId) flatMap {
       deliverGooglePush(_, authId, seq)
     }
 

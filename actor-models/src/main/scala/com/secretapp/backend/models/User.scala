@@ -44,7 +44,7 @@ object User extends ProtobufMessageObject[PBModels.User, User] {
       uid = m.getUserId,
       authId = m.getAuthId,
       publicKeyHash = m.getPublicKeyHash,
-      publicKey = BitVector(m.getPublicKey.toByteArray()),
+      publicKeyData = BitVector(m.getPublicKey.toByteArray()),
       phoneNumber = m.getPhoneNumber,
       accessSalt = m.getAccessSalt,
       name = m.getName,
@@ -53,7 +53,7 @@ object User extends ProtobufMessageObject[PBModels.User, User] {
       phoneIds = m.getPhoneIdsList().asScala.toSet map (Integer2int),
       emailIds = m.getEmailIdsList().asScala.toSet.toSet map (Integer2int),
       state = UserState.fromInt(m.getState.getNumber),
-      keyHashes = m.getKeyHashesList().asScala.toSet map (Long2long)
+      publicKeyHashes = m.getKeyHashesList().asScala.toSet map (Long2long)
     )
   }
 }
@@ -63,7 +63,7 @@ case class User(
   uid: Int,
   authId: Long,
   publicKeyHash: Long,
-  publicKey: BitVector,
+  publicKeyData: BitVector,
   phoneNumber: Long,
   accessSalt: String,
   name: String,
@@ -72,14 +72,14 @@ case class User(
   phoneIds: immutable.Set[Int],
   emailIds: immutable.Set[Int],
   state: UserState,
-  keyHashes: immutable.Set[Long]
+  publicKeyHashes: immutable.Set[Long]
 ) extends ProtobufMessage[PBModels.User] {
   override lazy val asMessage =
     PBModels.User.newBuilder()
       .setUserId(uid)
       .setAuthId(authId)
       .setPublicKeyHash(publicKeyHash)
-      .setPublicKey(ByteString.copyFrom(publicKey.toByteArray))
+      .setPublicKey(ByteString.copyFrom(publicKeyData.toByteArray))
       .setPhoneNumber(phoneNumber)
       .setAccessSalt(accessSalt)
       .setName(name)
@@ -88,6 +88,6 @@ case class User(
       .addAllPhoneIds(phoneIds map (int2Integer) asJava)
       .addAllEmailIds(emailIds map (int2Integer) asJava)
       .setState(PBModels.UserState.valueOf(state.toInt))
-      .addAllKeyHashes(keyHashes map (long2Long) asJava)
+      .addAllKeyHashes(publicKeyHashes map (long2Long) asJava)
       .build()
 }

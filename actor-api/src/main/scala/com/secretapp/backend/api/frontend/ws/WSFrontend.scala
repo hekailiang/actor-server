@@ -33,7 +33,6 @@ class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val se
       // handleByteStream(BitVector(frame.payload))(handlePackage, e => sendDrop(e.msg))
       protoPackage.decode(BitVector(frame.payload)) match {
         case \/-((_, p)) =>
-          println(s"protoPackage.decode: $p")
           handlePackage(p)
         case -\/(e) => sendDrop(e)
       }

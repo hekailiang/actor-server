@@ -1184,7 +1184,7 @@ message HistoryMessage {
     required int64 rid = 2;
     required int64 date = 3;
     required MessageContent message = 5;
-    required MessageState state = 6;
+    optional MessageState state = 6;
 }
 
 // API#0x76
@@ -1221,7 +1221,7 @@ message Dialog {
     required int64 rid = 6;
     required int64 date = 7;
     required MessageContent message = 8;
-    required MessageState state = 9;
+    optional MessageState state = 9;
 }
 
 // API#0x68

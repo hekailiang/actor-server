@@ -1,125 +1,144 @@
 package com.secretapp.backend.persist
 
+import com.eaio.uuid.UUID
+import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.models
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.secretapp.backend.protocol.codecs.message.update.contact._
-import com.datastax.driver.core.ConsistencyLevel
-import com.datastax.driver.core.utils.UUIDs
-import com.secretapp.backend.data.message.{ update => updateProto }
-import com.websudos.phantom.Implicits._
-import java.util.UUID
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
-import scala.concurrent.Future
+import scalikejdbc._
 import scodec.Codec
 import scodec.bits._
 
-sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
+object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
+  type UpdateWithSize = (Entity[UUID, updateProto.SeqUpdateMessage], Long)
+
   override val tableName = "seq_updates"
+  override val columnNames = Seq("auth_id", "uuid", "header", "protobuf_data")
 
-  object authId extends LongColumn(this) with PartitionKey[Long] {
-    override lazy val name = "auth_id"
-  }
-  object uuid extends TimeUUIDColumn(this) with PrimaryKey[UUID]
-  object header extends IntColumn(this) {
-    override lazy val name = "header"
-  }
-  object protobufBody extends BlobColumn(this) {
-    override lazy val name = "protobuf_column"
-  }
+  lazy val upd = SeqUpdate.syntax("upd")
 
-  override def fromRow(row: Row): (Entity[UUID, updateProto.SeqUpdateMessage], Long) = {
+  def apply(upd: SyntaxProvider[UpdateWithSize])(rs: WrappedResultSet): UpdateWithSize = apply(upd.resultName)(rs)
+
+  def apply(upd: ResultName[UpdateWithSize])(rs: WrappedResultSet): UpdateWithSize = {
     @inline
-    def decode[A](row: Row, codec: Codec[A]): (Entity[UUID, updateProto.SeqUpdateMessage], Long) = {
-      val protoBody = BitVector(protobufBody(row))
+    def decode[A](rs: WrappedResultSet, codec: Codec[A]): (Entity[UUID, updateProto.SeqUpdateMessage], Long) = {
+      val protobufData = {
+        val bs = rs.binaryStream(upd.column("protobuf_data"))
+        val bv = BitVector.fromInputStream(bs)
+        bs.close()
+        bv
+      }
+
+      val uuid = new UUID(rs.string(upd.column("uuid")))
+      val length = protobufData.length / 8
+
       (
         Entity(
-          uuid(row),
-          codec.decode(protoBody).toOption.get._2.asInstanceOf[updateProto.SeqUpdateMessage]
+          uuid,
+          codec.decode(protobufData).toOption.get._2.asInstanceOf[updateProto.SeqUpdateMessage]
         ),
-        protoBody.length / 8
+        length
       )
     }
 
-    header(row) match {
-      case updateProto.UserAvatarChanged.header => decode(row, UserAvatarChangedCodec)
-      case updateProto.ChatClear.header => decode(row, ChatClearCodec)
-      case updateProto.ChatDelete.header => decode(row, ChatDeleteCodec)
-      case updateProto.EncryptedMessage.header => decode(row, EncryptedMessageCodec)
-      case updateProto.EncryptedRead.header => decode(row, EncryptedReadCodec)
-      case updateProto.EncryptedReadByMe.header => decode(row, EncryptedReadByMeCodec)
-      case updateProto.EncryptedReceived.header => decode(row, EncryptedReceivedCodec)
-      case updateProto.GroupAvatarChanged.header => decode(row, GroupAvatarChangedCodec)
-      case updateProto.GroupInvite.header => decode(row, GroupInviteCodec)
-      case updateProto.GroupMembersUpdate.header => decode(row, GroupMembersUpdateCodec)
-      case updateProto.GroupTitleChanged.header => decode(row, GroupTitleChangedCodec)
-      case updateProto.GroupUserAdded.header => decode(row, GroupUserAddedCodec)
-      case updateProto.GroupUserKick.header => decode(row, GroupUserKickCodec)
-      case updateProto.GroupUserLeave.header => decode(row, GroupUserLeaveCodec)
-      case updateProto.Message.header => decode(row, MessageCodec)
-      case updateProto.MessageDelete.header => decode(row, MessageDeleteCodec)
-      case updateProto.MessageRead.header => decode(row, MessageReadCodec)
-      case updateProto.MessageReadByMe.header => decode(row, MessageReadByMeCodec)
-      case updateProto.MessageReceived.header => decode(row, MessageReceivedCodec)
-      case updateProto.MessageSent.header => decode(row, MessageSentCodec)
-      case updateProto.NameChanged.header => decode(row, NameChangedCodec)
-      case updateProto.NewDevice.header => decode(row, NewDeviceCodec)
-      case updateProto.RemovedDevice.header => decode(row, RemovedDeviceCodec)
-      case updateProto.UpdateConfig.header => decode(row, UpdateConfigCodec)
-      case updateProto.PhoneTitleChanged.header => decode(row, PhoneTitleChangedCodec)
-      case updateProto.contact.ContactRegistered.header => decode(row, ContactRegisteredCodec)
-      case updateProto.contact.ContactsAdded.header => decode(row, ContactsAddedCodec)
-      case updateProto.contact.ContactsRemoved.header => decode(row, ContactsRemovedCodec)
-      case updateProto.contact.LocalNameChanged.header => decode(row, LocalNameChangedCodec)
+    val header = rs.int(upd.column("header"))
+
+    header match {
+      case updateProto.UserAvatarChanged.header => decode(rs, UserAvatarChangedCodec)
+      case updateProto.ChatClear.header => decode(rs, ChatClearCodec)
+      case updateProto.ChatDelete.header => decode(rs, ChatDeleteCodec)
+      case updateProto.EncryptedMessage.header => decode(rs, EncryptedMessageCodec)
+      case updateProto.EncryptedRead.header => decode(rs, EncryptedReadCodec)
+      case updateProto.EncryptedReadByMe.header => decode(rs, EncryptedReadByMeCodec)
+      case updateProto.EncryptedReceived.header => decode(rs, EncryptedReceivedCodec)
+      case updateProto.GroupAvatarChanged.header => decode(rs, GroupAvatarChangedCodec)
+      case updateProto.GroupInvite.header => decode(rs, GroupInviteCodec)
+      case updateProto.GroupMembersUpdate.header => decode(rs, GroupMembersUpdateCodec)
+      case updateProto.GroupTitleChanged.header => decode(rs, GroupTitleChangedCodec)
+      case updateProto.GroupUserAdded.header => decode(rs, GroupUserAddedCodec)
+      case updateProto.GroupUserKick.header => decode(rs, GroupUserKickCodec)
+      case updateProto.GroupUserLeave.header => decode(rs, GroupUserLeaveCodec)
+      case updateProto.Message.header => decode(rs, MessageCodec)
+      case updateProto.MessageDelete.header => decode(rs, MessageDeleteCodec)
+      case updateProto.MessageRead.header => decode(rs, MessageReadCodec)
+      case updateProto.MessageReadByMe.header => decode(rs, MessageReadByMeCodec)
+      case updateProto.MessageReceived.header => decode(rs, MessageReceivedCodec)
+      case updateProto.MessageSent.header => decode(rs, MessageSentCodec)
+      case updateProto.NameChanged.header => decode(rs, NameChangedCodec)
+      case updateProto.NewDevice.header => decode(rs, NewDeviceCodec)
+      case updateProto.RemovedDevice.header => decode(rs, RemovedDeviceCodec)
+      case updateProto.UpdateConfig.header => decode(rs, UpdateConfigCodec)
+      case updateProto.PhoneTitleChanged.header => decode(rs, PhoneTitleChangedCodec)
+      case updateProto.contact.ContactRegistered.header => decode(rs, ContactRegisteredCodec)
+      case updateProto.contact.ContactsAdded.header => decode(rs, ContactsAddedCodec)
+      case updateProto.contact.ContactsRemoved.header => decode(rs, ContactsRemovedCodec)
+      case updateProto.contact.LocalNameChanged.header => decode(rs, LocalNameChangedCodec)
     }
   }
-}
 
-object SeqUpdate extends SeqUpdate with TableOps {
+  def getState(authId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[Option[UUID]] = Future {
+    withSQL {
+      select(column.column("uuid")).from(SeqUpdate as upd)
+        .where.eq(upd.column("auth_id"), authId)
+        .orderBy(upd.column("uuid")).desc.limit(1)
+    }.map(rs => new UUID(rs.string(column.column("uuid")))).single.apply
+  }
 
-  def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(implicit session: Session): Future[immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]]] = {
-    val query = state match {
-      case Some(uuid) =>
-        SeqUpdate.select.orderBy(_.uuid.asc)
-          .where(_.authId eqs authId).and(_.uuid gt uuid)
-      case None =>
-        SeqUpdate.select.orderBy(_.uuid.asc)
-          .where(_.authId eqs authId)
-    }
+  def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[List[Entity[UUID, updateProto.SeqUpdateMessage]]] = Future {
+    val sizedUpdates: List[UpdateWithSize] = withSQL {
+      @inline
+      def query(whereOpt: Option[SQLSyntax]): PagingSQLBuilder[UpdateWithSize] =
+        select.from(SeqUpdate as upd)
+          .where
+          .eq(upd.column("auth_id"), authId)
+          .and(whereOpt)
+          .orderBy(upd.column("uuid")).asc.limit(limit)
 
-    // TODO: use iteratee
-    for {
-      sizedUpdates <- query.limit(limit).fetch
-    } yield {
-      @annotation.tailrec
-      def collect(
-        sizedUpdates: Seq[(Entity[UUID, updateProto.SeqUpdateMessage], Long)],
-        updates: immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]],
-        size: Long
-      ): immutable.Seq[Entity[UUID, updateProto.SeqUpdateMessage]] = {
-        if (sizedUpdates == Nil) {
+      state match {
+        case Some(uuid) =>
+          query(Some(sqls.gt(upd.column("uuid"), sqls"CAST(${uuid.toString} as uuid)")))
+        case None =>
+          query(None)
+      }
+    }.map(SeqUpdate(upd)).list.apply
+
+    @annotation.tailrec
+    def collect(
+      sizedUpdates: List[UpdateWithSize],
+      updates: List[Entity[UUID, updateProto.SeqUpdateMessage]],
+      size: Long
+    ): List[Entity[UUID, updateProto.SeqUpdateMessage]] = {
+      if (sizedUpdates == Nil) {
+        updates
+      } else {
+        val (update, updateSize) = sizedUpdates.head
+        // LIMIT 50 Kb
+        if (size + updateSize > 50 * 1024) {
           updates
         } else {
-          val (update, updateSize) = sizedUpdates.head
-          // LIMIT 50 Kb
-          if (size + updateSize > 50 * 1024) {
-            updates
-          } else {
-            collect(sizedUpdates.tail, updates :+ update, size + updateSize)
-          }
+          collect(sizedUpdates.tail, updates :+ update, size + updateSize)
         }
       }
-
-      collect(sizedUpdates, Nil, 0)
     }
+
+    collect(sizedUpdates, Nil, 0)
   }
 
-  def getState(authId: Long)(implicit session: Session): Future[Option[UUID]] =
-    SeqUpdate.select(_.uuid).where(_.authId eqs authId).orderBy(_.uuid.desc).one
+  def push(authId: Long, update: updateProto.SeqUpdateMessage)(
+    implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
+  ): Future[UUID] =
+    push(new UUID, authId, update)
 
-  def push(authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] =
-    push(UUIDs.timeBased, authId, update)
-
-  def push(uuid: UUID, authId: Long, update: updateProto.SeqUpdateMessage)(implicit session: Session): Future[UUID] = {
-    val (body, header) = update match {
+  def push(uuid: UUID, authId: Long, update: updateProto.SeqUpdateMessage)(
+    implicit ec: ExecutionContext, session: DBSession
+  ): Future[UUID] = Future {
+    val (protobufData, header) = update match {
       case u: updateProto.UserAvatarChanged => (UserAvatarChangedCodec.encodeValid(u), updateProto.UserAvatarChanged.header)
       case u: updateProto.ChatClear => (ChatClearCodec.encodeValid(u), updateProto.ChatClear.header)
       case u: updateProto.ChatDelete => (ChatDeleteCodec.encodeValid(u), updateProto.ChatDelete.header)
@@ -151,12 +170,18 @@ object SeqUpdate extends SeqUpdate with TableOps {
       case u: updateProto.contact.LocalNameChanged => (LocalNameChangedCodec.encodeValid(u), updateProto.contact.LocalNameChanged.header)
       case _ => throw new Exception("Unknown UpdateMessage")
     }
-    val q = insert
-      .value(_.authId, authId).value(_.uuid, uuid)
-      .value(_.header, header)
-      .value(_.protobufBody, body.toByteBuffer)
-      .consistencyLevel_=(ConsistencyLevel.ALL)
-      .future()
-    q.map { _ => uuid }
+
+    withSQL {
+      val x = column.column("protobuf_data")
+
+      insert.into(SeqUpdate).namedValues(
+        column.column("auth_id") -> authId,
+        column.column("uuid") -> sqls"""CAST(${uuid.toString} as uuid)""",
+        column.column("header") -> header,
+        column.column("protobuf_data") -> protobufData.toByteArray
+      )
+    }.execute.apply
+
+    uuid
   }
 }

@@ -1,12 +1,12 @@
 package com.secretapp.backend.services.rpc.user
 
-import java.nio.file.{ Files, Paths }
 import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.util.{ACL, AvatarUtils}
+import java.nio.file.{ Files, Paths }
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
 import scala.util.Random
@@ -16,16 +16,20 @@ import com.secretapp.backend.data.message.rpc.messaging.ResponseEditGroupAvatar
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
-class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
+class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
   "valid avatar" should {
-    "have proper size" in {
+    "have proper size" in new sqlDb {
+      storeImages()
+
       validOrigBytes must have size 112527
     }
   }
 
   "user service on receiving `RequestEditGroupAvatar`" should {
-    "respond with `ResponseAvatarChanged`" in {
+    "respond with `ResponseAvatarChanged`" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -54,7 +58,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "update group avatar" in {
+    "update group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -73,7 +79,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       dbAvatar(respGroup.groupPeer.id).largeImage  should beSome
     }
 
-    "store full image in group avatar" in {
+    "store full image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -92,7 +100,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "store large image in group avatar" in {
+    "store large image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -111,7 +121,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "store small image in group avatar" in {
+    "store small image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -130,7 +142,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -175,7 +189,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "respond with IMAGE_LOAD_ERROR if invalid image passed" in {
+    "respond with IMAGE_LOAD_ERROR if invalid image passed" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -189,7 +205,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "respond with FILE_TOO_BIG if huge image passed" in {
+    "respond with FILE_TOO_BIG if huge image passed" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -206,7 +224,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
   "user service on receiving `RequestRemoveGroupAvatar`" should {
 
-    "respond with `ResponseAvatarChanged`" in {
+    "respond with `ResponseAvatarChanged`" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -221,7 +241,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "update group avatar" in {
+    "update group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -238,7 +260,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       dbGroup(respGroup.groupPeer.id)._2.avatar should beNone
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -276,13 +300,13 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private var invalidFileLocation: models.FileLocation = _
   private var tooLargeFileLocation: models.FileLocation = _
 
-  override def before = {
+  def storeImages() = {
     validFileLocation = storeImage(42, validOrigBytes)
     invalidFileLocation = storeImage(43, invalidBytes)
     tooLargeFileLocation = storeImage(44, tooLargeBytes)
   }
 
-  private val fr = new persist.File
+  //private val fr = new persist.File
 
   private val validOrigBytes =
     Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
@@ -304,10 +328,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     val fileSalt = (new Random).nextString(30)
 
     val ffl = for (
-      _    <- fr.createFile(fileId, fileSalt);
-      _    <- fr.write(fileId, 0, bytes);
-      hash <- ACL.fileAccessHash(fr, fileId);
-      fl    = models.FileLocation(fileId, hash)
+      _    <- persist.File.create(fileAdapter, fileId, fileSalt);
+      _    <- persist.File.write(fileAdapter, fileId, 0, bytes);
+      fdOpt<- persist.FileData.find(fileId);
+      fl   = models.FileLocation(fileId, ACL.fileAccessHash(fileId, fdOpt.get.accessSalt))
     ) yield fl
 
     ffl.sync()
@@ -324,7 +348,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbGroup(groupId: Int) =
-    persist.Group.getEntityWithAvatar(groupId).sync().get
+    persist.Group.findWithAvatar(groupId).sync().get
 
   private def dbAvatar(groupId: Int) = dbGroup(groupId)._2.avatar.get
   private def dbFullImage(groupId: Int) = dbAvatar(groupId).fullImage.get
@@ -332,7 +356,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private def dbSmallImage(groupId: Int) = dbAvatar(groupId).smallImage.get
 
   private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
-    fr.getFile(a.fileLocation.fileId.toInt).sync()
+    persist.File.readAll(fileAdapter, a.fileLocation.fileId).sync()
 
   private def createGroup(ownerScope: TestScope, scope2: TestScope) = {
     val rqCreateGroup = RequestCreateGroup(

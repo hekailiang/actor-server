@@ -16,6 +16,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.SmsEnginesProtocol
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.{ Success, Failure }
@@ -72,14 +73,14 @@ trait SignService extends ContactHelpers with SocialHelpers {
 
   def handleRequestGetAuthSessions(): Future[RpcResponse] = {
     for {
-      authItems <- persist.AuthSession.getEntities(currentUser.get.uid)
+      authItems <- persist.AuthSession.findAllByUserId(currentUser.get.uid)
     } yield {
       Ok(ResponseGetAuthSessions(authItems.toVector map (struct.AuthSession.fromModel(_, currentUser.get.authId))))
     }
   }
 
   def handleRequestSignOut(): Future[RpcResponse] = {
-    persist.AuthSession.getEntityByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
+    persist.AuthSession.findByUserIdAndPublicKeyHash(currentUser.get.uid, currentUser.get.publicKeyHash) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -90,7 +91,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   }
 
   def handleRequestTerminateSession(id: Int): Future[RpcResponse] = {
-    persist.AuthSession.getEntity(currentUser.get.uid, id) flatMap {
+    persist.AuthSession.findByUserIdAndId(currentUser.get.uid, id) flatMap {
       case Some(authItem) =>
         logout(authItem, currentUser.get) map { _ =>
           Ok(ResponseVoid())
@@ -101,7 +102,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   }
 
   def handleRequestTerminateAllSessions(): Future[RpcResponse] = {
-    persist.AuthSession.getEntities(currentUser.get.uid) map { authItems =>
+    persist.AuthSession.findAllByUserId(currentUser.get.uid) map { authItems =>
       authItems foreach {
         case authItem =>
           if (authItem.authId != currentUser.get.authId) {
@@ -119,8 +120,8 @@ trait SignService extends ContactHelpers with SocialHelpers {
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
-          smsR <- persist.AuthSmsCode.getEntity(phoneNumber)
-          phoneR <- persist.Phone.getEntity(phoneNumber)
+          smsR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
+          phoneR <- persist.UserPhone.findByNumber(phoneNumber)
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
@@ -133,7 +134,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case _ => genSmsCode
               }
               singletons.smsEngines ! SmsEnginesProtocol.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
-              for { _ <- persist.AuthSmsCode.insertEntity(models.AuthSmsCode(phoneNumber, smsHash, smsCode)) }
+              for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
               yield Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
           }
         }
@@ -151,27 +152,35 @@ trait SignService extends ContactHelpers with SocialHelpers {
       case Some((phoneNumber, countryCode)) =>
         @inline
         def auth(u: models.User): Future[RpcResponse] = {
-          persist.AuthSmsCode.dropEntity(phoneNumber)
+          persist.AuthSmsCode.destroy(phoneNumber)
           log.info(s"Authenticate currentUser=$u")
           this.currentUser = Some(u)
 
-          persist.AuthSession.getEntitiesByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
+          persist.AuthSession.findAllByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
             for (authItem <- authItems) {
               logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
             }
 
-            persist.AuthSession.insertEntity(
-              models.AuthSession.build(
-                id = rand.nextInt(java.lang.Integer.MAX_VALUE), appId = appId, deviceTitle = deviceTitle, authTime = (System.currentTimeMillis / 1000).toInt,
-                authLocation = "", latitude = None, longitude = None,
-                authId = u.authId, publicKeyHash = u.publicKeyHash, deviceHash = deviceHash
-              ), u.uid
+            persist.AuthSession.create(
+              userId = u.uid,
+              id = rand.nextInt(java.lang.Integer.MAX_VALUE),
+              appId = appId,
+              appTitle = models.AuthSession.appTitleOf(appId),
+              authId = u.authId,
+              publicKeyHash = u.publicKeyHash,
+              deviceHash = deviceHash,
+              deviceTitle = deviceTitle,
+              authTime = DateTime.now,
+              authLocation = "",
+              latitude = None,
+              longitude = None
             )
 
+            log.debug("Sending AuthorizeUser to session actor")
             sessionActor ! SessionProtocol.AuthorizeUser(u)
 
             for {
-              avatarData <- persist.User.getAvatar(u.uid)
+              avatarData <- persist.AvatarData.find[models.User](u.uid)
             } yield {
               Ok(
                 ResponseAuth(
@@ -188,9 +197,18 @@ trait SignService extends ContactHelpers with SocialHelpers {
           val publicKeyHash = ec.PublicKey.keyHash(publicKey)
 
           @inline
-          def updateUserRecord(name: String): Unit = {
-            persist.User.insertEntityRowWithChildren(userId, authId, publicKey, publicKeyHash, phoneNumber, name, countryCode) onSuccess {
-              case _ => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
+          def updateUserRecord(name: String): Future[Unit] = {
+            persist.User.savePartial(
+              id = userId,
+              name = name,
+              countryCode = countryCode
+            )(
+              authId = authId,
+              publicKeyHash = publicKeyHash,
+              publicKeyData = publicKey,
+              phoneNumber = phoneNumber
+            ) andThen {
+              case Success(_) => pushNewDeviceUpdates(authId, userId, publicKeyHash, publicKey)
             }
           }
 
@@ -203,9 +221,9 @@ trait SignService extends ContactHelpers with SocialHelpers {
           // TODO: use sequence from shapeless-contrib
 
           val (fuserAuthR, fuserR) = (
-            persist.User.getEntity(userId, authId),
-            persist.User.getEntity(userId) // remove it when it cause bottleneck
-            )
+            persist.User.find(userId)(Some(authId)),
+            persist.User.find(userId)(None) // remove it when it cause bottleneck
+          )
 
           fuserAuthR flatMap { userAuthR =>
             fuserR flatMap { userR =>
@@ -214,18 +232,21 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case None =>
                   val user = userR.get
                   val userName = getUserName(user.name)
-                  updateUserRecord(userName)
-                  val keyHashes = user.keyHashes + publicKeyHash
-                  val newUser = user.copy(authId = authId, publicKey = publicKey, publicKeyHash = publicKeyHash,
-                    keyHashes = keyHashes, name = userName)
-                  auth(newUser)
+                  updateUserRecord(userName) flatMap { _ =>
+                    val keyHashes = user.publicKeyHashes + publicKeyHash
+                    val newUser = user.copy(authId = authId, publicKeyData = publicKey, publicKeyHash = publicKeyHash,
+                      publicKeyHashes = keyHashes, name = userName)
+                    auth(newUser)
+                  }
                 case Some(userAuth) =>
                   val userName = getUserName(userAuth.name)
-                  if (userAuth.publicKey != publicKey) {
-                    updateUserRecord(userName)
-                    persist.User.removeKeyHash(userAuth.uid, userAuth.publicKeyHash, Some(currentUser.get.authId)) flatMap { _ =>
-                      val keyHashes = userAuth.keyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
-                      val newUser = userAuth.copy(publicKey = publicKey, publicKeyHash = publicKeyHash, keyHashes = keyHashes,
+                  if (userAuth.publicKeyData != publicKey) {
+                    Future.sequence(Seq(
+                      updateUserRecord(userName),
+                      persist.UserPublicKey.destroy(userAuth.uid, userAuth.publicKeyHash)
+                    )) flatMap { _ =>
+                      val keyHashes = userAuth.publicKeyHashes.filter(_ != userAuth.publicKeyHash) + publicKeyHash
+                      val newUser = userAuth.copy(publicKeyData = publicKey, publicKeyHash = publicKeyHash, publicKeyHashes = keyHashes,
                         name = userName)
                       auth(newUser)
                     }
@@ -244,8 +265,8 @@ trait SignService extends ContactHelpers with SocialHelpers {
         else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
         else {
           val f = for {
-            smsCodeR <- persist.AuthSmsCode.getEntity(phoneNumber)
-            phoneR <- persist.Phone.getEntity(phoneNumber)
+            smsCodeR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
+            phoneR <- persist.UserPhone.findByNumber(phoneNumber)
           } yield (smsCodeR, phoneR)
           f flatMap tupled {
             (smsCodeR, phoneR) =>
@@ -258,31 +279,29 @@ trait SignService extends ContactHelpers with SocialHelpers {
                     case -\/(_: RequestSignIn) => phoneR match {
                       case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
                       case Some(rec) =>
-                        persist.AuthSmsCode.dropEntity(phoneNumber)
+                        persist.AuthSmsCode.destroy(phoneNumber)
                         signIn(rec.userId) // user must be persisted before sign in
                     }
                     case \/-(req: RequestSignUp) =>
-                      persist.AuthSmsCode.dropEntity(phoneNumber)
+                      persist.AuthSmsCode.destroy(phoneNumber)
                       phoneR match {
                         case None => withValidName(req.name) { name =>
                           withValidPublicKey(publicKey) { publicKey =>
                             val userId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
                             val phoneId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
 
-                            val userPhone = models.UserPhone(
+                            persist.UserPhone.create(
                               id = phoneId,
                               userId = userId,
                               accessSalt = genAccessSalt,
                               number = phoneNumber,
                               title = "Mobile phone"
-                            )
-
-                            persist.UserPhone.insertEntity(userPhone) flatMap { _ =>
+                            ) flatMap { _ =>
                               val pkHash = ec.PublicKey.keyHash(publicKey)
                               val user = models.User(
                                 uid = userId,
                                 authId = authId,
-                                publicKey = publicKey,
+                                publicKeyData = publicKey,
                                 publicKeyHash = pkHash,
                                 phoneNumber = phoneNumber,
                                 accessSalt = genAccessSalt,
@@ -292,10 +311,23 @@ trait SignService extends ContactHelpers with SocialHelpers {
                                 phoneIds = immutable.Set(phoneId),
                                 emailIds = immutable.Set.empty,
                                 state = models.UserState.Registered,
-                                keyHashes = immutable.Set(pkHash)
+                                publicKeyHashes = immutable.Set(pkHash)
                               )
 
-                              persist.User.insertEntityWithChildren(user, models.AvatarData.empty) flatMap { _ =>
+                              persist.AvatarData.create[models.User](user.uid, models.AvatarData.empty)
+
+                              persist.User.create(
+                                id = user.uid,
+                                accessSalt = user.accessSalt,
+                                name = user.name,
+                                countryCode = user.countryCode,
+                                sex = user.sex,
+                                state = user.state
+                              )(
+                                authId = user.authId,
+                                publicKeyHash = user.publicKeyHash,
+                                publicKeyData = user.publicKeyData
+                              ) flatMap { _ =>
                                 pushContactRegisteredUpdates(user)
                                 auth(user)
                               }
@@ -334,7 +366,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
 
   private def pushNewDeviceUpdates(authId: Long, userId: Int, publicKeyHash: Long, publicKey: BitVector): Unit = {
     // Push NewFullDevice updates
-    persist.UserPublicKey.fetchAuthIdsByUserId(userId) onComplete {
+    persist.AuthId.findAllIdsByUserId(userId) onComplete {
       case Success(authIds) =>
         for (targetAuthId <- authIds) {
           if (targetAuthId != authId) {
@@ -350,7 +382,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     getRelations(userId) onComplete {
       case Success(userIds) =>
         for (targetUserId <- userIds) {
-          persist.UserPublicKey.fetchAuthIdsByUserId(targetUserId) onComplete {
+          persist.AuthId.findAllIdsByUserId(targetUserId) onComplete {
             case Success(authIds) =>
               for (targetAuthId <- authIds) {
                 updatesBrokerRegion ! NewUpdatePush(targetAuthId, NewDevice(userId, publicKeyHash, None, System.currentTimeMillis()))
@@ -369,7 +401,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   private def pushContactRegisteredUpdates(u: models.User): Unit = {
     import com.secretapp.backend.api.SocialProtocol._
 
-    persist.UnregisteredContact.byNumber(u.phoneNumber) map { contacts =>
+    persist.UnregisteredContact.findAllByPhoneNumber(u.phoneNumber) map { contacts =>
       log.debug(s"unregistered ${u.phoneNumber} is in contacts of users: $contacts")
       contacts foreach { c =>
         socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
@@ -382,16 +414,16 @@ trait SignService extends ContactHelpers with SocialHelpers {
           }
         }
       }
-      persist.UnregisteredContact.removeEntities(u.phoneNumber)
+      persist.UnregisteredContact.destroyAllByPhoneNumber(u.phoneNumber)
     }
   }
 
   private def logout(authItem: models.AuthSession, currentUser: models.User)(implicit session: CSession) = {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
-      persist.AuthId.deleteEntity(authItem.authId),
-      persist.User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId)),
-      persist.AuthSession.setDeleted(currentUser.uid, authItem.id)
+      persist.AuthId.destroy(authItem.authId),
+      //persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash), should be destroyed by AuthId.destroy
+      persist.AuthSession.destroy(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemovedDeviceUpdates(currentUser.uid, authItem.publicKeyHash)
@@ -400,13 +432,13 @@ trait SignService extends ContactHelpers with SocialHelpers {
 
   private def logoutKeepingCurrentAuthIdAndPK(authItem: models.AuthSession, currentUser: models.User)(implicit session: CSession) = {
     val frmAuthId = if (currentUser.authId != authItem.authId) {
-      persist.AuthId.deleteEntity(authItem.authId)
+      persist.AuthId.destroy(authItem.authId)
     } else {
       Future.successful()
     }
 
     val frmKeyHash = if (currentUser.publicKeyHash != authItem.publicKeyHash) {
-      persist.User.removeKeyHash(currentUser.uid, authItem.publicKeyHash, Some(currentUser.authId))
+      persist.UserPublicKey.destroy(currentUser.uid, authItem.publicKeyHash)
     } else {
       Future.successful()
     }
@@ -415,7 +447,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     Future.sequence(Seq(
       frmKeyHash,
       frmAuthId,
-      persist.AuthSession.setDeleted(currentUser.uid, authItem.id)
+      persist.AuthSession.destroy(currentUser.uid, authItem.id)
     )) andThen {
       case Success(_) =>
         pushRemovedDeviceUpdates(currentUser.uid, authItem.publicKeyHash)

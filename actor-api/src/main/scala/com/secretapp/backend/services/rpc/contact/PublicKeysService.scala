@@ -30,16 +30,21 @@ trait PublicKeysService {
   def handleRequestGetPublicKeys(keys: immutable.Seq[PublicKeyRequest]): Future[RpcResponse] = {
     val authId = currentAuthId
     val keysMap = keys.map(k => k.userId * k.keyHash -> k.accessHash).toMap
+
+    val pkeysFuture = persist.UserPublicKey.findAllByUserIdHashPairs(keys.map(k => (k.userId, k.keyHash)))
+    val saltsFuture = persist.User.findAllSaltsByIds(keys.map(_.userId))
+
     for {
-      pkeys <- persist.UserPublicKey.getEntitiesByPublicKeyHash(keys.map(k => (k.userId, k.keyHash)))
+      pkeys <- pkeysFuture
+      saltsMap <- saltsFuture map (_.toMap)
     } yield {
       val items = pkeys.filter { k =>
-        val hkey = k.userId * k.publicKeyHash
-        val ahash = ACL.userAccessHash(authId, k.userId, k.userAccessSalt)
+        val hkey = k.userId * k.hash
+        val ahash = ACL.userAccessHash(authId, k.userId, saltsMap.get(k.userId).get) // FIXME: make it safe
         keysMap(hkey) == ahash
       }
       val pubKeys = items.map { key =>
-        PublicKeyResponse(key.userId, key.publicKeyHash, key.publicKey)
+        PublicKeyResponse(key.userId, key.hash, key.data)
       }
       Ok(ResponseGetPublicKeys(pubKeys))
     }

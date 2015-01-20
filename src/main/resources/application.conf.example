@@ -1,4 +1,22 @@
 actor-server {
+  file-storage {
+    close-timeout = 60 seconds
+    base-path = "/tmp/actor-storage"
+    path-depth = 5
+  }
+
+  sql {
+    url = "jdbc:postgresql://localhost:5432/actor"
+    user = "postgres"
+    password = ""
+  }
+
+  akka-persistence-sql-async {
+    url = "jdbc:postgresql://localhost:5432/actor"
+    user = "postgres"
+    pass = ""
+  }
+
   sms {
     clickatell {
       user = "user"
@@ -22,6 +40,26 @@ actor-server {
     cert {
       path = "apns/apns-dev.pfx"
       password = "private"
+    }
+  }
+
+  smtpd {
+    certificate {
+      password = "password"
+      keystore = "keystore.jks"
+    }
+  }
+
+  akka {
+    remote {
+      netty.tcp {
+        port = 2553
+        hostname = 127.0.0.1
+      }
+    }
+
+    cluster {
+      seed-nodes = [ "akka.tcp://secret-api-server@127.0.0.1:2553" ]
     }
   }
 }

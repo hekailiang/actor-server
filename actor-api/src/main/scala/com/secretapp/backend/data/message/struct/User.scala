@@ -95,7 +95,7 @@ object User {
       name = u.name,
       localName = toLocalName(localName),
       sex = u.sex.toOption,
-      keyHashes = u.keyHashes,
+      keyHashes = u.publicKeyHashes,
       phoneNumber = u.phoneNumber,
       phoneIds = u.phoneIds,
       emailIds = u.emailIds,

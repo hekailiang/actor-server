@@ -1,4 +1,4 @@
-package com.secretapp.backend.persist
+/*package com.secretapp.backend.persist
 
 import com.websudos.phantom.Implicits._
 import java.nio.ByteBuffer
@@ -98,3 +98,4 @@ private[persist] class FileBlock(implicit session: Session, context: ExecutionCo
   def getBlocksLength(fileId: Int): Future[Int] =
     count.where(_.fileId eqs fileId).one() map (_.get * blockSize) map (_.toInt)
 }
+ */
