@@ -64,7 +64,7 @@ object BackendBuild extends Build {
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
    .dependsOn(actorBackend)
-   .aggregate(actorTests, actorProtobuf)
+   .aggregate(actorTests, actorPersist, actorProtobuf)
 
   lazy val akkaPersistenceSqlAsync = uri("git://github.com/prettynatty/akka-persistence-sql-async.git")
 
@@ -137,7 +137,7 @@ object BackendBuild extends Build {
     settings = defaultSettings ++ Seq(
       libraryDependencies ++= Dependencies.smtpd
     )
-  ).dependsOn(actorApi).configs(ScalaBuff)
+  ).dependsOn(actorApi)
 
   lazy val actorBackend = Project(
     id       = "actor-backend",

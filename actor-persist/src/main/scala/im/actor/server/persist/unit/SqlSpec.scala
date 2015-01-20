@@ -9,12 +9,12 @@ import org.specs2.specification._
 trait SqlSpec extends FlywayInit with DbInit {
   final val sqlConfig = ConfigFactory.load().getConfig("actor-server.sql")
 
+  initDb(sqlConfig)
+
   trait sqlDb extends Scope {
     val flyway = initFlyway(sqlConfig)
 
     flyway.clean
     flyway.migrate
-
-    initDb(sqlConfig)
   }
 }

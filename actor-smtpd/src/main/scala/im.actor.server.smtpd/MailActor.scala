@@ -59,48 +59,47 @@ class MailActor(emailCounter: ActorRef, apiRouter: ActorRef)(implicit csession: 
     persist.UserEmail.getUser(mailFrom.address).flatMap {
       case Some(u) => Future.successful(u)
       case None =>
-        ask(emailCounter, CounterProtocol.GetNext).mapTo[Int].flatMap { case emailId =>
-          val userId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1 // TODO
+        val userId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1 // TODO
+        val emailId = rand.nextInt(java.lang.Integer.MAX_VALUE) + 1
 
-          val user = models.User(
-            uid = userId,
-            authId = 0L,
-            publicKeyData = BitVector.empty,
-            publicKeyHash = 0L,
-            phoneNumber = 0L,
-            accessSalt = genAccessSalt,
-            name = mailFrom.title,
-            sex = models.NoSex,
-            countryCode = "RU",
-            phoneIds = immutable.Set(),
-            emailIds = immutable.Set(emailId),
-            state = models.UserState.Email,
-            publicKeyHashes = immutable.Set()
+        val user = models.User(
+          uid = userId,
+          authId = 0L,
+          publicKeyData = BitVector.empty,
+          publicKeyHash = 0L,
+          phoneNumber = 0L,
+          accessSalt = genAccessSalt,
+          name = mailFrom.title,
+          sex = models.NoSex,
+          countryCode = "RU",
+          phoneIds = immutable.Set(),
+          emailIds = immutable.Set(emailId),
+          state = models.UserState.Email,
+          publicKeyHashes = immutable.Set()
+        )
+
+        for {
+          _ <- persist.User.create(
+            id = user.uid,
+            accessSalt = user.accessSalt,
+            name = user.name,
+            countryCode = user.countryCode,
+            sex = user.sex,
+            state = user.state
+          )(
+            authId = user.authId,
+            publicKeyHash = user.publicKeyHash,
+            publicKeyData = user.publicKeyData
           )
-
-          for {
-            _ <- persist.User.create(
-              id = user.uid,
-              accessSalt = user.accessSalt,
-              name = user.name,
-              countryCode = user.countryCode,
-              sex = user.sex,
-              state = user.state
-            )(
-              authId = user.authId,
-              publicKeyHash = user.publicKeyHash,
-              publicKeyData = user.publicKeyData
-            )
-            _ <- persist.UserEmail.create(
-              id = emailId,
-              userId = userId,
-              accessSalt = genAccessSalt,
-              email = mailFrom.address,
-              title = mailFrom.title
-            )
-          } yield user
-        }
-    }
+          _ <- persist.UserEmail.create(
+            id = emailId,
+            userId = userId,
+            accessSalt = genAccessSalt,
+            email = mailFrom.address,
+            title = mailFrom.title
+          )
+        } yield user
+      }
   }
 
   def getRecipientUsers(recipients: Set[EmailAddress]): Future[Set[models.User]] = {
