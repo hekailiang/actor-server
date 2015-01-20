@@ -334,9 +334,9 @@ class RpcMessagingSpec extends RpcSpec {
 
     "check provided keys" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
-      println("oooooook")
+
       val scope2_2 = TestScope(scope2.user.uid, scope2.user.phoneNumber)
-      println("uuuuuuk")
+
       catchNewSession(scope1)
       catchNewSession(scope2)
       catchNewSession(scope2_2)
@@ -466,7 +466,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer, new DateTime(0), 10).sync().length should_== 0
+        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer.asModel, new DateTime(0), 10).sync().length should_== 0
       }
 
     }
@@ -495,7 +495,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer, new DateTime(0), 10).sync().length should_== 0
+        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer.asModel, new DateTime(0), 10).sync().length should_== 0
         persist.Dialog.findAll(scope.user.uid, new DateTime(0), 0).sync().length should_== 0
       }
 
@@ -517,15 +517,13 @@ class RpcMessagingSpec extends RpcSpec {
           message = TextMessage("Yolo from user1 to user2! #1")
         ) :~> <~:[ResponseSeqDate]
 
-        Thread.sleep(1000)
-
         RequestSendMessage(
           outPeer = struct.OutPeer.privat(scope3.user.uid, ACL.userAccessHash(scope.user.authId, scope3.user)),
           randomId = 2L,
           message = TextMessage("Yolo from user1 to user3! #1")
         ) :~> <~:[ResponseSeqDate]
 
-        Thread.sleep(2000)
+        Thread.sleep(1000)
 
         {
           val (resp, _) = RequestLoadDialogs(
@@ -555,8 +553,111 @@ class RpcMessagingSpec extends RpcSpec {
           resp.dialogs.length should_== 2
           resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user2! #2")
           resp.dialogs.head.peer.id should_== scope2.user.uid
+          resp.dialogs.head.unreadCount should_== 0
+        }
+      }
+    }
+
+    "count unread in dialogs" in new sqlDb {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      val (date1, date2) = {
+        implicit val scope = scope1
+
+        val (r1, _) = RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 1L,
+          message = TextMessage("Yolo from user1 to user2! #1")
+        ) :~> <~:[ResponseSeqDate]
+
+        val (r2, _) = RequestSendMessage(
+          outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
+          randomId = 2L,
+          message = TextMessage("Yolo from user1 to user2! #2")
+        ) :~> <~:[ResponseSeqDate]
+
+        (r1.date, r2.date)
+      }
+
+      Thread.sleep(1000)
+
+      {
+        implicit val scope = scope2
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.length should_== 1
+          resp.dialogs.head.message should_== TextMessage("Yolo from user1 to user2! #2")
           resp.dialogs.head.unreadCount should_== 2
         }
+
+        RequestMessageRead(
+          struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          date1
+        ) :~> <~:[ResponseVoid]
+
+        Thread.sleep(1000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.head.state should_== None
+          resp.dialogs.head.unreadCount should_== 1
+        }
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (resp, _) = RequestLoadDialogs(
+          startDate = 0,
+          limit = 10
+        ) :~> <~:[ResponseLoadDialogs]
+
+        resp.dialogs.head.state should_== Some(models.MessageState.Sent)
+        resp.dialogs.head.unreadCount should_== 0
+      }
+
+      {
+        implicit val scope = scope2
+
+        RequestMessageRead(
+          struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),
+          System.currentTimeMillis()
+        ) :~> <~:[ResponseVoid]
+
+        Thread.sleep(1000)
+
+        {
+          val (resp, _) = RequestLoadDialogs(
+            startDate = 0,
+            limit = 10
+          ) :~> <~:[ResponseLoadDialogs]
+
+          resp.dialogs.head.state should_== None
+          resp.dialogs.head.unreadCount should_== 0
+        }
+      }
+
+      {
+        implicit val scope = scope1
+
+        val (resp, _) = RequestLoadDialogs(
+          startDate = 0,
+          limit = 10
+        ) :~> <~:[ResponseLoadDialogs]
+
+        resp.dialogs.head.state should_== Some(models.MessageState.Read)
+        resp.dialogs.head.unreadCount should_== 0
       }
     }
   }

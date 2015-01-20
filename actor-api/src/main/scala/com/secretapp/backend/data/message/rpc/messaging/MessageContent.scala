@@ -1,16 +1,20 @@
 package com.secretapp.backend.data.message.rpc.messaging
 
+import com.google.protobuf.ByteString
 import com.secretapp.backend.data.message.rpc.file.FastThumb
 import com.secretapp.backend.data.message.struct._
-import com.secretapp.backend.{models, proto}
+import com.secretapp.backend.{ models, proto }
 import im.actor.messenger.{api => protobuf}
 import scala.language.implicitConversions
 import scalaz.Scalaz._
+import scodec.bits._
 
 sealed trait MessageContent {
   val header: Int
 
   def toProto: protobuf.MessageContent
+
+  def content = BitVector(toProto.content.toByteArray())
 
   def wrap(content: com.google.protobuf.GeneratedMessageLite): protobuf.MessageContent = {
     protobuf.MessageContent(header, content.toByteString)
@@ -18,6 +22,13 @@ sealed trait MessageContent {
 }
 
 object MessageContent {
+  def build(header: Int, data: BitVector): MessageContent = fromProto(
+    protobuf.MessageContent(
+      header,
+      ByteString.copyFrom(data.toByteArray)
+    )
+  )
+
   def fromProto(m: protobuf.MessageContent): MessageContent = m.`type` match {
     case TextMessage.header => TextMessage.fromProto(protobuf.TextMessage.parseFrom(m.content))
     case ServiceMessage.header => ServiceMessage.fromProto(protobuf.ServiceMessage.parseFrom(m.content))

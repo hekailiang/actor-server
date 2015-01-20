@@ -7,6 +7,7 @@ import akka.persistence._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
@@ -119,7 +120,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           mediator ! Publish(
             TypingBroker.topicFor(selfId),
             updateProto.Typing(
-              struct.Peer(struct.PeerType.Private, userId),
+              struct.Peer(models.PeerType.Private, userId),
               userId,
               typingType
             )
@@ -139,7 +140,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
                 mediator ! Publish(
                   TypingBroker.topicFor(targetUserId, authId),
                   updateProto.Typing(
-                    struct.Peer(struct.PeerType.Group, selfId),
+                    struct.Peer(models.PeerType.Group, selfId),
                     userId,
                     typingType
                   )
@@ -159,9 +160,9 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case ((userId, typingType), _) =>
           selfType match {
             case BrokerType.User =>
-              target ! updateProto.Typing(struct.Peer(struct.PeerType.Private, userId), userId, typingType)
+              target ! updateProto.Typing(struct.Peer(models.PeerType.Private, userId), userId, typingType)
             case BrokerType.Group =>
-              target ! updateProto.Typing(struct.Peer(struct.PeerType.Group, selfId), userId, typingType)
+              target ! updateProto.Typing(struct.Peer(models.PeerType.Group, selfId), userId, typingType)
           }
       }
 

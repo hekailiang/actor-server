@@ -20,7 +20,7 @@ trait PeerHelpers extends UserHelpers {
     // TODO: DRY
 
     outPeer.typ match {
-      case struct.PeerType.Private =>
+      case models.PeerType.Private =>
         persist.User.find(outPeer.id)(authId = None) flatMap {
           case Some(userEntity) =>
             if (ACL.userAccessHash(currentUser.authId, userEntity) != outPeer.accessHash) {
@@ -31,7 +31,7 @@ trait PeerHelpers extends UserHelpers {
           case None =>
             Future.successful(Error(400, "INTERNAL_ERROR", "Destination user not found", true))
         }
-      case struct.PeerType.Group =>
+      case models.PeerType.Group =>
         // TODO: use withGroupOutPeer here
         persist.Group.find(outPeer.id) flatMap {
           case Some(groupEntity) =>
@@ -71,9 +71,9 @@ trait PeerHelpers extends UserHelpers {
 
   protected def withOutPeers(outPeers: immutable.Seq[struct.OutPeer], currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
     val checkOptsFutures = outPeers map {
-      case struct.OutPeer(struct.PeerType.Private, userId, accessHash) =>
+      case struct.OutPeer(models.PeerType.Private, userId, accessHash) =>
         checkUserPeer(userId, accessHash, currentUser)
-      case struct.OutPeer(struct.PeerType.Group, groupId, accessHash) =>
+      case struct.OutPeer(models.PeerType.Group, groupId, accessHash) =>
         checkGroupPeer(groupId, accessHash)
     }
 

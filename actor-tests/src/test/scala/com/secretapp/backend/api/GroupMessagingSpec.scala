@@ -1,6 +1,5 @@
 package com.secretapp.backend.api
 
-import com.secretapp.backend.data.message.struct.PeerType
 import com.secretapp.backend.util.ACL
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._

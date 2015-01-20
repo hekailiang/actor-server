@@ -4,9 +4,10 @@ import akka.actor._
 import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.DialogManagerProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
-import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import java.util.UUID
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 
@@ -14,30 +15,90 @@ trait HistoryHelpers extends UserHelpers {
   import DialogManagerProtocol._
   val dialogManagerRegion: ActorRef
 
-  def writeHistoryMessage(
+  protected def writeInHistoryMessage(
     userId: Int,
-    peer: struct.Peer,
-    date: Long,
+    peer: models.Peer,
+    date: DateTime,
     randomId: Long,
     senderUserId: Int,
     message: MessageContent
+  ) = writeHistoryMessage(
+    userId,
+    peer,
+    date,
+    randomId,
+    senderUserId,
+    message,
+    models.MessageState.Sent
+  )
+
+  protected def writeOutHistoryMessage(
+    userId: Int,
+    peer: models.Peer,
+    date: DateTime,
+    randomId: Long,
+    senderUserId: Int,
+    message: MessageContent
+  ) = writeHistoryMessage(
+    userId,
+    peer,
+    date,
+    randomId,
+    senderUserId,
+    message,
+    models.MessageState.Sent
+  )
+
+  protected def writeHistoryMessage(
+    userId: Int,
+    peer: models.Peer,
+    date: DateTime,
+    randomId: Long,
+    senderUserId: Int,
+    message: MessageContent,
+    state: models.MessageState
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, WriteMessage(
-      date, randomId, senderUserId, message
+      date, randomId, senderUserId, message, state
     ))
   }
 
-  def markMessageRead(
+  protected def markOutMessagesReceived(
     userId: Int,
-    peer: struct.Peer,
-    date: Long
+    peer: models.Peer,
+    date: DateTime
   ): Unit = {
-    dialogManagerRegion ! Envelope(userId, peer, MessageRead(date))
+    dialogManagerRegion ! Envelope(userId, peer, OutMessagesReceived(date))
   }
 
-  def markMessageDeleted(
+  protected def markOutMessagesRead(
     userId: Int,
-    peer: struct.Peer,
+    peer: models.Peer,
+    date: DateTime
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, OutMessagesRead(date))
+  }
+
+  protected def markInMessagesReceived(
+    userId: Int,
+    peer: models.Peer,
+    date: DateTime
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, InMessagesReceived(date))
+  }
+
+  protected def markInMessagesRead(
+    userId: Int,
+    peer: models.Peer,
+    date: DateTime
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, InMessagesRead(date))
+
+  }
+
+  protected def markMessageDeleted(
+    userId: Int,
+    peer: models.Peer,
     randomIds: immutable.Seq[Long]
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, MessageDelete(randomIds))
