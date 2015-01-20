@@ -54,14 +54,14 @@ trait CassandraSpecification extends SpecificationLike with ThrownExpectations {
 
     blocking {
       dropKeyspaceAsync(spaceName)
-      dropKeyspace("test_akka")
-      dropKeyspace("test_akka_snapshot")
+      //dropKeyspace("test_akka")
+      //dropKeyspace("test_akka_snapshot")
     }
   }
 
   private def createDB() {
-    createKeySpace("test_akka")
-    createKeySpace("test_akka_snapshot")
+    //createKeySpace("test_akka")
+    //createKeySpace("test_akka_snapshot")
     createAndUseKeySpace(keySpace)
     Await.result(DBConnector.createTables(csession), DurationInt(20).seconds)
   }
