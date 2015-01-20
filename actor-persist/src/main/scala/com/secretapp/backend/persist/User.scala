@@ -78,7 +78,7 @@ object User extends SQLSyntaxSupport[models.User] {
         column.column("state") -> state.toInt
       )
     }.execute.apply
-
+  } flatMap { _ =>
     for {
       //_ <- Phone.insertEntity(phone)
       _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
