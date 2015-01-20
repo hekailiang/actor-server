@@ -24,8 +24,11 @@ object ActorSpecification {
     val journal = new java.io.File("journal")
     val snapshots = new java.io.File("snapshots")
 
-    delete(journal)
-    delete(snapshots)
+    if (journal.exists())
+      delete(journal)
+
+    if (snapshots.exists())
+      delete(snapshots)
   }
 
   def createSystem(systemName: String = "actor-server-test"): ActorSystem = {
