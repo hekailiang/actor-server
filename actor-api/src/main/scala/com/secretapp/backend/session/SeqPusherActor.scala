@@ -1,7 +1,6 @@
 package com.secretapp.backend.session
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
 import com.secretapp.backend.data.message.update.{ FatSeqUpdate, SeqUpdate }
 import com.secretapp.backend.data.message.update.contact._
@@ -14,8 +13,9 @@ import com.eaio.uuid.UUID
 import scala.concurrent.Future
 import scodec.codecs.{ uuid => uuidCodec }
 
-private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
-                                     (implicit val session: CSession) extends Actor with ActorLogging with UserHelpers {
+private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long) extends Actor
+    with ActorLogging
+    with UserHelpers {
   import context.dispatcher
   import context.system
 

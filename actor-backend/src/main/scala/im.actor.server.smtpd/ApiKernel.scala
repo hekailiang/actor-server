@@ -38,10 +38,6 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
   import system.dispatcher
 
   def startup() = {
-    // C* initialize
-    implicit val session = persist.DBConnector.session
-    persist.DBConnector.createTables(session)
-
     Cluster(system)
 
     // Session bootstrap
@@ -50,7 +46,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     val fileAdapter = new FileStorageAdapter(system)
 
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-    val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system, session)
+    val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
 
     val serverConfig = system.settings.config.getConfig("server")
 

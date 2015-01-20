@@ -4,7 +4,6 @@ import akka.actor._
 import akka.contrib.pattern.{ ClusterSharding, DistributedPubSubExtension, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
@@ -73,16 +72,16 @@ object TypingBroker {
     case GroupEnvelope(groupId, msg) => (groupId % shardCount).abs.toString
   }
 
-  def startRegion()(implicit system: ActorSystem, session: CSession) =
+  def startRegion()(implicit system: ActorSystem) =
     ClusterSharding(system).start(
       typeName = "Typing",
-      entryProps = Some(Props(classOf[TypingBroker], session)),
+      entryProps = Some(Props(classOf[TypingBroker])),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class TypingBroker(implicit val session: CSession) extends Actor with ActorLogging with UserHelpers {
+class TypingBroker extends Actor with ActorLogging with UserHelpers {
   import TypingProtocol._
   import context.dispatcher
   import context.system

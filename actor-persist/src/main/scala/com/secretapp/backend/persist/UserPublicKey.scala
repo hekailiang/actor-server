@@ -1,7 +1,6 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import com.datastax.driver.core.{ Session => CSession }
 import java.time._
 import org.joda.time.DateTime
 import scala.concurrent._

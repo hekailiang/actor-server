@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.auth
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.counters.CounterProtocol
 import com.secretapp.backend.api.{ UpdatesBroker, ApiBrokerService, PhoneNumber}
 import com.secretapp.backend.crypto.ec
@@ -29,7 +28,6 @@ import com.secretapp.backend.api.rpc.RpcValidators._
 
 trait SignService extends ContactHelpers with SocialHelpers {
   self: ApiBrokerService =>
-  implicit val session: CSession
 
   import context._
   import UpdatesBroker._
@@ -418,7 +416,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     }
   }
 
-  private def logout(authItem: models.AuthSession, currentUser: models.User)(implicit session: CSession) = {
+  private def logout(authItem: models.AuthSession, currentUser: models.User) = {
     // TODO: use sequence from shapeless-contrib after being upgraded to scala 2.11
     Future.sequence(Seq(
       persist.AuthId.destroy(authItem.authId),
@@ -430,7 +428,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     }
   }
 
-  private def logoutKeepingCurrentAuthIdAndPK(authItem: models.AuthSession, currentUser: models.User)(implicit session: CSession) = {
+  private def logoutKeepingCurrentAuthIdAndPK(authItem: models.AuthSession, currentUser: models.User) = {
     val frmAuthId = if (currentUser.authId != authItem.authId) {
       persist.AuthId.destroy(authItem.authId)
     } else {

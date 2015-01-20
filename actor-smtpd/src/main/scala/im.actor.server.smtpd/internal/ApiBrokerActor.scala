@@ -2,7 +2,6 @@ package im.actor.server.smtpd.internal
 
 import akka.actor._
 import akka.util.Timeout
-import com.datastax.driver.core.{Session => CSession}
 import com.secretapp.backend.api.Singletons
 import com.secretapp.backend.data.message.rpc.messaging.MessageContent
 import com.secretapp.backend.data.message.struct
@@ -13,8 +12,7 @@ import com.secretapp.backend.services.rpc.messaging.SendMessagingHandlers
 import scala.concurrent.duration._
 
 object ApiBrokerActor {
-  def props(singletons: Singletons, updatesBrokerRegion: ActorRef, socialBrokerRegion: ActorRef)
-           (implicit session: CSession) =
+  def props(singletons: Singletons, updatesBrokerRegion: ActorRef, socialBrokerRegion: ActorRef) =
     Props(new ApiBrokerActor(singletons, updatesBrokerRegion, socialBrokerRegion))
 
   case class SendMessage(currentUser: models.User,
@@ -26,7 +24,6 @@ object ApiBrokerActor {
 }
 
 class ApiBrokerActor(singletons: Singletons, val updatesBrokerRegion: ActorRef, socialBrokerRegion: ActorRef)
-                    (implicit val session: CSession)
   extends Actor with ActorLogging with RandomService with UserHelpers with GroupHelpers with PeerHelpers
   with UpdatesHelpers with HistoryHelpers with SendMessagingHandlers with ContactHelpers {
 

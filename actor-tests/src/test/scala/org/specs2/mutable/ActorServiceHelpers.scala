@@ -4,7 +4,6 @@ import akka.actor._
 import akka.io.Tcp.{ Close, Received, Write }
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.Singletons
 import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
@@ -57,7 +56,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   val fileAdapter = new FileStorageAdapter(system)
 
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system, csession)
+  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
@@ -191,7 +190,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion, csession) with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion) with GeneratorServiceMock))
     (probe, actor)
   }
 
@@ -234,7 +233,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   def getProbeAndActor()(implicit transport: TransportConnection) = {
     val probe = TestProbe()
     val actor = transport match {
-      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion, csession))
+      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion))
     }
     (probe, actor)
   }

@@ -7,8 +7,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.persistence._
 import com.eaio.uuid.UUID
-import com.datastax.driver.core.{ Session => CSession }
-import com.datastax.driver.core.utils.UUIDs
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{ update => updateProto }
@@ -51,16 +49,16 @@ object UpdatesBroker {
     case msg@GetSeqAndState(authId) => (authId % shardCount).abs.toString
   }
 
-  def startRegion(apnsService: ApnsService)(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
+  def startRegion(apnsService: ApnsService)(implicit system: ActorSystem): ActorRef = ClusterSharding(system).start(
     typeName = "UpdatesBroker",
-    entryProps = Some(Props(classOf[UpdatesBroker], apnsService, session)),
+    entryProps = Some(Props(classOf[UpdatesBroker], apnsService)),
     idExtractor = idExtractor,
     shardResolver = shardResolver
   )
 }
 
 // TODO: rename to SeqUpdatesBroker
-class UpdatesBroker(implicit val apnsService: ApnsService, session: CSession)
+class UpdatesBroker(implicit val apnsService: ApnsService)
     extends PersistentActor with GooglePush with ApplePush with MDCActorLogging {
   import context.dispatcher
   import ShardRegion.Passivate

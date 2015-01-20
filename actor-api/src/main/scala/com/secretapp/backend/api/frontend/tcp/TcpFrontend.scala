@@ -10,16 +10,15 @@ import scodec.bits.BitVector
 import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
-import com.datastax.driver.core.{ Session => CSession }
 import java.net.InetSocketAddress
 
 object TcpFrontend {
-  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef, session: CSession) = {
-    Props(new TcpFrontend(connection, remote, sessionRegion, session))
+  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef) = {
+    Props(new TcpFrontend(connection, remote, sessionRegion))
   }
 }
 
-class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService {
+class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef) extends Frontend with NackActor with ActorLogging with MTPackageService {
   import akka.io.Tcp._
 
   val transport = MTConnection

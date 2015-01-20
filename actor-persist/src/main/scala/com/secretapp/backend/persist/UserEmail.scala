@@ -1,9 +1,8 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent._
 import scalikejdbc._
-import com.datastax.driver.core.{ Session => CSession }
 import scalaz.std.option._
 import scalaz.std.scalaFuture._
 import scalaz.OptionT._
@@ -64,7 +63,7 @@ object UserEmail extends SQLSyntaxSupport[models.UserEmail] {
 
 
   def getUser(email: String)
-             (implicit ec: ExecutionContext, csession: CSession, session: DBSession = UserEmail.autoSession): Future[Option[models.User]] =
+             (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Option[models.User]] =
     {
       for {
          userEmail <- optionT(findByEmail(email))

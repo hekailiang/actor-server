@@ -1,7 +1,6 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.services.GeneratorService
-import com.websudos.phantom.Implicits._
 import scodec.bits._
 import com.secretapp.backend.models
 import com.secretapp.backend.crypto.ec
@@ -9,6 +8,7 @@ import im.actor.server.persist.unit.SqlSpec
 import org.specs2.mutable.Specification
 import org.specs2.matcher.NoConcurrentExecutionContext
 import scala.collection.immutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scalaz._
 import Scalaz._

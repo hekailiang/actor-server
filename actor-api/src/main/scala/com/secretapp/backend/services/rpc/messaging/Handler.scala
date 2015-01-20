@@ -3,7 +3,6 @@ package com.secretapp.backend.services.rpc.messaging
 import akka.actor._
 import akka.pattern.pipe
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -19,8 +18,7 @@ class Handler(
   val dialogManagerRegion: ActorRef,
   val fileAdapter: FileAdapter,
   val currentUser: models.User
-)(implicit val session: CSession)
-  extends Actor with ActorLogging with MessagingHandlers with GroupHandlers with HistoryHandlers {
+) extends Actor with ActorLogging with MessagingHandlers with GroupHandlers with HistoryHandlers {
   import context._
 
   type RequestMatcher = PartialFunction[RpcRequestMessage, Future[RpcResponse]]

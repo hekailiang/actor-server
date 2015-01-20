@@ -2,14 +2,13 @@ package com.secretapp.backend.api.frontend.tcp
 
 import akka.actor._
 import akka.io.{ IO, Tcp }
-import com.datastax.driver.core.{ Session => CSession }
 import java.net.InetSocketAddress
 
 object TcpServer {
-  def props(sessionRegion: ActorRef)(implicit csession: CSession) = Props(new TcpServer(sessionRegion))
+  def props(sessionRegion: ActorRef) = Props(new TcpServer(sessionRegion))
 }
 
-class TcpServer(sessionRegion: ActorRef)(implicit csession: CSession) extends Actor with ActorLogging {
+class TcpServer(sessionRegion: ActorRef) extends Actor with ActorLogging {
   import akka.io.Tcp._
   import context.system
 
@@ -28,7 +27,7 @@ class TcpServer(sessionRegion: ActorRef)(implicit csession: CSession) extends Ac
     case c @ Connected(remote, local) =>
       log.debug(s"Connected: $c")
       val connection = sender()
-      val frontend = context.actorOf(TcpFrontend.props(connection, remote, sessionRegion, csession))
+      val frontend = context.actorOf(TcpFrontend.props(connection, remote, sessionRegion))
       connection ! Register(frontend, keepOpenOnPeerClosed = true)
   }
 }

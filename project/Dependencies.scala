@@ -4,7 +4,6 @@ object Dependencies {
   object V {
     val akka    = "2.3.8"
     val akkaExperimental = "1.0-M2"
-    val phantom = "1.4.0"
     val scalaz  = "7.1.0"
   }
 
@@ -16,7 +15,6 @@ object Dependencies {
     val akkaContrib     = "com.typesafe.akka"             %% "akka-contrib"                  % V.akka
     val akkaKernel      = "com.typesafe.akka"             %% "akka-kernel"                   % V.akka
     val akkaPersistence = "com.typesafe.akka"             %% "akka-persistence-experimental" % V.akka
-    val akkaPersistenceCassandra = "com.github.krasserm"           %% "akka-persistence-cassandra"    % "0.3.4"
     val akkaRemote      = "com.typesafe.akka"             %% "akka-remote"                   % V.akka
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
     val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % V.akkaExperimental
@@ -31,7 +29,6 @@ object Dependencies {
     val scodecCore      = "org.typelevel"                 %% "scodec-core"                   % "1.2.0"
     val libPhoneNumber  = "com.googlecode.libphonenumber" % "libphonenumber"                 % "7.0"
     val clinkedhashmap  = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2_jdk5"
-    val phantomDsl      = "com.websudos"                  %% "phantom-dsl"                   % V.phantom
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val scalazConcurrent = "org.scalaz"                   %% "scalaz-concurrent"             % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
@@ -39,6 +36,8 @@ object Dependencies {
 
     val commonsEmail    = "org.apache.commons"            % "commons-email"                  % "1.3.3"
     val emailReplyParser = "com.edlio.emailreplyparser"   % "EmailReplyParser"               % "1.1"
+
+    val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % "2.4.0-M2"
 
     val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
     val scalikeAsync    = "org.scalikejdbc"               %% "scalikejdbc-async"             % "0.5.4"
@@ -82,7 +81,7 @@ object Dependencies {
 
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
-    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j, akkaPersistenceCassandra,
+    clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j,
     sprayClient, uuid, postgresAsync
   )
 
@@ -93,7 +92,7 @@ object Dependencies {
   val messages  = Seq(akkaActor)
 
   val persist   = common ++ Seq(
-    akkaActor, flywayCore, scodecBits, phantomDsl, scalazCore,
+    akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
     scalike, postgresJdbc, scalikeAsync, postgresAsync,
     specs2
   )
@@ -105,10 +104,10 @@ object Dependencies {
       scalaLoggingSlf4j, akkaKernel
   )
 
-  val restApi   = Seq(phantomDsl, scodecBits, bcprov, specs2, scalazCore)
+  val restApi   = Seq(scodecBits, bcprov, specs2, scalazCore)
 
   val schema    = Seq(json4s)
 
   val smtpd    = Seq(akkaActor, akkaContrib, akkaStream, akkaKernel, akkaPersistence, akkaCluster, akkaSlf4j,
-    akkaPersistenceCassandra, commonsEmail, emailReplyParser, scalazCore, scalazConcurrent)
+    commonsEmail, emailReplyParser, scalazCore, scalazConcurrent)
 }

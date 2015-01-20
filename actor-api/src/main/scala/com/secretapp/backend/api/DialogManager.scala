@@ -6,8 +6,6 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.persistence._
-import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.rpc.messaging.MessageContent
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
@@ -68,15 +66,15 @@ object DialogManager {
     case Envelope(userId, _, _) => (userId % shardCount).abs.toString
   }
 
-  def startRegion()(implicit system: ActorSystem, session: CSession): ActorRef = ClusterSharding(system).start(
+  def startRegion()(implicit system: ActorSystem): ActorRef = ClusterSharding(system).start(
     typeName = "DialogManager",
-    entryProps = Some(Props(classOf[DialogManager], session)),
+    entryProps = Some(Props(classOf[DialogManager])),
     idExtractor = idExtractor,
     shardResolver = shardResolver
   )
 }
 
-class DialogManager(implicit val session: CSession) extends Actor with Stash with ActorLogging {
+class DialogManager extends Actor with Stash with ActorLogging {
   import context.dispatcher
   import ShardRegion.Passivate
   import DialogManagerProtocol._

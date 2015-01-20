@@ -1,7 +1,6 @@
 package com.secretapp.backend.api
 
 import akka.actor.Actor
-import com.datastax.driver.core.{ Session => CSession }
 import com.notnoop.apns.{ APNS, ApnsService }
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
@@ -46,12 +45,12 @@ trait ApplePush {
   }
 
   private def deliverApplePush(optCreds: Option[models.ApplePushCredentials], seq: Int, text: Option[String])
-                              (implicit ec: ExecutionContext, s: CSession): Future[Unit] =
+                              (implicit ec: ExecutionContext): Future[Unit] =
     optCreds some { c =>
       sendApplePush(c.token, seq, text)
     } none Future.successful()
 
-  def deliverApplePush(authId: Long, seq: Int, text: Option[String])(implicit ec: ExecutionContext, s: CSession): Future[Unit] =
+  def deliverApplePush(authId: Long, seq: Int, text: Option[String])(implicit ec: ExecutionContext): Future[Unit] =
     persist.ApplePushCredentials.find(authId) flatMap {
       deliverApplePush(_, seq, text)
     }

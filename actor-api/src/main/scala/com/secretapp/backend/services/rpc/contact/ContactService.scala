@@ -14,7 +14,6 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist
 import com.secretapp.backend.models
 import com.secretapp.backend.api.rpc.RpcValidators._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -25,8 +24,6 @@ import scodec.codecs.uuid
 
 trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
-
-  implicit val session: CSession
 
   import context._
   import SocialProtocol._

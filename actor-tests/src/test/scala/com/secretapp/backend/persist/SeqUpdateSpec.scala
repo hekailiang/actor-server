@@ -1,11 +1,9 @@
 package com.secretapp.backend.persist
 
 import akka.util.Timeout
-import com.datastax.driver.core.ConsistencyLevel
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.protocol.codecs.common.StringCodec
-import com.websudos.phantom.Implicits._
 import com.websudos.util.testing._
 import scala.concurrent.{ Await }
 import scala.concurrent.ExecutionContext.Implicits.global

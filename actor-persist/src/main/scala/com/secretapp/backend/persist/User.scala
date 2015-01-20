@@ -1,7 +1,6 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import com.datastax.driver.core.{ Session => CSession }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.collection.immutable
@@ -94,7 +93,7 @@ object User extends SQLSyntaxSupport[models.User] {
     phoneNumber: Long
   )(
     implicit
-      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
+      ec: ExecutionContext, session: DBSession = User.autoSession
   ): Future[Unit] = {
     withSQL {
       update(User).set(
@@ -112,7 +111,7 @@ object User extends SQLSyntaxSupport[models.User] {
 
   def find(id: Int)(authId: Option[Long])(
     implicit
-      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
+      ec: ExecutionContext, session: DBSession = User.autoSession
   ): Future[Option[models.User]] = {
     authId map (i => Future.successful(Some(i))) getOrElse (UserPublicKey.findFirstActiveAuthIdByUserId(userId = id)) flatMap {
       case Some(authId) =>
@@ -171,7 +170,7 @@ object User extends SQLSyntaxSupport[models.User] {
 
   def findWithAvatar(userId: Int)(authId: Option[Long] = None)(
     implicit
-      ec: ExecutionContext, csession: CSession, session: DBSession = User.autoSession
+      ec: ExecutionContext, session: DBSession = User.autoSession
   ): Future[Option[(models.User, models.AvatarData)]] = {
     for {
       userOpt <- find(userId)(authId)

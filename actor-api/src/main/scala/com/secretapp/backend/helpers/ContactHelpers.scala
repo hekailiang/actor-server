@@ -2,7 +2,6 @@ package com.secretapp.backend.helpers
 
 import akka.actor._
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.{update => updateProto, struct}
 import com.secretapp.backend.models
@@ -12,7 +11,6 @@ import scala.concurrent.Future
 
 trait ContactHelpers extends UpdatesHelpers {
   val context: ActorContext
-  implicit val session: CSession
 
   import context.{ dispatcher, system }
 

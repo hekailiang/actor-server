@@ -5,7 +5,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.persistence._
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
@@ -35,14 +34,14 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration, session: CSession) = {
-    Props(new SessionActor(singletons, fileAdapter, receiveTimeout, session))
+  def props(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration) = {
+    Props(new SessionActor(singletons, fileAdapter, receiveTimeout))
   }
 
-  def startRegion(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
+  def startRegion(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration)(implicit system: ActorSystem) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(props(singletons, fileAdapter, receiveTimeout, session)),
+      entryProps = Some(props(singletons, fileAdapter, receiveTimeout)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
@@ -51,8 +50,7 @@ object SessionActor {
 class SessionActor(
   val singletons: Singletons,
   val fileAdapter: FileAdapter,
-  receiveTimeout: FiniteDuration,
-  session: CSession
+  receiveTimeout: FiniteDuration
 ) extends PersistentActor
     with TransportSerializers
     with SessionService
@@ -79,7 +77,7 @@ class SessionActor(
   val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)(session)))
+  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.HashSet.empty[ActorRef]
@@ -89,7 +87,7 @@ class SessionActor(
   lazy val apiBroker = context.actorOf(
     Props(
       classOf[ApiBrokerActor],
-      authId, sessionId, singletons, fileAdapter, subscribedToUpdates, session
+      authId, sessionId, singletons, fileAdapter, subscribedToUpdates
     ), "api-broker"
   )
 

@@ -2,7 +2,6 @@ package com.secretapp.backend.helpers
 
 import akka.actor._
 import akka.event.LoggingAdapter
-import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
@@ -17,7 +16,6 @@ import Scalaz._
 
 trait UserHelpers {
   val context: ActorContext
-  implicit val session: CSession
 
   def log: LoggingAdapter
 

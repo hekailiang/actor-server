@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.{ Session => CSession }
 import com.eaio.uuid.UUID
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
@@ -35,8 +34,6 @@ trait GroupHandlers extends RandomService
 
   import context.{ dispatcher, system }
   import UpdatesBroker._
-
-  implicit val session: CSession
 
   val handleGroup: RequestMatcher = {
     case RequestCreateGroup(randomId, title, users) =>

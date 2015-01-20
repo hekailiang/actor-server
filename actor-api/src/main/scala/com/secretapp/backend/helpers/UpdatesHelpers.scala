@@ -3,7 +3,6 @@ package com.secretapp.backend.helpers
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
 import com.secretapp.backend.data.message.struct

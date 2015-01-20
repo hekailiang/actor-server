@@ -1,7 +1,6 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc._
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Ok, Error, RpcRequest }
@@ -26,8 +25,7 @@ class ApiBrokerActor(
   val currentSessionId: Long,
   val singletons: Singletons,
   val fileAdapter: FileAdapter,
-  val subscribedToUpdates: Boolean,
-  val session: CSession
+  val subscribedToUpdates: Boolean
 ) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 

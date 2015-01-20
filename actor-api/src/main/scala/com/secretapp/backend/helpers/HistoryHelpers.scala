@@ -1,7 +1,6 @@
 package com.secretapp.backend.helpers
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.DialogManagerProtocol
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.models

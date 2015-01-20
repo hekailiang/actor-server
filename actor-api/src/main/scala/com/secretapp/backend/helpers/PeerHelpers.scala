@@ -1,7 +1,6 @@
 package com.secretapp.backend.helpers
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.models
@@ -12,11 +11,10 @@ import scala.concurrent.Future
 
 trait PeerHelpers extends UserHelpers {
   val context: ActorContext
-  implicit val session: CSession
 
   import context.{ dispatcher, system }
 
-  protected def withOutPeer(outPeer: struct.OutPeer, currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withOutPeer(outPeer: struct.OutPeer, currentUser: models.User)(f: => Future[RpcResponse]): Future[RpcResponse] = {
     // TODO: DRY
 
     outPeer.typ match {
@@ -46,7 +44,7 @@ trait PeerHelpers extends UserHelpers {
     }
   }
 
-  protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
     persist.Group.find(groupOutPeer.id) flatMap {
       case Some(group) =>
         if (group.accessHash != groupOutPeer.accessHash) {
@@ -59,7 +57,7 @@ trait PeerHelpers extends UserHelpers {
     }
   }
 
-  protected def withOwnGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withOwnGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
       if (group.creatorUserId != currentUser.uid) {
         Future.successful(Error(403, "NO_PERMISSION", "You are not an admin of this group.", true))
@@ -69,7 +67,7 @@ trait PeerHelpers extends UserHelpers {
     }
   }
 
-  protected def withOutPeers(outPeers: immutable.Seq[struct.OutPeer], currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withOutPeers(outPeers: immutable.Seq[struct.OutPeer], currentUser: models.User)(f: => Future[RpcResponse]): Future[RpcResponse] = {
     val checkOptsFutures = outPeers map {
       case struct.OutPeer(models.PeerType.Private, userId, accessHash) =>
         checkUserPeer(userId, accessHash, currentUser)
@@ -80,11 +78,11 @@ trait PeerHelpers extends UserHelpers {
     renderCheckResult(checkOptsFutures, f)
   }
 
-  protected def withUserOutPeer(userOutPeer: struct.UserOutPeer, currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withUserOutPeer(userOutPeer: struct.UserOutPeer, currentUser: models.User)(f: => Future[RpcResponse]): Future[RpcResponse] = {
     renderCheckResult(Seq(checkUserPeer(userOutPeer.id, userOutPeer.accessHash, currentUser)), f)
   }
 
-  protected def withUserOutPeers(userOutPeers: immutable.Seq[struct.UserOutPeer], currentUser: models.User)(f: => Future[RpcResponse])(implicit session: CSession): Future[RpcResponse] = {
+  protected def withUserOutPeers(userOutPeers: immutable.Seq[struct.UserOutPeer], currentUser: models.User)(f: => Future[RpcResponse]): Future[RpcResponse] = {
     val checkOptsFutures = userOutPeers map {
       case struct.UserOutPeer(userId, accessHash) =>
         checkUserPeer(userId, accessHash, currentUser)

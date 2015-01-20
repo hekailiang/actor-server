@@ -6,7 +6,6 @@ import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.data.transport._
 import com.secretapp.backend.services.common.RandomService
-import com.datastax.driver.core.{ Session => CSession }
 import scalaz._
 import Scalaz._
 
@@ -15,12 +14,12 @@ object KeyFrontend {
   @SerialVersionUID(1L)
   case class InitDH(p: TransportPackage) extends KeyInitializationMessage
 
-  def props(connection: ActorRef, transport: TransportConnection)(implicit csession: CSession): Props = {
-    Props(new KeyFrontend(connection, transport)(csession))
+  def props(connection: ActorRef, transport: TransportConnection): Props = {
+    Props(new KeyFrontend(connection, transport))
   }
 }
 
-class KeyFrontend(connection: ActorRef, transport: TransportConnection)(implicit csession: CSession) extends Actor with ActorLogging with RandomService {
+class KeyFrontend(connection: ActorRef, transport: TransportConnection) extends Actor with ActorLogging with RandomService {
   import KeyFrontend._
 
   implicit val ec = context.dispatcher

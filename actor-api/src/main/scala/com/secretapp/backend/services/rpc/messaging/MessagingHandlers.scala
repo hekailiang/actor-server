@@ -1,7 +1,6 @@
 package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -25,8 +24,6 @@ with HistoryHelpers with SendMessagingHandlers {
 
   import context.{ dispatcher, system }
   import UpdatesBroker._
-
-  implicit val session: CSession
 
   val handleMessaging: RequestMatcher = {
     case RequestSendMessage(peer, randomId, message) =>

@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -29,8 +28,6 @@ trait HistoryHandlers extends RandomService with UserHelpers {
 
   import context.{ dispatcher, system }
   import UpdatesBroker._
-
-  implicit val session: CSession
 
   val handleHistory: RequestMatcher = {
     case RequestLoadHistory(peer, randomId, message) =>

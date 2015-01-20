@@ -2,7 +2,6 @@ package com.secretapp.backend.helpers
 
 import akka.actor._
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.UpdatesBroker
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.{ RpcResponse, Error}
@@ -16,7 +15,6 @@ import scalaz.Scalaz._
 trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   val context: ActorContext
 
-  implicit val session: CSession
   implicit val timeout: Timeout
 
   import context.dispatcher

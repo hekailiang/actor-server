@@ -4,7 +4,6 @@ import akka.actor.{ Props, Actor }
 import akka.io.Tcp._
 import akka.testkit._
 import akka.util.ByteString
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.message.rpc._

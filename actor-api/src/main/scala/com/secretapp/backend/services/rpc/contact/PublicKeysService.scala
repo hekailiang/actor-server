@@ -1,7 +1,6 @@
 package com.secretapp.backend.services.rpc.contact
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.contact.{ PublicKeyRequest, PublicKeyResponse, RequestGetPublicKeys, ResponseGetPublicKeys }
@@ -15,8 +14,6 @@ import Scalaz._
 
 trait PublicKeysService {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
-
-  implicit val session: CSession
 
   import context._
 

@@ -1,7 +1,6 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.typesafe.config.ConfigFactory
@@ -44,14 +43,12 @@ trait GooglePush {
       case Left(e)  => log.error(s"GCM push failed: ${e.getMessage}")
     }
 
-  private def deliverGooglePush(optCreds: Option[models.GooglePushCredentials], authId: Long, seq: Int)
-                               (implicit s: CSession): Future[Unit] =
+  private def deliverGooglePush(optCreds: Option[models.GooglePushCredentials], authId: Long, seq: Int): Future[Unit] =
     optCreds some { c =>
       sendGooglePush(c.regId, authId.toString, seq)
     } none Future.successful()
 
-  def deliverGooglePush(authId: Long, seq: Int)
-                       (implicit s: CSession): Future[Unit] =
+  def deliverGooglePush(authId: Long, seq: Int): Future[Unit] =
     persist.GooglePushCredentials.find(authId) flatMap {
       deliverGooglePush(_, authId, seq)
     }

@@ -2,11 +2,9 @@ package com.secretapp.backend.persist
 
 import akka.actor._
 import akka.util.Timeout
-import com.datastax.driver.core.ConsistencyLevel
 import com.secretapp.backend.data.message.{ update => updateProto, _ }
 import com.secretapp.backend.protocol.codecs.common.StringCodec
 import com.typesafe.config._
-import com.websudos.phantom.Implicits._
 import com.websudos.util.testing._
 import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import im.actor.server.persist.unit.SqlSpec

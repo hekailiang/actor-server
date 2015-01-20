@@ -19,14 +19,13 @@ import scala.collection.JavaConversions._
 import scala.concurrent.Future
 import com.edlio.emailreplyparser._
 import com.secretapp.backend.{ persist, models }
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.services.GeneratorService
 import com.secretapp.backend.api.counters.CounterProtocol
 import scala.collection.immutable
 import scodec.bits.BitVector
 
 object MailActor {
-  def props(emailCounter: ActorRef, apiRouter: ActorRef)(implicit csession: CSession) =
+  def props(emailCounter: ActorRef, apiRouter: ActorRef) =
     Props(new MailActor(emailCounter, apiRouter))
 }
 
@@ -48,7 +47,7 @@ object EmailAddress {
   def parse(a: String): EmailAddress = parse(new InternetAddress(a))
 }
 
-class MailActor(emailCounter: ActorRef, apiRouter: ActorRef)(implicit csession: CSession)
+class MailActor(emailCounter: ActorRef, apiRouter: ActorRef)
   extends Actor with ActorLogging with GeneratorService {
 
   import context._

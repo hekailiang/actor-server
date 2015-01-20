@@ -4,7 +4,6 @@ import akka.actor._
 import akka.io._
 import java.net._
 import com.secretapp.backend.api.{Singletons, SocialBroker, UpdatesBroker}
-import com.datastax.driver.core.{ Session => CSession }
 import akka.routing.{DefaultResizer, RoundRobinPool}
 import com.secretapp.backend.api.counters.EmailsCounter
 import im.actor.server.smtpd.internal.ApiBrokerActor
@@ -17,8 +16,8 @@ object SMTPServer {
   val hostname = InetAddress.getLocalHost.getHostName
   val mailHost = config.getString("hostname")
 
-  def start(singletons: Singletons)(implicit system: ActorSystem, session: CSession): Unit = {
-    val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)(system, session)
+  def start(singletons: Singletons)(implicit system: ActorSystem): Unit = {
+    val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)(system)
     val socialBrokerRegion = SocialBroker.startRegion()
 
     EmailsCounter.start

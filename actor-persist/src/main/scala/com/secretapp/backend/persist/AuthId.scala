@@ -1,7 +1,6 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import com.datastax.driver.core.{ Session => CSession }
 import org.joda.time.DateTime
 import scala.concurrent._
 import scalikejdbc._
@@ -59,7 +58,7 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] {
   ): Future[Option[models.AuthId]] = findBy(sqls.eq(a.id, id))
 
   def findWithUser(id: Long)(
-    implicit ec: ExecutionContext, csession: CSession, session: DBSession = AuthId.autoSession
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
   ): Future[Option[(models.AuthId, Option[models.User])]] = {
     def user(authId: models.AuthId): Future[Option[models.User]] =
       authId.userId match {
@@ -76,7 +75,7 @@ object AuthId extends SQLSyntaxSupport[models.AuthId] {
   // TODO: remove this method when we will move authId away from User model
   // it is used in User.find
   def findFirstIdByUserId(userId: Long)(
-    implicit ec: ExecutionContext, csession: CSession, session: DBSession = AuthId.autoSession
+    implicit ec: ExecutionContext, session: DBSession = AuthId.autoSession
   ): Future[Option[Long]] = Future {
     blocking {
       withSQL {

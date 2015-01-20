@@ -1,7 +1,6 @@
 package com.secretapp.backend.api.frontend
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.persist
@@ -12,12 +11,12 @@ import scalaz._
 import Scalaz._
 
 object SecurityFrontend {
-  def props(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) = {
-    Props(new SecurityFrontend(connection, sessionRegion, authId, sessionId, transport)(csession))
+  def props(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection) = {
+    Props(new SecurityFrontend(connection, sessionRegion, authId, sessionId, transport))
   }
 }
 
-class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) extends Actor
+class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection) extends Actor
 with ActorLogging
 {
   import context.system

@@ -6,7 +6,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Subscribe, SubscribeAck 
 import akka.event.Logging
 import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.{ struct, update => updateProto }
@@ -38,7 +37,7 @@ class UpdatesServiceActor(
   val subscribedToUpdates: Boolean,
   val currentUserId: Int,
   val currentAuthId: Long
-)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   def receive = {
@@ -148,7 +147,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
   }
 
   @inline
-  protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
+  protected def getState(authId: Long): Future[(Int, Option[UUID])] = {
     val fseq = getSeq(authId)
     val fstate = persist.SeqUpdate.getState(authId)
     for {
