@@ -21,6 +21,6 @@ object Resolvers {
     "secret snapshots repository" at "http://repos.81port.com/nexus/content/repositories/snapshots",
     "secret releases repository" at "http://repos.81port.com/nexus/content/repositories/releases",
     "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven",
-    "eaio.com" at "http://eaio.com/maven2"
+    "dnvriend at bintray" at "http://dl.bintray.com/dnvriend/maven"
   )
 }

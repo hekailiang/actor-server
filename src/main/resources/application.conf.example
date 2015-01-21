@@ -11,10 +11,10 @@ actor-server {
     password = ""
   }
 
-  akka-persistence-sql-async {
+  jdbc-connection {
     url = "jdbc:postgresql://localhost:5432/actor"
-    user = "postgres"
-    pass = ""
+    username = "postgres"
+    password = ""
   }
 
   sms {

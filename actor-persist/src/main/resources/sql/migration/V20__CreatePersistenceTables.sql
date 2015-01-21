@@ -1,17 +1,16 @@
 CREATE TABLE IF NOT EXISTS akka_journal (
        persistence_id VARCHAR(255) NOT NULL,
-       sequence_nr BIGINT NOT NULL,
+       sequence_number BIGINT NOT NULL,
        marker VARCHAR(255) NOT NULL,
-       message BYTEA NOT NULL,
-       created_at TIMESTAMP NOT NULL,
-       PRIMARY KEY (persistence_id, sequence_nr)
+       message TEXT NOT NULL,
+       created TIMESTAMP NOT NULL,
+       PRIMARY KEY(persistence_id, sequence_number)
 );
-
 
 CREATE TABLE IF NOT EXISTS akka_snapshot (
        persistence_id VARCHAR(255) NOT NULL,
        sequence_nr BIGINT NOT NULL,
-       created_at BIGINT NOT NULL,
-       snapshot BYTEA NOT NULL,
+       snapshot TEXT NOT NULL,
+       created BIGINT NOT NULL,
        PRIMARY KEY (persistence_id, sequence_nr)
 );

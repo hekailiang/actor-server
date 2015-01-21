@@ -40,8 +40,8 @@ object Dependencies {
     val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % "2.4.0-M2"
 
     val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
-    val scalikeAsync    = "org.scalikejdbc"               %% "scalikejdbc-async"             % "0.5.4"
-    val postgresAsync   = "com.github.mauricio"           %% "postgresql-async"              % "0.2.16"
+
+    val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
     val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
 
@@ -82,7 +82,7 @@ object Dependencies {
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j,
-    sprayClient, uuid, postgresAsync
+    sprayClient, uuid, akkaPersistenceJdbc
   )
 
   val deploy    = Seq(traceAkka)
@@ -93,7 +93,7 @@ object Dependencies {
 
   val persist   = common ++ Seq(
     akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
-    scalike, postgresJdbc, scalikeAsync, postgresAsync,
+    scalike, postgresJdbc,
     specs2
   )
 

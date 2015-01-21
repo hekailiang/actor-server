@@ -1,7 +1,7 @@
 package im.actor.server.persist
 
 import com.typesafe.config._
-import scalikejdbc._, async._
+import scalikejdbc._
 
 trait DbInit {
   protected def sqlConfig: Config
@@ -14,6 +14,5 @@ trait DbInit {
     )
 
     ConnectionPool.singleton(url, user, password)
-    AsyncConnectionPool.singleton(url, user, password)
   }
 }
