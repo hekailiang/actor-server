@@ -17,6 +17,7 @@ import com.secretapp.backend.api.rpc.RpcValidators._
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
+import scala.util.{ Success, Failure }
 import scalaz._
 import Scalaz._
 import scodec.bits.BitVector
@@ -78,14 +79,14 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
 
     usersSeq flatMap {
       case (usersTuple, newContactsId, registeredPhones) =>
+        (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
+          log.debug(s"Inserting UnregisteredContact {} {}", phoneNumber, currentUser.uid)
+          persist.UnregisteredContact.create(phoneNumber, currentUser.uid)
+        }
+
         if (usersTuple.nonEmpty) {
           newContactsId foreach {
             socialBrokerRegion ! SocialMessageBox(_, RelationsNoted(Set(currentUser.uid))) // TODO: wrap as array!
-          }
-
-          (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
-            log.debug(s"Inserting UnregisteredContact $phoneNumber ${currentUser.uid}")
-            persist.UnregisteredContact.create(phoneNumber, currentUser.uid)
           }
 
           val clFuture = persist.contact.UserContact.createAll(currentUser.uid, usersTuple)
