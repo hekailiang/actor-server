@@ -1,7 +1,6 @@
 package com.secretapp.backend.services.rpc.contact
 
 import akka.actor._
-import akka.pattern.ask
 import com.secretapp.backend.api.rpc.RpcErrors
 import com.secretapp.backend.api.{ UpdatesBroker, SocialProtocol, ApiBrokerService, PhoneNumber }
 import com.secretapp.backend.data.message.rpc.contact._
@@ -13,16 +12,11 @@ import com.secretapp.backend.services.{ UserManagerService, GeneratorService }
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.persist
 import com.secretapp.backend.models
-import com.secretapp.backend.api.rpc.RpcValidators._
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
-import scala.language.postfixOps
-import scala.util.{ Success, Failure }
 import scalaz._
 import Scalaz._
-import scodec.bits.BitVector
-import scodec.codecs.uuid
 
 trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers {
   self: ApiBrokerService with GeneratorService with UserManagerService =>
@@ -109,7 +103,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
             _ <- clFuture
             response <- responseFuture
           } yield response
-        } else Future.successful(Ok(ResponseImportContacts(immutable.Seq.empty[struct.User], 0, None)))
+        } else Future.successful(Ok(ResponseImportContacts(immutable.Seq[struct.User](), 0, None)))
     }
   }
 
