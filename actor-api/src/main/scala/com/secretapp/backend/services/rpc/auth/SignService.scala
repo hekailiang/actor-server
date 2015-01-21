@@ -155,8 +155,10 @@ trait SignService extends ContactHelpers with SocialHelpers {
           this.currentUser = Some(u)
 
           persist.AuthSession.findAllByUserIdAndDeviceHash(u.uid, deviceHash) flatMap { authItems =>
-            for (authItem <- authItems) {
+            val oldKeyHashes = authItems.foldLeft(Set.empty[Long]) { (hashes, authItem) =>
               logoutKeepingCurrentAuthIdAndPK(authItem, currentUser.get)
+
+              hashes + authItem.publicKeyHash
             }
 
             persist.AuthSession.create(
@@ -180,10 +182,16 @@ trait SignService extends ContactHelpers with SocialHelpers {
             for {
               avatarData <- persist.AvatarData.find[models.User](u.uid)
             } yield {
+              val userStruct = struct.User.fromModel(
+                u.copy(publicKeyHashes = u.publicKeyHashes -- oldKeyHashes),
+                avatarData getOrElse(models.AvatarData.empty),
+                authId
+              )
+
               Ok(
                 ResponseAuth(
                   u.publicKeyHash,
-                  struct.User.fromModel(u, avatarData getOrElse(models.AvatarData.empty), authId), struct.Config(300)
+                  userStruct, struct.Config(300)
                 )
               )
             }
