@@ -81,7 +81,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
       case (usersTuple, newContactsId, registeredPhones) =>
         (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
           log.debug(s"Inserting UnregisteredContact {} {}", phoneNumber, currentUser.uid)
-          persist.UnregisteredContact.create(phoneNumber, currentUser.uid)
+          persist.UnregisteredContact.createIfNotExists(phoneNumber, currentUser.uid)
         }
 
         if (usersTuple.nonEmpty) {

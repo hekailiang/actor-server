@@ -33,16 +33,31 @@ object UnregisteredContact extends SQLSyntaxSupport[models.UnregisteredContact] 
     }
   }
 
-  def create(phoneNumber: Long, ownerUserId: Int)(
+  def existsSync(phoneNumber: Long, ownerUserId: Int)(
+    implicit session: DBSession
+  ): Boolean =
+    sql"""
+      select exists (
+        select 1 from ${UnregisteredContact.table}
+        where ${column.phoneNumber} = ${phoneNumber}
+        and   ${column.ownerUserId} = ${ownerUserId}
+      )
+      """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+  def createIfNotExists(phoneNumber: Long, ownerUserId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UnregisteredContact.autoSession
   ): Future[models.UnregisteredContact] = Future {
     blocking {
-      withSQL {
-        insert.into(UnregisteredContact).namedValues(
-          column.phoneNumber -> phoneNumber,
-          column.ownerUserId -> ownerUserId
-        )
-      }.execute.apply
+      existsSync(phoneNumber, ownerUserId) match {
+        case false =>
+          withSQL {
+            insert.into(UnregisteredContact).namedValues(
+              column.phoneNumber -> phoneNumber,
+              column.ownerUserId -> ownerUserId
+            )
+          }.execute.apply
+        case true =>
+      }
 
       models.UnregisteredContact(
         phoneNumber = phoneNumber,
