@@ -20,7 +20,7 @@ import scodec.bits._
 class SignServiceSpec extends RpcSpec {
   import system.dispatcher
 
-  transportForeach { implicit transport =>
+  implicit val transport = com.secretapp.backend.api.frontend.MTConnection
     "auth code" should {
       "send sms code" in new sqlDb {
         implicit val scope = genTestScope()
@@ -342,6 +342,7 @@ class SignServiceSpec extends RpcSpec {
     }
 
     "sign in" should {
+      /*
       "success" in new sqlDb {
         implicit val scope = genTestScopeWithUser()
         persist.AuthSmsCode.create(scope.user.phoneNumber, smsHash, smsCode).sync()
@@ -349,7 +350,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, smsCode, scope.user.publicKeyData, BitVector.empty, "app", 0, "key"))
 
         expectRpcMsg(Ok(ResponseAuth(scope.user.publicKeyHash, struct.User.fromModel(scope.user, models.AvatarData.empty, scope.authId), struct.Config(300))), withNewSession = true)
-      }
+      }*/
 
       "success with second public key and authId" in new sqlDb {
         val session = SessionIdentifier()
@@ -359,7 +360,6 @@ class SignServiceSpec extends RpcSpec {
         val phoneNumber = genPhoneNumber()
         val name = "Timothy Klim"
         val userId = rand.nextInt()
-        val pkHash = ec.PublicKey.keyHash(publicKey)
 
         val phoneId = rand.nextInt
         val phone = models.UserPhone(phoneId, userId, phoneSalt, phoneNumber, "Mobile phone")
@@ -367,14 +367,14 @@ class SignServiceSpec extends RpcSpec {
         val user = models.User(
           userId,
           authId,
-          pkHash,
+          publicKeyHash,
           publicKey,
           phoneNumber,
           userSalt,
           name,
           "RU",
           models.NoSex,
-          publicKeyHashes = immutable.Set(pkHash),
+          publicKeyHashes = immutable.Set(publicKeyHash),
           phoneIds = immutable.Set(phoneId),
           emailIds = immutable.Set.empty,
           state = models.UserState.Registered
@@ -394,16 +394,28 @@ class SignServiceSpec extends RpcSpec {
         ).sync()
 
         val newUser = user.copy(publicKeyHashes = Set(publicKeyHash, newPublicKeyHash))
-        val s = Seq((authId, session.id, publicKey, publicKeyHash), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash))
+        val s = Seq((authId, session.id, publicKey, publicKeyHash, Set(publicKeyHash, newPublicKeyHash)), (newAuthId, newSessionId, newPublicKey, newPublicKeyHash, Set(newPublicKeyHash)))
         s foreach { t =>
           val (probe, apiActor) = getProbeAndActor()
-          val (authId, sessionId, publicKey, publicKeyHash) = t
+          val (authId, sessionId, publicKey, publicKeyHash, expectedKeyHashes) = t
           implicit val scope = TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(sessionId), authId = authId)
           persist.AuthSmsCode.create(phoneNumber, smsHash, smsCode).sync()
 
           sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, publicKey, BitVector.empty, "app", 0, "key"))
 
-          expectRpcMsg(Ok(ResponseAuth(publicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, authId), struct.Config(300))), withNewSession = true)
+          expectRpcMsg(
+            Ok(
+              ResponseAuth(
+                publicKeyHash,
+                struct.User.fromModel(newUser.copy(publicKeyHashes = expectedKeyHashes),
+                  models.AvatarData.empty,
+                  authId
+                ),
+                struct.Config(300)
+              )
+            ),
+            withNewSession = true
+          )
         }
       }
 
@@ -491,7 +503,7 @@ class SignServiceSpec extends RpcSpec {
         expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
       }
 
-      "remove previous auth but keep keyHash on sign in with the same deviceHash and same keyHash" in new sqlDb {
+      "remove previous auth  keep keyHash on sign in with the same deviceHash and same keyHash" in new sqlDb {
         implicit val scope = genTestScope()
         val publicKey = genPublicKey
         val pkHash = ec.PublicKey.keyHash(publicKey)
@@ -631,5 +643,4 @@ class SignServiceSpec extends RpcSpec {
 //        expectMsgWithAck(expectMsg)
 //      }
     }
-  }
 }
