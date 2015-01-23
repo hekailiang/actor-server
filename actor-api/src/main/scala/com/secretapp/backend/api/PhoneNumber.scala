@@ -29,6 +29,8 @@ object PhoneNumber {
     }
   }
 
+  def tryNormalize(number: Long, defaultCountry: String = "") = normalizeLong(number, defaultCountry).getOrElse(number)
+
   private def sizeOf(number: Long): Long = {
     @tailrec
     def f(n: Long, res: Long): Long = {
