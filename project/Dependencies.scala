@@ -39,7 +39,9 @@ object Dependencies {
 
     val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % "2.4.0-M2"
 
-    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
+    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.2"
+    val scalikeConfig   = "org.scalikejdbc"               %% "scalikejdbc-config"            % "2.2.2"
+    val scalikePlay     = "org.scalikejdbc"               %% "scalikejdbc-play-plugin"       % "2.3.4"
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
@@ -102,7 +104,7 @@ object Dependencies {
       scalaLoggingSlf4j, akkaKernel
   )
 
-  val restApi   = Seq(scodecBits, bcprov, specs2, scalazCore)
+  val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore, scalikeConfig, scalikePlay)
 
   val schema    = Seq(json4s)
 

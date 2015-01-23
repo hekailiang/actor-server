@@ -3,16 +3,26 @@ application {
   langs="en"
 }
 
+dbplugin=disabled
 evolutionplugin=disabled
+
+db.default = {
+  driver=org.postgresql.Driver
+  url="jdbc:postgresql://127.0.0.1/actor"
+  user=actor
+  password=""
+}
+
+scalikejdbc.global.loggingSQLAndTime = {
+  enabled = true
+  logLevel = debug
+  warningEnabled = true
+  warningThresholdMillis = 1000
+  warningLogLevel = warn
+}
 
 logger {
   root=ERROR
   play=INFO
   application=DEBUG
-}
-
-cassandra {
-  keyspace = "actor_admin"
-  contact-points = [${?CASSANDRA_HOST}, "localhost"]
-  port = 9042
 }

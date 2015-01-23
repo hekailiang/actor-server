@@ -13,6 +13,8 @@ import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.helpers.{ ContactHelpers, SocialHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import com.secretapp.backend.persist.events.{ LogEvent => LE }
+import com.secretapp.backend.persist.events.LogEvent.{ EventKind => EK }
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.SmsEnginesProtocol
 import org.joda.time.DateTime
@@ -113,8 +115,10 @@ trait SignService extends ContactHelpers with SocialHelpers {
   }
 
   def handleRequestSendAuthCode(phoneNumberRaw: Long, appId: Int, apiKey: String): Future[RpcResponse] = {
+    val authId = currentAuthId // TODO
     PhoneNumber.normalizeLong(phoneNumberRaw) match {
       case None =>
+        LE.log(authId, phoneNumberRaw, LE.RpcError(EK.AuthCode, 400, "PHONE_NUMBER_INVALID"))
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
@@ -123,7 +127,8 @@ trait SignService extends ContactHelpers with SocialHelpers {
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
-            case Some(models.AuthSmsCode(_, sHash, _)) =>
+            case Some(models.AuthSmsCode(_, sHash, sCode)) =>
+              LE.log(authId, phoneNumber, LE.AuthCodeSent(sHash, sCode))
               Future.successful(Ok(ResponseSendAuthCode(sHash, phoneR.isDefined)))
             case None =>
               val smsHash = genSmsHash
@@ -131,9 +136,12 @@ trait SignService extends ContactHelpers with SocialHelpers {
                 case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
                 case _ => genSmsCode
               }
-              singletons.smsEngines ! SmsEnginesProtocol.Send(phoneNumber, smsCode) // TODO: move it to actor with persistence
+              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode) // TODO: move it to actor with persistence
               for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
-              yield Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
+              yield {
+                LE.log(authId, phoneNumber, LE.AuthCodeSent(smsHash, smsCode))
+                Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
+              }
           }
         }
     }
@@ -144,7 +152,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     deviceHash: BitVector, deviceTitle: String, appId: Int, appKey: String
   )(m: RequestSignIn \/ RequestSignUp): Future[RpcResponse] = {
     val authId = currentAuthId // TODO
-    PhoneNumber.normalizeWithCountry(phoneNumberRaw) match {
+    val res = PhoneNumber.normalizeWithCountry(phoneNumberRaw) match {
       case None =>
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some((phoneNumber, countryCode)) =>
@@ -353,6 +361,18 @@ trait SignService extends ContactHelpers with SocialHelpers {
           }
         }
     }
+    val ek = if (m.isLeft) EK.SignIn else EK.SignUp
+    res.map { r =>
+      val event = r match {
+        case e: Error =>
+          LE.RpcError(ek, e.code, e.tag)
+        case _: Ok =>
+          if (ek == EK.SignIn) LE.SignedIn(smsHash, smsCode)
+          else LE.SignedUp(smsHash, smsCode)
+      }
+      LE.log(authId, phoneNumberRaw, event) // TODO: try to normalize or return raw
+    }
+    res
   }
 
   private def pushRemovedDeviceUpdates(userId: Int, publicKeyHash: Long): Unit = {
