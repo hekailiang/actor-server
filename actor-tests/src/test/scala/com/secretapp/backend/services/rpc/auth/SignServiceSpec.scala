@@ -308,7 +308,7 @@ class SignServiceSpec extends RpcSpec {
 
         {
           implicit val scope = registered
-          persist.UnregisteredContact.create(unregPhone, scope.user.uid).sync()
+          persist.UnregisteredContact.createIfNotExists(unregPhone, scope.user.uid).sync()
 
           sendRpcMsg(RequestGetState())
 
