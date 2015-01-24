@@ -40,8 +40,8 @@ class FilesServiceSpec extends RpcSpec {
     RequestUploadPart(config,
       blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config, 0, BitVector(fileContent.take(blockSize))) :~> <~:[ResponseVoid]
-    //RequestUploadPart(config,
-    //  blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
+    RequestUploadPart(config,
+      blockSize, BitVector(fileContent.drop(blockSize).take(blockSize + blockSize))) :~> <~:[ResponseVoid]
     RequestUploadPart(config,
       blockSize + blockSize + blockSize,
       BitVector(fileContent.drop(blockSize + blockSize + blockSize))) :~> <~:[ResponseVoid]

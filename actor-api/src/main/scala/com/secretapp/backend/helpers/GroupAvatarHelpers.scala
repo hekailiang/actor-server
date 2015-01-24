@@ -21,7 +21,7 @@ trait GroupAvatarHelpers {
 
   def withValidAvatar(fl: models.FileLocation)(f: => Future[RpcResponse]): Future[RpcResponse] =
     persist.FileData.find(fl.fileId) flatMap {
-      case Some(models.FileData(_, _, _, len)) =>
+      case Some(models.FileData(_, _, len)) =>
         val sizeLimit: Long = 1024 * 1024 // TODO: configurable
 
         if (len > sizeLimit)

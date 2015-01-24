@@ -9,7 +9,6 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
   override val columnNames = Seq(
     "id",
     "access_salt",
-    "uploaded_blocks_count",
     "length"
   )
 
@@ -20,7 +19,6 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
   def apply(fd: ResultName[models.FileData])(rs: WrappedResultSet): models.FileData = models.FileData(
     id = rs.long(fd.id),
     accessSalt = rs.string(fd.accessSalt),
-    uploadedBlocksCount = rs.int(fd.uploadedBlocksCount),
     length = rs.long(fd.length)
   )
 
@@ -35,13 +33,12 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
     }
   }
 
-  def incrementUploadedBlocksCount(id: Long, addedLength: Long)(
+  def incrementLength(id: Long, addedLength: Long)(
     implicit ec: ExecutionContext, session: DBSession = FileData.autoSession
   ): Future[Int] = Future {
     blocking {
       withSQL {
         update(FileData).set(
-          column.uploadedBlocksCount -> sqls"${column.uploadedBlocksCount} + 1",
           column.length -> sqls"${column.length} + ${addedLength}"
         )
           .where.eq(column.id, id)
@@ -60,7 +57,7 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
         )
       }.execute.apply
 
-      models.FileData(id, accessSalt, 0, 0)
+      models.FileData(id, accessSalt, 0)
     }
   }
 }

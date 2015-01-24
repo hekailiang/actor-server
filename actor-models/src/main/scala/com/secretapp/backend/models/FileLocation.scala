@@ -4,4 +4,7 @@ package com.secretapp.backend.models
 case class FileLocation(fileId: Long, accessHash: Long)
 
 @SerialVersionUID(1L)
-case class FileData(id: Long, accessSalt: String, uploadedBlocksCount: Int, length: Long)
+case class FileData(id: Long, accessSalt: String, length: Long)
+
+@SerialVersionUID(1L)
+case class FileBlock(fileId: Long, offset: Long, length: Long)

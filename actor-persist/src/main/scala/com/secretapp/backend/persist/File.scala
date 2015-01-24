@@ -47,7 +47,10 @@ object File {
   ): Future[Unit] = withValidOffset(offset) {
     for {
       _ <- fa.write(id.toString, offset, data)
-      _ <- FileData.incrementUploadedBlocksCount(id, data.length)
+      _ <- Future.sequence(Seq(
+        FileData.incrementLength(id, data.length),
+        FileBlock.createIfNotExists(id, offset, data.length)
+      ))
     } yield ()
   }
 
@@ -67,6 +70,12 @@ object File {
     implicit ec: ExecutionContext
   ): Future[Array[Byte]] = {
     fa.readAll(id.toString)
+  }
+
+  def complete(fa: FileAdapter, id: Long)(
+    implicit ec: ExecutionContext
+  ): Future[Boolean] = {
+    FileBlock.deleteAll(id)
   }
 }
 

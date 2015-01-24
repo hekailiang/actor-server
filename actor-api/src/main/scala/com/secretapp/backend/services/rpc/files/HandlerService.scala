@@ -77,12 +77,24 @@ trait HandlerService extends GeneratorService {
         log.warning(s"Cannot parse serverData $e")
         Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
       case \/-(fileId) =>
-        persist.FileData.find(fileId) flatMap {
-          case Some(models.FileData(_, accessSalt, uploadedBlocksCount, _)) =>
+        val blocksCountFuture = persist.FileBlock.countAll(fileId)
+        val dataOptFuture = persist.FileData.find(fileId)
+
+        val countAndDataOptFuture = for {
+          count <- blocksCountFuture
+          dataOpt <- dataOptFuture
+        } yield {
+          dataOpt map ((count, _))
+        }
+
+        countAndDataOptFuture flatMap {
+          case Some((uploadedBlocksCount, models.FileData(_, accessSalt, _))) =>
             val accessHash = ACL.fileAccessHash(fileId, accessSalt)
 
             if (blocksCount == uploadedBlocksCount) {
               val f: Future[RpcResponse] = Iteratee.flatten(persist.File.read(fileAdapter, fileId) |>> inputCRC32).run map (_.getValue) map { realcrc32 =>
+                persist.File.complete(fileAdapter, fileId)
+
                 if (crc32 == realcrc32) {
                   val rsp = ResponseCompleteUpload(models.FileLocation(fileId, accessHash))
                   Ok(rsp)
@@ -107,7 +119,7 @@ trait HandlerService extends GeneratorService {
 
   protected def handleRequestGetFile(location: models.FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
     persist.FileData.find(location.fileId) flatMap {
-      case Some(models.FileData(fileId, accessSalt, _, _)) =>
+      case Some(models.FileData(fileId, accessSalt, _)) =>
         val realAccessHash = ACL.fileAccessHash(fileId, accessSalt)
         if (realAccessHash != location.accessHash) {
           throw new persist.LocationInvalid
