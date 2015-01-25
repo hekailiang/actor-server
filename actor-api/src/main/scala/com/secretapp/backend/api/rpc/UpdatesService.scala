@@ -19,7 +19,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
-import com.eaio.uuid.UUID
+import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -29,7 +29,6 @@ import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
-import scodec.codecs.{ uuid => uuidCodec }
 
 class UpdatesServiceActor(
   val sessionActor: ActorRef,

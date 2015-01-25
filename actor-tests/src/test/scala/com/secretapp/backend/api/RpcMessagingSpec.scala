@@ -2,7 +2,6 @@ package com.secretapp.backend.api
 
 import akka.actor._
 import akka.testkit._
-import com.eaio.uuid.UUID
 import com.secretapp.backend.util.ACL
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message._
@@ -18,6 +17,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.websudos.util.testing._
+import java.util.UUID
 import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Await

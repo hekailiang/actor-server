@@ -1,7 +1,7 @@
 package com.secretapp.backend.data.message.rpc.update
 
 import com.secretapp.backend.data.message.rpc._
-import com.eaio.uuid.UUID
+import java.util.UUID
 
 @SerialVersionUID(1L)
 case class RequestGetDifference(seq: Int, state: Option[UUID]) extends RpcRequestMessage {

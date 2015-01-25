@@ -1,10 +1,11 @@
 package com.secretapp.backend.persist
 
-import com.eaio.uuid.UUID
+import com.datastax.driver.core.utils.UUIDs
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.secretapp.backend.protocol.codecs.message.update.contact._
+import java.util.UUID
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 import scalikejdbc._
@@ -31,7 +32,7 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
         bv
       }
 
-      val uuid = new UUID(rs.string(upd.column("uuid")))
+      val uuid = UUID.fromString(rs.string(upd.column("uuid")))
       val length = protobufData.length / 8
 
       (
@@ -85,7 +86,7 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
       select(column.column("uuid")).from(SeqUpdate as upd)
         .where.eq(upd.column("auth_id"), authId)
         .orderBy(upd.column("uuid")).desc.limit(1)
-    }.map(rs => new UUID(rs.string(column.column("uuid")))).single.apply
+    }.map(rs => UUID.fromString(rs.string(column.column("uuid")))).single.apply
   }
 
   def getDifference(authId: Long, state: Option[UUID], limit: Int = 500)(
@@ -133,7 +134,7 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
   def push(authId: Long, update: updateProto.SeqUpdateMessage)(
     implicit ec: ExecutionContext, session: DBSession = SeqUpdate.autoSession
   ): Future[UUID] =
-    push(new UUID, authId, update)
+    push(UUIDs.timeBased, authId, update)
 
   def push(uuid: UUID, authId: Long, update: updateProto.SeqUpdateMessage)(
     implicit ec: ExecutionContext, session: DBSession

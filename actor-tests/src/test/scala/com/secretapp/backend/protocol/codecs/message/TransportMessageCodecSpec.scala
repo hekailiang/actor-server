@@ -1,6 +1,5 @@
 package com.secretapp.backend.protocol.codecs.message
 
-import com.eaio.uuid.UUID
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message._
@@ -10,11 +9,11 @@ import com.secretapp.backend.data.message.rpc.auth._
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct._
+import java.util.UUID
 import scala.collection.immutable
+import scalaz._, Scalaz._
 import scodec.bits._
 import org.specs2.mutable.Specification
-import scalaz._
-import Scalaz._
 
 class TransportMessageCodecSpec extends Specification {
   "TransportMessageCodec" should {
@@ -113,7 +112,7 @@ class TransportMessageCodecSpec extends Specification {
 
     "encode and decode RpcRequest.RequestGetDifference" in {
       val encoded = hex"031a010000000b14087b1210c62a5342b7624d6586138ccbb48dfa69".bits
-      val decoded = RpcRequestBox(Request(RequestGetDifference(123, Some(new UUID("c62a5342-b762-4d65-8613-8ccbb48dfa69")))))
+      val decoded = RpcRequestBox(Request(RequestGetDifference(123, Some(UUID.fromString("c62a5342-b762-4d65-8613-8ccbb48dfa69")))))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some
@@ -189,7 +188,7 @@ class TransportMessageCodecSpec extends Specification {
  */
     "encode and decode RpcResponse.ResponseSeq" in {
       val encoded = hex"0400000000000000011a010000004814087b1210c62a5342b7624d6586138ccbb48dfa69".bits
-      val decoded = RpcResponseBox(1L, Ok(ResponseSeq(123, Some(new UUID("c62a5342-b762-4d65-8613-8ccbb48dfa69")))))
+      val decoded = RpcResponseBox(1L, Ok(ResponseSeq(123, Some(UUID.fromString("c62a5342-b762-4d65-8613-8ccbb48dfa69")))))
 
       protoTransportMessage.encode(decoded) should_== encoded.right
       protoTransportMessage.decode(encoded).toOption should_== (BitVector.empty, decoded).some

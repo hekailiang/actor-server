@@ -6,11 +6,11 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.persistence._
-import com.eaio.uuid.UUID
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.{persist => p}
+import java.util.UUID
 import im.actor.util.logging._
 import scala.concurrent.Future
 import scala.concurrent.duration._

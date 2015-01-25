@@ -1,8 +1,8 @@
 package com.secretapp.backend.data.message.rpc.messaging
 
-import com.eaio.uuid.UUID
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc._
+import java.util.UUID
 import scala.collection.immutable
 
 @SerialVersionUID(1L)

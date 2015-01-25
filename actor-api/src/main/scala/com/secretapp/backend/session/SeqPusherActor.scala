@@ -7,9 +7,8 @@ import com.secretapp.backend.data.message.update.contact._
 import com.secretapp.backend.helpers.UserHelpers
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
-import com.secretapp.backend.protocol.codecs.message.EaioUuidCodec
 import com.secretapp.backend.services.common.PackageCommon._
-import com.eaio.uuid.UUID
+import java.util.UUID
 import scala.concurrent.Future
 import scodec.codecs.{ uuid => uuidCodec }
 
@@ -27,9 +26,9 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long) exte
             getUserStruct(userId, authId)
           }
           for { userStructs <- Future.sequence(fuserStructs) }
-          yield FatSeqUpdate(seq, EaioUuidCodec.encode(state).toOption.get, u, userStructs.flatten.toVector, Vector.empty)
+          yield FatSeqUpdate(seq, uuidCodec.encode(state).toOption.get, u, userStructs.flatten.toVector, Vector.empty)
         case _ =>
-          Future.successful(SeqUpdate(seq, EaioUuidCodec.encodeValid(state), u))
+          Future.successful(SeqUpdate(seq, uuidCodec.encodeValid(state), u))
       }
 
       fupd map { upd =>

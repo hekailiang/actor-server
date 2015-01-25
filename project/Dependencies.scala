@@ -49,8 +49,6 @@ object Dependencies {
 
     val jodaTime        = "joda-time"                     %  "joda-time"                     % "2.7"
     val jodaConvert     = "org.joda"                      %  "joda-convert"                  % "1.7"
-
-    val uuid            = "com.eaio.uuid"                 %  "uuid"                          % "3.4"
   }
 
   object Test {
@@ -82,7 +80,7 @@ object Dependencies {
   val api       = common ++ Seq(
     apns, scrImageCore, akkaActor, akkaContrib, akkaKernel, akkaPersistence, sprayWebSocket, commonsCodec, akkaCluster,
     clinkedhashmap, dispatchCore, bcprov, scodecBits, scodecCore, libPhoneNumber, akkaSlf4j,
-    sprayClient, uuid, akkaPersistenceJdbc
+    sprayClient, akkaPersistenceJdbc
   )
 
   val deploy    = Seq(traceAkka)

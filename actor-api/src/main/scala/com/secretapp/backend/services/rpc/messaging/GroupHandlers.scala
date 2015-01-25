@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
 import akka.pattern.ask
-import com.eaio.uuid.UUID
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -17,6 +16,7 @@ import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.{ ACL, AvatarUtils }
 import org.joda.time.DateTime
+import java.util.UUID
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
