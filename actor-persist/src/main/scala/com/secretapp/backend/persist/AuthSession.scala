@@ -2,10 +2,19 @@ package com.secretapp.backend.persist
 
 import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import com.websudos.phantom.query.SelectQuery
 import java.nio.ByteBuffer
 import org.joda.time.DateTime
 import scala.concurrent.Future
 import scodec.bits._
+
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util.{ Try, Failure, Success }
+import scalikejdbc._
 
 trait AbstractAuthSession[T <: CassandraTable[T, R], R] extends CassandraTable[T, R] {
   object userId extends IntColumn(this) with PartitionKey[Int] {
@@ -60,6 +69,23 @@ sealed class AuthSession extends AbstractAuthSession[AuthSession, models.AuthSes
       authLocation(row), latitude(row), longitude(row),
       authId(row), publicKeyHash(row), BitVector(deviceHash(row))
     )
+
+  def fromRowWithUserId(row: Row): (models.AuthSession, Int) =
+    (
+      models.AuthSession(
+        id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
+        authLocation(row), latitude(row), longitude(row),
+        authId(row), publicKeyHash(row), BitVector(deviceHash(row))
+      ),
+      userId(row)
+    )
+
+  def selectWithUserId: SelectQuery[AuthSession, (models.AuthSession, Int)] =
+    new SelectQuery[AuthSession, (models.AuthSession, Int)](
+      this.asInstanceOf[AuthSession],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[AuthSession].fromRowWithUserId
+    )
 }
 
 sealed class DeletedAuthSession extends AbstractAuthSession[DeletedAuthSession, models.AuthSession] {
@@ -87,6 +113,24 @@ sealed class DeletedAuthSession extends AbstractAuthSession[DeletedAuthSession, 
       authLocation(row), latitude(row), longitude(row),
       authId(row), publicKeyHash(row), BitVector(deviceHash(row))
     )
+
+  def fromRowWithUserIdAndDeletedAt(row: Row): (models.AuthSession, Int, DateTime) =
+    (
+      models.AuthSession(
+        id(row), appId(row), appTitle(row), deviceTitle(row), authTime(row),
+        authLocation(row), latitude(row), longitude(row),
+        authId(row), publicKeyHash(row), BitVector(deviceHash(row))
+      ),
+      userId(row),
+      deletedAt(row)
+    )
+
+  def selectWithUserIdAndDeletedAt: SelectQuery[DeletedAuthSession, (models.AuthSession, Int, DateTime)] =
+    new SelectQuery[DeletedAuthSession, (models.AuthSession, Int, DateTime)](
+      this.asInstanceOf[DeletedAuthSession],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[DeletedAuthSession].fromRowWithUserIdAndDeletedAt
+    )
 }
 
 object DeletedAuthSession extends DeletedAuthSession with TableOps {
@@ -106,6 +150,46 @@ object DeletedAuthSession extends DeletedAuthSession with TableOps {
 
   def getEntitiesByUserId(userId: Int)(implicit session: Session): Future[Seq[models.AuthSession]] = {
     select.where(_.userId eqs userId).fetch()
+  }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[(models.AuthSession, Int, DateTime), List[Try[Boolean]]](List.empty) {
+        case (moves, (as, userId, deletedAt)) =>
+
+          moves :+ Try {
+            sql"""insert into auth_sessions (user_id, id, app_id, app_title, auth_id, public_key_hash, device_hash, device_title, auth_time, auth_location, deleted_at)
+                VALUES (${userId}, ${as.id}, ${as.appId}, ${as.appTitle}, ${as.authId}, ${as.publicKeyHash}, ${as.deviceHash.toByteArray}, ${as.deviceTitle}, ${new DateTime(as.authTime.toLong * 1000)}, ${as.authLocation}, ${deletedAt})"""
+              .execute.apply
+          }
+      }
+
+    val tries = Await.result(selectWithUserIdAndDeletedAt.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case Failure(e) =>
+        Some(e)
+      case Success(_) =>
+        None
+    } flatten
   }
 }
 
@@ -151,5 +235,45 @@ object AuthSession extends AuthSession with TableOps {
       case None =>
         Future.successful(None)
     }
+  }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[(models.AuthSession, Int), List[Try[Boolean]]](List.empty) {
+      case (moves, (as, userId)) =>
+
+        moves :+ Try {
+          sql"""insert into auth_sessions (user_id, id, app_id, app_title, auth_id, public_key_hash, device_hash, device_title, auth_time, auth_location)
+                VALUES (${userId}, ${as.id}, ${as.appId}, ${as.appTitle}, ${as.authId}, ${as.publicKeyHash}, ${as.deviceHash.toByteArray}, ${as.deviceTitle}, ${new DateTime(as.authTime.toLong * 1000)}, ${as.authLocation})"""
+            .execute.apply
+        }
+      }
+
+    val tries = Await.result(selectWithUserId.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case Failure(e) =>
+        Some(e)
+      case Success(_) =>
+        None
+    } flatten
   }
 }

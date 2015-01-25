@@ -5,8 +5,14 @@ import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.query.SelectQuery
 import scala.collection.immutable
-import scala.concurrent.Future
+import scala.concurrent._, duration._
+import scala.util.Try
 import scodec.bits.BitVector
+
+import play.api.libs.iteratee._
+import scalikejdbc._
+import scala.language.postfixOps
+import scala.util.{ Failure, Success }
 
 sealed class User extends CassandraTable[User, models.User] {
   override val tableName = "users"
@@ -314,4 +320,73 @@ object User extends User with TableOps {
 
   private[persist] def setState(userId: Int, state: models.UserState)(implicit session: Session): Future[ResultSet] =
     update.where(_.userId eqs userId).modify(_.state setTo state.toInt).future()
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[(models.User, models.AvatarData), List[Try[Unit]]](List.empty) {
+        case (moves, (user, ad)) =>
+
+        moves :+ Try {
+
+          val userExists =
+            sql"select exists ( select 1 from users where id = ${user.uid} )"
+              .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+          if (!userExists) {
+            sql"""insert into users (id, access_salt, name, country_code, sex, state)
+                  VALUES (${user.uid}, ${user.accessSalt}, ${user.name}, ${user.countryCode}, ${user.sex.toInt}, ${user.state.toInt})
+            """.execute.apply
+          }
+
+          val adExists =
+            sql"select exists ( select 1 from avatar_datas where entity_id = ${user.uid} and entity_type = 1)"
+              .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+          if (!adExists) {
+            sql"""insert into avatar_datas (
+                  entity_id, entity_type,
+                  small_avatar_file_id, small_avatar_file_hash, small_avatar_file_size,
+                  large_avatar_file_id, large_avatar_file_hash, large_avatar_file_size,
+                  full_avatar_file_id, full_avatar_file_hash, full_avatar_file_size,
+                  full_avatar_width, full_avatar_height
+                  ) VALUES (
+                  ${user.uid}, 1,
+                  ${ad.smallAvatarFileId}, ${ad.smallAvatarFileHash}, ${ad.smallAvatarFileSize},
+                  ${ad.largeAvatarFileId}, ${ad.largeAvatarFileHash}, ${ad.largeAvatarFileSize},
+                  ${ad.fullAvatarFileId}, ${ad.fullAvatarFileHash}, ${ad.fullAvatarFileSize},
+                  ${ad.fullAvatarWidth}, ${ad.fullAvatarHeight}
+                  )""".execute.apply
+
+            ()
+          }
+        }
+      }
+
+    val tries = Await.result(selectWithAvatar.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case Failure(e) =>
+        Some(e)
+      case Success(_) =>
+        None
+    } flatten
+  }
 }

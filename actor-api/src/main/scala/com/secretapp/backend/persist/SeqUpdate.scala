@@ -1,16 +1,24 @@
 package com.secretapp.backend.persist
 
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.secretapp.backend.protocol.codecs.message.update._
 import com.secretapp.backend.protocol.codecs.message.update.contact._
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.core.utils.UUIDs
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.websudos.phantom.Implicits._
+import com.websudos.phantom.query.SelectQuery
 import java.util.UUID
 import scala.collection.immutable
-import scala.concurrent.Future
 import scodec.Codec
 import scodec.bits._
+
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scalikejdbc._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util.{ Try, Failure, Success }
 
 sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updateProto.SeqUpdateMessage], Long)] {
   override val tableName = "seq_updates"
@@ -71,6 +79,22 @@ sealed class SeqUpdate extends CassandraTable[SeqUpdate, (Entity[UUID, updatePro
       case updateProto.contact.LocalNameChanged.header => decode(row, LocalNameChangedCodec)
     }
   }
+
+  def fromRowWithAuthId(row: Row): Entity[(Long, UUID), (Int, BitVector)] = {
+    val protoBody = BitVector(protobufBody(row))
+
+    Entity(
+      (authId(row), uuid(row)),
+      (header(row), protoBody)
+    )
+  }
+
+  def selectWithAuthId: SelectQuery[SeqUpdate, Entity[(Long, UUID), (Int, BitVector)]] =
+    new SelectQuery[SeqUpdate, Entity[(Long, UUID), (Int, BitVector)]](
+      this.asInstanceOf[SeqUpdate],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[SeqUpdate].fromRowWithAuthId
+    )
 }
 
 object SeqUpdate extends SeqUpdate with TableOps {
@@ -158,5 +182,64 @@ object SeqUpdate extends SeqUpdate with TableOps {
       .consistencyLevel_=(ConsistencyLevel.ALL)
       .future()
     q.map { _ => uuid }
+  }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[((Long, UUID), Option[Throwable])] = {
+    val moveIteratee =
+      Iteratee.fold[Entity[(Long, UUID), (Int, BitVector)], List[((Long, UUID), Try[Unit])]](List.empty) {
+        case (moves, Entity((authId, uuid), (updHeader, updData))) =>
+
+          moves :+ ((authId, uuid), Try {
+            //val exists =
+            //  sql"select exists ( select 1 from group_users where group_id = ${groupId} )"
+            //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+            //if (!exists) {
+            sql"""
+            INSERT INTO seq_updates (auth_id, uuid, header, protobuf_data) VALUES (
+            ${authId}, ${uuid}, ${updHeader}, ${updData.toByteArray}
+            )
+            """.execute.apply
+            //}
+
+            ()
+          })
+      }
+
+    val tries = Await.result(selectWithAuthId.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case (pair, Failure(e)) =>
+        (pair, Some(e))
+      case (pair, Success(_)) =>
+        (pair, None)
+    }
+  }
+
+  def countAll()(implicit session: Session): Long = {
+    val countIteratee = Iteratee.fold[Long, Long](0) {
+      case (count, _) =>
+        count + 1
+    }
+
+    Await.result(select(_.authId).fetchEnumerator() |>>> countIteratee, 20.minutes)
   }
 }

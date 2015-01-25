@@ -75,6 +75,8 @@ object UserContactsListCache extends UserContactsListCache with TableOps {
     select.where(_.ownerId eqs userId).one()
   }
 
+  def enumerator()(implicit csession: CSession) = select.fetchEnumerator()
+
   def getContactsId(userId: Int)(implicit csession: CSession): Future[immutable.HashSet[Int]] = {
     select(_.contactsId).where(_.ownerId eqs userId).one().map {
       case Some(contactsId) => contactsId.to[immutable.HashSet]

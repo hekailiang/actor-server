@@ -4,9 +4,13 @@ import com.secretapp.backend.models
 import com.websudos.phantom.Implicits._
 import org.joda.time.DateTime
 import scala.collection.immutable
-import scala.concurrent.Future
 import scala.language.postfixOps
 import scodec.bits.BitVector
+
+import play.api.libs.iteratee._
+import scala.concurrent._, duration._
+import scala.util
+import scalikejdbc._
 
 sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPublicKey] {
   override val tableName = "user_public_keys"
@@ -135,4 +139,44 @@ object UserPublicKey extends UserPublicKey with TableOps {
       case Some(upk) => insertDeletedEntity(upk) map (_ => Some(upk.authId))
       case None => Future.successful(None)
     }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee: Iteratee[models.UserPublicKey, List[util.Try[Boolean]]] =
+      Iteratee.fold[models.UserPublicKey, List[util.Try[Boolean]]](List.empty) {
+        (moves, pk) =>
+
+        moves :+ util.Try {
+          sql"""insert into public_keys (user_id, hash, data, auth_id)
+                VALUES (${pk.userId}, ${pk.publicKeyHash}, ${pk.publicKey.toByteArray}, ${pk.authId})"""
+            .execute.apply
+        }
+      }
+
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case util.Failure(e) =>
+        Some(e)
+      case util.Success(_) =>
+        None
+    } flatten
+  }
 }

@@ -2,12 +2,19 @@ package com.secretapp.backend.persist.contact
 
 import com.datastax.driver.core.{ ResultSet, Row, Session => CSession }
 import com.secretapp.backend.models
-import com.secretapp.backend.persist.TableOps
+import com.secretapp.backend.persist.{ DBConnector, TableOps }
 import com.secretapp.backend.data.message.struct
 import com.websudos.phantom.Implicits._
 import scala.collection.immutable
-import scala.concurrent.Future
 import scala.language.postfixOps
+
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scalikejdbc._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util
+
 
 sealed class UserContactsList extends CassandraTable[UserContactsList, models.contact.UserContactsList] {
   override lazy val tableName = "user_contacts_lists"
@@ -93,5 +100,92 @@ object UserContactsList extends UserContactsList with TableOps {
     select(_.contactId, _.name).
       where(_.ownerId eqs userId).
       fetch()
+  }
+
+  def moveCacheToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[models.contact.UserContactsListCache, List[util.Try[Unit]]](List.empty) {
+        case (moves, uc) =>
+
+          moves :+ util.Try {
+            //val exists =
+            //  sql"select exists ( select 1 from group_users where group_id = ${groupId} )"
+            //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+            //if (!exists) {
+            val ids: List[Int] = uc.deletedContactsId.toList
+
+            ids.foreach { id =>
+              val updatedRowsCount = sql"""
+              INSERT INTO user_contacts (owner_user_id, contact_user_id, phone_number, name, access_salt, is_deleted) VALUES (
+              ${uc.ownerId}, ${id}, 0, '', '', true
+              )
+              """.update.apply
+            }
+
+            ()
+          }
+      }
+
+    val tries = Await.result(UserContactsListCache.enumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case util.Failure(e) =>
+        Some(e)
+      case util.Success(_) =>
+        None
+    } flatten
+  }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[models.contact.UserContactsList, List[util.Try[Unit]]](List.empty) {
+        case (moves, uc) =>
+
+          moves :+ util.Try {
+            //val exists =
+            //  sql"select exists ( select 1 from group_users where group_id = ${groupId} )"
+            //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+            //if (!exists) {
+            sql"""
+            INSERT INTO user_contacts (owner_user_id, contact_user_id, phone_number, name, access_salt, is_deleted) VALUES (
+            ${uc.ownerId}, ${uc.contactId}, ${uc.phoneNumber}, ${uc.name}, ${uc.accessSalt}, false
+            )
+            """.execute.apply
+            //}
+
+            ()
+          }
+      }
+
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    val cacheTries = moveCacheToSQL()
+
+    (tries ++ cacheTries) map {
+      case util.Failure(e) =>
+        Some(e)
+      case util.Success(_) =>
+        None
+    } flatten
   }
 }

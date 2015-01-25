@@ -6,6 +6,13 @@ import com.secretapp.backend.models
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util.{ Try, Failure, Success }
+import scalikejdbc._
+
 sealed class AuthSmsCode extends CassandraTable[AuthSmsCode, models.AuthSmsCode] {
   override val tableName = "auth_sms_codes"
 
@@ -49,4 +56,46 @@ object AuthSmsCode extends AuthSmsCode with TableOps {
 
   def list(startPhoneExclusive: Option[Long], count: Int)(implicit session: CSession): Future[Seq[models.AuthSmsCode]] =
     startPhoneExclusive.fold(list(count))(list(_, count))
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[models.AuthSmsCode, List[Try[Unit]]](List.empty) {
+        case (moves, c) =>
+
+          moves :+ Try {
+            sql"""insert into auth_sms_codes (phone_number, sms_hash, sms_code)
+                VALUES (${c.phoneNumber}, ${c.smsHash}, ${c.smsCode})"""
+              .execute.apply
+
+            ()
+          }
+      }
+
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case Failure(e) =>
+        Some(e)
+      case Success(_) =>
+        None
+    } flatten
+  }
 }

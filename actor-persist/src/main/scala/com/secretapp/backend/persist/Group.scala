@@ -4,8 +4,14 @@ import com.secretapp.backend.models
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.websudos.phantom.Implicits._
 import com.websudos.phantom.query.SelectQuery
-import scala.concurrent.Future
 import scodec.bits.BitVector
+
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scalikejdbc._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util.{ Try, Failure, Success }
 
 case class TitleChangeMeta(userId: Int, date: Long, randomId: Long)
 case class AvatarChangeMeta(userId: Int, date: Long, randomId: Long)
@@ -210,4 +216,72 @@ object Group extends Group with TableOps {
 
   def removeAvatar(id: Int, userId: Int, randomId: Long, date: Long)(implicit session: Session) =
     updateAvatar(id, models.Avatar(None, None, None), userId, randomId, date)
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[(models.Group, models.AvatarData, TitleChangeMeta, AvatarChangeMeta), List[Try[Unit]]](List.empty) {
+        case (moves, (group, ad, tmeta, ameta)) =>
+
+          moves :+ Try {
+            //val exists =
+            //  sql"select exists ( select 1 from group_users where group_id = ${groupId} )"
+            //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+            //if (!exists) {
+            sql"""insert into groups (id, creator_user_id, access_hash, title, created_at,
+                  title_changer_user_id, title_changed_at, title_change_random_id,
+                  avatar_changer_user_id, avatar_changed_at, avatar_change_random_id
+
+                  ) VALUES (${group.id}, ${group.creatorUserId}, ${group.accessHash}, ${group.title}, ${new DateTime(group.createDate)},
+                  ${tmeta.userId}, ${new DateTime(tmeta.date)}, ${tmeta.randomId},
+                  ${ameta.userId}, ${new DateTime(ameta.date)}, ${ameta.randomId}
+                  )
+            """.execute.apply
+
+            sql"""insert into avatar_datas (
+                  entity_id, entity_type,
+                  small_avatar_file_id, small_avatar_file_hash, small_avatar_file_size,
+                  large_avatar_file_id, large_avatar_file_hash, large_avatar_file_size,
+                  full_avatar_file_id, full_avatar_file_hash, full_avatar_file_size,
+                  full_avatar_width, full_avatar_height
+                  ) VALUES (
+                  ${group.id}, 2,
+                  ${ad.smallAvatarFileId}, ${ad.smallAvatarFileHash}, ${ad.smallAvatarFileSize},
+                  ${ad.largeAvatarFileId}, ${ad.largeAvatarFileHash}, ${ad.largeAvatarFileSize},
+                  ${ad.fullAvatarFileId}, ${ad.fullAvatarFileHash}, ${ad.fullAvatarFileSize},
+                  ${ad.fullAvatarWidth}, ${ad.fullAvatarHeight}
+                  )""".execute.apply
+            //}
+
+            ()
+          }
+      }
+
+    val tries = Await.result(selectWithAvatarAndChangeMeta.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case Failure(e) =>
+        Some(e)
+      case Success(_) =>
+        None
+    } flatten
+  }
 }

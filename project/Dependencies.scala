@@ -4,6 +4,7 @@ object Dependencies {
   object V {
     val akka    = "2.3.7"
     val phantom = "1.4.0"
+    val cassandraDriver = "2.1.4"
     val scalaz  = "7.1.0"
   }
 
@@ -33,6 +34,13 @@ object Dependencies {
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val logbackClassic  = "ch.qos.logback"                % "logback-classic"                % "1.1.2"
     val logbackLogstash = "net.logstash.logback"          % "logstash-logback-encoder"       % "3.3"
+
+    val scalikeJdbc     = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.1"
+    val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
+    val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
+    val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
+
+    val cassandraDriver = "com.datastax.cassandra"        %  "cassandra-driver-core"         % "2.1.1"
   }
 
   object Test {
@@ -66,7 +74,7 @@ object Dependencies {
 
   val messages  = Seq(akkaActor)
 
-  val persist   = common ++ Seq(akkaActor, scodecBits, phantomDsl, scalazCore)
+  val persist   = common ++ Seq(akkaActor, scodecBits, phantomDsl, cassandraDriver, scalazCore, scalikeJdbc, flywayCore, postgresJdbc, akkaPersistenceJdbc)
 
   val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
 

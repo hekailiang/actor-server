@@ -6,6 +6,13 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 
+import org.joda.time.DateTime
+import play.api.libs.iteratee._
+import scalikejdbc._
+import scala.concurrent._, duration._
+import scala.language.postfixOps
+import scala.util
+
 sealed class UserPhone extends CassandraTable[UserPhone, models.UserPhone] {
   override val tableName = "user_phones"
 
@@ -97,5 +104,55 @@ object UserPhone extends UserPhone with TableOps {
         }
       }
     }
+  }
+
+  def main(args: Array[String]) {
+    implicit val session = DBConnector.session
+    implicit val sqlSession = DBConnector.sqlSession
+
+    GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
+
+    println("migrating")
+    DBConnector.flyway.migrate()
+    println("migrated")
+
+    val fails = moveToSQL()
+
+    Thread.sleep(10000)
+
+    println(fails)
+    println(s"Failed ${fails.length} moves")
+  }
+
+  def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
+    val moveIteratee =
+      Iteratee.fold[models.UserPhone, List[util.Try[Unit]]](List.empty) {
+        case (moves, up) =>
+
+          moves :+ util.Try {
+            //val exists =
+            //  sql"select exists ( select 1 from group_users where group_id = ${groupId} )"
+            //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+            //if (!exists) {
+            sql"""
+            INSERT INTO user_phones (user_id, id, access_salt, number, title) VALUES  (
+            ${up.userId}, ${up.id}, ${up.accessSalt}, ${up.number}, ${up.title}
+            )
+            """.execute.apply
+            //}
+
+            ()
+          }
+      }
+
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+
+    tries map {
+      case util.Failure(e) =>
+        Some(e)
+      case util.Success(_) =>
+        None
+    } flatten
   }
 }
