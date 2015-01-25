@@ -2,6 +2,8 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
 import scala.concurrent._
+import scala.language.postfixOps
+import scala.util.{ Try, Success, Failure }
 import scalikejdbc._
 
 object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
@@ -36,17 +38,23 @@ object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
     implicit ec: ExecutionContext, session: DBSession = FileBlock.autoSession
   ): Future[Boolean] = Future {
     blocking {
-      existsSync(fileId, offset, length) match {
-        case true => false
-        case false =>
-          withSQL {
-            insert.into(FileBlock).namedValues(
-              column.fileId -> fileId,
-              column.column("offset_") -> offset,
-              column.length -> length
-            )
-          }.execute.apply
-      }
+      Try {
+        withSQL {
+          insert.into(FileBlock).namedValues(
+            column.fileId -> fileId,
+            column.column("offset_") -> offset,
+            column.length -> length
+          )
+        }.execute.apply
+      } recover {
+        case e =>
+          existsSync(fileId, offset, length) match {
+            case true =>
+              false
+            case false =>
+              throw e
+          }
+      } get
     }
   }
 

@@ -110,7 +110,7 @@ object BackendBuild extends Build {
       flywaySchemas := Seq("public"),
       flywayLocations := Seq("sql/migration")
     )
-  ).dependsOn(actorModels, actorProtobuf, actorTestkit % "test")
+  ).dependsOn(actorModels, actorProtobuf, actorUtil, actorTestkit % "test")
 
   lazy val actorRestApi = Project(
     id       = "actor-restapi",

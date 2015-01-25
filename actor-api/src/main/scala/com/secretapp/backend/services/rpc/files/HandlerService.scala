@@ -48,7 +48,7 @@ trait HandlerService extends GeneratorService {
         Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
       case \/-(fileId) =>
         try {
-          log.debug(s"Writing file ${fileId.toString} with offset ${offset}")
+          log.debug("Writing file id: {} with offset: {}", fileId, offset)
           for {
             _ <- persist.File.write(fileAdapter, fileId, offset, data.toByteArray)
           } yield {
@@ -126,6 +126,8 @@ trait HandlerService extends GeneratorService {
         }
 
         try {
+          log.debug("Reading file id: {} offset: {} limit: {}", fileId, offset, limit)
+
           val f = persist.File.read(fileAdapter, fileId, offset, limit).map { bytes =>
             val rsp = ResponseGetFile(BitVector(bytes))
             Ok(rsp)
@@ -133,9 +135,9 @@ trait HandlerService extends GeneratorService {
 
           f onFailure {
             case e: Throwable =>
-              log.error("Failed to check file accessHash")
-              throw e
+              log.error(e, "Failed to read file id: {} offset: {} limit: {}", fileId, offset, limit)
           }
+
           f
         } catch {
           case e: persist.FileError =>

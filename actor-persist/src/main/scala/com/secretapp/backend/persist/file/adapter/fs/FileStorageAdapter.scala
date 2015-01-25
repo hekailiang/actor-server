@@ -1,6 +1,7 @@
 package im.actor.server.persist.file.adapter.fs
 
 import akka.actor._
+import akka.event.{ LoggingAdapter, Logging }
 import akka.util.{ ByteString, Timeout }
 import akka.pattern.ask
 import java.io.File
@@ -43,14 +44,22 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
   import FileStorageProtocol._
 
   implicit val ec = system.dispatcher
-  implicit val timeout = Timeout(5.seconds)
+
+  private val log: LoggingAdapter = Logging.getLogger(system, this)
 
   private val fsConfig = system.settings.config.getConfig("file-storage")
+
+  private val writeTimeout = Timeout(
+    fsConfig.getDuration("write-timeout", TimeUnit.MILLISECONDS).milliseconds
+  )
+
+  private val readTimeout = Timeout(
+    fsConfig.getDuration("read-timeout", TimeUnit.MILLISECONDS).milliseconds
+  )
 
   private val closeTimeout = fsConfig.getDuration("close-timeout", TimeUnit.MILLISECONDS).milliseconds
   private val basePathStr = fsConfig.getString("base-path")
   private val pathDepth = fsConfig.getInt("path-depth")
-
 
   private val basePath = FileStorageAdapter.mkBasePath(basePathStr)
   basePath.toFile.mkdir()
@@ -66,18 +75,23 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
   }
 
   def write(name: String, offset: Int, bytes: Array[Byte]): Future[Unit] = {
-    Future {
-      fsActor ! Write(name, offset, ByteString(bytes))
-    }
+    log.debug("Sending Write to FileStorageActor, name: {}, offset: {}, length: {}",
+      name, offset, bytes.length)
+
+    fsActor.ask(Write(name, offset, ByteString(bytes)))(writeTimeout) map (_ => ())
   }
 
   def read(name: String, offset: Int, length: Int): Future[Array[Byte]] = {
-    fsActor.ask(Read(name, offset, length)).mapTo[ReadBytes] map (_.data.toArray)
+    fsActor.ask(Read(name, offset, length))(readTimeout).mapTo[ReadBytes] map (_.data.toArray)
   }
 
   def read(name: String): Enumerator[Array[Byte]] = {
+    val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
+
+    log.debug("Opening file name: {}, path: {}", name, file.toPath().toString)
+
     Enumerator.fromFile(
-      FileStorageAdapter.mkFile(name, basePath, pathDepth),
+      file,
       1024 * 8
     )
   }

@@ -5,6 +5,7 @@ import akka.util.ByteString
 import java.io.RandomAccessFile
 import java.io.File
 import java.nio.file.{ Files, Path }
+import im.actor.util.logging.FailureReplyingActor
 import scala.collection.immutable
 import scala.collection.JavaConversions._
 import scala.concurrent._, duration._
@@ -46,7 +47,7 @@ object FileStorageActor {
   }
 }
 
-class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: Int = 6) extends Actor with ActorLogging {
+class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: Int) extends FailureReplyingActor with ActorLogging {
   import context.dispatcher
   import FileStorageProtocol._
 
@@ -55,33 +56,51 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: 
   private var filesRW: immutable.Map[String, FileWithCloser] = immutable.Map.empty
   private var filesR: immutable.Map[String, FileWithCloser] = immutable.Map.empty
 
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    super.preRestart(reason, message)
+    closeFiles()
+  }
+
   def receive = {
     case Write(name, offset, bytes) =>
-      //log.debug("Writing to {}", name)
-      val raf = getOrOpenRW(name)
+      val replyTo = sender
 
-      val requiredLength = offset + bytes.length
+      Try {
+        log.debug("Writing chunk name: {}, offset: {}, length: {}", name, offset, bytes.length)
+        val raf = getOrOpenRW(name)
 
-      if (raf.length < requiredLength)
-        raf.setLength(requiredLength)
+        val requiredLength = offset + bytes.length
 
-      raf.seek(offset)
-      raf.write(bytes.toArray)
+        if (raf.length < requiredLength)
+          raf.setLength(requiredLength)
 
-      cacheAndScheduleCloseRW(name, raf)
+        raf.seek(offset)
+        raf.write(bytes.toArray)
 
-      sender ! Wrote
+        cacheAndScheduleCloseRW(name, raf)
+
+      } match {
+        case Success(_) => sender ! Wrote
+        case Failure(e) =>
+          sender ! Status.Failure(e)
+          throw e
+      }
     case Read(name, offset, length) =>
+      val replyTo = sender
+      log.debug("Requested read name: {}, offset: {}, length: {}", name, offset, length)
+
       getOrOpenR(name) match {
         case Success(raf) =>
-          raf.seek(offset)
+          log.debug("Reading name: {}, offset: {}, length: {}", name, offset, length)
           val bytes = read(raf, offset, length)
 
-          sender ! ReadBytes(name, ByteString(bytes))
+          log.debug("Chunk read name: {}, offset: {}, requested length: {}, real length: {}",
+            name, offset, length, bytes.length)
+          replyTo ! ReadBytes(name, ByteString(bytes))
 
           cacheAndScheduleCloseR(name, raf)
         case Failure(_) =>
-          sender ! FileNotExists
+          replyTo ! FileNotExists
       }
     case CloseRW(name) =>
       filesRW.get(name) map {
@@ -98,48 +117,64 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: 
   }
 
   private def getOrOpenRW(name: String): RandomAccessFile = {
-    filesRW.get(name).map(_._1).getOrElse(openRW(name))
+    filesRW.get(name) map {
+      case (raf, _) =>
+        log.debug("Handler(rw) got from cache {}", name)
+        raf
+    } getOrElse {
+      log.debug("Opening handler(rw) {}", name)
+      openRW(name)
+    }
   }
 
   private def getOrOpenR(name: String): Try[RandomAccessFile] = {
-    filesR.get(name).map(fc => Success(fc._1)).getOrElse(openR(name))
+    filesR.get(name) map {
+      case (raf, _) =>
+        log.debug("Handler(r) got from cache {}", name)
+        Success(raf)
+    } getOrElse {
+      log.debug("Opening handler(r) {}", name)
+      openR(name)
+    }
   }
 
   private def openRW(name: String): RandomAccessFile = {
     val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
     file.getParentFile.mkdirs()
 
-    //log.debug("Opening file(rw) {}", file)
+    log.debug("Real file path: {}, name: {}", file.toPath().toString(), name)
 
     new RandomAccessFile(file, "rw")
   }
 
   private def openR(name: String): Try[RandomAccessFile] = {
-    val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
-
-    //log.debug("Opening file(r) {}", file)
-
     Try {
+      val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
+
+      log.debug("Real file path: {}, name: {}", file.toPath().toString(), name)
+
       new RandomAccessFile(file, "r")
     }
   }
 
   private def read(raf: RandomAccessFile, offset: Int, length: Int): Array[Byte] = {
     @annotation.tailrec
-    def doRead(length: Int, prevResult: Array[Byte]): Array[Byte] = {
-      val ba = new Array[Byte](length)
-      val bytesRead = raf.read(ba)
+    def doRead(result: Array[Byte]): Array[Byte] = {
+      Try (raf.readByte()) match {
+        case Success(byte) =>
+          val newResult = result :+ byte
 
-      val result = prevResult ++ ba.take(bytesRead)
-
-      if (bytesRead == length) {
-        result
-      } else {
-        doRead(length - bytesRead, result)
+          if (newResult.length == length)
+            newResult
+          else
+            doRead(newResult)
+        case Failure(e: java.io.EOFException) => result
+        case Failure(e) => throw e
       }
     }
 
-    doRead(length, new Array[Byte](0))
+    raf.seek(offset)
+    doRead(Array[Byte]())
   }
 
   /*
@@ -194,5 +229,19 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: 
       name,
       (raf, scheduleCloseR(name))
     )
+  }
+
+  private def closeFiles(): Unit = {
+    filesR foreach {
+      case (_, (raf, closer)) =>
+        closer.cancel()
+        raf.close()
+    }
+
+    filesRW foreach {
+      case (_, (raf, closer)) =>
+        closer.cancel()
+        raf.close()
+    }
   }
 }
