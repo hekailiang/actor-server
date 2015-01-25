@@ -1,12 +1,12 @@
 package im.actor.util.logging
 
-import akka.actor.Actor
+import akka.actor._
 import akka.event.{ DiagnosticLoggingAdapter, Logging }
 
-trait MDCActorLogging {
+trait MDCActorLogging extends ActorLogging {
   this: Actor =>
 
-  val log: DiagnosticLoggingAdapter = Logging(this)
+  override val log: DiagnosticLoggingAdapter = Logging(this)
 
   protected def mdc = {
     Map.empty[String, Any]
