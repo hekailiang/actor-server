@@ -56,8 +56,8 @@ class FileStorageActor(closeTimeout: FiniteDuration, basePath: Path, pathDepth: 
   private var filesRW: immutable.Map[String, FileWithCloser] = immutable.Map.empty
   private var filesR: immutable.Map[String, FileWithCloser] = immutable.Map.empty
 
-  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
-    super.preRestart(reason, message)
+  override def postStop(): Unit = {
+    super.postStop()
     closeFiles()
   }
 
