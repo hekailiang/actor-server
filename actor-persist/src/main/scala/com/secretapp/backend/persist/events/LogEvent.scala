@@ -52,4 +52,13 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
         paginate(req)
       }
     }
+
+  def requestAuthCodeStat(req: Map[String, Seq[String]] = Map())
+                         (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[LogEvent]] =
+    Future {
+      blocking {
+        ???
+      }
+    }
+
 }

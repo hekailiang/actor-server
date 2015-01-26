@@ -1,7 +1,1 @@
-#POST   /users     controllers.User.create
-#DELETE /users/:id controllers.User.delete(id: Int)
-#PUT    /users/:id controllers.User.update(id: Int)
-#GET    /users/:id controllers.User.get(id: Int)
-#GET    /users     controllers.User.list(start_id: Option[Int], count: Int ?= 10)
-
 GET     /logs/auth           controllers.AuthLogsController.index()

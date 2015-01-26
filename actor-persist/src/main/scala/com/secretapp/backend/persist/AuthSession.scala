@@ -2,9 +2,11 @@ package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
 import org.joda.time.DateTime
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ ExecutionContext, Future, blocking }
 import scalikejdbc._
 import scodec.bits._
+
+case class DeviceDataItem(authId: Long, userId: Int, deviceHash: String, deviceTitle: String)
 
 object AuthSession extends SQLSyntaxSupport[models.AuthSession] {
   override val tableName = "auth_sessions"
@@ -159,5 +161,27 @@ object AuthSession extends SQLSyntaxSupport[models.AuthSession] {
         .where.eq(column.column("user_id"), userId)
         .and.eq(column.id, id)
     }.update.apply
+  }
+
+  def getDevisesData(authIds: Set[Long])
+                    (implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession): Future[Seq[DeviceDataItem]] =
+    Future {
+      blocking {
+        authIds.toList match {
+          case x :: xs =>
+            val q = select(a.authId, a.column("user_id"), a.deviceTitle, a.deviceHash).from(AuthSession as a)
+            val sql = xs.foldLeft(q.where(sqls" auth_id = $x ")) { (acc, s) => acc.append(sqls" OR auth_id = $s ") }.toSQL
+            sql.map { rs =>
+              val deviceHashBV = BitVector.fromInputStream(rs.binaryStream("device_hash"), chunkSizeInBytes = 8192)
+              DeviceDataItem(
+                authId = rs.long("auth_id"),
+                userId = rs.int("user_id"),
+                deviceTitle = rs.string("device_title"),
+                deviceHash = deviceHashBV.toBase64
+              )
+            }.list().apply()
+          case Nil => Seq()
+        }
+      }
   }
 }

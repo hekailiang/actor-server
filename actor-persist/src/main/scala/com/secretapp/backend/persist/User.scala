@@ -1,8 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future, blocking }
 import scala.collection.immutable
 import scalaz._; import Scalaz._
 import scala.language.postfixOps
@@ -191,5 +190,15 @@ object User extends SQLSyntaxSupport[models.User] {
         column.name -> name
       ).where.eq(column.column("id"), userId)
     }.update.apply
+  }
+
+  def getNames(userIds: Set[Int])
+              (implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[Seq[(Int, String)]] =
+  Future {
+    blocking {
+      select(u.column("id"), u.name).from(User as u).where.eq(u.column("id"), userIds).toSQL.map { rs =>
+        (rs.int("id"), rs.string("name"))
+      }.list().apply()
+    }
   }
 }
