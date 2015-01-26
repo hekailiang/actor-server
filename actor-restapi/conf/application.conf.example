@@ -3,7 +3,7 @@ application {
   langs="en"
 }
 
-dbplugin=disabled
+dbplugin=enabled
 evolutionplugin=disabled
 
 db.default = {

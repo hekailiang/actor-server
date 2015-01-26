@@ -5,6 +5,7 @@ object Dependencies {
     val akka    = "2.3.9"
     val akkaExperimental = "1.0-M2"
     val scalaz  = "7.1.0"
+    val play = "2.4.0-M2"
   }
 
   object Compile {
@@ -37,11 +38,13 @@ object Dependencies {
     val commonsEmail    = "org.apache.commons"            % "commons-email"                  % "1.3.3"
     val emailReplyParser = "com.edlio.emailreplyparser"   % "EmailReplyParser"               % "1.1"
 
-    val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % "2.4.0-M2"
+    val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % V.play
+    val playJson       = "com.typesafe.play"              %% "play-json"                     % V.play
 
     val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.2"
     val scalikeConfig   = "org.scalikejdbc"               %% "scalikejdbc-config"            % "2.2.2"
     val scalikePlay     = "org.scalikejdbc"               %% "scalikejdbc-play-plugin"       % "2.3.4"
+    val scalikeDbApiPlay = "org.scalikejdbc"              %% "scalikejdbc-play-dbplugin-adapter" % "2.3.4"
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
@@ -92,19 +95,20 @@ object Dependencies {
   val messages  = Seq(akkaActor)
 
   val persist   = common ++ Seq(
-    akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
+    akkaActor, flywayCore, scodecBits, scalazCore, playIteratees, playJson,
     scalike, postgresJdbc,
     specs2
   )
 
-  val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
+  val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel, playJson)
 
   val tests     = common ++ Seq(
     akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, specs2, scalazSpecs2, utilTesting,
       scalaLoggingSlf4j, akkaKernel
   )
 
-  val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore, scalikeConfig, scalikePlay)
+  val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore,
+    scalikeConfig, scalikePlay, playJson, scalikeDbApiPlay)
 
   val schema    = Seq(json4s)
 

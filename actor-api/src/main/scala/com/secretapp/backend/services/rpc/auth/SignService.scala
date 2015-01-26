@@ -13,7 +13,7 @@ import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.helpers.{ ContactHelpers, SocialHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
-import com.secretapp.backend.persist.events.{ Event => E, EventKind => EK }
+import com.secretapp.backend.services.{ Event => E, EventKind => EK, EventService }
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.SmsEnginesProtocol
 import org.joda.time.DateTime
@@ -117,7 +117,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     val authId = currentAuthId // TODO
     PhoneNumber.normalizeLong(phoneNumberRaw) match {
       case None =>
-        E.log(authId, phoneNumberRaw, E.RpcError(EK.AuthCode, 400, "PHONE_NUMBER_INVALID"))
+        EventService.log(authId, PhoneNumber.tryNormalize(phoneNumberRaw), E.RpcError(EK.AuthCode, 400, "PHONE_NUMBER_INVALID"))
         Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
@@ -127,7 +127,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
             case Some(models.AuthSmsCode(_, sHash, sCode)) =>
-              E.log(authId, phoneNumber, E.AuthCodeSent(sHash, sCode))
+              EventService.log(authId, phoneNumber, E.AuthCodeSent(sHash, sCode))
               Future.successful(Ok(ResponseSendAuthCode(sHash, phoneR.isDefined)))
             case None =>
               val smsHash = genSmsHash
@@ -138,7 +138,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
               singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode) // TODO: move it to actor with persistence
               for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
               yield {
-                E.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
+                EventService.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
                 Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined))
               }
           }
@@ -369,7 +369,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           if (ek == EK.SignIn) E.SignedIn(smsHash, smsCode)
           else E.SignedUp(smsHash, smsCode)
       }
-      E.log(authId, PhoneNumber.tryNormalize(phoneNumberRaw), event)
+      EventService.log(authId, PhoneNumber.tryNormalize(phoneNumberRaw), event)
     }
     res
   }

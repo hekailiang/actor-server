@@ -3,7 +3,7 @@ package com.secretapp.backend.sms
 import akka.actor._
 import scala.util.{ Failure, Success }
 import com.typesafe.config._
-import com.secretapp.backend.persist.events.{ Event => E }
+import com.secretapp.backend.services.{ Event => E, EventService }
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -52,9 +52,9 @@ class SmsEnginesActor() extends Actor with ActorLogging {
       rememberSentCode(phoneNumber, code)
       engine.send(phoneNumber, code) andThen {
         case Success(res) =>
-          E.log(authId, phoneNumber, E.SmsSentSuccessfully(code, res))
+          EventService.log(authId, phoneNumber, E.SmsSentSuccessfully(code, res))
         case Failure(e) =>
-          E.log(authId, phoneNumber, E.SmsFailure(code, e.getMessage))
+          EventService.log(authId, phoneNumber, E.SmsFailure(code, e.getMessage))
           log.error(e, s"Failed to send sms to $phoneNumber with code $code")
       }
       forgetSentCodeAfterDelay(phoneNumber, code)
