@@ -159,7 +159,7 @@ object DeletedAuthSession extends DeletedAuthSession with TableOps {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()
@@ -244,7 +244,7 @@ object AuthSession extends AuthSession with TableOps {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()

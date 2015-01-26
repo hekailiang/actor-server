@@ -11,6 +11,7 @@ import scala.concurrent.Future
 import scala.util.{ Failure, Success, Try }
 import scodec.bits._
 
+import akka.persistence.jdbc.util.Base64
 import org.joda.time.DateTime
 import play.api.libs.iteratee._
 import scalikejdbc._
@@ -83,7 +84,7 @@ object PersistenceMessage extends PersistenceMessage {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()
@@ -105,9 +106,11 @@ object PersistenceMessage extends PersistenceMessage {
             //    .map(rs => rs.boolean(1)).single.apply.getOrElse(false)
 
             //if (!exists) {
+            val base64msg = Base64.encodeString(pm.message.toByteArray)
+
             sql"""
             INSERT INTO akka_journal (persistence_id, sequence_number, marker, message, created) VALUES (
-            ${pm.processorId}, ${pm.sequenceNr}, ${pm.marker}, ${pm.message.toByteArray}, now()
+            ${pm.processorId}, ${pm.sequenceNr}, ${pm.marker}, ${base64msg}, now()
             )
             """.execute.apply
             //}
@@ -116,7 +119,7 @@ object PersistenceMessage extends PersistenceMessage {
           }
       }
 
-    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 120.minutes)
 
     tries map {
       case util.Failure(e) =>

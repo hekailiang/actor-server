@@ -191,7 +191,7 @@ object SeqUpdate extends SeqUpdate with TableOps {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()
@@ -240,6 +240,6 @@ object SeqUpdate extends SeqUpdate with TableOps {
         count + 1
     }
 
-    Await.result(select(_.authId).fetchEnumerator() |>>> countIteratee, 20.minutes)
+    Await.result(select(_.authId).fetchEnumerator() |>>> countIteratee, 120.minutes)
   }
 }

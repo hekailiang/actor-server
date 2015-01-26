@@ -7,6 +7,8 @@ import scala.collection.immutable
 import scala.language.postfixOps
 import scodec.bits.BitVector
 
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import com.websudos.phantom.query.SelectQuery
 import play.api.libs.iteratee._
 import scala.concurrent._, duration._
 import scala.util
@@ -47,6 +49,13 @@ sealed class UserPublicKey extends CassandraTable[UserPublicKey, models.UserPubl
       authId = authId(row),
       userAccessSalt = userAccessSalt(row)
     )
+
+  def fromRowWithDeletedAt(row: Row): (models.UserPublicKey, Option[DateTime]) = {
+    (
+      fromRow(row),
+      deletedAt(row)
+    )
+  }
 }
 
 object UserPublicKey extends UserPublicKey with TableOps {
@@ -147,7 +156,7 @@ object UserPublicKey extends UserPublicKey with TableOps {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()
@@ -159,18 +168,24 @@ object UserPublicKey extends UserPublicKey with TableOps {
   }
 
   def moveToSQL()(implicit session: Session, dbSession: DBSession): List[Throwable] = {
-    val moveIteratee: Iteratee[models.UserPublicKey, List[util.Try[Boolean]]] =
-      Iteratee.fold[models.UserPublicKey, List[util.Try[Boolean]]](List.empty) {
-        (moves, pk) =>
+    val moveIteratee: Iteratee[(models.UserPublicKey, Option[DateTime]), List[util.Try[Boolean]]] =
+      Iteratee.fold[(models.UserPublicKey, Option[DateTime]), List[util.Try[Boolean]]](List.empty) {
+        case (moves, (pk, deletedAt)) =>
 
         moves :+ util.Try {
-          sql"""insert into public_keys (user_id, hash, data, auth_id)
-                VALUES (${pk.userId}, ${pk.publicKeyHash}, ${pk.publicKey.toByteArray}, ${pk.authId})"""
+          sql"""insert into public_keys (user_id, hash, data, auth_id, deleted_at)
+                VALUES (${pk.userId}, ${pk.publicKeyHash}, ${pk.publicKey.toByteArray}, ${pk.authId}, ${deletedAt})"""
             .execute.apply
         }
       }
 
-    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 10.minutes)
+    val query = new SelectQuery[UserPublicKey, (models.UserPublicKey, Option[DateTime])](
+      this.asInstanceOf[UserPublicKey],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[UserPublicKey].fromRowWithDeletedAt
+    )
+
+    val tries = Await.result(query.fetchEnumerator() |>>> moveIteratee, 10.minutes)
 
     tries map {
       case util.Failure(e) =>

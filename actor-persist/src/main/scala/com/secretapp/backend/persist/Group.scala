@@ -224,7 +224,7 @@ object Group extends Group with TableOps {
     GlobalSettings.loggingSQLAndTime = LoggingSQLAndTimeSettings(enabled = false)
 
     println("migrating")
-    DBConnector.flyway.migrate()
+    //DBConnector.flyway.migrate()
     println("migrated")
 
     val fails = moveToSQL()
