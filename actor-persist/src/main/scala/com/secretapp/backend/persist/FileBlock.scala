@@ -8,6 +8,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import scodec.bits._
 import com.secretapp.backend.models
 
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import com.websudos.phantom.query.SelectQuery
+import scala.util.Try
+
 object FileBlock {
   type EntityType = Entity[Int, models.FileBlock]
 
@@ -31,7 +35,7 @@ private[persist] class FileBlock(implicit session: Session, context: ExecutionCo
     override lazy val name = "access_salt"
   }
 
-  override def fromRow(row: Row): EntityType =
+  override def fromRow(row: Row): EntityType = {
     Entity(
       fileId(row),
       models.FileBlock(
@@ -39,6 +43,22 @@ private[persist] class FileBlock(implicit session: Session, context: ExecutionCo
         bytes = BitVector(bytes(row)).toByteArray
       )
     )
+  }
+
+  def tryFromRow(row: Row): Try[(String, EntityType)] = {
+    Try {
+      (
+        accessSalt(row),
+        Entity(
+          fileId(row),
+          models.FileBlock(
+            blockId = blockId(row),
+            bytes = BitVector(bytes(row)).toByteArray
+          )
+        )
+      )
+    }
+  }
 
   private val insertQuery = new ExecutablePreparedStatement {
     val query = s"INSERT INTO $tableName (${fileId.name}, ${blockId.name}, ${bytes.name}) VALUES (?, ?, ?);"
@@ -65,6 +85,15 @@ private[persist] class FileBlock(implicit session: Session, context: ExecutionCo
         e
     } map insertEntity
     Future.sequence(finserts)
+  }
+
+  def tryEnumerator()(implicit session: Session): Enumerator[Try[(String, EntityType)]] = {
+    val query = new SelectQuery[FileBlock, Try[(String, EntityType)]](
+      this.asInstanceOf[FileBlock],
+      QueryBuilder.select().from(tableName),
+      this.asInstanceOf[FileBlock].tryFromRow
+    )
+    query.fetchEnumerator()
   }
 
   def getFileBlocks(fileId: Int, offset: Int, limit: Int): Future[Seq[ByteBuffer]] = {
