@@ -11,12 +11,12 @@ object AuthLogsController extends Controller {
   implicit val logEventWrites = new Writes[LogEvent] {
     def writes(e: LogEvent) = JsObject(Seq(
       ("id", JsNumber(e.id)),
-      ("auth_id", JsString(e.authId.toString)),
-      ("phone_number", JsString(e.phoneNumber.toString)),
+      ("authId", JsString(e.authId.toString)),
+      ("phoneNumber", JsString(e.phoneNumber.toString)),
       ("email", JsString(e.email)),
       ("klass", JsNumber(e.klass)),
-      ("json_body", Json.parse(e.jsonBody)),
-      ("created_at", JsString(e.createdAt.toDateTimeISO.toString))
+      ("body", Json.parse(e.jsonBody)),
+      ("createdAt", JsString(e.createdAt.toDateTimeISO.toString))
     ))
   }
 

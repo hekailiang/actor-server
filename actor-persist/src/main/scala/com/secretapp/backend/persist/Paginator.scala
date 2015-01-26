@@ -23,7 +23,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
         } else None
     }.collect { case Some(v) => v }
 
-    val orderBy = req.get("order_by").flatMap { s =>
+    val orderBy = req.get("orderBy").flatMap { s =>
       val column = s.mkString
       if (publicColumns.contains(column)) Some(column)
       else None
@@ -34,7 +34,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
         xs.foldLeft(selectQ.where.eq(alias.column(x._1), x._2)) {
           (acc, s) => acc.and.eq(alias.column(s._1), s._2)
         }
-      case Nil => selectQ.where(sqls"") // HACK
+      case Nil => selectQ.where(sqls"true") // HACK
     }
 
     val orderQ = orderBy match {
