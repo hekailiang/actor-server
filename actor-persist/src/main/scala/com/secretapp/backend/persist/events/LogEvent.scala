@@ -12,8 +12,8 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
   override val tableName = "log_events"
   override val columnNames = Seq("id", "auth_id", "phone_number", "email", "klass", "json_body", "created_at")
 
-  val publicColumns = columnNames
-  override val digitColumns = Set("id", "auth_id", "phone_number", "klass")
+  override val publicColumns = columnNames.toSet
+
   lazy val alias = LogEvent.syntax("le")
 
   def apply(a: SyntaxProvider[LogEvent])(rs: WrappedResultSet): LogEvent = apply(alias.resultName)(rs)
@@ -45,16 +45,16 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
       }
     }
 
-  def all(req: Map[String, Seq[String]] = Map())
+  def all(req: Map[String, Seq[String]])
          (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[(Seq[LogEvent], Int)] =
     Future {
       blocking {
-        paginate(req)
+        paginate(select.from(this as alias).toSQLSyntax, req, Some("id"))
       }
     }
 
   def requestAuthCodeStat(req: Map[String, Seq[String]] = Map())
-                         (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[LogEvent]] =
+                         (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(DateTime, Int)]] =
     Future {
       blocking {
         ???

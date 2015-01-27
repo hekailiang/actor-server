@@ -6,13 +6,13 @@ import org.joda.time.DateTime
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json._
 
-case class AuthLogItem(id: Long, authId: Long, phoneNumber: Long, email: String,
+case class AuthLog(id: Long, authId: Long, phoneNumber: Long, email: String,
                        userId: Int, userName: String, deviceHash: String, deviceTitle: String,
                        klass: Int, jsonBody: String, createdAt: DateTime)
 
-object AuthLogItem {
-  implicit val authLogItemWrites = new Writes[AuthLogItem] {
-    def writes(e: AuthLogItem) = JsObject(Seq(
+object AuthLog {
+  implicit val authLogItemWrites = new Writes[AuthLog] {
+    def writes(e: AuthLog) = JsObject(Seq(
       ("id", JsNumber(e.id)),
       ("authId", JsString(e.authId.toString)),
       ("phoneNumber", JsString(e.phoneNumber.toString)),
@@ -28,7 +28,7 @@ object AuthLogItem {
   }
 
   def paginate(req: Map[String, Seq[String]] = Map())
-              (implicit ec: ExecutionContext): Future[(Seq[AuthLogItem], Int)] =
+              (implicit ec: ExecutionContext): Future[(Seq[AuthLog], Int)] =
   {
     for {
       (logEvents, totalCount) <- LogEvent.all(req)
@@ -40,7 +40,7 @@ object AuthLogItem {
       val authLogs = logEvents.map { e =>
         val s = authSessionsMap.get(e.authId)
         val userId = s.map(_.userId).getOrElse(0)
-        AuthLogItem(
+        AuthLog(
           id = e.id,
           authId = e.authId,
           phoneNumber = e.phoneNumber,

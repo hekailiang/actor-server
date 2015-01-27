@@ -1,1 +1,2 @@
-GET     /logs/auth           controllers.AuthLogsController.index()
+GET        /logs/auth                         controllers.LogsController.authLogs()
+GET        /logs/stats                        controllers.LogsController.stats()

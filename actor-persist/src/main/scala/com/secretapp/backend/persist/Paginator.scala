@@ -3,17 +3,16 @@ package com.secretapp.backend.persist
 import scalikejdbc._
 
 trait Paginator[A] { this: SQLSyntaxSupport[A] =>
-  val publicColumns: Seq[String]
+  val publicColumns: Set[String] = Set()
   val digitColumns: Set[String] = Set()
   val alias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A]
 
-  val MAX_LIMIT = 50
+  val MAX_LIMIT = 128
 
   def apply(a: SyntaxProvider[A])(rs: WrappedResultSet): A
 
-  def paginate(req: Map[String, Seq[String]])(implicit session: DBSession): (Seq[A], Int) = {
-    val selectQ = select.from(this as alias)
-
+  def paginate(sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
+              (implicit session: DBSession): (Seq[A], Int) = {
     val filterMap = req.collect {
       case (key, value) if key.startsWith("filter[") =>
         val column = key.replaceAll("""\Afilter\[|\]\z""", "")
@@ -24,22 +23,27 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
     }.collect { case Some(v) => v }
 
     val orderBy = req.get("orderBy").flatMap { s =>
-      val column = s.mkString
-      if (publicColumns.contains(column)) Some(column)
+      val v = s.mkString.split("\\.").toList
+      val column = v.head
+      val asc = if (v.last.toLowerCase == "desc") "desc" else "asc"
+      if (publicColumns.contains(column)) Some(column, asc)
       else None
     }
 
     val whereQ = filterMap match {
       case x :: xs =>
-        xs.foldLeft(selectQ.where.eq(alias.column(x._1), x._2)) {
+        xs.foldLeft(sqlQ.where.eq(alias.column(x._1), x._2)) {
           (acc, s) => acc.and.eq(alias.column(s._1), s._2)
         }
-      case Nil => selectQ.where(sqls"true") // HACK
+      case Nil => sqlQ
     }
 
     val orderQ = orderBy match {
-      case Some(orderSql) => whereQ.orderBy(sqls"$orderSql")
-      case None => whereQ.orderBy(sqls"") // HACK
+      case Some((orderSql, asc)) =>
+        val o = whereQ.orderBy(alias.column(orderSql))
+        if (asc == "asc") o.asc
+        else o.desc
+      case None => whereQ.orderBy(alias.column(defaultOrderBy.getOrElse("")))
     }
 
     val offset = math.max(0, req.get("offset").map(_.mkString.toInt).getOrElse(0))
@@ -47,9 +51,10 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
     val q = orderQ.limit(limit).offset(offset)
 
-    val totalCount = sql"select count(*) as _total_count from (${q.toSQLSyntax}) as _ct"
+    val entries = sql"$q".map(this(alias)).list().apply
+    val totalCount = sql"select count(*) as _total_count from ($q) as _ct"
       .map(_.int("_total_count")).single().apply().head
 
-    (q.toSQL.map(this(alias)).list().apply, totalCount)
+    (entries, totalCount)
   }
 }
