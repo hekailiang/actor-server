@@ -3,6 +3,7 @@ package controllers
 import models._
 import utils.JsonImplicits._
 import play.api.mvc._
+import play.api.libs.json.Json
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object LogsController extends Controller {
@@ -13,7 +14,8 @@ object LogsController extends Controller {
   }
 
   def stats() = Action.async { req =>
-    scala.concurrent.Future.successful(Ok("wow"))
+    for { stats <- StatLogs.stats() }
+    yield Ok(Json.toJson(stats))
   }
 
 }

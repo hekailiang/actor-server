@@ -71,7 +71,7 @@ object Dependencies {
 
   import Compile._, Test._, Deploy._
 
-  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert)
+  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert, playJson)
 
   val util      = Seq(akkaActor, akkaSlf4j)
 
@@ -95,12 +95,12 @@ object Dependencies {
   val messages  = Seq(akkaActor)
 
   val persist   = common ++ Seq(
-    akkaActor, flywayCore, scodecBits, scalazCore, playIteratees, playJson,
+    akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
     scalike, postgresJdbc,
     specs2
   )
 
-  val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel, playJson)
+  val root      = common ++ Seq(akkaCluster, akkaSlf4j, scalaLoggingSlf4j, akkaKernel)
 
   val tests     = common ++ Seq(
     akkaCluster, akkaTestkit, akkaSlf4j, scalacheck, specs2, scalazSpecs2, utilTesting,
@@ -108,7 +108,7 @@ object Dependencies {
   )
 
   val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore,
-    scalikeConfig, scalikePlay, playJson, scalikeDbApiPlay)
+    scalikeConfig, scalikePlay, scalikeDbApiPlay)
 
   val schema    = Seq(json4s)
 

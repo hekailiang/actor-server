@@ -11,8 +11,8 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
   def apply(a: SyntaxProvider[A])(rs: WrappedResultSet): A
 
-  def paginate(sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
-              (implicit session: DBSession): (Seq[A], Int) = {
+  def paginateWithTotal(sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
+                       (implicit session: DBSession): (Seq[A], Int) = {
     val filterMap = req.collect {
       case (key, value) if key.startsWith("filter[") =>
         val column = key.replaceAll("""\Afilter\[|\]\z""", "")
