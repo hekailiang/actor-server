@@ -19,9 +19,9 @@ object JsonImplicits {
     def writes(s: Seq[(String, Int)]) =
       JsArray(s.map { i => JsArray(Seq(JsString(i._1), JsNumber(i._2))) })
   }
-  implicit val seq2Writes = new Writes[Seq[(String, String, Int)]] {
-    def writes(s: Seq[(String, String, Int)]) =
-      JsArray(s.map { i => JsArray(Seq(JsString(i._1), JsString(i._2), JsNumber(i._3))) })
+  implicit val seq2Writes = new Writes[Seq[(String, Int, Int)]] {
+    def writes(s: Seq[(String, Int, Int)]) =
+      JsArray(s.map { i => JsArray(Seq(JsString(i._1), JsNumber(i._2), JsNumber(i._3))) })
   }
   implicit val statLogsWrites = Json.writes[StatLogs]
 

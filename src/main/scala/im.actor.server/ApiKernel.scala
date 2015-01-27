@@ -1,4 +1,4 @@
-package im.actor.backend
+package im.actor.server
 
 import akka.cluster.Cluster
 import akka.actor.{ ActorSystem, Props }
@@ -8,7 +8,6 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
-import com.secretapp.backend.persist
 import im.actor.server.smtpd.SMTPServer
 import com.typesafe.config._
 import java.net.InetSocketAddress
@@ -70,6 +69,9 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
     // SMTP service
     SMTPServer.start(singletons)
+
+    // REST web admin API
+    play.core.server.NettyServer.main(Array())
   }
 
   def shutdown() = {

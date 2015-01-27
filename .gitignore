@@ -10,3 +10,5 @@ actor-restapi/logs
 *~
 actor-tests/snapshots
 actor-tests/journal
+RUNNING_PID
+logs

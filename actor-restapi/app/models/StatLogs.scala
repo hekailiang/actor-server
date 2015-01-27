@@ -1,13 +1,12 @@
 package models
 
 import com.secretapp.backend.persist.events.LogEvent
-import play.api.libs.json._
 import scala.concurrent.ExecutionContext
 
 case class StatLogs(authCodes: Seq[(String, Int)],
                     sentSms: Seq[(String, Int)],
                     successSigns: Seq[(String, Int)],
-                    auths: Seq[(String, String, Int)])
+                    auths: Seq[(String, Int, Int)])
 
 object StatLogs {
   def stats()(implicit ec: ExecutionContext) = {

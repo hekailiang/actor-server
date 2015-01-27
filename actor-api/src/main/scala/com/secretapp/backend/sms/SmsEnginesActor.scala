@@ -3,7 +3,8 @@ package com.secretapp.backend.sms
 import akka.actor._
 import scala.util.{ Failure, Success }
 import com.typesafe.config._
-import com.secretapp.backend.services.{ Event => E, EventService }
+import com.secretapp.backend.models.log.{ Event => E }
+import com.secretapp.backend.services.EventService
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.concurrent.duration._

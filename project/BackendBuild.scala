@@ -14,9 +14,8 @@ object BackendBuild extends Build {
   val ScalaVersion = "2.10.4"
 
   val appName = "backend"
-  val appClass = "im.actor.backend.ApiKernel"
-  val appClassMock = "im.actor.backend.Main"
-
+  val appClass = "im.actor.server.ApiKernel"
+  val appClassMock = "im.actor.server.Main"
 
   lazy val buildSettings =
     Defaults.defaultSettings ++
@@ -63,7 +62,7 @@ object BackendBuild extends Build {
         scalacOptions        in (Compile,doc)     :=  Seq("-groups", "-implicits", "-diagrams")
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
-   .dependsOn(actorBackend)
+   .dependsOn(actorApi, actorSmtpd, actorRestApi)
    .aggregate(actorTests, actorPersist, actorProtobuf)
 
   lazy val actorUtil = Project(
@@ -136,12 +135,6 @@ object BackendBuild extends Build {
       libraryDependencies ++= Dependencies.smtpd
     )
   ).dependsOn(actorApi)
-
-  lazy val actorBackend = Project(
-    id       = "actor-backend",
-    base     = file("actor-backend"),
-    settings = defaultSettings
-  ).dependsOn(actorApi, actorSmtpd).configs(ScalaBuff)
 
   lazy val actorTests = Project(
     id       = "actor-tests",

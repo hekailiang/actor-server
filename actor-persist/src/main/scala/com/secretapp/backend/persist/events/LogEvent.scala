@@ -100,7 +100,11 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
       }
     }
 
-  def authsStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, String, Int)]] =
+
+  /**
+   * @return a seq with format: (Date, Sign in count, Sign up count)
+   */
+  def authsStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, Int, Int)]] =
     Future {
       blocking {
         val q = sql"""
@@ -113,7 +117,10 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
         q.map { rs =>
           val klass = if (rs.int("klass") == Event.SignedIn.klass) "sign_in" else "sign_up"
           (rs.date("day").toString, klass, rs.int("count"))
-        }.list().apply()
+        }.list().apply().groupBy(_._1).foldLeft(Seq[(String, Int, Int)]()) { (acc, item) =>
+          val (ins, ups) = item._2.partition(_._2 == "sign_in")
+          acc.+:((item._1, ins.foldLeft(0)(_ + _._3), ups.foldLeft(0)(_ + _._3)))
+        }
       }
     }
 

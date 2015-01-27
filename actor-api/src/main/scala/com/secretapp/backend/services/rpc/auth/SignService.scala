@@ -13,7 +13,8 @@ import com.secretapp.backend.data.message.update.contact.ContactRegistered
 import com.secretapp.backend.helpers.{ ContactHelpers, SocialHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
-import com.secretapp.backend.services.{ Event => E, EventKind => EK, EventService }
+import com.secretapp.backend.models.log.{ Event => E, EventKind => EK }
+import com.secretapp.backend.services.EventService
 import com.secretapp.backend.session.SessionProtocol
 import com.secretapp.backend.sms.SmsEnginesProtocol
 import org.joda.time.DateTime

@@ -1,4 +1,4 @@
-package im.actor.backend
+package im.actor.server
 
 // Just for repl and testing purposes
 object Main extends App {
