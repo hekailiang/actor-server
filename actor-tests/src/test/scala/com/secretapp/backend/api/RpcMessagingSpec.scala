@@ -16,7 +16,6 @@ import com.secretapp.backend.data.transport._
 import com.secretapp.backend.persist
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
-import com.websudos.util.testing._
 import java.util.UUID
 import org.joda.time.DateTime
 import scala.collection.immutable
@@ -466,7 +465,11 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer.asModel, new DateTime(0), 10).sync().length should_== 0
+        persist.HistoryMessage.findAll(
+          scope.user.uid, outPeer.asPeer.asModel,
+          new DateTime(0),
+          10
+        ).map(_.length) should be_==(0).await
       }
 
     }
@@ -495,8 +498,16 @@ class RpcMessagingSpec extends RpcSpec {
 
         Thread.sleep(1000)
 
-        persist.HistoryMessage.findAll(scope.user.uid, outPeer.asPeer.asModel, new DateTime(0), 10).sync().length should_== 0
-        persist.Dialog.findAll(scope.user.uid, new DateTime(0), 0).sync().length should_== 0
+        persist.HistoryMessage.findAll(
+          scope.user.uid,
+          outPeer.asPeer.asModel,
+          new DateTime(0),
+          10
+        ).map(_.length) should be_==(0).await
+
+        persist.Dialog.findAll(
+          scope.user.uid, new DateTime(0), 0
+        ).map(_.length) should be_==(0).await
       }
 
     }
