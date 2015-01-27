@@ -220,4 +220,30 @@ class ContactServiceSpec extends RpcSpec {
       contactsUsers.isEmpty.should_==(true)
     }
   }
+
+  "RequestImportContacts handler" should {
+    "not create UnregisteredContact entry if user with a phone is already registered" in new sqlDb {
+      implicit val scope = genTestScopeWithUser()
+
+      val currentUser = scope.user
+
+      val contact = genTestScopeWithUser().user
+
+      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq => ()
+      }
+
+      sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), immutable.Seq.empty))
+      val contacts = expectRpcMsgByPF() {
+        case r @ ResponseImportContacts(u, _, _) => u
+      }
+
+      contacts should_== Nil
+
+      Thread.sleep(1000)
+
+      persist.UnregisteredContact.findAllByPhoneNumber(contact.phoneNumber) should be_==(Nil).await
+    }
+  }
 }

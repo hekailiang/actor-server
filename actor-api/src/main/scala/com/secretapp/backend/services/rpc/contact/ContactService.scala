@@ -17,6 +17,7 @@ import com.secretapp.backend.api.rpc.RpcValidators._
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
+import scala.language.postfixOps
 import scala.util.{ Success, Failure }
 import scalaz._
 import Scalaz._
@@ -63,24 +64,31 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
     val filteredPhones = phones.filter(_.phoneNumber != currentUser.phoneNumber)
     val phoneNumbers = filteredPhones.map(_.phoneNumber).map(PhoneNumber.normalizeLong(_, currentUser.countryCode)).flatten.toSet
     val phonesMap = immutable.HashMap(filteredPhones.map { p => p.phoneNumber -> p.contactName } :_*)
-    val usersSeq = for {
-      phones <- persist.UserPhone.findAllByNumbers(phoneNumbers)
+
+    val f = for {
+      userPhones <- persist.UserPhone.findAllByNumbers(phoneNumbers)
       ignoredContactsId <- persist.contact.UserContact.findAllContactIdsAndDeleted(currentUser.uid)
-      uniquePhones = phones.filter(p => !ignoredContactsId.contains(p.userId))
-      usersFutureSeq <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
+      uniquePhones = userPhones.filter(p => !ignoredContactsId.contains(p.userId))
+      usersWithAvatars <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
-      usersFutureSeq.foldLeft(immutable.Seq[(struct.User, String)](), immutable.Set[Int](), immutable.Set[Long]()) {
-        case ((usersTuple, newContactsId, registeredPhones), (user, avatarData)) =>
-          (usersTuple :+ (struct.User.fromModel(user, avatarData, authId, phonesMap(user.phoneNumber)), user.accessSalt),
+      val userPhoneNumbers = userPhones map (_.number) toSet
+
+      usersWithAvatars.foldLeft((immutable.Seq.empty[(struct.User, String)], immutable.Set.empty[Int], userPhoneNumbers)) {
+        case ((usersTuple, newContactsId, _), (user, avatarData)) =>
+          (
+            usersTuple :+ (struct.User.fromModel(user, avatarData, authId, phonesMap(user.phoneNumber)), user.accessSalt),
             newContactsId + user.uid,
-            registeredPhones + user.phoneNumber)
+            userPhoneNumbers
+          )
       }
     }
 
-    usersSeq flatMap {
-      case (usersTuple, newContactsId, registeredPhones) =>
-        (phoneNumbers &~ registeredPhones).foreach { phoneNumber => // TODO: move into singleton method
-          log.debug(s"Inserting UnregisteredContact {} {}", phoneNumber, currentUser.uid)
+    f flatMap {
+      case (usersTuple, newContactsId, registeredPhoneNumbers) =>
+        log.debug("Phone numbers: {}, registered: {}", phoneNumbers, registeredPhoneNumbers)
+
+        (phoneNumbers &~ registeredPhoneNumbers).foreach { phoneNumber => // TODO: move into singleton method
+          log.debug("Inserting UnregisteredContact {} {}", phoneNumber, currentUser.uid)
           persist.UnregisteredContact.createIfNotExists(phoneNumber, currentUser.uid)
         }
 
@@ -101,7 +109,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
             _ <- clFuture
             response <- responseFuture
           } yield response
-        } else Future.successful(Ok(ResponseImportContacts(immutable.Seq[struct.User](), 0, None)))
+        } else Future.successful(Ok(ResponseImportContacts(immutable.Seq.empty[struct.User], 0, None)))
     }
   }
 
