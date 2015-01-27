@@ -43,22 +43,21 @@ class CounterActorSpec extends ActorSpecification with ImplicitSender {
       val name = s"incrementer-failover-${System.nanoTime()}"
       val counter = getCounterActor(name)
 
-      val selection = system.actorSelection(s"/user/$name")
-
-      selection ! GetNext
-      selection ! GetNext
-      selection ! GetNext
-      selection ! GetBulk(100)
-      selection ! GetNext
+      counter ! GetNext
+      counter ! GetNext
+      counter ! GetNext
+      counter ! GetBulk(100)
+      counter ! GetNext
 
       expectMsgAllOf(timeout.duration, 1, 2, 3, Bulk(4, 103), 104)
 
       system.stop(counter)
 
-      Thread.sleep(1000)
+      Thread.sleep(100)
+
       val recoveredCounter = getCounterActor(name)
 
-      selection ! GetNext
+      recoveredCounter ! GetNext
 
       expectMsg(timeout.duration, 105)
     }

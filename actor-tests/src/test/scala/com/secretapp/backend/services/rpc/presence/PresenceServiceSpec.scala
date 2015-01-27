@@ -130,7 +130,7 @@ class PresenceServiceSpec extends RpcSpec {
         go.count should beEqualTo(1)
       }
 
-      Thread.sleep(3000)
+      Thread.sleep(3100)
 
       {
         val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
