@@ -29,7 +29,7 @@ object UserItem {
         contactsCount = contactsCountMap.getOrElse(u._1, 0),
         receivedMsgCount = msgCounter.map(_.receivedMsgCount).getOrElse(0),
         sentMsgCount = msgCounter.map(_.sentMsgCount).getOrElse(0),
-        lastSeenAt = None,
+        lastSeenAt = None, // TODO
         lastMessageAt = msgCounter.map(_.lastMessageAt)
       )
     }
