@@ -1,8 +1,7 @@
 package com.secretapp.backend.persist
 
 import com.secretapp.backend.models
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future, blocking }
 import scala.collection.immutable
 import scalikejdbc._
 
@@ -92,4 +91,17 @@ object UserPhone extends SQLSyntaxSupport[models.UserPhone] {
         .and.eq(column.id, id)
     }.update.apply
   }
+
+  def getLatestNumbers(userIds: Seq[Int])
+                      (implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession): Future[Seq[(Int, Long)]] =
+    Future {
+      blocking {
+        sql"""
+           select user_id, max(number) as number
+           from $table
+           where user_id in ($userIds)
+           group by user_id
+           """.map { rs => (rs.int("user_id"), rs.long("number")) }.list().apply()
+      }
+    }
 }

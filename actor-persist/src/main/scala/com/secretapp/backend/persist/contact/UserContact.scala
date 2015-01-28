@@ -1,6 +1,5 @@
 package com.secretapp.backend.persist.contact
 
-import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.models
 import java.security.MessageDigest
 import scala.collection.immutable
@@ -148,7 +147,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
   }
 
   def findAllExistingContactIdsSync(ownerUserId: Int, contactUserIds: Set[Int])(
-    implicit session: DBSession
+    implicit session: DBSession = UserContact.autoSession
   ): List[Int] = {
     withSQL {
       select(uc.contactUserId).from(UserContact as uc)
@@ -156,64 +155,6 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
         .and.eq(uc.ownerUserId, ownerUserId)
         .and.in(uc.contactUserId, contactUserIds.toSeq)
     }.map(rs => rs.int(column.contactUserId)).list.apply
-  }
-
-  def createAll(ownerUserId: Int, contacts: immutable.Seq[(struct.User, String)])(
-    implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
-  ): Future[List[models.contact.UserContact]] = Future {
-    blocking {
-      /* use batch if upsert is available (in mysql for example)
-      val batchParams: Seq[Seq[Any]] = contacts map {
-        case (userStruct, accessSalt) =>
-          Seq(
-            ownerUserId,
-            contact.uid, // contactUserId
-            contact.phoneNumber, // phoneNumber
-            contact.localName.getOrElse(""), // name
-            accessSalt
-          )
-      }
-
-      sql"""
-      insert into ${UserContact.table} (
-        ${column.ownerUserId},
-        ${column.contactUserId},
-        ${column.phoneNumber},
-        ${column.name},
-        ${column.accessSalt}
-       ) VALUES (
-        ?, ?, ?, ?, ?
-       )
-      """.batch(batchParams: _*).apply
-       */
-
-      findAllExistingContactIdsSync(ownerUserId, contacts map (_._1.uid) toSet)
-    }
-  } flatMap { existingContactUserIds =>
-    val futures = contacts.toList map {
-      case (userStruct, accessSalt) =>
-        val userContact = models.contact.UserContact(
-          ownerUserId = ownerUserId,
-          contactUserId = userStruct.uid,
-          phoneNumber = userStruct.phoneNumber,
-          name = userStruct.localName.getOrElse(""),
-          accessSalt = accessSalt
-        )
-
-        if (existingContactUserIds.contains(userStruct.uid)) {
-          save(userContact) map (_ => userContact)
-        } else {
-          create(
-            ownerUserId = userContact.ownerUserId,
-            contactUserId = userContact.contactUserId,
-            phoneNumber = userContact.phoneNumber,
-            name = userContact.name,
-            accessSalt = userContact.accessSalt
-          ) map (_ => userContact)
-        }
-      }
-
-    Future.sequence(futures)
   }
 
   def save(contact: models.contact.UserContact)(
@@ -245,4 +186,18 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
       }.update.apply
     }
   }
+
+
+  def getCountactsCount(userIds: Seq[Int])
+                       (implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession): Future[Seq[(Int, Int)]] =
+    Future {
+      blocking {
+        sql"""
+           select owner_user_id as user_id, count(*) as contacts_count
+           from $table
+           where owner_user_id in ($userIds)
+           group by owner_user_id
+           """.map { rs => (rs.int("user_id"), rs.int("contacts_count")) }.list().apply()
+      }
+    }
 }

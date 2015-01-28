@@ -7,7 +7,6 @@ import play.api.libs.json.Json
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object LogsController extends Controller {
-
   def authLogs() = Action.async { req =>
     for { (logs, totalCount) <- AuthLog.paginate(req.queryString) }
     yield Ok(toJson(logs, totalCount))
@@ -17,5 +16,4 @@ object LogsController extends Controller {
     for { stats <- StatLogs.stats() }
     yield Ok(Json.toJson(stats))
   }
-
 }

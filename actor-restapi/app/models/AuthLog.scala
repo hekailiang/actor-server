@@ -32,8 +32,8 @@ object AuthLog {
   {
     for {
       (logEvents, totalCount) <- LogEvent.all(req)
-      authSessions <- AuthSession.getDevisesData(logEvents.map(_.authId).toSet)
-      userNames <- User.getNames(authSessions.map(_.userId).toSet)
+      authSessions <- AuthSession.getDevisesData(logEvents.map(_.authId))
+      userNames <- User.getNames(authSessions.map(_.userId))
     } yield {
       val authSessionsMap = authSessions.map { s => (s.authId, s) }.toMap
       val userNamesMap = userNames.toMap

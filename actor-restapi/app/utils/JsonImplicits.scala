@@ -10,7 +10,7 @@ object JsonImplicits {
   }
 
   implicit val dateTimeWrites = new Writes[DateTime] {
-    def writes(t: DateTime) = JsString("")
+    def writes(t: DateTime) = JsString(t.toDateTimeISO.toString)
   }
 
   implicit val jsonListResponseWrites = Json.writes[JsonListResponse]
@@ -23,7 +23,10 @@ object JsonImplicits {
     def writes(s: Seq[(String, Int, Int)]) =
       JsArray(s.map { i => JsArray(Seq(JsString(i._1), JsNumber(i._2), JsNumber(i._3))) })
   }
+
   implicit val statLogsWrites = Json.writes[StatLogs]
+
+  implicit val userItemWrites = Json.writes[UserItem]
 
   def toJson[A](items: Seq[A], totalCount: Int)(implicit writes: Writes[A]) =
     Json.toJson(JsonListResponse(items.map(Json.toJson(_)), totalCount))

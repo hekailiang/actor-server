@@ -8,11 +8,11 @@ import scala.language.postfixOps
 import scalikejdbc._
 import scodec.bits._
 
-object User extends SQLSyntaxSupport[models.User] {
+object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
   override val tableName = "users"
   override val columnNames = Seq("id", "access_salt", "name", "country_code", "sex", "state")
 
-  lazy val u = User.syntax("u")
+  lazy val alias = User.syntax("u")
 
   def apply(
     authId: Long,
@@ -30,7 +30,7 @@ object User extends SQLSyntaxSupport[models.User] {
     phoneIds,
     emailIds,
     publicKeyHashes
-  )(u.resultName)(rs)
+  )(alias.resultName)(rs)
 
   // rename to apply when we will get rid of first parameters mess
   def apply1(
@@ -44,18 +44,18 @@ object User extends SQLSyntaxSupport[models.User] {
   )(u: ResultName[models.User])(
     rs: WrappedResultSet
   ): models.User = models.User(
-    uid = rs.int(u.column("id")),
+    uid = rs.int(alias.column("id")),
     authId = authId,
     publicKeyHash = publicKeyHash,
     publicKeyData = publicKeyData,
     phoneNumber = phoneNumber,
-    accessSalt = rs.string(u.accessSalt),
-    name = rs.string(u.name),
-    countryCode = rs.string(u.countryCode),
-    sex = models.Sex.fromInt(rs.int(u.sex)),
+    accessSalt = rs.string(alias.accessSalt),
+    name = rs.string(alias.name),
+    countryCode = rs.string(alias.countryCode),
+    sex = models.Sex.fromInt(rs.int(alias.sex)),
     phoneIds = phoneIds,
     emailIds = emailIds,
-    state = models.UserState.fromInt(rs.int(u.column("state"))),
+    state = models.UserState.fromInt(rs.int(alias.column("state"))),
     publicKeyHashes = publicKeyHashes
   )
 
@@ -140,8 +140,8 @@ object User extends SQLSyntaxSupport[models.User] {
         extraDataFuture map {
           case Some((pk, keys, phones, emails)) =>
             withSQL {
-              select.from(User as u)
-                .where.eq(u.column("id"), id)
+              select.from(User as alias)
+                .where.eq(alias.column("id"), id)
             }.map(User(
               authId = authId,
               publicKeyHash = pk.hash,
@@ -150,7 +150,7 @@ object User extends SQLSyntaxSupport[models.User] {
               phoneIds = phones map (_.id) toSet,
               emailIds = emails map (_.id) toSet,
               publicKeyHashes = keys map (_.hash) toSet
-            )(u)).single.apply
+            )(alias)).single.apply
           case None => None
         }
       case None => Future.successful(None)
@@ -162,8 +162,8 @@ object User extends SQLSyntaxSupport[models.User] {
       ec: ExecutionContext, session: DBSession = User.autoSession
   ): Future[List[(Int, String)]] = Future {
     withSQL {
-      select(column.column("id"), column.accessSalt).from(User as u)
-        .where.in(u.column("id"), ids)
+      select(column.column("id"), column.accessSalt).from(User as alias)
+        .where.in(alias.column("id"), ids)
     }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt))).list().apply
   }
 
@@ -192,13 +192,23 @@ object User extends SQLSyntaxSupport[models.User] {
     }.update.apply
   }
 
-  def getNames(userIds: Set[Int])
+  def getNames(userIds: Seq[Int])
               (implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[Seq[(Int, String)]] =
   Future {
     blocking {
-      select(u.column("id"), u.name).from(User as u).where.eq(u.column("id"), userIds).toSQL.map { rs =>
+      select(alias.column("id"), alias.name).from(User as alias).where.in(alias.column("id"), userIds).toSQL.map { rs =>
         (rs.int("id"), rs.string("name"))
       }.list().apply()
     }
   }
+
+  def all(req: Map[String, Seq[String]])
+         (implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[(Seq[(Int, String)], Int)] =
+    Future {
+      blocking {
+        paginateWithTotal(select(alias.column("id"), alias.name).from(this as alias).toSQLSyntax, req, Some("name")) { rs =>
+          (rs.int("id"), rs.string("name"))
+        }
+      }
+    }
 }

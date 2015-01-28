@@ -9,10 +9,9 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
   val MAX_LIMIT = 128
 
-  def apply(a: SyntaxProvider[A])(rs: WrappedResultSet): A
-
-  def paginateWithTotal(sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
-                       (implicit session: DBSession): (Seq[A], Int) = {
+  def paginateWithTotal[T](sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
+                          (f: WrappedResultSet => T)
+                          (implicit session: DBSession): (Seq[T], Int) = {
     val filterMap = req.collect {
       case (key, value) if key.startsWith("filter[") =>
         val column = key.replaceAll("""\Afilter\[|\]\z""", "")
@@ -51,7 +50,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
     val q = orderQ.limit(limit).offset(offset)
 
-    val entries = sql"$q".map(this(alias)).list().apply
+    val entries = sql"$q".map(f).list().apply
     val totalCount = sql"select count(*) as _total_count from ($q) as _ct"
       .map(_.int("_total_count")).single().apply().head
 

@@ -48,7 +48,7 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
          (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[(Seq[LogEvent], Int)] =
     Future {
       blocking {
-        paginateWithTotal(select.from(this as alias).toSQLSyntax, req, Some("id"))
+        paginateWithTotal(select.from(this as alias).toSQLSyntax, req, Some("id"))(this(alias))
       }
     }
 
@@ -108,19 +108,25 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
     Future {
       blocking {
         val q = sql"""
-                   select (created_at::date) as day, klass, count(*) as count
-                   from $table
-                   where klass IN (${Event.SignedIn.klass}, ${Event.SignedUp.klass})
-                   group by day, klass
+                   select day, sum(sign_up_count) as sign_up_count, sum(sign_in_count) as sign_in_count from (
+                      select (created_at::date) as day, 0 as sign_up_count, count(*) as sign_in_count
+                      from $table
+                      where klass = ${Event.SignedIn.klass}
+                      group by day
+
+                      union all
+
+                      select (created_at::date) as day, count(*) as sign_up_count, 0 as sign_in_count
+                      from $table
+                      where klass = ${Event.SignedUp.klass}
+                      group by day
+                   ) as stats
+                   group by day
                    order by day asc
                    """
         q.map { rs =>
-          val klass = if (rs.int("klass") == Event.SignedIn.klass) "sign_in" else "sign_up"
-          (rs.date("day").toString, klass, rs.int("count"))
-        }.list().apply().groupBy(_._1).foldLeft(Seq[(String, Int, Int)]()) { (acc, item) =>
-          val (ins, ups) = item._2.partition(_._2 == "sign_in")
-          acc.+:((item._1, ins.foldLeft(0)(_ + _._3), ups.foldLeft(0)(_ + _._3)))
-        }
+          (rs.date("day").toString, rs.int("sign_in_count"), rs.int("sign_up_count"))
+        }.list().apply()
       }
     }
 

@@ -163,15 +163,16 @@ object AuthSession extends SQLSyntaxSupport[models.AuthSession] {
     }.update.apply
   }
 
-  def getDevisesData(authIds: Set[Long])
+  def getDevisesData(authIds: Seq[Long])
                     (implicit ec: ExecutionContext, session: DBSession = AuthSession.autoSession): Future[Seq[DeviceDataItem]] =
     Future {
       blocking {
         authIds.toList match {
           case x :: xs =>
-            val q = select(a.authId, a.column("user_id"), a.deviceTitle, a.deviceHash).from(AuthSession as a)
-            val sql = xs.foldLeft(q.where(sqls" auth_id = $x ")) { (acc, s) => acc.append(sqls" OR auth_id = $s ") }.toSQL
-            sql.map { rs =>
+            withSQL {
+              select(a.authId, a.column("user_id"), a.deviceTitle, a.deviceHash).from(AuthSession as a)
+                .where.in(a.authId, authIds)
+            }.map { rs =>
               val deviceHashBV = BitVector.fromInputStream(rs.binaryStream("device_hash"), chunkSizeInBytes = 8192)
               DeviceDataItem(
                 authId = rs.long("auth_id"),
