@@ -240,6 +240,6 @@ object SeqUpdate extends SeqUpdate with TableOps {
         count + 1
     }
 
-    Await.result(select(_.authId).fetchEnumerator() |>>> countIteratee, 120.minutes)
+    Await.result(select(_.authId).fetchEnumerator() |>>> countIteratee, 1200.minutes)
   }
 }

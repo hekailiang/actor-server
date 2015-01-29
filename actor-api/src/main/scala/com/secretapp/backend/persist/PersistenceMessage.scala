@@ -119,7 +119,7 @@ object PersistenceMessage extends PersistenceMessage {
           }
       }
 
-    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 120.minutes)
+    val tries = Await.result(select.fetchEnumerator() |>>> moveIteratee, 1200.minutes)
 
     tries map {
       case util.Failure(e) =>
