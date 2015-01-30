@@ -65,7 +65,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
       uniquePhones = userPhones.filter(p => !ignoredContactsId.contains(p.userId))
       usersWithAvatars <- Future.sequence(uniquePhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten) // TODO: OPTIMIZE!!!
     } yield {
-      val userPhoneNumbers = userPhones map (_.number) toSet
+      val userPhoneNumbers = userPhones.map(_.number).toSet
 
       usersWithAvatars.foldLeft((immutable.Seq.empty[(struct.User, String)], immutable.Set.empty[Int], userPhoneNumbers)) {
         case ((usersTuple, newContactsId, _), (user, avatarData)) =>
