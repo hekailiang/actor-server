@@ -8,6 +8,7 @@ import com.typesafe.config._
 import com.websudos.util.testing._
 import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import im.actor.server.persist.unit.SqlSpec
+import im.actor.testkit.ActorSpecification
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -18,10 +19,10 @@ import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
 
-class FileSpec extends CassandraSpecification with SqlSpec {
+class FileSpec extends ActorSpecification with SqlSpec {
   "FileRecord" should {
     "insert and get file" in new sqlDb {
-      val system = ActorSystem("file-spec", ConfigFactory.load().getConfig("actor-server"))
+      //val system = ActorSystem("file-spec", ConfigFactory.load().getConfig("actor-server"))
 
       val fa = new FileStorageAdapter(system)
 

@@ -9,6 +9,7 @@ import com.secretapp.backend.util.{ACL, AvatarUtils}
 import java.nio.file.{ Files, Paths }
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scala.util.Random
 import scodec.bits._
 import com.secretapp.backend.data.message.rpc.user.{ RequestEditAvatar, RequestRemoveAvatar, ResponseEditAvatar }

@@ -9,7 +9,6 @@ import akka.pattern.ask
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
 import com.secretapp.backend.api.counters._
