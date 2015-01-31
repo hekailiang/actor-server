@@ -17,7 +17,8 @@ class Handler(
   val socialBrokerRegion: ActorRef,
   val dialogManagerRegion: ActorRef,
   val fileAdapter: FileAdapter,
-  val currentUser: models.User
+  val currentUser: models.User,
+  val currentAuthId: Long
 ) extends Actor with ActorLogging with MessagingHandlers with GroupHandlers with HistoryHandlers {
   import context._
 

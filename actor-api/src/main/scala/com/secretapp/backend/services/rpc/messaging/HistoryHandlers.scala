@@ -140,12 +140,12 @@ trait HistoryHandlers extends RandomService with UserHelpers {
           )
       }
 
-      val (usersFutures, groupsFutures) = dialogs.foldLeft((Vector.empty[Future[Option[struct.User]]], Vector.empty[Future[Option[struct.Group]]])) {
+      val (dialogUserIds, groupsFutures) = dialogs.foldLeft((Vector.empty[Int], Vector.empty[Future[Option[struct.Group]]])) {
         case (res, dialog) =>
           dialog.peer.typ match {
             case models.PeerType.Private =>
               res.copy(
-                _1 = res._1 :+ getUserStruct(dialog.peer.id, currentUser.authId, currentUser.uid)
+                _1 = res._1 :+ dialog.peer.id
               )
             case models.PeerType.Group =>
               res.copy(
@@ -154,9 +154,22 @@ trait HistoryHandlers extends RandomService with UserHelpers {
           }
       }
 
+      val groupsFuture: Future[Vector[Option[struct.Group]]] = Future.sequence(groupsFutures)
+      val usersFuture: Future[Vector[Option[struct.User]]] = groupsFuture flatMap { groups =>
+        val groupUserIds = groups.flatten map(_.members map (_.id))
+
+        val structFutures: Set[Future[Option[struct.User]]] =
+          groupUserIds.foldLeft[Set[Int]](dialogUserIds.toSet) {
+            (acc, memberIds) =>
+            acc ++ memberIds
+          } map (getUserStruct(_, currentAuthId, currentUser.uid))
+
+        Future.sequence(structFutures.toVector)
+      }
+
       for {
-        users <- Future.sequence(usersFutures)
-        groups <- Future.sequence(groupsFutures)
+        users <- usersFuture
+        groups <- groupsFuture
       } yield {
         Ok(ResponseLoadDialogs(
           groups = groups.flatten,
