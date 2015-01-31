@@ -187,7 +187,7 @@ class ContactServiceSpec extends RpcSpec {
       val contact = genTestScopeWithUser().user
       val contacts = immutable.Seq(contact)
       val contactsListTuple = contacts.map { c =>
-        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId), c.accessSalt)
+        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, None), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
@@ -225,7 +225,7 @@ class ContactServiceSpec extends RpcSpec {
           val users = expectRpcMsgByPF(withNewSession = index == 0) {
             case r: ResponseSearchContacts => r.users
           }
-          users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId)))
+          users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, None)))
       }
     }
 
@@ -239,7 +239,7 @@ class ContactServiceSpec extends RpcSpec {
         val reqSeq = expectRpcMsgByPF(withNewSession = firstRun) {
           case r: ResponseSeq => r
         }
-        val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
+        val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, None))
 
         sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
         val users = expectRpcMsgByPF() {

@@ -145,7 +145,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
           dialog.peer.typ match {
             case models.PeerType.Private =>
               res.copy(
-                _1 = res._1 :+ getUserStruct(dialog.peer.id, currentUser.authId)
+                _1 = res._1 :+ getUserStruct(dialog.peer.id, currentUser.authId, currentUser.uid)
               )
             case models.PeerType.Group =>
               res.copy(
@@ -181,7 +181,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
             res
         }
 
-        val usersF = Future.sequence(userIds map (getUserStruct(_, currentUser.authId))) map (_.flatten)
+        val usersF = Future.sequence(userIds map (getUserStruct(_, currentUser.authId, currentUser.uid))) map (_.flatten)
 
         for (users <- usersF) yield {
           Ok(ResponseLoadHistory(messages.toVector map HistoryMessage.fromModel, users.toVector))

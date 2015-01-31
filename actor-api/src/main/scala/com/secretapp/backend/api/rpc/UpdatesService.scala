@@ -89,7 +89,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
     val usersGroupsFuture = for {
       groups <- mkGroups(updates)
-      users <- mkUsers(currentAuthId, groups, updates)
+      users <- mkUsers(currentAuthId, currentUserId, groups, updates)
     } yield (users, groups)
 
     usersGroupsFuture flatMap {
@@ -135,10 +135,10 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     }
   }
 
-  protected def mkUsers(authId: Long, groups: immutable.Seq[struct.Group], updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
+  protected def mkUsers(authId: Long, userId: Int, groups: immutable.Seq[struct.Group], updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     if (updates.length > 0) {
       val userIds: immutable.Set[Int] = (updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)) ++ (groups flatMap (_.members map (_.id)))
-      Future.sequence(userIds.map(getUserStruct(_, authId)).toVector) map (_.flatten)
+      Future.sequence(userIds.map(getUserStruct(_, authId, userId)).toVector) map (_.flatten)
     } else { Future.successful(Vector.empty) }
   }
 

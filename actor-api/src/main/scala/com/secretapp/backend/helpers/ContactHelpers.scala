@@ -18,7 +18,7 @@ trait ContactHelpers extends UpdatesHelpers {
     ownerUserId: Int,
     userId: Int,
     phoneNumber: Long,
-    name: String,
+    name: Option[String],
     accessSalt: String
   ): Future[Unit] = {
     val newContactsId = Set(userId)
@@ -33,7 +33,7 @@ trait ContactHelpers extends UpdatesHelpers {
     ownerUser: models.User,
     userId: Int,
     phoneNumber: Long,
-    name: String,
+    name: Option[String],
     accessSalt: String
   )(implicit timeout: Timeout): Future[UpdatesBroker.StrictState] = {
     addContact(ownerUser.uid, userId, phoneNumber, name, accessSalt) flatMap { _ =>

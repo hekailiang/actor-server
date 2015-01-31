@@ -44,7 +44,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
       ownerUserId = rs.int(uc.ownerUserId),
       contactUserId = rs.int(uc.contactUserId),
       phoneNumber = rs.long(uc.phoneNumber),
-      name = rs.string(uc.name),
+      name = rs.stringOpt(uc.name),
       accessSalt = rs.string(uc.accessSalt)
     )
 
@@ -71,7 +71,20 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
     sqls.eq(uc.ownerUserId, ownerUserId).and.eq(uc.contactUserId, contactUserId)
   )
 
-  def createSync(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: String, accessSalt: String)(
+  def findLocalName(ownerUserId: Int, contactUserId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
+  ): Future[Option[String]] = Future {
+    blocking {
+      withSQL {
+        select.from(UserContact as uc)
+          .where.append(isNotDeleted)
+          .and.eq(uc.ownerUserId, ownerUserId)
+          .and.eq(uc.contactUserId, contactUserId)
+      }.map(rs => rs.stringOpt(uc.resultName.name)).single.apply.flatten
+    }
+  }
+
+  def createSync(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: Option[String], accessSalt: String)(
     implicit session: DBSession
   ): models.contact.UserContact = {
     withSQL {
@@ -93,7 +106,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
     )
   }
 
-  def createOrRestore(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: String, accessSalt: String)(
+  def createOrRestore(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: Option[String], accessSalt: String)(
     implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
   ): Future[models.contact.UserContact] = Future {
     blocking {
@@ -141,7 +154,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
 
   def findAllContactIdsWithLocalNames(ownerUserId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
-  ): Future[List[(Int, String)]] = Future {
+  ): Future[List[(Int, Option[String])]] = Future {
     blocking {
       withSQL {
         select(uc.contactUserId, uc.name).from(UserContact as uc)
@@ -150,7 +163,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
       }.map(rs =>
         (
           rs.int(column.contactUserId),
-          rs.string(column.name)
+          rs.stringOpt(column.name)
         )
       ).list.apply
     }
@@ -230,7 +243,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
           ownerUserId = ownerUserId,
           contactUserId = userStruct.uid,
           phoneNumber = userStruct.phoneNumber,
-          name = userStruct.localName.getOrElse(""),
+          name = userStruct.localName,
           accessSalt = accessSalt
         )
 

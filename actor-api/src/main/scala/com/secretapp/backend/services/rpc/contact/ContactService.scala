@@ -121,7 +121,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
           val localNames = immutable.HashMap(contactList :_*)
           val users = usersFutureSeq.map {
             case (user, avatarData) =>
-              struct.User.fromModel(user, avatarData, authId, localNames.get(user.uid))
+              struct.User.fromModel(user, avatarData, authId, localNames.get(user.uid).flatten)
           }
           Ok(ResponseGetContacts(users.toIndexedSeq, isNotChanged = false))
         }
@@ -168,10 +168,10 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
           val clFuture = persist.contact.UserContact.find(ownerUserId = currentUser.uid, contactUserId = contactId) flatMap {
             case Some(contact) =>
               persist.contact.UserContact.save(models.contact.UserContact(
-                currentUser.uid, user.uid, user.phoneNumber, name, user.accessSalt
+                currentUser.uid, user.uid, user.phoneNumber, Some(name), user.accessSalt
               ))
             case None =>
-              addContactSendUpdate(currentUser, user.uid, user.phoneNumber, name, user.accessSalt)
+              addContactSendUpdate(currentUser, user.uid, user.phoneNumber, Some(name), user.accessSalt)
           }
 
           clFuture flatMap { _ =>
@@ -197,7 +197,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
         for {
           phones <- persist.UserPhone.findAllByNumbers(filteredPhones)
           usersAvatars <- Future.sequence(phones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten)
-        } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId)).toIndexedSeq))
+        } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId, None)).toIndexedSeq))
     }
   }
 
@@ -212,7 +212,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
           if (accessHash == ACL.userAccessHash(authId, userId, user.accessSalt)) {
             persist.contact.UserContact.find(ownerUserId = currentUser.uid, contactUserId = userId) flatMap {
               case None =>
-                addContactSendUpdate(currentUser, user.uid, user.phoneNumber, "", user.accessSalt) map {
+                addContactSendUpdate(currentUser, user.uid, user.phoneNumber, None, user.accessSalt) map {
                   case (seq, state) => Ok(ResponseSeq(seq, state.some))
                 }
               case Some(_) =>
