@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import scala.collection.immutable
 import scala.concurrent._
 import scala.language.postfixOps
+import scala.util.{ Try, Success, Failure }
 import scalikejdbc._
 import scodec.bits._
 
@@ -70,27 +71,48 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
     sqls.eq(uc.ownerUserId, ownerUserId).and.eq(uc.contactUserId, contactUserId)
   )
 
-  def create(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: String, accessSalt: String)(
+  def createSync(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: String, accessSalt: String)(
+    implicit session: DBSession
+  ): models.contact.UserContact = {
+    withSQL {
+      insert.into(UserContact).namedValues(
+        column.ownerUserId -> ownerUserId,
+        column.contactUserId -> contactUserId,
+        column.phoneNumber -> phoneNumber,
+        column.name -> name,
+        column.accessSalt -> accessSalt
+      )
+    }.execute.apply
+
+    models.contact.UserContact(
+      ownerUserId = ownerUserId,
+      contactUserId = contactUserId,
+      phoneNumber = phoneNumber,
+      name = name,
+      accessSalt = accessSalt
+    )
+  }
+
+  def createOrRestore(ownerUserId: Int, contactUserId: Int, phoneNumber: Long, name: String, accessSalt: String)(
     implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
   ): Future[models.contact.UserContact] = Future {
     blocking {
-      withSQL {
-        insert.into(UserContact).namedValues(
-          column.ownerUserId -> ownerUserId,
-          column.contactUserId -> contactUserId,
-          column.phoneNumber -> phoneNumber,
-          column.name -> name,
-          column.accessSalt -> accessSalt
-        )
-      }.execute.apply
-
-      models.contact.UserContact(
-        ownerUserId = ownerUserId,
-        contactUserId = contactUserId,
-        phoneNumber = phoneNumber,
-        name = name,
-        accessSalt = accessSalt
-      )
+      Try(createSync(ownerUserId, contactUserId, phoneNumber, name, accessSalt)) recover {
+        case e =>
+          if (existsWithDeletedSync(ownerUserId, contactUserId)) {
+            val contact = models.contact.UserContact(
+              ownerUserId = ownerUserId,
+              contactUserId = contactUserId,
+              phoneNumber = phoneNumber,
+              name = name,
+              accessSalt = accessSalt
+            )
+            saveSync(contact, isDeleted = false)
+            contact
+          } else {
+            throw e
+          }
+      } get
     }
   }
 
@@ -142,6 +164,18 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
         select 1 from ${UserContact.table}
           where is_deleted              = false
           and   ${column.ownerUserId}   = ${ownerUserId}
+          and   ${column.contactUserId} = ${contactUserId}
+      )
+    """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+  }
+
+  def existsWithDeletedSync(ownerUserId: Int, contactUserId: Int)(
+    implicit session: DBSession
+  ): Boolean = {
+    sql"""
+      select exists (
+        select 1 from ${UserContact.table}
+          where ${column.ownerUserId}   = ${ownerUserId}
           and   ${column.contactUserId} = ${contactUserId}
       )
     """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
@@ -203,7 +237,7 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
         if (existingContactUserIds.contains(userStruct.uid)) {
           save(userContact) map (_ => userContact)
         } else {
-          create(
+          createOrRestore(
             ownerUserId = userContact.ownerUserId,
             contactUserId = userContact.contactUserId,
             phoneNumber = userContact.phoneNumber,
@@ -216,19 +250,26 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
     Future.sequence(futures)
   }
 
-  def save(contact: models.contact.UserContact)(
+  def saveSync(contact: models.contact.UserContact, isDeleted: Boolean)(
+    implicit session: DBSession
+  ): Int = {
+    withSQL {
+      update(UserContact).set(
+        column.phoneNumber -> contact.phoneNumber,
+        column.name -> contact.name,
+        column.accessSalt -> contact.accessSalt,
+        column.column("is_deleted") -> isDeleted
+      )
+        .where.eq(column.ownerUserId, contact.ownerUserId)
+        .and.eq(column.contactUserId, contact.contactUserId)
+    }.update.apply
+  }
+
+  def save(contact: models.contact.UserContact, isDeleted: Boolean = false)(
     implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession
   ): Future[Int] = Future {
     blocking {
-      withSQL {
-        update(UserContact).set(
-          column.phoneNumber -> contact.phoneNumber,
-          column.name -> contact.name,
-          column.accessSalt -> contact.accessSalt
-        )
-          .where.eq(column.ownerUserId, contact.ownerUserId)
-          .and.eq(column.contactUserId, contact.contactUserId)
-      }.update.apply
+      saveSync(contact, isDeleted)
     }
   }
 

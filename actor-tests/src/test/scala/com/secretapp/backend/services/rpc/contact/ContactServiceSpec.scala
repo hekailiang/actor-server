@@ -32,8 +32,10 @@ class ContactServiceSpec extends RpcSpec {
     delete contact and RequestImportContacts should contain the user ${allCases.deleteContact}
   FindContacts handler should
     respond with user if he contains requested phone ${allCases.findContacts}
-  AddContact should
-    add contact and RemoveContact should remove contact ${allCases.addRemoveContacts}
+  AddContact and RemoveContact handlers should
+    add contact ${allCases.addRemove.add()}
+    remove contact ${allCases.addRemove.remove}
+    add after remove ${allCases.addRemove.addAfterRemove}
   """
 
   object allCases extends sqlDb {
@@ -227,39 +229,41 @@ class ContactServiceSpec extends RpcSpec {
       }
     }
 
-    def addRemoveContacts = {
+    object addRemove {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
 
-      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      val reqSeq = expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseSeq => r
-      }
-      val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
+      def add(firstRun: Boolean = true) = {
+        sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+        val reqSeq = expectRpcMsgByPF(withNewSession = firstRun) {
+          case r: ResponseSeq => r
+        }
+        val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val users = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
-      }
-      users.should_==(responseContacts)
-
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val importedUsers = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
-      }
-      importedUsers.should_==(responseContacts)
-
-      sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      expectRpcMsgByPF() {
-        case r: ResponseSeq => r
+        sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
+        val users = expectRpcMsgByPF() {
+          case r: ResponseGetContacts => r.users
+        }
+        users.should_==(responseContacts)
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val contactsUsers = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
+      def remove = {
+        sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+        expectRpcMsgByPF() {
+          case r: ResponseSeq => r
+        }
+
+        sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
+        val contactsUsers = expectRpcMsgByPF() {
+          case r: ResponseGetContacts => r.users
+        }
+        contactsUsers.isEmpty.should_==(true)
       }
-      contactsUsers.isEmpty.should_==(true)
+
+      def addAfterRemove {
+        add(firstRun = false)
+      }
     }
   }
 }
