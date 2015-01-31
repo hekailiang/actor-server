@@ -86,22 +86,32 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     val state = if (updates.length > 0) Some(updates.last.key) else requestState
 
     // TODO: make emails and phones in one loop
-    for {
+
+    val usersGroupsFuture = for {
       groups <- mkGroups(updates)
       users <- mkUsers(currentAuthId, groups, updates)
-      phones <- mkPhones(currentAuthId, users)
-      emails <- mkEmails(currentAuthId, users)
-    } yield {
-      ResponseGetDifference(
-        seq,
-        state,
-        users,
-        groups,
-        phones,
-        emails,
-        updates map { u => DifferenceUpdate(u.value) },
-        needMore
-      )
+    } yield (users, groups)
+
+    usersGroupsFuture flatMap {
+      case (users, groups) =>
+        val phonesFuture = mkPhones(currentAuthId, users)
+        val emailsFuture = mkEmails(currentAuthId, users)
+
+        for {
+          phones <- mkPhones(currentAuthId, users)
+          emails <- mkEmails(currentAuthId, users)
+        } yield {
+          ResponseGetDifference(
+            seq,
+            state,
+            users,
+            groups,
+            phones,
+            emails,
+            updates map { u => DifferenceUpdate(u.value) },
+            needMore
+          )
+        }
     }
   }
 
