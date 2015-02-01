@@ -59,6 +59,10 @@ object UserPhone extends SQLSyntaxSupport[models.UserPhone] {
       .and.eq(up.id, id)
   )
 
+  def findFirstByUserId(userId: Int)
+                       (implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession): Future[Option[models.UserPhone]] =
+    findBy(sqls.eq(column.userId, userId))
+
   def create(userId: Int, id: Int, accessSalt: String, number: Long, title: String)(
     implicit ec: ExecutionContext, session: DBSession = UserPhone.autoSession
   ): Future[models.UserPhone] = Future {

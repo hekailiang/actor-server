@@ -1,0 +1,10 @@
+- hosts: mtproto-api
+  tasks:
+    - name: Copy app
+      synchronize:
+        src="../target/dist"
+        dest="mtproto-app"
+        archive=no
+        checksum=yes
+        delete=yes
+        recursive=yes

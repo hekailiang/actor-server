@@ -91,7 +91,7 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
             socialBrokerRegion ! SocialMessageBox(_, RelationsNoted(Set(currentUser.uid))) // TODO: wrap as array!
           }
 
-          val clFuture = createAllUserContacts(currentUser.uid, usersTuple)
+          val clFuture = ContactHelpers.createAllUserContacts(currentUser.uid, usersTuple)
           val responseFuture = broadcastCUUpdateAndGetState(
             currentUser,
             updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)

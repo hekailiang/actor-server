@@ -8,6 +8,7 @@ import utils.JsonImplicits._
 import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.concurrent.Akka
+import play.api.libs.json.Json
 import play.api.Play.current
 import scala.concurrent.Future
 
@@ -20,7 +21,11 @@ object UsersController extends Controller {
   }
 
   def show(userId: Int) = Action.async { req =>
-    scala.concurrent.Future.successful(Ok("nothing"))
+    for { userOpt <- UserItem.show(userId) }
+    yield userOpt match {
+      case Some(user) => Ok(Json.toJson(user))
+      case None => NotFound
+    }
   }
 
   def avatar(userId: Int, size: String) = Action.async { req =>

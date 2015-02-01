@@ -16,3 +16,9 @@ wget http://www.startssl.com/certs/sub.class1.server.ca.crt
 keytool -import -alias startcom.ca -file ca.crt -trustcacerts -keystore keystore.jks
 keytool -import -alias startcom.ca.sub -file sub.class1.server.ca.crt -trustcacerts -keystore keystore.jks
 ```
+
+# Deploy
+
+```
+./deploy.sh
+```

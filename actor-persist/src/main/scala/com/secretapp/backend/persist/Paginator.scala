@@ -5,11 +5,10 @@ import scalikejdbc._
 trait Paginator[A] { this: SQLSyntaxSupport[A] =>
   val publicColumns: Set[String] = Set()
   val digitColumns: Set[String] = Set()
-  val alias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A]
 
   val MAX_LIMIT = 128
 
-  def paginateWithTotal[T](sqlQ: SQLSyntax, req: Map[String, Seq[String]], defaultOrderBy: Option[String])
+  def paginateWithTotal[T](sqlQ: SQLSyntax, sqlAlias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A], req: Map[String, Seq[String]], defaultOrderBy: Option[String])
                           (f: WrappedResultSet => T)
                           (implicit session: DBSession): (Seq[T], Int) = {
     val filterMap = req.collect {
@@ -31,18 +30,18 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
     val whereQ = filterMap match {
       case x :: xs =>
-        xs.foldLeft(sqlQ.where.eq(alias.column(x._1), x._2)) {
-          (acc, s) => acc.and.eq(alias.column(s._1), s._2)
+        xs.foldLeft(sqlQ.where.eq(sqlAlias.column(x._1), x._2)) {
+          (acc, s) => acc.and.eq(sqlAlias.column(s._1), s._2)
         }
       case Nil => sqlQ
     }
 
     val orderQ = orderBy match {
       case Some((orderSql, asc)) =>
-        val o = whereQ.orderBy(alias.column(orderSql))
+        val o = whereQ.orderBy(sqlAlias.column(orderSql))
         if (asc == "asc") o.asc
         else o.desc
-      case None => whereQ.orderBy(alias.column(defaultOrderBy.getOrElse("")))
+      case None => whereQ.orderBy(sqlAlias.column(defaultOrderBy.getOrElse("")))
     }
 
     val offset = math.max(0, req.get("offset").map(_.mkString.toInt).getOrElse(0))

@@ -5,6 +5,7 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.rpc.update.ResponseSeq
 import com.secretapp.backend.data.message.struct
+import com.secretapp.backend.helpers.ContactHelpers
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
@@ -76,7 +77,7 @@ class ContactServiceSpec extends RpcSpec {
         case (c, index) => (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
+      ContactHelpers.createAllUserContacts(currentUser.uid, contactsListTuple).sync()
       sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
 
       val (users, isChanged) = expectRpcMsgByPF(withNewSession = true) {
@@ -102,7 +103,7 @@ class ContactServiceSpec extends RpcSpec {
         case (c, index) => (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"${c.name}_$index".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
+      ContactHelpers.createAllUserContacts(currentUser.uid, contactsListTuple).sync()
       val sha1Hash = persist.contact.UserContact.getSHA1Hash(contactsList.map(_.uid).toSet)
       sendRpcMsg(RequestGetContacts(sha1Hash))
 
@@ -122,7 +123,7 @@ class ContactServiceSpec extends RpcSpec {
         (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, s"default_local_name".some), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
+      ContactHelpers.createAllUserContacts(currentUser.uid, contactsListTuple).sync()
       sendRpcMsg(RequestEditUserLocalName(contact.uid, ACL.userAccessHash(scope.authId, contact), "new_local_name"))
 
       // TODO
@@ -146,7 +147,7 @@ class ContactServiceSpec extends RpcSpec {
         (struct.User.fromModel(c, models.AvatarData.empty, scope.authId), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
-      persist.contact.UserContact.createAll(currentUser.uid, contactsListTuple).sync()
+      ContactHelpers.createAllUserContacts(currentUser.uid, contactsListTuple).sync()
       sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
 
       // TODO

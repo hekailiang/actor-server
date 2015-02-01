@@ -8,7 +8,7 @@ import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.persist.contact.UserContact
 import scala.collection.immutable
-import scala.concurrent.{ Future, blocking }
+import scala.concurrent.{ExecutionContext, Future, blocking}
 
 trait ContactHelpers extends UpdatesHelpers {
   val context: ActorContext
@@ -45,7 +45,20 @@ trait ContactHelpers extends UpdatesHelpers {
     }
   }
 
-  def createAllUserContacts(ownerUserId: Int, contacts: immutable.Seq[(struct.User, String)]): Future[List[models.contact.UserContact]] = {
+//  protected def insertContact(currentUser: models.User, newContactsId: Set[Int], usersTuple: immutable.Seq[(struct.User, String)])
+//                             (implicit timeout: Timeout) = for {
+//    _ <- persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
+//    _ <- persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
+//    state <- broadcastCUUpdateAndGetState(
+//      currentUser,
+//      updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
+//    )
+//  } yield state
+}
+
+object ContactHelpers {
+  def createAllUserContacts(ownerUserId: Int, contacts: immutable.Seq[(struct.User, String)])
+                           (implicit ec: ExecutionContext): Future[List[models.contact.UserContact]] = {
     Future {
       blocking {
         UserContact.findAllExistingContactIdsSync(ownerUserId, contacts.map(_._1.uid).toSet)
@@ -76,14 +89,4 @@ trait ContactHelpers extends UpdatesHelpers {
       Future.sequence(futures)
     }
   }
-
-//  protected def insertContact(currentUser: models.User, newContactsId: Set[Int], usersTuple: immutable.Seq[(struct.User, String)])
-//                             (implicit timeout: Timeout) = for {
-//    _ <- persist.contact.UserContactsList.insertNewContacts(currentUser.uid, usersTuple)
-//    _ <- persist.contact.UserContactsListCache.addContactsId(currentUser.uid, newContactsId)
-//    state <- broadcastCUUpdateAndGetState(
-//      currentUser,
-//      updateProto.contact.ContactsAdded(newContactsId.toIndexedSeq)
-//    )
-//  } yield state
 }
