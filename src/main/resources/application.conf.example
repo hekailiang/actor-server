@@ -9,8 +9,6 @@ jdbc {
 
 db.default = ${jdbc}
 
-file-storage = ${actor-server.file-storage}
-
 actor-server {
   actor-system-name = "secret-api-server"
 
@@ -63,3 +61,35 @@ actor-server {
     }
   }
 }
+
+file-storage = ${actor-server.file-storage}
+
+logger {
+  root=ERROR
+  play=INFO
+  application=DEBUG
+  scalikejdbc=DEBUG
+}
+
+scalikejdbc.global.loggingSQLAndTime = {
+  enabled = true
+  logLevel = debug
+  warningEnabled = true
+  warningThresholdMillis = 1000
+  warningLogLevel = warn
+}
+
+logger {
+  root=ERROR
+  play=INFO
+  application=DEBUG
+  scalikejdbc=DEBUG
+}
+
+application {
+  secret="kAtHj<PEDUndYD9h@Ad9wFL?_d:MoHBv]>M_GE9c0y^F4Y;F@TRSt96ZLTV?gprt"
+  langs="en"
+}
+
+dbplugin=enabled
+evolutionplugin=disabled
