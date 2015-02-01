@@ -58,35 +58,58 @@ trait ContactHelpers extends UpdatesHelpers {
 
 object ContactHelpers {
   def createAllUserContacts(ownerUserId: Int, contacts: immutable.Seq[(struct.User, String)])
-                           (implicit ec: ExecutionContext): Future[List[models.contact.UserContact]] = {
-    Future {
-      blocking {
-        UserContact.findAllExistingContactIdsSync(ownerUserId, contacts.map(_._1.uid).toSet)
-      }
-    }.flatMap { contactUserIds =>
-      val futures = contacts.toList map {
+                           (implicit ec: ExecutionContext): Future[List[models.contact.UserContact]] = Future {
+    blocking {
+      /* use batch if upsert is available (in mysql for example)
+      val batchParams: Seq[Seq[Any]] = contacts map {
         case (userStruct, accessSalt) =>
-          val userContact = models.contact.UserContact(
-            ownerUserId = ownerUserId,
-            contactUserId = userStruct.uid,
-            phoneNumber = userStruct.phoneNumber,
-            name = userStruct.localName.getOrElse(""),
-            accessSalt = accessSalt
+          Seq(
+            ownerUserId,
+            contact.uid, // contactUserId
+            contact.phoneNumber, // phoneNumber
+            contact.localName.getOrElse(""), // name
+            accessSalt
           )
-
-          if (contactUserIds.contains(userStruct.uid)) {
-            UserContact.save(userContact) map (_ => userContact)
-          } else {
-            UserContact.create(
-              ownerUserId = userContact.ownerUserId,
-              contactUserId = userContact.contactUserId,
-              phoneNumber = userContact.phoneNumber,
-              name = userContact.name,
-              accessSalt = userContact.accessSalt
-            ) map (_ => userContact)
-          }
       }
-      Future.sequence(futures)
+      sql"""
+      insert into ${UserContact.table} (
+        ${column.ownerUserId},
+        ${column.contactUserId},
+        ${column.phoneNumber},
+        ${column.name},
+        ${column.accessSalt}
+       ) VALUES (
+        ?, ?, ?, ?, ?
+       )
+      """.batch(batchParams: _*).apply
+       */
+
+      UserContact.findAllExistingContactIdsSync(ownerUserId, contacts.map(_._1.uid).toSet)
     }
+  } flatMap { existingContactUserIds =>
+    val futures = contacts.toList map {
+      case (userStruct, accessSalt) =>
+        val userContact = models.contact.UserContact(
+          ownerUserId = ownerUserId,
+          contactUserId = userStruct.uid,
+          phoneNumber = userStruct.phoneNumber,
+          name = userStruct.localName,
+          accessSalt = accessSalt
+        )
+
+        if (existingContactUserIds.contains(userStruct.uid)) {
+          UserContact.save(userContact).map(_ => userContact)
+        } else {
+          UserContact.createOrRestore(
+            ownerUserId = userContact.ownerUserId,
+            contactUserId = userContact.contactUserId,
+            phoneNumber = userContact.phoneNumber,
+            name = userContact.name,
+            accessSalt = userContact.accessSalt
+          ) map (_ => userContact)
+        }
+    }
+
+    Future.sequence(futures)
   }
 }
