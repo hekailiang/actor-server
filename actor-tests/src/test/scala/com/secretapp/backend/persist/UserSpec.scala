@@ -5,6 +5,7 @@ import scodec.bits._
 import com.secretapp.backend.models
 import com.secretapp.backend.crypto.ec
 import im.actor.server.persist.unit.SqlSpec
+import im.actor.testkit.ActorSpecification
 import org.specs2.mutable.Specification
 import org.specs2.matcher.NoConcurrentExecutionContext
 import scala.collection.immutable
@@ -13,7 +14,7 @@ import scala.concurrent.Future
 import scalaz._
 import Scalaz._
 
-class UserSpec extends Specification with CassandraSpecification with SqlSpec with GeneratorService with NoConcurrentExecutionContext {
+class UserSpec extends ActorSpecification with SqlSpec with GeneratorService with NoConcurrentExecutionContext {
   "UserRecord" should {
     "insert/get User Entity" in new sqlDb {
       val publicKey = hex"ac1d".bits

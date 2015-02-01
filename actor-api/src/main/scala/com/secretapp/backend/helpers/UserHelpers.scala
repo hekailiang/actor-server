@@ -55,16 +55,22 @@ trait UserHelpers {
     }
   }
 
-  def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] = {
+  def getUserStruct(userId: Int, currentAuthId: Long, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.User]] = {
+    val userOptFuture = persist.User.find(userId)(None)
+    val adOptFuture = persist.AvatarData.find(id = userId, typ = persist.AvatarData.typeVal[models.User])
+    val localNameFuture = persist.contact.UserContact.findLocalName(ownerUserId = currentUserId, contactUserId = userId)
+
     for {
-      userOpt <- persist.User.find(userId)(None)
-      adOpt <- persist.AvatarData.find(id = userId, typ = persist.AvatarData.typeVal[models.User])
+      userOpt <- userOptFuture
+      adOpt <- adOptFuture
+      localName <- localNameFuture
     } yield {
       userOpt map (
         struct.User.fromModel(
           _,
           adOpt.getOrElse(models.AvatarData.empty),
-          authId
+          currentAuthId,
+          localName
         )
       )
     }

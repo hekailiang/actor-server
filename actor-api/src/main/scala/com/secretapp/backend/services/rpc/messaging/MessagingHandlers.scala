@@ -246,7 +246,7 @@ with HistoryHelpers with SendMessagingHandlers {
 
       outPeer.typ match {
         case models.PeerType.Group =>
-          markInMessagesReceived(currentUser.uid, outPeer.asPeer.asModel, dateTime)
+          markInMessagesRead(currentUser.uid, outPeer.asPeer.asModel, dateTime)
 
           for (userIdsAuthIds <- getGroupUserIdsWithAuthIds(outPeer.id)) {
             val update = updateProto.MessageRead(struct.Peer.group(outPeer.id), date, readDate)
@@ -255,7 +255,7 @@ with HistoryHelpers with SendMessagingHandlers {
             userIdsAuthIds map {
               case (userId, authIds) =>
                 if (userId != currentUser.uid) {
-                  markOutMessagesReceived(userId, outPeer.asPeer.asModel, dateTime)
+                  markOutMessagesRead(userId, outPeer.asPeer.asModel, dateTime)
                   authIds foreach (writeNewUpdate(_, update))
                 } else {
                   authIds foreach (writeNewUpdate(_, selfUpdate))

@@ -77,7 +77,7 @@ class SessionActor(
   val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
+  val seqUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.HashSet.empty[ActorRef]

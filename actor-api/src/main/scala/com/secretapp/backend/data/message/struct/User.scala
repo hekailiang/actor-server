@@ -22,8 +22,8 @@ case class User(
   phoneIds: immutable.Set[Int],
   emailIds: immutable.Set[Int],
   state: models.UserState,
-  avatar: Option[models.Avatar] = None,
-  localName: Option[String] = None
+  avatar: Option[models.Avatar],
+  localName: Option[String]
 ) extends ProtobufMessage {
 
   protected def sexToProto(s: models.Sex): protobuf.Sex.EnumVal = s match {
@@ -88,7 +88,7 @@ object User {
     case _ => None
   }
 
-  def fromModel(u: models.User, ad: models.AvatarData, senderAuthId: Long, localName: Option[String] = None)(implicit s: ActorSystem) = {
+  def fromModel(u: models.User, ad: models.AvatarData, senderAuthId: Long, localName: Option[String])(implicit s: ActorSystem) = {
     User(
       uid = u.uid,
       accessHash = ACL.userAccessHash(senderAuthId, u),

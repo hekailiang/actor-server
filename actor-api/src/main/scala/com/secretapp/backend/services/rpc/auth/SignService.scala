@@ -198,7 +198,8 @@ trait SignService extends ContactHelpers with SocialHelpers {
               val userStruct = struct.User.fromModel(
                 u.copy(publicKeyHashes = u.publicKeyHashes -- oldKeyHashes),
                 avatarData getOrElse(models.AvatarData.empty),
-                authId
+                authId,
+                None
               )
 
               Ok(
@@ -437,7 +438,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
       contacts foreach { c =>
         socialBrokerRegion ! SocialMessageBox(u.uid, RelationsNoted(Set(c.ownerUserId)))
 
-        addContact(c.ownerUserId, u.uid, u.phoneNumber, u.name, u.accessSalt)
+        addContact(c.ownerUserId, u.uid, u.phoneNumber, Some(u.name), u.accessSalt)
 
         getAuthIds(c.ownerUserId) map { authIds =>
           authIds foreach { authId =>

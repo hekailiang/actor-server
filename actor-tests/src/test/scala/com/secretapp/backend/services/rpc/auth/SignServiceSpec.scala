@@ -160,7 +160,7 @@ class SignServiceSpec extends RpcSpec {
         val keyHashes = Set(scope.user.publicKeyHash, newPublicKeyHash)
         val newUser = scope.user.copy(authId = newAuthId, publicKeyData = newPublicKey, publicKeyHash = newPublicKeyHash,
           publicKeyHashes = keyHashes)
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, newAuthId), struct.Config(300))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, newAuthId, None), struct.Config(300))), withNewSession = true)
 
         def sortU(users: Seq[models.User]) = users.map(_.copy(publicKeyHashes = keyHashes)).sortBy(_.publicKeyHash)
 
@@ -409,7 +409,8 @@ class SignServiceSpec extends RpcSpec {
                 publicKeyHash,
                 struct.User.fromModel(newUser.copy(publicKeyHashes = expectedKeyHashes),
                   models.AvatarData.empty,
-                  authId
+                  authId,
+                  None
                 ),
                 struct.Config(300)
               )
@@ -462,7 +463,7 @@ class SignServiceSpec extends RpcSpec {
 
         sendRpcMsg(RequestSignIn(phoneNumber, smsHash, smsCode, newPublicKey, BitVector.empty, "app", 0, "key"))
 
-        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, authId), struct.Config(300))), withNewSession = true)
+        expectRpcMsg(Ok(ResponseAuth(newPublicKeyHash, struct.User.fromModel(newUser, models.AvatarData.empty, authId, None), struct.Config(300))), withNewSession = true)
 
         persist.UserPublicKey.findAllByUserId(newUser.uid).sync() should equalTo(Seq(
           models.UserPublicKey(

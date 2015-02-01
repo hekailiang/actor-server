@@ -7,7 +7,6 @@ import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.data.message.rpc.Request
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.persist.CassandraSpecification
 import java.util.zip.CRC32
 import org.specs2.mutable.ActorLikeSpecification
 import org.specs2.mutable.ActorServiceHelpers

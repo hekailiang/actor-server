@@ -13,6 +13,7 @@ import com.secretapp.backend.util.ACL
 import com.websudos.util.testing._
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scodec.bits._
 
 class UserServiceEditNameSpec extends RpcSpec {

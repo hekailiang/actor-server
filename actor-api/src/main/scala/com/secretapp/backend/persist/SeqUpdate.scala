@@ -16,7 +16,7 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
   type UpdateWithSize = (Entity[UUID, updateProto.SeqUpdateMessage], Long)
 
   override val tableName = "seq_updates"
-  override val columnNames = Seq("auth_id", "uuid", "header", "protobuf_data")
+  override val columnNames = Seq("auth_id", "uuid", "header", "protobuf_data", "ts", "msb", "lsb")
 
   lazy val upd = SeqUpdate.syntax("upd")
 
@@ -85,7 +85,7 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
     withSQL {
       select(column.column("uuid")).from(SeqUpdate as upd)
         .where.eq(upd.column("auth_id"), authId)
-        .orderBy(upd.column("uuid")).desc.limit(1)
+        .orderBy(upd.column("ts")).desc.limit(1)
     }.map(rs => UUID.fromString(rs.string(column.column("uuid")))).single.apply
   }
 
@@ -103,7 +103,11 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
 
       state match {
         case Some(uuid) =>
-          query(Some(sqls.gt(upd.column("uuid"), sqls"CAST(${uuid.toString} as uuid)")))
+          val ts = uuid.timestamp
+
+          query(Some(
+            sqls.gt(upd.column("ts"), ts)
+          ))
         case None =>
           query(None)
       }
@@ -173,13 +177,18 @@ object SeqUpdate extends SQLSyntaxSupport[(Entity[UUID, updateProto.SeqUpdateMes
     }
 
     withSQL {
-      val x = column.column("protobuf_data")
+      val ts = uuid.timestamp
+      val msb = uuid.getMostSignificantBits
+      val lsb = uuid.getLeastSignificantBits
 
       insert.into(SeqUpdate).namedValues(
         column.column("auth_id") -> authId,
         column.column("uuid") -> sqls"""CAST(${uuid.toString} as uuid)""",
         column.column("header") -> header,
-        column.column("protobuf_data") -> protobufData.toByteArray
+        column.column("protobuf_data") -> protobufData.toByteArray,
+        column.column("ts") -> ts,
+        column.column("msb") -> msb,
+        column.column("lsb") -> lsb
       )
     }.execute.apply
 

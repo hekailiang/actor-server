@@ -19,8 +19,28 @@ import scodec.bits.BitVector
 class ContactServiceSpec extends RpcSpec {
   implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
 
-  "ContactService" should {
-    "handle RPC import contacts request" in new sqlDb {
+  override def is = sequential ^ s2"""
+  ImportContacts handler should
+    respond with users found           ${allCases.importRequest}
+    handle parallel requests           ${allCases.parallelImportRequests}
+    not create UnregisteredContact if user with a phone is already registered ${allCases.unregisteredContact}
+  GetContacts handler should
+    respond with isChanged = true and actual users if hash was emptySHA1 ${allCases.getContactsChanged}
+    respond with isChanged = false and empty users if hash represents an actual state ${allCases.getContactsNotChanged}
+  EditContactName handler should
+    edit contact name and new name should be present in ResponseGetContacts ${allCases.editContactName}
+  DeleteContact handler should
+    delete contact and RequestImportContacts should contain the user ${allCases.deleteContact}
+  FindContacts handler should
+    respond with user if he contains requested phone ${allCases.findContacts}
+  AddContact and RemoveContact handlers should
+    add contact ${allCases.addRemove.add()}
+    remove contact ${allCases.addRemove.remove}
+    add after remove ${allCases.addRemove.addAfterRemove}
+  """
+
+  object allCases extends sqlDb {
+    def importRequest = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
@@ -37,7 +57,7 @@ class ContactServiceSpec extends RpcSpec {
       users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, s"${contact.name}_wow1".some)))
     }
 
-    "handle RPC import contacts requests" in new sqlDb {
+    def parallelImportRequests = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = (1 to 10).toList.map { _ =>
@@ -63,7 +83,31 @@ class ContactServiceSpec extends RpcSpec {
       contactIds.to[immutable.SortedSet].should_==(sortedContactsId)
     }
 
-    "handle RPC get contacts request" in new sqlDb {
+    def unregisteredContact = {
+      implicit val scope = genTestScopeWithUser()
+
+      val currentUser = scope.user
+
+      val contact = genTestScopeWithUser().user
+
+      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+      expectRpcMsgByPF(withNewSession = true) {
+        case r: ResponseSeq => ()
+      }
+
+      sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), immutable.Seq.empty))
+      val contacts = expectRpcMsgByPF() {
+        case r @ ResponseImportContacts(u, _, _) => u
+      }
+
+      contacts should_== Nil
+
+      Thread.sleep(1000)
+
+      persist.UnregisteredContact.findAllByPhoneNumber(contact.phoneNumber) should be_==(Nil).await
+    }
+
+    def getContactsChanged = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = immutable.Seq(
@@ -89,7 +133,7 @@ class ContactServiceSpec extends RpcSpec {
       }.toSet)
     }
 
-    "handle RPC get contacts request when isNotChanged" in new sqlDb {
+    def getContactsNotChanged = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contacts = immutable.Seq(
@@ -114,7 +158,7 @@ class ContactServiceSpec extends RpcSpec {
       users.isEmpty.should_==(true)
     }
 
-    "handle RPC edit name contact request" in new sqlDb {
+    def editContactName = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
@@ -138,13 +182,13 @@ class ContactServiceSpec extends RpcSpec {
       userLocalName.should_==("new_local_name".some)
     }
 
-    "handle RPC delete contact request" in new sqlDb {
+    def deleteContact = {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
       val contacts = immutable.Seq(contact)
       val contactsListTuple = contacts.map { c =>
-        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId), c.accessSalt)
+        (struct.User.fromModel(c, models.AvatarData.empty, scope.authId, None), c.accessSalt)
       }
       val contactsList = contactsListTuple.map(_._1)
       ContactHelpers.createAllUserContacts(currentUser.uid, contactsListTuple).sync()
@@ -169,7 +213,7 @@ class ContactServiceSpec extends RpcSpec {
       importedUsers.isEmpty.should_==(true)
     }
 
-    "handle RPC find contacts request" in new sqlDb {
+    def findContacts = {
       implicit val scope = genTestScopeWithUser()
       val contact = genTestScopeWithUser().user
       val phoneUtil = PhoneNumberUtil.getInstance()
@@ -182,69 +226,45 @@ class ContactServiceSpec extends RpcSpec {
           val users = expectRpcMsgByPF(withNewSession = index == 0) {
             case r: ResponseSearchContacts => r.users
           }
-          users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId)))
+          users.should_==(Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, None)))
       }
     }
 
-    "handle RPC add contacts request" in new sqlDb {
+    object addRemove {
       implicit val scope = genTestScopeWithUser()
       val currentUser = scope.user
       val contact = genTestScopeWithUser().user
 
-      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      val reqSeq = expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseSeq => r
-      }
-      val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId))
+      def add(firstRun: Boolean = true) = {
+        sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+        val reqSeq = expectRpcMsgByPF(withNewSession = firstRun) {
+          case r: ResponseSeq => r
+        }
+        val responseContacts = Seq(struct.User.fromModel(contact, models.AvatarData.empty, scope.authId, None))
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val users = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
-      }
-      users.should_==(responseContacts)
-
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val importedUsers = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
-      }
-      importedUsers.should_==(responseContacts)
-
-      sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      expectRpcMsgByPF() {
-        case r: ResponseSeq => r
+        sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
+        val users = expectRpcMsgByPF() {
+          case r: ResponseGetContacts => r.users
+        }
+        users.should_==(responseContacts)
       }
 
-      sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
-      val contactsUsers = expectRpcMsgByPF() {
-        case r: ResponseGetContacts => r.users
-      }
-      contactsUsers.isEmpty.should_==(true)
-    }
-  }
+      def remove = {
+        sendRpcMsg(RequestRemoveContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
+        expectRpcMsgByPF() {
+          case r: ResponseSeq => r
+        }
 
-  "RequestImportContacts handler" should {
-    "not create UnregisteredContact entry if user with a phone is already registered" in new sqlDb {
-      implicit val scope = genTestScopeWithUser()
-
-      val currentUser = scope.user
-
-      val contact = genTestScopeWithUser().user
-
-      sendRpcMsg(RequestAddContact(contact.uid, ACL.userAccessHash(scope.authId, contact)))
-      expectRpcMsgByPF(withNewSession = true) {
-        case r: ResponseSeq => ()
+        sendRpcMsg(RequestGetContacts(persist.contact.UserContact.emptySHA1Hash))
+        val contactsUsers = expectRpcMsgByPF() {
+          case r: ResponseGetContacts => r.users
+        }
+        contactsUsers.isEmpty.should_==(true)
       }
 
-      sendRpcMsg(RequestImportContacts(immutable.Seq(PhoneToImport(contact.phoneNumber, None)), immutable.Seq.empty))
-      val contacts = expectRpcMsgByPF() {
-        case r @ ResponseImportContacts(u, _, _) => u
+      def addAfterRemove {
+        add(firstRun = false)
       }
-
-      contacts should_== Nil
-
-      Thread.sleep(1000)
-
-      persist.UnregisteredContact.findAllByPhoneNumber(contact.phoneNumber) should be_==(Nil).await
     }
   }
 }

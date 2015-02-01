@@ -29,7 +29,8 @@ trait MessagingService {
         socialBrokerRegion,
         singletons.dialogManagerRegion,
         fileAdapter,
-        currentUser.get
+        currentUser.get,
+        currentAuthId
       )
     ), "messaging")
 
