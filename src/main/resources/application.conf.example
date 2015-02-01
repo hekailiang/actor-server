@@ -2,26 +2,20 @@ jdbc {
   driver=org.postgresql.Driver
   url = "jdbc:postgresql://localhost:5432/actor"
   username = "postgres"
+  user = ${jdbc.username}
   password = ""
+  pass = ${jdbc.password}
 }
 
 db.default = ${jdbc}
 
-file-storage-options {
-  close-timeout = 60 seconds
-  base-path = "/tmp/actor-storage"
-  path-depth = 5
-}
-
-file-storage = ${file-storage-options}
+file-storage = ${actor-server.file-storage}
 
 actor-server {
   actor-system-name = "secret-api-server"
 
   sql = ${jdbc}
   jdbc-connection = ${jdbc}
-
-  file-storage = ${file-storage-options}
 
   sms {
     clickatell {
