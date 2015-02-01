@@ -5,9 +5,7 @@ jdbc {
   password = ""
 }
 
-db.default = {
-  include "jdbc"
-}
+db.default = ${jdbc}
 
 file-storage {
   close-timeout = 60 seconds
@@ -16,18 +14,15 @@ file-storage {
 }
 
 actor-server {
-  include "file-storage"
-
   actor-system-name = "secret-api-server"
 
-  sql {
-    url = "jdbc:postgresql://localhost:5432/actor"
-    user = "postgres"
-    password = ""
-  }
+  sql = ${jdbc}
+  jdbc-connection = ${jdbc}
 
-  jdbc-connection {
-    include "jdbc"
+  file-storage {
+    close-timeout = 60 seconds
+    base-path = "/tmp/actor-storage"
+    path-depth = 5
   }
 
   sms {

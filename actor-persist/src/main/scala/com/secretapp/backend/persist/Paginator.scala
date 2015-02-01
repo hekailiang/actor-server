@@ -50,7 +50,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
     val q = orderQ.limit(limit).offset(offset)
 
     val entries = sql"$q".map(f).list().apply
-    val totalCount = sql"select count(*) as _total_count from ($q) as _ct"
+    val totalCount = sql"select count(*) as _total_count from ($orderQ) as _ct"
       .map(_.int("_total_count")).single().apply().head
 
     (entries, totalCount)

@@ -9,7 +9,7 @@ trait DbInit {
   def initDb(sqlConfig: Config) = {
     val (url, user, password) = (
       sqlConfig.getString("url"),
-      sqlConfig.getString("user"),
+      sqlConfig.getString("username"),
       sqlConfig.getString("password")
     )
 
