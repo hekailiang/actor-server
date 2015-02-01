@@ -1,3 +1,14 @@
+jdbc {
+  driver=org.postgresql.Driver
+  url = "jdbc:postgresql://localhost:5432/actor"
+  username = "postgres"
+  password = ""
+}
+
+db.default = {
+  include "jdbc"
+}
+
 actor-server {
   file-storage {
     close-timeout = 60 seconds
@@ -12,9 +23,7 @@ actor-server {
   }
 
   jdbc-connection {
-    url = "jdbc:postgresql://localhost:5432/actor"
-    username = "postgres"
-    password = ""
+    include "jdbc"
   }
 
   sms {
