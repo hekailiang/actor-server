@@ -206,7 +206,7 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
          (implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[(Seq[(Int, String)], Int)] =
     Future {
       blocking {
-        paginateWithTotal(select(u.column("id"), u.name).from(this as u).toSQLSyntax, u, req, Some("name")) { rs =>
+        paginateWithTotal(select(u.column("id"), u.name).from(this as u).toSQLSyntax, u, req, Some(("name", ASC))) { rs =>
           (rs.int("id"), rs.string("name"))
         }
       }

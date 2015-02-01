@@ -4,7 +4,7 @@ import com.secretapp.backend.persist._
 import org.joda.time.DateTime
 import scala.concurrent.{ ExecutionContext, Future }
 
-case class UserItem(id: Int, name: String, phone: Option[Long], contactsCount: Int, receivedMsgCount: Int,
+case class UserItem(id: Int, name: String, phoneNumber: Option[Long], contactsCount: Int, receivedMsgCount: Int,
                     sentMsgCount: Int, lastSeenAt: Option[DateTime], lastMessageAt: Option[DateTime])
 
 object UserItem {
@@ -25,7 +25,7 @@ object UserItem {
         UserItem(
           id = u._1,
           name = u._2,
-          phone = phoneNumbersMap.get(u._1),
+          phoneNumber = phoneNumbersMap.get(u._1),
           contactsCount = contactsCountMap.getOrElse(u._1, 0),
           receivedMsgCount = msgCounter.map(_.receivedMsgCount).getOrElse(0),
           sentMsgCount = msgCounter.map(_.sentMsgCount).getOrElse(0),
@@ -50,7 +50,7 @@ object UserItem {
           Some(UserItem(
             id = user.uid,
             name = user.name,
-            phone = phoneNumbers.map(_.number),
+            phoneNumber = phoneNumbers.map(_.number),
             contactsCount = contactsCountItem.getOrElse(0),
             receivedMsgCount = msgCountersItem.map(_.receivedMsgCount).getOrElse(0),
             sentMsgCount = msgCountersItem.map(_.sentMsgCount).getOrElse(0),

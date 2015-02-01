@@ -8,4 +8,4 @@
         checksum=yes
         delete=yes
         recursive=yes
-        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl "
+        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs "

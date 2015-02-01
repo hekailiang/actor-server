@@ -48,7 +48,7 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
          (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[(Seq[LogEvent], Int)] =
     Future {
       blocking {
-        paginateWithTotal(select.from(this as le).toSQLSyntax, le, req, Some("id"))(this(le))
+        paginateWithTotal(select.from(this as le).toSQLSyntax, le, req, Some(("id", DESC)))(this(le))
       }
     }
 

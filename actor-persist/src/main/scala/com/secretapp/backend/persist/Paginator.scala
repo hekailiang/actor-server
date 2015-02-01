@@ -8,7 +8,11 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
 
   val MAX_LIMIT = 128
 
-  def paginateWithTotal[T](sqlQ: SQLSyntax, sqlAlias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A], req: Map[String, Seq[String]], defaultOrderBy: Option[String])
+  sealed trait SqlOrder
+  case object ASC extends SqlOrder
+  case object DESC extends SqlOrder
+
+  def paginateWithTotal[T](sqlQ: SQLSyntax, sqlAlias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A], req: Map[String, Seq[String]], defaultOrderBy: Option[(String, SqlOrder)])
                           (f: WrappedResultSet => T)
                           (implicit session: DBSession): (Seq[T], Int) = {
     val filterMap = req.collect {
@@ -23,7 +27,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
     val orderBy = req.get("orderBy").flatMap { s =>
       val v = s.mkString.split("\\.").toList
       val column = v.head
-      val asc = if (v.last.toLowerCase == "desc") "desc" else "asc"
+      val asc = if (v.last.toLowerCase == "desc") DESC else ASC
       if (publicColumns.contains(column)) Some(column, asc)
       else None
     }
@@ -36,12 +40,20 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
       case Nil => sqlQ
     }
 
+    @inline
+    def applyOrder(sqlQ: SQLSyntax, orderColumn: String, asc: SqlOrder) = {
+      val o = sqlQ.orderBy(sqlAlias.column(orderColumn))
+      if (asc == ASC) o.asc
+      else o.desc
+    }
+
     val orderQ = orderBy match {
-      case Some((orderSql, asc)) =>
-        val o = whereQ.orderBy(sqlAlias.column(orderSql))
-        if (asc == "asc") o.asc
-        else o.desc
-      case None => whereQ.orderBy(sqlAlias.column(defaultOrderBy.getOrElse("")))
+      case Some((orderColumn, asc)) => applyOrder(whereQ, orderColumn, asc)
+      case None =>
+        defaultOrderBy match {
+          case Some((orderColumn, asc)) => applyOrder(whereQ, orderColumn, asc)
+          case None => whereQ
+        }
     }
 
     val offset = math.max(0, req.get("offset").map(_.mkString.toInt).getOrElse(0))
