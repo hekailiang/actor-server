@@ -44,7 +44,7 @@ object UsersController extends Controller {
       case _ => Future.successful(None)
     }.map {
       case Some(fileData) => Ok(fileData)
-      case _ => Redirect("/assets/images/avatar.png")
+      case _ => NotFound
     }
   }
 }
