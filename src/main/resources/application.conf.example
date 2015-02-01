@@ -7,11 +7,13 @@ jdbc {
 
 db.default = ${jdbc}
 
-file-storage {
+file-storage-options {
   close-timeout = 60 seconds
   base-path = "/tmp/actor-storage"
   path-depth = 5
 }
+
+file-storage = ${file-storage-options}
 
 actor-server {
   actor-system-name = "secret-api-server"
@@ -19,11 +21,7 @@ actor-server {
   sql = ${jdbc}
   jdbc-connection = ${jdbc}
 
-  file-storage {
-    close-timeout = 60 seconds
-    base-path = "/tmp/actor-storage"
-    path-depth = 5
-  }
+  file-storage = ${file-storage-options}
 
   sms {
     clickatell {
