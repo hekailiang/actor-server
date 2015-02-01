@@ -9,12 +9,16 @@ db.default = {
   include "jdbc"
 }
 
+file-storage {
+  close-timeout = 60 seconds
+  base-path = "/tmp/actor-storage"
+  path-depth = 5
+}
+
 actor-server {
-  file-storage {
-    close-timeout = 60 seconds
-    base-path = "/tmp/actor-storage"
-    path-depth = 5
-  }
+  include "file-storage"
+
+  actor-system-name = "secret-api-server"
 
   sql {
     url = "jdbc:postgresql://localhost:5432/actor"
@@ -55,7 +59,7 @@ actor-server {
   smtpd {
     certificate {
       password = "password"
-      keystore = "keystore.jks"
+      keystore = "ssl/keystore.jks"
     }
   }
 
