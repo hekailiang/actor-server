@@ -4,9 +4,10 @@
       sudo: yes
   vars:
     app_path: "/home/ubuntu/mtproto-app"
+    app_pid_path: "{{ app_path }}/mtproto-app.pid"
     supervisor_tasks:
       - name: mtproto-app
-        command: 'java -server -Xms256M -Xmx1024M -cp "{{ app_path }}/config:{{ app_path }}/lib/*" -Dakka.home="{{ app_path }}" akka.kernel.Main im.actor.server.ApiKernel'
+        command: 'java -server -Xms256M -Xmx1024M -cp "{{ app_path }}/config:{{ app_path }}/lib/*" -Dakka.home="{{ app_path }}" -Dpidfile.path="{{ app_pid_path }}" akka.kernel.Main im.actor.server.ApiKernel'
         directory: "{{ app_path }}"
         redirect_stderr: true
         user: ubuntu
@@ -49,6 +50,8 @@
         src="~/apns"
         dest="{{ app_path }}/apns"
         state=link
+    - name: "Remove pid file"
+      command: "rm -rf {{ app_pid_path }}"
     - name: "Restart mtproto-app"
       supervisorctl:
         name=mtproto-app
