@@ -5,6 +5,6 @@ cp -a ./actor-restapi/public ./src/main/resources/
 sbt clean dist
 rm -rf ./src/main/resources/public
 # ansible-galaxy install -r ./ansible/requirements.yml
-echo "For install requirements: ansible-galaxy install -r ./ansible/requirements.yml"
+echo "\n!!!\nFor install requirements: ansible-galaxy install -r ./ansible/requirements.yml\n!!!\n"
 ansible-playbook -vvv -i ./ansible/hosts ./ansible/deploy.yml
 echo "Deployed successfully."

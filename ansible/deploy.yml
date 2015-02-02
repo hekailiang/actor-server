@@ -6,7 +6,7 @@
     app_path: "/home/ubuntu/mtproto-app"
     supervisor_tasks:
       - name: mtproto-app
-        command: 'java -server -Xms256M -Xmx1024M -cp "{{ app_path }}/config:{{ app_path }}/lib/*" -Dakka.home="{{ app_path }}" akka.kernel.Main im.actor.server.ApiKernel'
+        command: "{{ app_path }}/bin/start"
         directory: "{{ app_path }}"
         redirect_stderr: true
         user: ubuntu

@@ -43,7 +43,7 @@ object UsersController extends Controller {
         }
       case _ => Future.successful(None)
     }.map {
-      case Some(fileData) => Ok(fileData)
+      case Some(fileData) => Ok(fileData).as("image/png") // TODO: content type
       case _ => Redirect("/assets/images/avatar.png")
     }
   }
