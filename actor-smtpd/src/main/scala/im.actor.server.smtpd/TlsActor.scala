@@ -18,9 +18,9 @@ import scala.concurrent.Promise
 import scala.concurrent.duration._
 
 object TLSActor {
-  def props(connection: ActorRef, timeout: FiniteDuration) = Props(new TLSActor(connection, timeout))
+  def props(connection: ActorRef, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory, timeout: FiniteDuration) = Props(new TLSActor(connection, keyManagerFactory, trustManagerFactory, timeout))
 
-  private val (keyManagerFactory, trustManagerFactory) = {
+  def getManagerFactories() = {
     val config = SMTPServer.config.getConfig("certificate")
     val password = config.getString("password").toCharArray
     val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
@@ -32,24 +32,20 @@ object TLSActor {
     (keyManagerFactory, trustManagerFactory)
   }
 
-  def initSslContext(): SSLContext = {
+  def sslEngine(keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory): SSLEngine = {
     val context = SSLContext.getInstance("TLS")
     context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
-    context
-  }
 
-  lazy val sslEnabledProtocols =
-    initSslContext().getSupportedSSLParameters.getProtocols.filterNot(_.startsWith("SSLv3"))
-
-  def sslEngine(): SSLEngine = {
-    val sslEngine = initSslContext().createSSLEngine()
+    val sslEngine = context.createSSLEngine()
+    val sslEnabledProtocols = context.getSupportedSSLParameters.getProtocols.filterNot(_.startsWith("SSLv3"))
     sslEngine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_128_CBC_SHA"))
     sslEngine.setEnabledProtocols(sslEnabledProtocols)
     sslEngine.setUseClientMode(false)
     sslEngine
   }
 
-  def sessionNegotiation() = SessionNegotiation(sslEngine())
+  def sessionNegotiation(keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory) =
+    SessionNegotiation(sslEngine(keyManagerFactory, trustManagerFactory))
 
   case class Wrap(bs: ByteString) // plain text to TLS stream
   case class Unwrap(bs: ByteString) // raw TLS stream from client
@@ -87,7 +83,7 @@ private class TLSSessionActor(unwrappedActor: ActorRef) extends ActorSubscriber 
   }
 }
 
-class TLSActor(connection: ActorRef, timeout: FiniteDuration) extends Actor with ActorLogging {
+class TLSActor(connection: ActorRef, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory, timeout: FiniteDuration) extends Actor with ActorLogging {
   implicit val system = context.system
   implicit val ec = system.dispatcher
   implicit val flow = FlowMaterializer()
@@ -106,7 +102,7 @@ class TLSActor(connection: ActorRef, timeout: FiniteDuration) extends Actor with
   override def preStart(): Unit = {
     super.preStart()
     log.debug("start TLS")
-    val props = Props(new SslTlsCipherActor(self, TLSActor.sessionNegotiation(), true) {
+    val props = Props(new SslTlsCipherActor(self, TLSActor.sessionNegotiation(keyManagerFactory, trustManagerFactory), true) {
       // override val subscriptionTimeoutSettings = StreamSubscriptionTimeoutSettings(mode = CancelTermination, timeout = timeout)
     })
     val tlsActor = context.actorOf(props, "tls-cipher")

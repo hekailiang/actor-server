@@ -43,7 +43,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     val singletons = new Singletons
     val fileAdapter = new FileStorageAdapter(system)
 
-    TLSActor.initSslContext // check ssl configuration
+    val (keyManagerFactory, trustManagerFactory) = TLSActor.getManagerFactories() // check ssl configuration
 
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
     val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
@@ -69,7 +69,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     system.actorOf(Props(new WSHeatingUpActor(hostname, wsPort)), "ws-heat-service")
 
     // SMTP service
-    SMTPServer.start(singletons)
+    SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
 
     // REST web admin API
     play.core.server.NettyServer.main(Array())

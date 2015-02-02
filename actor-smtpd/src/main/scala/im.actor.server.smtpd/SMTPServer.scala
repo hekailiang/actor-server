@@ -3,6 +3,7 @@ package im.actor.server.smtpd
 import akka.actor._
 import akka.io._
 import java.net._
+import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 import com.secretapp.backend.api.{Singletons, SocialBroker, UpdatesBroker}
 import akka.routing.{DefaultResizer, RoundRobinPool}
 import com.secretapp.backend.api.counters.EmailsCounter
@@ -16,7 +17,7 @@ object SMTPServer {
   val hostname = InetAddress.getLocalHost.getHostName
   val mailHost = config.getString("hostname")
 
-  def start(singletons: Singletons)(implicit system: ActorSystem): Unit = {
+  def start(singletons: Singletons, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory)(implicit system: ActorSystem): Unit = {
     val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)(system)
     val socialBrokerRegion = SocialBroker.startRegion()
 
@@ -35,12 +36,12 @@ object SMTPServer {
     val port = Try(config.getInt("port")).getOrElse(1025)
     val tlsPort = Try(config.getInt("tls-port")).getOrElse(10465)
 
-    system.actorOf(Props(new SMTPServer(interface, port, hostname, mailRouter, tlsConnection = false)))
-    system.actorOf(Props(new SMTPServer(interface, tlsPort, hostname, mailRouter, tlsConnection = true)))
+    system.actorOf(Props(new SMTPServer(interface, port, hostname, mailRouter, keyManagerFactory, trustManagerFactory, tlsConnection = false)))
+    system.actorOf(Props(new SMTPServer(interface, tlsPort, hostname, mailRouter, keyManagerFactory, trustManagerFactory, tlsConnection = true)))
   }
 }
 
-class SMTPServer(interface: String, port: Int, hostname: String, mailRouter: ActorRef, tlsConnection: Boolean) extends Actor with ActorLogging {
+class SMTPServer(interface: String, port: Int, hostname: String, mailRouter: ActorRef, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory, tlsConnection: Boolean) extends Actor with ActorLogging {
   import akka.io.Tcp._
   import context.system
 
@@ -58,7 +59,7 @@ class SMTPServer(interface: String, port: Int, hostname: String, mailRouter: Act
     case c @ Connected(remote, local) =>
       log.debug(s"Connected: $c")
       val connection = sender()
-      val frontend = context.actorOf(SMTPFrontend.props(connection, remote, hostname, mailRouter, tlsConnection))
+      val frontend = context.actorOf(SMTPFrontend.props(connection, remote, hostname, mailRouter, keyManagerFactory, trustManagerFactory, tlsConnection))
       connection ! Register(frontend, keepOpenOnPeerClosed = true)
   }
 }

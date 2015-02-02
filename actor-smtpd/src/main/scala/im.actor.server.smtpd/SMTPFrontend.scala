@@ -1,23 +1,22 @@
 package im.actor.server.smtpd
 
-import java.net.InetSocketAddress
-
 import akka.actor._
 import akka.util.ByteString
-
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.util.{ Try, Success }
+import java.net.InetSocketAddress
+import javax.net.ssl.{KeyManagerFactory, TrustManagerFactory}
 
 object SMTPFrontend {
   type InterfaceTuple = (immutable.Set[String], immutable.Set[String])
 
   val sizeLimit = 10485760
 
-  def props(connection: ActorRef, remote: InetSocketAddress, hostname: String, mailRouter: ActorRef, tlsConnection: Boolean) = {
-    Props(new SMTPFrontend(connection, remote, hostname, mailRouter, tlsConnection))
+  def props(connection: ActorRef, remote: InetSocketAddress, hostname: String, mailRouter: ActorRef, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory, tlsConnection: Boolean) = {
+    Props(new SMTPFrontend(connection, remote, hostname, mailRouter, keyManagerFactory, trustManagerFactory, tlsConnection))
   }
 
   val banner = s"${SMTPServer.hostname} ESMTP"
@@ -62,7 +61,7 @@ object SMTPFrontend {
   }
 }
 
-class SMTPFrontend(connection: ActorRef, remote: InetSocketAddress, hostname: String, mailRouter: ActorRef, tlsConnection: Boolean) extends Actor with ActorLogging {
+class SMTPFrontend(connection: ActorRef, remote: InetSocketAddress, hostname: String, mailRouter: ActorRef, keyManagerFactory: KeyManagerFactory, trustManagerFactory: TrustManagerFactory, tlsConnection: Boolean) extends Actor with ActorLogging {
   import akka.io.Tcp._
   import SMTPFrontend.{ SMTPResponse, SMTPPart }
   import context._
@@ -208,7 +207,7 @@ class SMTPFrontend(connection: ActorRef, remote: InetSocketAddress, hostname: St
           else {
             log.debug(s"starttls: $arguments")
             write(SMTPResponse.goAhead)
-            tlsActor.success(context.actorOf(TLSActor.props(self, timeout), "tls-actor"))
+            tlsActor.success(context.actorOf(TLSActor.props(self, keyManagerFactory, trustManagerFactory, timeout), "tls-actor"))
             state
           }
         case SmtpCommands.QUIT =>
