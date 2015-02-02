@@ -1,4 +1,4 @@
-- hosts: mtproto-api
+- hosts: staging
   roles:
     - role: Stouts.supervisor
       sudo: yes
@@ -29,7 +29,7 @@
         checksum=yes
         delete=yes
         recursive=yes
-        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs "
+        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs --exclude mtproto-app.pid "
     - name: "Create logs directory"
       file:
         path="{{ app_path }}/logs"

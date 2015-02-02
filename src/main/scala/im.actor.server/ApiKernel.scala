@@ -8,7 +8,7 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
-import im.actor.server.smtpd.SMTPServer
+import im.actor.server.smtpd.{ SMTPServer, TLSActor }
 import com.typesafe.config._
 import java.net.InetSocketAddress
 import im.actor.server.persist.{ FlywayInit, DbInit }
@@ -41,8 +41,9 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
     // Session bootstrap
     val singletons = new Singletons
-
     val fileAdapter = new FileStorageAdapter(system)
+
+    TLSActor.initSslContext // check ssl configuration
 
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
     val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
