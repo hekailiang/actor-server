@@ -1,5 +1,6 @@
 package utils
 
+import com.secretapp.backend.persist.events.LogEventStatItem
 import models._
 import play.api.libs.json._
 import org.joda.time.DateTime
@@ -24,7 +25,7 @@ object JsonImplicits {
       JsArray(s.map { i => JsArray(Seq(JsString(i._1), JsNumber(i._2), JsNumber(i._3))) })
   }
 
-  implicit val statLogsWrites = Json.writes[StatLogs]
+  implicit val statLogsWrites = Json.writes[LogEventStatItem]
 
   implicit val userItemWrites = Json.writes[UserItem]
 

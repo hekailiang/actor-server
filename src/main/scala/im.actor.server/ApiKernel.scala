@@ -23,7 +23,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
   val config = ConfigFactory.load()
 
-  val serverConfig = config.getConfig("actor-server"))
+  val serverConfig = config.getConfig("actor-server")
   val sqlConfig = serverConfig.getConfig("sql")
 
   val flyway = initFlyway(sqlConfig)

@@ -9,6 +9,8 @@ import org.joda.time.DateTime
 case class LogEvent(id: Long, authId: Long, phoneNumber: Long, email: String, klass: Int,
                     jsonBody: String, createdAt: DateTime)
 
+case class LogEventStatItem(date: String, requestAuthCount: Int, sentSmsCount: Int, signInCount: Int, signUpCount: Int)
+
 object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
   override val tableName = "log_events"
   override val columnNames = Seq("id", "auth_id", "phone_number", "email", "klass", "json_body", "created_at")
@@ -52,82 +54,40 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
       }
     }
 
-  def authCodesStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, Int)]] =
+  def stats()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[LogEventStatItem]] =
     Future {
       blocking {
+        val klassSeq = Seq(Event.AuthCodeSent.klass, Event.SmsSentSuccessfully.klass, Event.SignedIn.klass, Event.SignedUp.klass)
         val q = sql"""
-                   select (created_at::date) as day, count(*) as count
+                   select (created_at::date) as day, klass, count(klass) as klass_count
                    from $table
-                   where klass = ${Event.AuthCodeSent.klass}
-                   group by day
+                   where klass in ($klassSeq)
+                   group by day, klass
                    order by day asc
                    """
-        q.map { rs =>
-          (rs.date("day").toString, rs.int("count"))
-        }.list().apply()
+        val entries = q.map { rs => (rs.string("day"), rs.int("klass"), rs.int("klass_count")) }.list().apply()
+
+        @inline
+        def applyValue(entry: LogEventStatItem, klass: Int, klassCount: Int): LogEventStatItem = klass match {
+          case Event.AuthCodeSent.klass => entry.copy(requestAuthCount = klassCount)
+          case Event.SmsSentSuccessfully.klass => entry.copy(sentSmsCount = klassCount)
+          case Event.SignedIn.klass => entry.copy(signInCount = klassCount)
+          case Event.SignedUp.klass => entry.copy(signUpCount = klassCount)
+        }
+
+        entries.foldLeft(List[LogEventStatItem]()) { (acc, entry) =>
+          acc match {
+            case x :: xs if x.date == entry._1 => xs.+:(applyValue(x, entry._2, entry._3))
+            case _ =>
+              val item = LogEventStatItem(
+                date = entry._1,
+                requestAuthCount = 0,
+                sentSmsCount = 0,
+                signInCount = 0,
+                signUpCount = 0)
+              acc.+:(applyValue(item, entry._2, entry._3))
+          }
+        }.reverse
       }
     }
-
-  def sentSmsStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, Int)]] =
-    Future {
-      blocking {
-        val q = sql"""
-                   select (created_at::date) as day, count(*) as count
-                   from $table
-                   where klass IN (${Event.SmsSentSuccessfully.klass}, ${Event.SmsFailure.klass})
-                   group by day
-                   order by day asc
-                   """
-        q.map { rs =>
-          (rs.date("day").toString, rs.int("count"))
-        }.list().apply()
-      }
-    }
-
-  def successSignsStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, Int)]] =
-    Future {
-      blocking {
-        val q = sql"""
-                   select (created_at::date) as day, count(*) as count
-                   from $table
-                   where klass IN (${Event.SignedIn.klass}, ${Event.SignedUp.klass})
-                   group by day
-                   order by day asc
-                   """
-        q.map { rs =>
-          (rs.date("day").toString, rs.int("count"))
-        }.list().apply()
-      }
-    }
-
-
-  /**
-   * @return a seq with format: (Date, Sign in count, Sign up count)
-   */
-  def authsStat()(implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[Seq[(String, Int, Int)]] =
-    Future {
-      blocking {
-        val q = sql"""
-                   select day, sum(sign_up_count) as sign_up_count, sum(sign_in_count) as sign_in_count from (
-                      select (created_at::date) as day, 0 as sign_up_count, count(*) as sign_in_count
-                      from $table
-                      where klass = ${Event.SignedIn.klass}
-                      group by day
-
-                      union all
-
-                      select (created_at::date) as day, count(*) as sign_up_count, 0 as sign_in_count
-                      from $table
-                      where klass = ${Event.SignedUp.klass}
-                      group by day
-                   ) as stats
-                   group by day
-                   order by day asc
-                   """
-        q.map { rs =>
-          (rs.date("day").toString, rs.int("sign_in_count"), rs.int("sign_up_count"))
-        }.list().apply()
-      }
-    }
-
 }
