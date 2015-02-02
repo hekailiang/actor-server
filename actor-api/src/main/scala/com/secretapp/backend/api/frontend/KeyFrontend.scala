@@ -14,12 +14,12 @@ object KeyFrontend {
   @SerialVersionUID(1L)
   case class InitDH(p: TransportPackage) extends KeyInitializationMessage
 
-  def props(connection: ActorRef, transport: TransportConnection): Props = {
-    Props(new KeyFrontend(connection, transport))
+  def props(frontend: ActorRef, transport: TransportConnection): Props = {
+    Props(new KeyFrontend(frontend, transport))
   }
 }
 
-class KeyFrontend(connection: ActorRef, transport: TransportConnection) extends Actor with ActorLogging with RandomService {
+class KeyFrontend(frontend: ActorRef, transport: TransportConnection) extends Actor with ActorLogging with RandomService {
   import KeyFrontend._
 
   implicit val ec = context.dispatcher
@@ -28,9 +28,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection) extends 
     log.error(s"KeyFrontend.silentClose: $reason")
     // TODO
     val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
-    connection ! ResponseToClientWithDrop(pkg.encode)
-    connection ! SilentClose
-//    context.stop(self)
+    frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 
   def receive = {
@@ -44,7 +42,7 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection) extends 
               val newAuthId = rand.nextLong()
               persist.AuthId.create(newAuthId, None)
               val pkg = transport.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
-              connection ! ResponseToClient(pkg.encode)
+              frontend ! ResponseToClient(pkg.encode)
             case _ =>
               dropClient(message.messageId, "unknown message type in authorize mode")
           }
@@ -56,6 +54,6 @@ class KeyFrontend(connection: ActorRef, transport: TransportConnection) extends 
 
   def dropClient(messageId: Long, message: String, sessionId: Long = 0): Unit = {
     val pkg = transport.buildPackage(0L, sessionId, MessageBox(messageId, Drop(messageId, message)))
-    connection ! ResponseToClientWithDrop(pkg.encode)
+    frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 }

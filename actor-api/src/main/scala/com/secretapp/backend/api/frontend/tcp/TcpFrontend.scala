@@ -57,6 +57,5 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
     val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
     connection ! Write(pkg.encode)
     connection ! Close
-//    context.stop(self)
   }
 }
