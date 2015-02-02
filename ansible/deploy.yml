@@ -1,11 +1,55 @@
 - hosts: mtproto-api
+  roles:
+    - role: Stouts.supervisor
+      sudo: yes
+  vars:
+    app_path: "/home/ubuntu/mtproto-app"
+    supervisor_tasks:
+      - name: mtproto-app
+        command: 'java -server -Xms256M -Xmx1024M -cp "{{ app_path }}/config:{{ app_path }}/lib/*" -Dakka.home="{{ app_path }}" akka.kernel.Main im.actor.server.ApiKernel'
+        directory: "{{ app_path }}"
+        redirect_stderr: true
+        user: ubuntu
+        stdout_logfile: "{{ app_path }}/logs/stdout_logfile"
+        stderr_logfile: "{{ app_path }}/logs/stderr_logfile"
+        autostart: true
+        autorestart: true
+        stopsignal: KILL
+    supervisor_events:
+      - name: crashmail
+        command: "crashmail -p program -m klimtimothy+devops@gmail.com -m fear+devops@loathing.in"
+        events: PROCESS_STATE_EXITED
   tasks:
-    - name: Copy app
+    - name: "Copy app"
       synchronize:
-        src="../target/dist"
-        dest="mtproto-app"
+        src="../target/dist/"
+        dest="{{ app_path }}"
         archive=no
         checksum=yes
         delete=yes
         recursive=yes
         rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs "
+    - name: "Create logs directory"
+      file:
+        path="{{ app_path }}/logs"
+        force=yes
+        state=directory
+    - name: "Link application.conf"
+      file:
+        src="~/application.conf"
+        dest="{{ app_path }}/config/application.conf"
+        state=link
+    - name: "Link ssl"
+      file:
+        src="~/ssl"
+        dest="{{ app_path }}/ssl"
+        state=link
+    - name: "Link apns"
+      file:
+        src="~/apns"
+        dest="{{ app_path }}/apns"
+        state=link
+    - name: "Restart mtproto-app"
+      supervisorctl:
+        name=mtproto-app
+        state=restarted
