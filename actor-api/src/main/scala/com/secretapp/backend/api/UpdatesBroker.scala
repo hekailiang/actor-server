@@ -9,7 +9,7 @@ import akka.persistence._
 import com.notnoop.apns.ApnsService
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{ update => updateProto }
-import com.secretapp.backend.{persist => p}
+import com.secretapp.backend.{ persist => p }
 import java.util.UUID
 import im.actor.util.logging._
 import scala.concurrent.Future
@@ -35,6 +35,8 @@ object UpdatesBroker {
   def topicFor(authId: Long): String = s"updates-${authId.toString}"
   def topicFor(authId: String): String = s"updates-$authId"
 
+  var userIdOpt: Option[Int] = None
+
   private val idExtractor: ShardRegion.IdExtractor = {
     case msg @ NewUpdatePush(authId, _) => (authId.toString, msg)
     case msg @ GetSeq(authId) => (authId.toString, msg)
@@ -59,7 +61,10 @@ object UpdatesBroker {
 
 // TODO: rename to SeqUpdatesBroker
 class UpdatesBroker(implicit val apnsService: ApnsService)
-    extends PersistentActor with GooglePush with ApplePush with MDCActorLogging {
+    extends PersistentActor
+    with GooglePush
+    with ApplePush
+    with MDCActorLogging {
   import context.dispatcher
   import ShardRegion.Passivate
   import UpdatesBroker._
@@ -85,7 +90,9 @@ class UpdatesBroker(implicit val apnsService: ApnsService)
       val replyTo = sender()
       persist(SeqUpdate) { _ =>
         seq += 1
+
         pushUpdate(authId, seq, update) pipeTo replyTo
+
         maybeSnapshot()
       }
     case e: SaveSnapshotFailure =>
@@ -120,7 +127,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService)
         if (update.isInstanceOf[updateProto.Message] || update.isInstanceOf[updateProto.EncryptedMessage])
           deliverGooglePush(authId, updateSeq)
 
-        deliverApplePush(authId, updateSeq, applePushText(update))
+        applePushText(authId, update) foreach (deliverApplePush(authId, updateSeq, _))
       }
 
       (updateSeq, uuid)

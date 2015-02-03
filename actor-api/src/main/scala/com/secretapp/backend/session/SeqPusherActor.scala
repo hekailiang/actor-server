@@ -4,7 +4,7 @@ import akka.actor._
 import com.secretapp.backend.data.message.{ struct, update => updateProto, UpdateBox }
 import com.secretapp.backend.data.message.update.{ FatSeqUpdate, SeqUpdate }
 import com.secretapp.backend.data.message.update.contact._
-import com.secretapp.backend.helpers.UserHelpers
+import com.secretapp.backend.helpers.{ AuthIdOwnershipHelpers, UserHelpers }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.PackageCommon._
@@ -14,19 +14,19 @@ import scala.concurrent.Future
 import scala.util.{ Success, Failure }
 import scodec.codecs.{ uuid => uuidCodec }
 
-private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long) extends AlertingActor
+private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long)
+    extends AlertingActor
     with ActorLogging
-    with UserHelpers {
+    with UserHelpers
+    with AuthIdOwnershipHelpers {
   import context.dispatcher
   import context.system
-
-  var userIdOpt: Option[Int] = None
 
   def receive = {
     case msg @ (seq: Int, state: UUID, u: updateProto.SeqUpdateMessage) =>
       val fupd = u match {
         case _: ContactRegistered | _: ContactsAdded =>
-          getOrSetUserId flatMap { userId =>
+          getOrSetUserId(authId) flatMap { userId =>
             val fuserStructs = u.userIds map { structUserId =>
               getUserStruct(structUserId, authId, userId)
             }
@@ -46,25 +46,5 @@ private[session] class SeqPusherActor(sessionActor: ActorRef, authId: Long) exte
       }
     case u =>
       log.error(s"Unknown update in topic $u")
-  }
-
-  def getOrSetUserId(): Future[Int] = {
-    userIdOpt map (Future.successful) getOrElse {
-      for {
-        authIdOpt <- persist.AuthId.find(authId)
-      } yield {
-        authIdOpt match {
-          case Some(models.AuthId(_, auserIdOpt)) =>
-            auserIdOpt map { id =>
-              userIdOpt = Some(id)
-              id
-            } getOrElse {
-              throw new Exception("AuthId's userId null while trying to set userId")
-            }
-          case None =>
-            throw new Exception("AuthId was not found")
-        }
-      }
-    }
   }
 }
