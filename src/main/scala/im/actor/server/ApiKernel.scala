@@ -72,7 +72,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
 
     // REST web admin API
-    play.core.server.NettyServer.main(Array())
+    // play.core.server.NettyServer.main(Array())
   }
 
   def shutdown() = {
