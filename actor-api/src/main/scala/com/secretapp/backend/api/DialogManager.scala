@@ -37,6 +37,7 @@ object DialogManagerProtocol {
     updateDialogOrder: Boolean
   ) extends DialogMessage
 
+  @SerialVersionUID(1L)
   case class NoteEncryptedMessage(
     date: DateTime,
     senderUserId: Int
