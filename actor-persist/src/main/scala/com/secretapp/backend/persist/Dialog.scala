@@ -64,17 +64,14 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
     peer: models.Peer,
     sortDateOpt: Option[DateTime],
     senderUserId: Int,
-    randomId: Long,
-    date: DateTime,
-    messageContentHeader: Int,
-    messageContentData: BitVector,
+    randomIdOpt: Option[Long],
+    dateOpt: Option[DateTime],
+    messageOpt: Option[(Int, BitVector)],
     state: models.MessageState
   )(
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
-  ): Future[models.Dialog] = Future {
+  ): Future[Unit] = Future {
     blocking {
-      val sortDate = sortDateOpt.getOrElse(new DateTime)
-
       existsSync(userId, peer)(session) match {
         case true =>
           withSQL {
@@ -84,13 +81,34 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
               case None => sqls"sort_date"
             }
 
+            val randomIdSql = randomIdOpt match {
+              case Some(randomId) => randomId
+              case None => sqls"random_id"
+            }
+
+            val dateSql = dateOpt match {
+              case Some(date) => date
+              case None => sqls"date"
+            }
+
+            val (
+              messageContentHeaderSql,
+              messageContentDataSql
+            ) = messageOpt match {
+              case Some((header, data)) => (header, data.toByteArray)
+              case None => (
+                sqls"message_content_header",
+                sqls"message_content_data"
+              )
+            }
+
             update(Dialog).set(
               column.senderUserId -> senderUserId,
-              column.randomId -> randomId,
-              column.date -> date,
+              column.randomId -> randomIdSql,
+              column.date -> dateSql,
               column.sortDate -> sortDateSql,
-              column.messageContentHeader -> messageContentHeader,
-              column.messageContentData -> messageContentData.toByteArray,
+              column.messageContentHeader -> messageContentHeaderSql,
+              column.messageContentData -> messageContentDataSql,
               column.state -> state.toInt
             )
               .where.eq(column.userId, userId)
@@ -98,6 +116,18 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
               .and.eq(column.column("peer_id"), peer.id)
           }.update.apply
         case false =>
+          val sortDate = sortDateOpt.getOrElse(new DateTime(0))
+          val randomId = randomIdOpt.getOrElse(0)
+          val date = dateOpt.getOrElse(new DateTime(0))
+
+          val (
+            messageContentHeader,
+            messageContentData
+          ) = messageOpt match {
+            case Some((header, data)) => (header, data.toByteArray)
+            case None => (0x01, Array[Byte]()) // same as TextMessage("")
+          }
+
           withSQL {
             insert.into(Dialog).namedValues(
               column.userId -> userId,
@@ -108,13 +138,13 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
               column.randomId -> randomId,
               column.date -> date,
               column.messageContentHeader -> messageContentHeader,
-              column.messageContentData -> messageContentData.toByteArray,
+              column.messageContentData -> messageContentData,
               column.state -> state.toInt
             )
           }.execute.apply
       }
 
-      models.Dialog(userId, peer, sortDate, senderUserId, randomId, date, messageContentHeader, messageContentData, state)
+      ()
     }
   }
 

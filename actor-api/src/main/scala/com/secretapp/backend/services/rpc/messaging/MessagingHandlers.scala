@@ -75,7 +75,8 @@ with HistoryHelpers with SendMessagingHandlers {
     ownKeys: immutable.Seq[EncryptedAESKey]
   ): Future[RpcResponse] = {
     val outUserId = outPeer.id
-    val date = System.currentTimeMillis
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     if (outPeer.typ == models.PeerType.Group) {
       throw new Exception("Encrypted group sending is not implemented yet.")
@@ -120,6 +121,9 @@ with HistoryHelpers with SendMessagingHandlers {
                 )
               )
           }
+
+          noteEncryptedMessage(currentUser.uid, outPeer.asPeer.asModel, dateTime, currentUser.uid)
+          noteEncryptedMessage(outPeer.id, models.Peer.privat(currentUser.uid), dateTime, currentUser.uid)
 
           withNewUpdateState(
             currentUser.authId,

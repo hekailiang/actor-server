@@ -60,6 +60,15 @@ trait HistoryHelpers extends UserHelpers {
     ))
   }
 
+  protected def noteEncryptedMessage(
+    userId: Int,
+    peer: models.Peer,
+    date: DateTime,
+    senderUserId: Int
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, NoteEncryptedMessage(date, senderUserId))
+  }
+
   protected def markOutMessagesReceived(
     userId: Int,
     peer: models.Peer,

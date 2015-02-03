@@ -7,6 +7,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Publish, Subscribe }
 import akka.contrib.pattern.{ ClusterSharding, ShardRegion }
 import akka.persistence._
 import com.secretapp.backend.data.message.rpc.messaging.MessageContent
+import com.secretapp.backend.data.message.rpc.messaging.TextMessage
 import com.secretapp.backend.data.message.update.SeqUpdateMessage
 import com.secretapp.backend.data.message.{update => updateProto}
 import com.secretapp.backend.models
@@ -34,6 +35,11 @@ object DialogManagerProtocol {
     message: MessageContent,
     state: models.MessageState,
     updateDialogOrder: Boolean
+  ) extends DialogMessage
+
+  case class NoteEncryptedMessage(
+    date: DateTime,
+    senderUserId: Int
   ) extends DialogMessage
 
   @SerialVersionUID(1L)
@@ -96,17 +102,23 @@ class DialogManager extends Actor with Stash with ActorLogging {
       stash()
   }
 
+  protected def newSortDate(date: DateTime): DateTime = {
+    val newDate = if (date == lastDate) {
+      date.plusMillis(1)
+    } else {
+      date
+    }
+
+    lastDate = newDate
+    newDate
+  }
+
   def business: Receive = {
     case Envelope(userId, peer, WriteMessage(date, randomId, senderUserId, message, state, updateDialogOrder)) =>
-      val newDate = if (date == lastDate) {
-        date.plusMillis(1)
-      } else {
-        date
-      }
-      lastDate = newDate
+      val sortDate = newSortDate(date)
 
-      val newDateOpt = if (updateDialogOrder) {
-        Some(newDate)
+      val sortDateOpt = if (updateDialogOrder) {
+        Some(sortDate)
       } else {
         None
       }
@@ -125,12 +137,11 @@ class DialogManager extends Actor with Stash with ActorLogging {
         p.Dialog.createOrUpdate(
           userId,
           peer,
-          newDateOpt,
+          sortDateOpt,
           senderUserId,
-          randomId,
-          date,
-          message.header,
-          message.content,
+          Some(randomId),
+          Some(date),
+          Some((message.header, message.content)),
           state
         )
       ))
@@ -138,6 +149,19 @@ class DialogManager extends Actor with Stash with ActorLogging {
       backToBusinessAfter(f)
 
       context.become(stashing)
+    case Envelope(userId, peer, NoteEncryptedMessage(date, senderUserId)) =>
+      val sortDate = newSortDate(date)
+
+      p.Dialog.createOrUpdate(
+        userId,
+        peer,
+        Some(sortDate),
+        senderUserId,
+        None,
+        None,
+        None,
+        models.MessageState.Sent
+      )
     case Envelope(userId, peer, OutMessagesReceived(date)) =>
       val f = Future.sequence(Seq(
         p.HistoryMessage.updateStateOfSentBefore(userId, peer, date, models.MessageState.Received),

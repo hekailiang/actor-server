@@ -18,9 +18,12 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
   object sqlDb extends sqlDb
 
   override def is = sequential ^ s2"""
+    RequestSendEncryptedMessage should
+      create dialog with date 0 ${cases.encrypted.createDialog}
+      lift dialog               ${cases.encrypted.liftDialog}
     RequestDeleteMessage handler should
-      respond with ResponseVoid         ${cases.deleteMessages.e1}
-      delete message from history       ${cases.deleteMessages.e2}
+      respond with ResponseVoid   ${cases.deleteMessages.e1}
+      delete message from history ${cases.deleteMessages.e2}
     ServiceMessage should be generated at
       RequestCreateGroup       -> GroupCreatedEx                 ${cases.serviceMessages.groupCreated}
       RequestKickUser          -> UserKickedEx                   ${cases.serviceMessages.userKicked}
@@ -40,6 +43,87 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
     def loadDialogs(date: Long, limit: Int)(implicit scope: TestScope): ResponseLoadDialogs = {
       val (rsp, _) = RequestLoadDialogs(date, limit) :~> <~:[ResponseLoadDialogs]
       rsp
+    }
+
+    object encrypted {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val scope3 = TestScope(rand.nextInt)
+
+      catchNewSession(scope1)
+      catchNewSession(scope2)
+
+      def createDialog = {
+        using(scope1) { implicit s =>
+          sendMessage(scope3.user)
+          Thread.sleep(100)
+
+          sendEncryptedMessage(scope2.user)
+          Thread.sleep(100)
+
+          val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(s.user.authId, scope2.user)), 0l, 100)
+          respHistory.history.length should_==(0)
+
+          val respDialogs = loadDialogs(0, 100)
+          val dialogs = respDialogs.dialogs
+
+          dialogs.length should_==(2)
+          val dialog = dialogs.head
+
+          dialog.peer should_==(struct.Peer.privat(scope2.user.uid))
+          dialog.message should_==(TextMessage(""))
+          dialog.randomId should_==(0)
+          dialog.date should_==(0)
+        }
+
+        using(scope2) { implicit s =>
+          val respHistory = loadHistory(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(s.user.authId, scope1.user)), 0l, 100)
+          respHistory.history.length should_==(0)
+
+          val respDialogs = loadDialogs(0, 100)
+          val dialogs = respDialogs.dialogs
+
+          dialogs.length should_==(1)
+          val dialog = dialogs.head
+
+          dialog.peer should_==(struct.Peer.privat(scope1.user.uid))
+          dialog.message should_==(TextMessage(""))
+          dialog.randomId should_==(0)
+          dialog.date should_==(0)
+        }
+      }
+
+      def liftDialog = {
+        using(scope1) { implicit s =>
+          sendMessage(scope2.user, TextMessage("Unencrypted Yolo"))
+          Thread.sleep(100)
+
+          sendMessage(scope3.user)
+          Thread.sleep(100)
+
+          {
+            val dialogs = loadDialogs(0, 100).dialogs
+            dialogs.length should_==(2)
+            dialogs.head.peer should_==(struct.Peer.privat(scope3.user.uid))
+            dialogs.last.peer should_==(struct.Peer.privat(scope2.user.uid))
+            dialogs.last.message should_==(TextMessage("Unencrypted Yolo"))
+          }
+
+
+          sendEncryptedMessage(scope2.user)
+          Thread.sleep(100)
+
+          val respDialogs = loadDialogs(0, 100)
+          val dialogs = respDialogs.dialogs
+
+          dialogs.length should_==(2)
+          val dialog = dialogs.head
+
+          dialog.peer should_==(struct.Peer.privat(scope2.user.uid))
+          dialog.message should_==(TextMessage("Unencrypted Yolo"))
+          dialog.randomId should not be_==(0)
+          dialog.date should not be be_==(0)
+        }
+      }
     }
 
     object deleteMessages {
