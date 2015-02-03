@@ -1,5 +1,6 @@
 package com.secretapp.backend.services.rpc.user
 
+import com.secretapp.backend.api.AvatarSpecHelpers
 import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference }
@@ -17,13 +18,13 @@ import com.secretapp.backend.data.message.rpc.messaging.ResponseEditGroupAvatar
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
-class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
+class MessagingServiceEditGroupAvatarSpec extends RpcSpec with AvatarSpecHelpers {
 
   "valid avatar" should {
     "have proper size" in new sqlDb {
       storeImages()
 
-      validOrigBytes must have size 112527
+      validOrigAvatarBytes must have size 112527
     }
   }
 
@@ -42,20 +43,20 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
         val r = setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        r.avatar.fullImage.get.width          should_== validOrigDimensions._1
-        r.avatar.fullImage.get.height         should_== validOrigDimensions._2
-        r.avatar.fullImage.get.fileSize       should_== validOrigBytes.length
-        dbImageBytes(r.avatar.fullImage.get)  should_== validOrigBytes
+        r.avatar.fullImage.get.width          should_== validOrigAvatarDimensions._1
+        r.avatar.fullImage.get.height         should_== validOrigAvatarDimensions._2
+        r.avatar.fullImage.get.fileSize       should_== validOrigAvatarBytes.length
+        dbImageBytes(r.avatar.fullImage.get)  should_== validOrigAvatarBytes
 
-        r.avatar.smallImage.get.width         should_== validSmallDimensions._1
-        r.avatar.smallImage.get.height        should_== validSmallDimensions._2
-        r.avatar.smallImage.get.fileSize      should_== validSmallBytes.length
-        dbImageBytes(r.avatar.smallImage.get) should_== validSmallBytes
+        r.avatar.smallImage.get.width         should_== validSmallAvatarDimensions._1
+        r.avatar.smallImage.get.height        should_== validSmallAvatarDimensions._2
+        r.avatar.smallImage.get.fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(r.avatar.smallImage.get) should_== validSmallAvatarBytes
 
-        r.avatar.largeImage.get.width         should_== validLargeDimensions._1
-        r.avatar.largeImage.get.height        should_== validLargeDimensions._2
-        r.avatar.largeImage.get.fileSize      should_== validLargeBytes.length
-        dbImageBytes(r.avatar.largeImage.get) should_== validLargeBytes
+        r.avatar.largeImage.get.width         should_== validLargeAvatarDimensions._1
+        r.avatar.largeImage.get.height        should_== validLargeAvatarDimensions._2
+        r.avatar.largeImage.get.fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(r.avatar.largeImage.get) should_== validLargeAvatarBytes
       }
     }
 
@@ -94,10 +95,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbFullImage(respGroup.groupPeer.id).width           should_== validOrigDimensions._1
-        dbFullImage(respGroup.groupPeer.id).height          should_== validOrigDimensions._2
-        dbFullImage(respGroup.groupPeer.id).fileSize        should_== validOrigBytes.length
-        dbImageBytes(dbFullImage(respGroup.groupPeer.id)) should_== validOrigBytes
+        dbFullImage(respGroup.groupPeer.id).width           should_== validOrigAvatarDimensions._1
+        dbFullImage(respGroup.groupPeer.id).height          should_== validOrigAvatarDimensions._2
+        dbFullImage(respGroup.groupPeer.id).fileSize        should_== validOrigAvatarBytes.length
+        dbImageBytes(dbFullImage(respGroup.groupPeer.id)) should_== validOrigAvatarBytes
       }
     }
 
@@ -115,10 +116,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbLargeImage(respGroup.groupPeer.id).width         should_== validLargeDimensions._1
-        dbLargeImage(respGroup.groupPeer.id).height        should_== validLargeDimensions._2
-        dbLargeImage(respGroup.groupPeer.id).fileSize      should_== validLargeBytes.length
-        dbImageBytes(dbLargeImage(respGroup.groupPeer.id)) should_== validLargeBytes
+        dbLargeImage(respGroup.groupPeer.id).width         should_== validLargeAvatarDimensions._1
+        dbLargeImage(respGroup.groupPeer.id).height        should_== validLargeAvatarDimensions._2
+        dbLargeImage(respGroup.groupPeer.id).fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(dbLargeImage(respGroup.groupPeer.id)) should_== validLargeAvatarBytes
       }
     }
 
@@ -136,10 +137,10 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbSmallImage(respGroup.groupPeer.id).width         should_== validSmallDimensions._1
-        dbSmallImage(respGroup.groupPeer.id).height        should_== validSmallDimensions._2
-        dbSmallImage(respGroup.groupPeer.id).fileSize      should_== validSmallBytes.length
-        dbImageBytes(dbSmallImage(respGroup.groupPeer.id)) should_== validSmallBytes
+        dbSmallImage(respGroup.groupPeer.id).width         should_== validSmallAvatarDimensions._1
+        dbSmallImage(respGroup.groupPeer.id).height        should_== validSmallAvatarDimensions._2
+        dbSmallImage(respGroup.groupPeer.id).fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(dbSmallImage(respGroup.groupPeer.id)) should_== validSmallAvatarBytes
       }
     }
 
@@ -173,20 +174,20 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
 
         val a = update.avatar.get
 
-        a.fullImage.get.width          should_== validOrigDimensions._1
-        a.fullImage.get.height         should_== validOrigDimensions._2
-        a.fullImage.get.fileSize       should_== validOrigBytes.length
-        dbImageBytes(a.fullImage.get)  should_== validOrigBytes
+        a.fullImage.get.width          should_== validOrigAvatarDimensions._1
+        a.fullImage.get.height         should_== validOrigAvatarDimensions._2
+        a.fullImage.get.fileSize       should_== validOrigAvatarBytes.length
+        dbImageBytes(a.fullImage.get)  should_== validOrigAvatarBytes
 
-        a.smallImage.get.width         should_== validSmallDimensions._1
-        a.smallImage.get.height        should_== validSmallDimensions._2
-        a.smallImage.get.fileSize      should_== validSmallBytes.length
-        dbImageBytes(a.smallImage.get) should_== validSmallBytes
+        a.smallImage.get.width         should_== validSmallAvatarDimensions._1
+        a.smallImage.get.height        should_== validSmallAvatarDimensions._2
+        a.smallImage.get.fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(a.smallImage.get) should_== validSmallAvatarBytes
 
-        a.largeImage.get.width         should_== validLargeDimensions._1
-        a.largeImage.get.height        should_== validLargeDimensions._2
-        a.largeImage.get.fileSize      should_== validLargeBytes.length
-        dbImageBytes(a.largeImage.get) should_== validLargeBytes
+        a.largeImage.get.width         should_== validLargeAvatarDimensions._1
+        a.largeImage.get.height        should_== validLargeAvatarDimensions._2
+        a.largeImage.get.fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(a.largeImage.get) should_== validLargeAvatarBytes
       }
     }
 
@@ -293,8 +294,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
     }
   }
 
-  import system.dispatcher
-
+  implicit lazy val ec = system.dispatcher
   implicit val timeout = 5.seconds
 
   private var validFileLocation: models.FileLocation = _
@@ -302,40 +302,11 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec {
   private var tooLargeFileLocation: models.FileLocation = _
 
   def storeImages() = {
-    validFileLocation = storeImage(42, validOrigBytes)
-    invalidFileLocation = storeImage(43, invalidBytes)
-    tooLargeFileLocation = storeImage(44, tooLargeBytes)
-  }
+    val fs = storeAvatarFiles(fileAdapter)
 
-  //private val fr = new persist.File
-
-  private val validOrigBytes =
-    Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
-
-  private val invalidBytes = Stream.continually(Random.nextInt().toByte).take(50000).toArray
-
-  private val tooLargeBytes =
-    Files.readAllBytes(Paths.get(getClass.getResource("/too-large-avatar.jpg").toURI))
-
-  private val validOrigDimensions = AvatarUtils.dimensions(validOrigBytes).sync()
-
-  private val validLargeBytes = AvatarUtils.resizeToLarge(validOrigBytes).sync()
-  private val validLargeDimensions = (200, 200)
-
-  private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
-  private val validSmallDimensions = (100, 100)
-
-  private def storeImage(fileId: Int, bytes: Array[Byte]): models.FileLocation = {
-    val fileSalt = (new Random).nextString(30)
-
-    val ffl = for (
-      _    <- persist.File.create(fileAdapter, fileId, fileSalt);
-      _    <- persist.File.write(fileAdapter, fileId, 0, bytes);
-      fdOpt<- persist.FileData.find(fileId);
-      fl   = models.FileLocation(fileId, ACL.fileAccessHash(fileId, fdOpt.get.accessSalt))
-    ) yield fl
-
-    ffl.sync()
+    validFileLocation = fs._1
+    invalidFileLocation = fs._2
+    tooLargeFileLocation = fs._3
   }
 
   private def setValidAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {

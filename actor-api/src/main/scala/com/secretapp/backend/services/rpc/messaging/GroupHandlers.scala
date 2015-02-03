@@ -52,6 +52,18 @@ trait GroupHandlers extends RandomService
       handleRequestRemoveGroupAvatar(groupOutPeer, randomId)
   }
 
+  object ServiceMessages {
+    def groupCreated = ServiceMessage("Group created", Some(GroupCreatedExtension()))
+    def userAdded(userId: Int) = ServiceMessage("User added to the group", Some(UserAddedExtension(userId)))
+    def userLeft(userId: Int) = ServiceMessage("User left the group", Some(UserLeftExtension()))
+    def userKicked(userId: Int) = ServiceMessage("User kicked from the group", Some(UserKickedExtension(userId)))
+    def changedTitle(title: String) = ServiceMessage("Group title changed", Some(GroupChangedTitleExtension(title)))
+    def changedAvatar(avatar: Option[models.Avatar]) = ServiceMessage(
+      "Group avatar changed",
+      Some(GroupChangedAvatarExtension(avatar))
+    )
+  }
+
   protected def handleRequestCreateGroup(
     randomId: Long,
     title: String,
@@ -82,12 +94,24 @@ trait GroupHandlers extends RandomService
 
       // use shapeless, shapeless everywhere!
       val groupCreatedF = for {
-        _ <- createGroupModelF
+        group <- createGroupModelF
         _ <- Future.sequence(addUsersF)
-      } yield {}
+      } yield group
 
-      groupCreatedF flatMap { _ =>
+      groupCreatedF flatMap { group =>
+        val serviceMessage = ServiceMessages.groupCreated
+
         userIds foreach { userId =>
+          writeHistoryMessage(
+            userId,
+            models.Peer.group(group.id),
+            dateTime,
+            randomId,
+            currentUser.uid,
+            serviceMessage,
+            models.MessageState.Sent
+          )
+
           for {
             authIds <- getAuthIds(userId)
           } yield {
@@ -131,24 +155,23 @@ trait GroupHandlers extends RandomService
   protected def handleRequestInviteUser(
     groupOutPeer: struct.GroupOutPeer,
     randomId: Long,
-    user: struct.UserOutPeer
+    userOutPeer: struct.UserOutPeer
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
-
-    val groupWithMetaFuture = persist.Group.findWithAvatarAndChangeMeta(groupId)
-
-    val membersAuthIdsF = getGroupMembersWithAuthIds(groupOutPeer.id)
 
     val dateTime = new DateTime
     val date = dateTime.getMillis
 
-    withGroupOutPeer(groupOutPeer, currentUser) { _ =>
-      withUserOutPeer(user, currentUser) {
-        membersAuthIdsF flatMap { membersAuthIds =>
-          val userIds = membersAuthIds.map(_._1.id).toSet
+    val groupWithMetaFuture = persist.Group.findWithAvatarAndChangeMeta(groupId)
+    val membersAuthIdsFuture = getGroupMembersWithAuthIds(groupOutPeer.id)
 
-          if (!userIds.contains(user.id)) {
-            val addUserF = persist.GroupUser.addGroupUser(groupId, user.id, currentUser.uid, dateTime)
+    withGroupOutPeer(groupOutPeer, currentUser) { _ =>
+      withUserOutPeer(userOutPeer, currentUser) {
+        membersAuthIdsFuture flatMap { membersUserIdsAuthIds =>
+          val userIds = membersUserIdsAuthIds.map(_._1.id).toSet
+
+          if (!userIds.contains(userOutPeer.id)) {
+            val addUserF = persist.GroupUser.addGroupUser(groupId, userOutPeer.id, currentUser.uid, dateTime)
 
             // FIXME: add user AFTER we got Some(groupWithMeta)
             addUserF flatMap { _ =>
@@ -183,26 +206,37 @@ trait GroupHandlers extends RandomService
                       ),
                       GroupMembersUpdate(
                         groupId = groupId,
-                        members = (membersAuthIds map (_._1) toVector) :+ struct.Member(user.id, currentUser.uid, date)
+                        members = (membersUserIdsAuthIds map (_._1) toVector) :+ struct.Member(userOutPeer.id, currentUser.uid, date)
                       )
                     )
 
-                    broadcastUserUpdates(user.id, targetUserUpdates)
+                    broadcastUserUpdates(userOutPeer.id, targetUserUpdates)
                   case None =>
                     throw new Exception("Cannot get group with meta")
                 }
-
               }
+
+              val serviceMessage = ServiceMessages.userAdded(userOutPeer.id)
+
+              (userIds + userOutPeer.id) foreach (userId => writeHistoryMessage(
+                userId,
+                groupOutPeer.asPeer.asModel,
+                dateTime,
+                randomId,
+                currentUser.uid,
+                serviceMessage,
+                models.MessageState.Sent
+              ))
 
               val groupUserAddedUpdate = GroupUserAdded(
                 groupId = groupId,
                 randomId = randomId,
-                userId = user.id,
+                userId = userOutPeer.id,
                 inviterUserId = currentUser.uid,
                 date = date
               )
 
-              membersAuthIds foreach {
+              membersUserIdsAuthIds foreach {
                 case (struct.Member(userId, _, _), authIds) =>
                   authIds foreach { authId =>
                     if (authId != currentUser.authId) {
@@ -233,6 +267,23 @@ trait GroupHandlers extends RandomService
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
+    for (userIds <- getGroupUserIds(groupId)) {
+      val dateTime = new DateTime
+
+      val serviceMessage = ServiceMessages.userLeft(currentUser.uid)
+
+      userIds foreach (userId => writeHistoryMessage(
+        userId,
+        groupOutPeer.asPeer.asModel,
+        dateTime,
+        randomId,
+        currentUser.uid,
+        serviceMessage,
+        models.MessageState.Sent,
+        false
+      ))
+    }
+
     withGroupOutPeer(groupOutPeer, currentUser) { _ =>
       leaveGroup(groupId, randomId, currentUser) map {
         case \/-(state) =>
@@ -250,7 +301,8 @@ trait GroupHandlers extends RandomService
     val groupId = groupOutPeer.id
     val kickedUserId = userOutPeer.id
 
-    val date = System.currentTimeMillis
+    val dateTime = new DateTime
+    val date = dateTime.getMillis
 
     withOwnGroupOutPeer(groupOutPeer, currentUser) { _ =>
       withUserOutPeer(userOutPeer, currentUser) {
@@ -258,6 +310,8 @@ trait GroupHandlers extends RandomService
 
         userIdsAuthIdsF flatMap { userIdsAuthIds =>
           if (userIdsAuthIds.keySet.contains(kickedUserId)) {
+            val userIds = userIdsAuthIds.map(_._1).toSet
+
             val removeUserF = persist.GroupUser.removeGroupUser(groupId, kickedUserId)
 
             removeUserF flatMap { _ =>
@@ -279,6 +333,18 @@ trait GroupHandlers extends RandomService
               targetAuthIds foreach { authId =>
                 writeNewUpdate(authId, userKickUpdate)
               }
+
+              val serviceMessage = ServiceMessages.userKicked(userOutPeer.id)
+
+              userIds foreach (writeHistoryMessage(
+                _,
+                groupOutPeer.asPeer.asModel,
+                dateTime,
+                randomId,
+                currentUser.uid,
+                serviceMessage,
+                models.MessageState.Sent
+              ))
 
               withNewUpdateState(
                 currentUser.authId,
@@ -303,7 +369,7 @@ trait GroupHandlers extends RandomService
   ): Future[RpcResponse] = {
     val groupId = groupOutPeer.id
 
-    val groupAuthIdsFuture = getGroupUserAuthIds(groupId)
+    val groupUserIdsAuthIdsFuture = getGroupUserIdsWithAuthIds(groupId)
 
     val dateTime = new DateTime
     val date = dateTime.getMillis
@@ -319,12 +385,27 @@ trait GroupHandlers extends RandomService
         )
 
         for {
-          groupAuthIds <- groupAuthIdsFuture
+          groupUserIdsAuthIds <- groupUserIdsAuthIdsFuture
         } yield {
-          groupAuthIds foreach { authId =>
-            if (authId != currentUser.authId) {
-              writeNewUpdate(authId, titleChangedUpdate)
-            }
+          val serviceMessage = ServiceMessages.changedTitle(title)
+
+          groupUserIdsAuthIds foreach {
+            case (userId, authIds) =>
+              writeHistoryMessage(
+                userId,
+                groupOutPeer.asPeer.asModel,
+                dateTime,
+                randomId,
+                currentUser.uid,
+                serviceMessage,
+                models.MessageState.Sent
+              )
+
+              authIds foreach { authId =>
+                if (authId != currentUser.authId) {
+                  writeNewUpdate(authId, titleChangedUpdate)
+                }
+              }
           }
         }
 
@@ -362,10 +443,24 @@ trait GroupHandlers extends RandomService
         )
 
         persist.Group.updateAvatar(groupId, a, currentUser.uid, randomId, dateTime) flatMap { _ =>
+          val serviceMessage = ServiceMessages.changedAvatar(Some(a))
 
-          foreachGroupUserAuthId(groupId) { authId =>
-            if (authId != currentUser.authId)
-              writeNewUpdate(authId, groupAvatarChangedUpdate)
+          foreachGroupUserIdsWithAuthIds(groupId) {
+            case (userId, authIds) =>
+              writeHistoryMessage(
+                userId,
+                models.Peer.group(group.id),
+                dateTime,
+                randomId,
+                currentUser.uid,
+                serviceMessage,
+                models.MessageState.Sent
+              )
+
+              authIds foreach { authId =>
+                if (authId != currentUser.authId)
+                  writeNewUpdate(authId, groupAvatarChangedUpdate)
+              }
           }
 
           withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>
@@ -396,10 +491,24 @@ trait GroupHandlers extends RandomService
       )
 
       persist.Group.removeAvatar(groupId, currentUser.uid, randomId, dateTime) flatMap { _ =>
+        val serviceMessage = ServiceMessages.changedAvatar(None)
 
-        foreachGroupUserAuthId(groupId) { authId =>
-          if (authId != currentUser.authId)
-            writeNewUpdate(authId, groupAvatarChangedUpdate)
+        foreachGroupUserIdsWithAuthIds(groupId) {
+          case (userId, authIds) =>
+            writeHistoryMessage(
+              userId,
+              models.Peer.group(group.id),
+              dateTime,
+              randomId,
+              currentUser.uid,
+              serviceMessage,
+              models.MessageState.Sent
+            )
+
+            authIds foreach { authId =>
+              if (authId != currentUser.authId)
+                writeNewUpdate(authId, groupAvatarChangedUpdate)
+            }
         }
 
         withNewUpdateState(currentUser.authId, groupAvatarChangedUpdate) { s =>

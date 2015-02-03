@@ -32,7 +32,8 @@ object DialogManagerProtocol {
     randomId: Long,
     senderUserId: Int,
     message: MessageContent,
-    state: models.MessageState
+    state: models.MessageState,
+    updateDialogOrder: Boolean
   ) extends DialogMessage
 
   @SerialVersionUID(1L)
@@ -96,13 +97,19 @@ class DialogManager extends Actor with Stash with ActorLogging {
   }
 
   def business: Receive = {
-    case Envelope(userId, peer, WriteMessage(date, randomId, senderUserId, message, state)) =>
+    case Envelope(userId, peer, WriteMessage(date, randomId, senderUserId, message, state, updateDialogOrder)) =>
       val newDate = if (date == lastDate) {
         date.plusMillis(1)
       } else {
         date
       }
       lastDate = newDate
+
+      val newDateOpt = if (updateDialogOrder) {
+        Some(newDate)
+      } else {
+        None
+      }
 
       val f = Future.sequence(Seq(
         p.HistoryMessage.create(
@@ -118,7 +125,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
         p.Dialog.createOrUpdate(
           userId,
           peer,
-          newDate,
+          newDateOpt,
           senderUserId,
           randomId,
           date,

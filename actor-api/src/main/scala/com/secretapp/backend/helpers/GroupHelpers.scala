@@ -76,9 +76,17 @@ trait GroupHelpers extends UserHelpers with UpdatesHelpers {
   }
 
   def foreachGroupUserAuthId(groupId: Int)(f: Long => Any) =
-    getGroupUserAuthIds(groupId) map {
-      _ foreach f
+    getGroupUserAuthIds(groupId) onSuccess {
+      case authIds =>
+        authIds foreach f
     }
+
+  def foreachGroupUserIdsWithAuthIds(groupId: Int)(f: ((Int , Seq[Long])) => Any) =
+    getGroupUserIdsWithAuthIds(groupId) onSuccess {
+      case userIdsAuthIds =>
+        userIdsAuthIds foreach f
+    }
+
   def leaveGroup(groupId: Int, randomId: Long, currentUser: models.User): Future[Error \/ UpdatesBroker.StrictState] = {
     val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId)
     val date = System.currentTimeMillis()

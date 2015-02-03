@@ -62,7 +62,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
   def createOrUpdate(
     userId: Int,
     peer: models.Peer,
-    sortDate: DateTime,
+    sortDateOpt: Option[DateTime],
     senderUserId: Int,
     randomId: Long,
     date: DateTime,
@@ -73,14 +73,22 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
   ): Future[models.Dialog] = Future {
     blocking {
+      val sortDate = sortDateOpt.getOrElse(new DateTime)
+
       existsSync(userId, peer)(session) match {
         case true =>
           withSQL {
+            // It is a hack, we cannot just make Seq and pass it like vals: _* because of scalikejdbc #253 issue
+            val sortDateSql = sortDateOpt match {
+              case Some(sortDate) => sortDate
+              case None => sqls"sort_date"
+            }
+
             update(Dialog).set(
               column.senderUserId -> senderUserId,
-              column.sortDate -> sortDate,
               column.randomId -> randomId,
               column.date -> date,
+              column.sortDate -> sortDateSql,
               column.messageContentHeader -> messageContentHeader,
               column.messageContentData -> messageContentData.toByteArray,
               column.state -> state.toInt
@@ -105,9 +113,9 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
             )
           }.execute.apply
       }
-    }
 
-    models.Dialog(userId, peer, sortDate, senderUserId, randomId, date, messageContentHeader, messageContentData, state)
+      models.Dialog(userId, peer, sortDate, senderUserId, randomId, date, messageContentHeader, messageContentData, state)
+    }
   }
 
   def updateStateIfFresh(userId: Int, peer: models.Peer, senderUserId: Int, date: DateTime, state: models.MessageState)(

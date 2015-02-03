@@ -13,21 +13,7 @@ import scala.collection.immutable
 import scala.language.higherKinds
 import scodec.bits._
 
-class GroupMessagingSpec extends RpcSpec {
-  def createGroup(users: immutable.Seq[models.User])(implicit scope: TestScope): ResponseCreateGroup = {
-    val rqCreateGroup = RequestCreateGroup(
-      randomId = 1L,
-      title = "Group 3000",
-      users = users map { user =>
-        struct.UserOutPeer(user.uid, ACL.userAccessHash(scope.user.authId, user))
-      }
-    )
-
-    val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
-
-    resp
-  }
-
+class GroupMessagingSpec extends RpcSpec with GroupSpecHelpers {
   "GroupMessaging" should {
     "send invites on group creation"in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
@@ -71,11 +57,7 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        RequestInviteUser(
-          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
-          randomId = rand.nextLong,
-          user = struct.UserOutPeer(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
-        ) :~> <~:[ResponseSeqDate]
+        inviteUser(respGroup.groupPeer, scope2.user)
 
         Thread.sleep(1000)
 
@@ -259,7 +241,7 @@ class GroupMessagingSpec extends RpcSpec {
       }
     }
 
-    "send updates on title change"in new sqlDb {
+    "send updates on title change" in new sqlDb {
       val (scope1, scope2) = TestScope.pair()
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -269,11 +251,7 @@ class GroupMessagingSpec extends RpcSpec {
       {
         implicit val scope = scope1
 
-        RequestEditGroupTitle(
-          groupOutPeer = struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash),
-          randomId = rand.nextLong,
-          title = "Group 4000"
-        ) :~> <~:[ResponseSeqDate]
+        editGroupTitle(struct.GroupOutPeer(respGroup.groupPeer.id, respGroup.groupPeer.accessHash), "Group 4000")
 
         val (diff, _) = RequestGetDifference(respGroup.seq, respGroup.state) :~> <~:[ResponseGetDifference]
 

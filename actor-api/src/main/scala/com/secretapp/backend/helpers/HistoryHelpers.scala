@@ -52,10 +52,11 @@ trait HistoryHelpers extends UserHelpers {
     randomId: Long,
     senderUserId: Int,
     message: MessageContent,
-    state: models.MessageState
+    state: models.MessageState,
+    updateDialogOrder: Boolean = true
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, WriteMessage(
-      date, randomId, senderUserId, message, state
+      date, randomId, senderUserId, message, state, updateDialogOrder
     ))
   }
 
