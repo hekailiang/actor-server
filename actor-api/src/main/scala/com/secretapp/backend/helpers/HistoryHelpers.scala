@@ -69,6 +69,13 @@ trait HistoryHelpers extends UserHelpers {
     dialogManagerRegion ! Envelope(userId, peer, NoteEncryptedMessage(date, senderUserId))
   }
 
+  protected def clearDialogMessages(
+    userId: Int,
+    peer: models.Peer
+  ): Unit = {
+    dialogManagerRegion ! Envelope(userId, peer, ClearMessages)
+  }
+
   protected def markOutMessagesReceived(
     userId: Int,
     peer: models.Peer,
@@ -99,7 +106,6 @@ trait HistoryHelpers extends UserHelpers {
     date: DateTime
   ): Unit = {
     dialogManagerRegion ! Envelope(userId, peer, InMessagesRead(date))
-
   }
 
   protected def markMessageDeleted(

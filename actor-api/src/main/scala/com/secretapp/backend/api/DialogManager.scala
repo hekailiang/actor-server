@@ -44,6 +44,9 @@ object DialogManagerProtocol {
   ) extends DialogMessage
 
   @SerialVersionUID(1L)
+  case object ClearMessages extends DialogMessage
+
+  @SerialVersionUID(1L)
   case class OutMessagesReceived(date: DateTime) extends DialogMessage
 
   @SerialVersionUID(1L)
@@ -150,6 +153,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
       backToBusinessAfter(f)
 
       context.become(stashing)
+
     case Envelope(userId, peer, NoteEncryptedMessage(date, senderUserId)) =>
       val sortDate = newSortDate(date)
 
@@ -163,6 +167,18 @@ class DialogManager extends Actor with Stash with ActorLogging {
         None,
         models.MessageState.Sent
       )
+
+    case Envelope(userId, peer, ClearMessages) =>
+      val emptyMessage = TextMessage("")
+
+      val f = Future.sequence(Seq(
+        p.HistoryMessage.destroyAll(userId, peer),
+        p.Dialog.updateMessage(userId, peer, emptyMessage.header, emptyMessage.content)
+      ))
+
+      backToBusinessAfter(f)
+      context.become(stashing)
+
     case Envelope(userId, peer, OutMessagesReceived(date)) =>
       val f = Future.sequence(Seq(
         p.HistoryMessage.updateStateOfSentBefore(userId, peer, date, models.MessageState.Received),

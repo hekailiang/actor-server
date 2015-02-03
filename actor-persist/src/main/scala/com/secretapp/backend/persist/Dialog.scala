@@ -46,6 +46,27 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
     state = models.MessageState.fromInt(rs.int(d.state))
   )
 
+  def updateMessage(
+    userId: Int,
+    peer: models.Peer,
+    messageContentHeader: Int,
+    messageContentData: BitVector
+  )(
+    implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
+  ): Future[Int] = Future {
+    blocking {
+      withSQL {
+        update(Dialog).set(
+          column.messageContentHeader -> messageContentHeader,
+          column.messageContentData -> messageContentData.toByteArray
+        )
+          .where.eq(column.userId, userId)
+          .and.eq(column.column("peer_type"), peer.typ.toInt)
+          .and.eq(column.column("peer_id"), peer.id)
+      }.update.apply
+    }
+  }
+
   def existsSync(
     userId: Int,
     peer: models.Peer

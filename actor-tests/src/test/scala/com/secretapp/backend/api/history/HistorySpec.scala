@@ -7,11 +7,13 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.rpc.history._
 import com.secretapp.backend.data.message.rpc.update._
+import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 import com.secretapp.backend.util.ACL
 import im.actor.testkit.ActorSpecification
+import org.joda.time.DateTime
 import org.specs2.specification.Step
 
 class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelpers with AvatarSpecHelpers {
@@ -32,6 +34,8 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
       RequestChangeGroupAvatar -> GroupChangedAvatarEx           ${cases.serviceMessages.changedAvatar}
       RequestRemoveGroupAvatar -> GroupChangedAvatarEx           ${cases.serviceMessages.removedAvatar}
       RequestLeaveGroup        -> UserLeftEx (no dialog reorder) ${cases.serviceMessages.userLeft}
+    RequestClearChat should
+      clear chat and send updates ${cases.clearChat.e1}
   """
 
   object cases extends sqlDb {
@@ -157,7 +161,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
       }
 
       def e2 = {
-        Thread.sleep(1000)
+        Thread.sleep(100)
 
         using(scope1) { implicit scope =>
           val respHistory = loadHistory(outPeer, 0L, 3)
@@ -180,7 +184,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
         using(scope1) { implicit s =>
           sendMessage(scope2.user)
-          Thread.sleep(200)
+          Thread.sleep(100)
 
           val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
           respHistory.history.length should_==(1)
@@ -211,8 +215,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
         using(scope1) { implicit s =>
           kickUser(respGroup.groupPeer, scope2.user)
-
-          Thread.sleep(500)
+          Thread.sleep(100)
 
           val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
           respHistory.history.length should_==(2)
@@ -387,6 +390,36 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           dialogs.last.peer should_==(struct.Peer.group(respGroup.groupPeer.id))
           dialogs.last.message should_==(smsg)
         }
+      }
+    }
+
+    object clearChat {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      catchNewSession(scope1)
+
+      def e1 = using(scope1) { implicit scope =>
+        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
+
+        sendMessage(scope2.user, TextMessage("Yolo!"))
+        Thread.sleep(100)
+
+        RequestClearChat(outPeer) :~> <~:[ResponseSeq]
+        Thread.sleep(100)
+
+        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
+
+        diff.updates.length should beEqualTo(2)
+        val upd = diff.updates.last.body.assertInstanceOf[ChatClear]
+
+        val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)), 0l, 100)
+        respHistory.history.length should_==(0)
+
+        val respDialogs = loadDialogs(0, 100)
+        val dialogs = respDialogs.dialogs
+
+        dialogs.length should_==(1)
+        val dialog = dialogs.head
+        dialog.message should_==(TextMessage(""))
       }
     }
   }

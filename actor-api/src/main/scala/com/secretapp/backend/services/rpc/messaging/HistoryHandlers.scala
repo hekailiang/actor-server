@@ -77,6 +77,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
+      clearDialogMessages(currentUser.uid, outPeer.asPeer.asModel)
       persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer.asModel)
 
       val update = updateProto.ChatClear(outPeer.asPeer)

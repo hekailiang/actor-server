@@ -443,39 +443,6 @@ class RpcMessagingSpec extends RpcSpec {
       }
     }
 
-    "clear chat and send updates" in new sqlDb {
-      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
-      catchNewSession(scope1)
-
-      {
-        implicit val scope = scope1
-
-        val outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user))
-
-        RequestSendMessage(
-          outPeer = outPeer,
-          randomId = 1L,
-          message = TextMessage("Yolo from user1 to user2! #1")
-        ) :~> <~:[ResponseSeqDate]
-
-        RequestClearChat(outPeer) :~> <~:[ResponseSeq]
-
-        val (diff, _) = RequestGetDifference(0, None) :~> <~:[ResponseGetDifference]
-
-        diff.updates.length should beEqualTo(2)
-        val upd = diff.updates.last.body.assertInstanceOf[ChatClear]
-
-        Thread.sleep(1000)
-
-        persist.HistoryMessage.findAll(
-          scope.user.uid, outPeer.asPeer.asModel,
-          new DateTime(0),
-          10
-        ).map(_.length) should be_==(0).await
-      }
-
-    }
-
     "delete chat and send updates" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
       catchNewSession(scope1)
