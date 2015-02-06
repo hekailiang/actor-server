@@ -1,25 +1,10 @@
 - hosts: staging
   roles:
-    - role: Stouts.supervisor
+    - role: ANXS.monit
       sudo: yes
   vars:
-    app_path: "/home/ubuntu/mtproto-app"
-    app_pid_path: "{{ app_path }}/mtproto-app.pid"
-    supervisor_tasks:
-      - name: mtproto-app
-        command: 'java -server -Xms256M -Xmx1024M -cp "{{ app_path }}/config:{{ app_path }}/lib/*" -Dakka.home="{{ app_path }}" -Dpidfile.path="{{ app_pid_path }}" akka.kernel.Main im.actor.server.ApiKernel'
-        directory: "{{ app_path }}"
-        redirect_stderr: true
-        user: ubuntu
-        stdout_logfile: "{{ app_path }}/logs/stdout_logfile"
-        stderr_logfile: "{{ app_path }}/logs/stderr_logfile"
-        autostart: true
-        autorestart: true
-        stopsignal: KILL
-    supervisor_events:
-      - name: crashmail
-        command: "crashmail -p program -m klimtimothy+devops@gmail.com -m fear+devops@loathing.in"
-        events: PROCESS_STATE_EXITED
+    app_name: "actor-app"
+    app_path: "/home/ubuntu/{{ app_name }}"
   tasks:
     - name: "Copy app"
       synchronize:
@@ -29,7 +14,7 @@
         checksum=yes
         delete=yes
         recursive=yes
-        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs --exclude mtproto-app.pid "
+        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs "
     - name: "Create logs directory"
       file:
         path="{{ app_path }}/logs"
@@ -50,9 +35,16 @@
         src="~/apns"
         dest="{{ app_path }}/apns"
         state=link
-    - name: "Remove pid file"
-      command: "rm -rf {{ app_pid_path }}"
-    - name: "Restart mtproto-app"
-      supervisorctl:
-        name=mtproto-app
-        state=restarted
+    - name: "Copy the app monit service file"
+      template:
+        src=templates/etc_monit_conf.d_app.j2
+        dest="/etc/monit/conf.d/{{ app_name }}"
+      register: monit_conf
+      sudo: true
+    - name: "Reload monit"
+      command: "monit reload"
+      when: monit_conf|changed
+      sudo: true
+    - name: "Restart app"
+      command: "monit restart {{ app_name }}"
+      sudo: true
