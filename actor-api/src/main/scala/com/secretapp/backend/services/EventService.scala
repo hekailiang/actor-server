@@ -11,6 +11,6 @@ object EventService {
       phoneNumber = phoneNumber,
       email = "",
       klass = message.klass,
-      jsonBody = message.toJson
+      jsonBody = message.asJson
     )
 }
