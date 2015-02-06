@@ -46,7 +46,7 @@ object LogEvent extends SQLSyntaxSupport[LogEvent] with Paginator[LogEvent] {
       }
     }
 
-  def all(req: Map[String, Seq[String]])
+  def all(req: Map[String, String])
          (implicit ec: ExecutionContext, session: DBSession = LogEvent.autoSession): Future[(Seq[LogEvent], Int)] =
     Future {
       blocking {

@@ -4,6 +4,7 @@ import akka.cluster.Cluster
 import akka.actor.{ ActorSystem, Props }
 import akka.io.{ IO, Tcp }
 import akka.kernel.Bootable
+import akka.stream.FlowMaterializer
 import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
@@ -13,6 +14,7 @@ import com.typesafe.config._
 import java.net.InetSocketAddress
 import im.actor.server.persist.{ FlywayInit, DbInit }
 import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
+import im.actor.server.rest.HttpApiService
 import scala.concurrent.duration._
 import spray.can.Http
 import spray.can.server.UHttp
@@ -33,6 +35,8 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
   initDb(sqlConfig)
 
   implicit val system = ActorSystem(serverConfig.getString("actor-system-name"), serverConfig)
+  implicit val executor = system.dispatcher
+  implicit val materializer = FlowMaterializer()
 
   import system.dispatcher
 
@@ -71,8 +75,8 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     // SMTP service
     SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
 
-    // REST web admin API
-    // play.core.server.NettyServer.main(Array())
+    // REST api
+    HttpApiService.start(config, fileAdapter)
   }
 
   def shutdown() = {

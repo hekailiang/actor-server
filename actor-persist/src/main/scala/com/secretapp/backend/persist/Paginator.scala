@@ -12,7 +12,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
   case object ASC extends SqlOrder
   case object DESC extends SqlOrder
 
-  def paginateWithTotal[T](sqlQ: SQLSyntax, sqlAlias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A], req: Map[String, Seq[String]], defaultOrderBy: Option[(String, SqlOrder)])
+  def paginateWithTotal[T](sqlQ: SQLSyntax, sqlAlias: QuerySQLSyntaxProvider[SQLSyntaxSupport[A], A], req: Map[String, String], defaultOrderBy: Option[(String, SqlOrder)])
                           (f: WrappedResultSet => T)
                           (implicit session: DBSession): (Seq[T], Int) = {
     val filterMap = req.collect {
@@ -25,7 +25,7 @@ trait Paginator[A] { this: SQLSyntaxSupport[A] =>
     }.collect { case Some(v) => v }
 
     val orderBy = req.get("orderBy").flatMap { s =>
-      val v = s.mkString.split("\\.").toList
+      val v = s.split("\\.").toList
       val column = v.head
       val asc = if (v.last.toLowerCase == "desc") DESC else ASC
       if (publicColumns.contains(column)) Some(column, asc)

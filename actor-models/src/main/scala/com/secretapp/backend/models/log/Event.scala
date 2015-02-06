@@ -1,6 +1,6 @@
 package com.secretapp.backend.models.log
 
-import play.api.libs.json._
+import spray.json._
 
 object EventKind extends Enumeration {
   type EventKind = Value
@@ -9,35 +9,50 @@ object EventKind extends Enumeration {
   val SignUp = Value("sign_up")
 }
 
-object Event {
+object Event extends DefaultJsonProtocol {
   sealed trait EventMessage {
     val klass: Int
     def toJson: String
   }
   case class RpcError(kind: EventKind.EventKind, code: Int, message: String) extends EventMessage {
     val klass = RpcError.klass
-    def toJson = Json.stringify(rpcErrorWrites.writes(this))
+    def toJson = rpcErrorWrites.write(this).compactPrint
   }
   case class SmsSentSuccessfully(body: String, gateResponse: String) extends EventMessage {
     val klass = SmsSentSuccessfully.klass
-    def toJson = Json.stringify(smsSentSuccessfullyWrites.writes(this))
+    def toJson = smsSentSuccessfullyWrites.write(this).compactPrint
   }
   case class SmsFailure(body: String, gateResponse: String) extends EventMessage {
     val klass = SmsFailure.klass
-    def toJson = Json.stringify(smsFailureWrites.writes(this))
+    def toJson = smsFailureWrites.write(this).compactPrint
   }
   case class AuthCodeSent(smsHash: String, smsCode: String) extends EventMessage {
     val klass = AuthCodeSent.klass
-    def toJson = Json.stringify(authCodeSentWrites.writes(this))
+    def toJson = authCodeSentWrites.write(this).compactPrint
   }
   case class SignedIn(smsHash: String, smsCode: String) extends EventMessage {
     val klass = SignedIn.klass
-    def toJson = Json.stringify(signedInWrites.writes(this))
+    def toJson = signedInWrites.write(this).compactPrint
   }
   case class SignedUp(smsHash: String, smsCode: String) extends EventMessage {
     val klass = SignedUp.klass
-    def toJson = Json.stringify(signedUpWrites.writes(this))
+    def toJson = signedUpWrites.write(this).compactPrint
   }
+
+  implicit object LongWrites extends RootJsonFormat[Long] {
+    def write(n: Long) = JsString(n.toString)
+    def read(v: JsValue) = ???
+  }
+  implicit object EventKindWrites extends RootJsonFormat[EventKind.EventKind] {
+    def write(k: EventKind.EventKind) = JsString(k.toString)
+    def read(v: JsValue) = ???
+  }
+  implicit val rpcErrorWrites = jsonFormat3(RpcError.apply)
+  implicit val smsSentSuccessfullyWrites = jsonFormat2(SmsSentSuccessfully.apply)
+  implicit val smsFailureWrites = jsonFormat2(SmsFailure.apply)
+  implicit val authCodeSentWrites = jsonFormat2(AuthCodeSent.apply)
+  implicit val signedInWrites = jsonFormat2(SignedIn.apply)
+  implicit val signedUpWrites = jsonFormat2(SignedUp.apply)
 
   object RpcError { val klass = 0 }
   object SmsSentSuccessfully { val klass = 1 }
@@ -45,14 +60,4 @@ object Event {
   object AuthCodeSent { val klass = 3 }
   object SignedIn { val klass = 4 }
   object SignedUp { val klass = 5 }
-
-  implicit val longWrites = new Writes[Long] {
-    def writes(n: Long) = JsString(n.toString)
-  }
-  implicit val rpcErrorWrites = Json.writes[RpcError]
-  implicit val smsSentSuccessfullyWrites = Json.writes[SmsSentSuccessfully]
-  implicit val smsFailureWrites = Json.writes[SmsFailure]
-  implicit val authCodeSentWrites = Json.writes[AuthCodeSent]
-  implicit val signedInWrites = Json.writes[SignedIn]
-  implicit val signedUpWrites = Json.writes[SignedUp]
 }

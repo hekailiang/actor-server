@@ -2,9 +2,9 @@ import sbt._
 
 object Dependencies {
   object V {
-    val akka    = "2.3.9"
+    val akka = "2.3.8"
     val akkaExperimental = "1.0-M2"
-    val scalaz  = "7.1.0"
+    val scalaz = "7.1.0"
     val play = "2.4.0-M2"
   }
 
@@ -19,8 +19,12 @@ object Dependencies {
     val akkaRemote      = "com.typesafe.akka"             %% "akka-remote"                   % V.akka
     val akkaSlf4j       = "com.typesafe.akka"             %% "akka-slf4j"                    % V.akka
     val akkaStream      = "com.typesafe.akka"             %% "akka-stream-experimental"      % V.akkaExperimental
+    val akkaHttp        = "com.typesafe.akka"             %% "akka-http-experimental"        % V.akkaExperimental
+    val akkaHttpCore    = "com.typesafe.akka"             %% "akka-http-core-experimental"   % V.akkaExperimental
+    val akkaHttpSpray   = "com.typesafe.akka"             %% "akka-http-spray-json-experimental" % V.akkaExperimental
     val sprayWebSocket  = "com.wandoulabs.akka"           %% "spray-websocket"               % "0.1.4" excludeAll(ExclusionRule(organization = "com.chuusai"))
     val sprayClient     = "io.spray"                      %% "spray-client"                  % "1.3.2"
+    val sprayJson       = "io.spray"                      %% "spray-json"                    % "1.3.1"
     val json4s          = "org.json4s"                    %% "json4s-jackson"                % "3.2.11"
     // we need this because commons-codec 1.2 jar is broken (apns dependency)
     val commonsCodec    = "commons-codec"                 %  "commons-codec"                 % "1.3"
@@ -39,12 +43,8 @@ object Dependencies {
     val emailReplyParser = "com.edlio.emailreplyparser"   % "EmailReplyParser"               % "1.1"
 
     val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % V.play
-    val playJson       = "com.typesafe.play"              %% "play-json"                     % V.play
 
     val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.2"
-    val scalikeConfig   = "org.scalikejdbc"               %% "scalikejdbc-config"            % "2.2.2"
-    val scalikePlay     = "org.scalikejdbc"               %% "scalikejdbc-play-plugin"       % "2.3.4"
-    val scalikeDbApiPlay = "org.scalikejdbc"              %% "scalikejdbc-play-dbplugin-adapter" % "2.3.4"
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
@@ -54,6 +54,8 @@ object Dependencies {
 
     val jodaTime        = "joda-time"                     %  "joda-time"                     % "2.7"
     val jodaConvert     = "org.joda"                      %  "joda-convert"                  % "1.7"
+
+    val commonIO        = "commons-io"                    % "commons-io"                     % "2.4"
   }
 
   object Test {
@@ -71,7 +73,7 @@ object Dependencies {
 
   import Compile._, Test._, Deploy._
 
-  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert, playJson)
+  val common    = Seq(logbackClassic, logbackLogstash, jodaTime, jodaConvert, sprayJson)
 
   val util      = Seq(akkaActor, akkaSlf4j)
 
@@ -107,8 +109,9 @@ object Dependencies {
       scalaLoggingSlf4j, akkaKernel
   )
 
-  val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore,
-    scalikeConfig, scalikePlay, scalikeDbApiPlay)
+  val restApi   = persist ++ Seq(
+    commonIO, scodecBits, bcprov, specs2, scalazCore, akkaHttp, akkaHttpCore, sprayJson, akkaHttpSpray
+  )
 
   val schema    = Seq(json4s)
 

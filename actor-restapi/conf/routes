@@ -1,8 +1,0 @@
-GET        /logs/auth                         controllers.LogsController.authLogs()
-GET        /logs/stats                        controllers.LogsController.stats()
-
-GET        /users                             controllers.UsersController.index()
-GET        /users/:id                         controllers.UsersController.show(id: Int)
-GET        /users/:id/avatar/$size<small|large|full>    controllers.UsersController.avatar(id: Int, size: String)
-
-GET        /assets/*file                      controllers.Assets.at(path="/public", file)

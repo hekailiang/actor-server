@@ -1,4 +1,4 @@
-package models
+package im.actor.server.rest.models
 
 import com.secretapp.backend.persist._
 import org.joda.time.DateTime
@@ -8,7 +8,7 @@ case class UserItem(id: Int, name: String, phoneNumber: Option[Long], contactsCo
                     sentMsgCount: Int, lastSeenAt: Option[DateTime], lastMessageAt: Option[DateTime])
 
 object UserItem {
-  def paginate(req: Map[String, Seq[String]] = Map())
+  def paginate(req: Map[String, String] = Map())
               (implicit ec: ExecutionContext): Future[(Seq[UserItem], Int)] =
     for {
       (users, totalCount) <- User.all(req)
