@@ -41,6 +41,9 @@
         dest="/etc/monit/conf.d/{{ app_name }}"
       register: monit_conf
       sudo: true
+    - name: "Install ntp"
+      apt: name=ntp
+      sudo: true
     - name: "Reload monit"
       command: "monit reload"
       when: monit_conf|changed
