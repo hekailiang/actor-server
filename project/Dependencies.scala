@@ -54,6 +54,8 @@ object Dependencies {
 
     val jodaTime        = "joda-time"                     %  "joda-time"                     % "2.7"
     val jodaConvert     = "org.joda"                      %  "joda-convert"                  % "1.7"
+
+    val commonIO        = "commons-io"                    % "commons-io"                     % "2.4"
   }
 
   object Test {
@@ -107,7 +109,9 @@ object Dependencies {
       scalaLoggingSlf4j, akkaKernel
   )
 
-  val restApi   = persist ++ Seq(scodecBits, bcprov, specs2, scalazCore, akkaHttp, akkaHttpCore, sprayJson, akkaHttpSpray)
+  val restApi   = persist ++ Seq(
+    commonIO, scodecBits, bcprov, specs2, scalazCore, akkaHttp, akkaHttpCore, sprayJson, akkaHttpSpray
+  )
 
   val schema    = Seq(json4s)
 

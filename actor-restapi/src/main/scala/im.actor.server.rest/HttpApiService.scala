@@ -1,12 +1,15 @@
 package im.actor.server.rest
 
 import akka.actor._
+import akka.http.model.MediaTypes
 import akka.stream.FlowMaterializer
 import akka.http.Http
 import akka.http.server._
 import akka.http.server.Directives._
+import akka.http.model._
 import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import scala.util.Try
+import org.apache.commons.io.IOUtils
 import com.typesafe.config.Config
 import im.actor.server.rest.controllers._
 
@@ -29,7 +32,11 @@ class HttpApiService(config: Config, fileAdapter: FileStorageAdapter)(implicit s
       get(UsersController.show(userId))
     } ~ path("users" / IntNumber / "avatar" / """small|large|full""".r) { (userId, size) =>
       get(UsersController.avatar(userId, size, fileAdapter))
+    } ~ path("assets" / "images" / "avatar.png") {
+      get(complete(HttpEntity(MediaTypes.`image/png`, avatarBytes)))
     }
+
+  lazy val avatarBytes = IOUtils.toByteArray(getClass.getClassLoader.getResourceAsStream("avatar.png"))
 
   def bind() =
     Http().bind(interface = interface, port = port).startHandlingWith(routes)
