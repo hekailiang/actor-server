@@ -1,19 +1,16 @@
-jdbc {
-  driver=org.postgresql.Driver
-  url = "jdbc:postgresql://localhost:5432/actor"
-  username = "postgres"
-  user = ${jdbc.username}
-  password = ""
-  pass = ${jdbc.password}
-}
-
-db.default = ${jdbc}
-
 actor-server {
   actor-system-name = "secret-api-server"
 
-  sql = ${jdbc}
-  jdbc-connection = ${jdbc}
+  sql {
+    driver = "org.postgresql.Driver"
+    url = "jdbc:postgresql://localhost:5432/actor"
+    username = "postgres"
+    user = ${actor-server.sql.username}
+    password = ""
+    pass = ${actor-server.sql.password}
+  }
+
+  jdbc-connection = ${actor-server.sql}
 
   sms {
     clickatell {
@@ -61,35 +58,3 @@ actor-server {
     }
   }
 }
-
-file-storage = ${actor-server.file-storage}
-
-logger {
-  root=ERROR
-  play=INFO
-  application=DEBUG
-  scalikejdbc=DEBUG
-}
-
-scalikejdbc.global.loggingSQLAndTime = {
-  enabled = true
-  logLevel = debug
-  warningEnabled = true
-  warningThresholdMillis = 1000
-  warningLogLevel = warn
-}
-
-logger {
-  root=ERROR
-  play=INFO
-  application=DEBUG
-  scalikejdbc=DEBUG
-}
-
-application {
-  secret="kAtHj<PEDUndYD9h@Ad9wFL?_d:MoHBv]>M_GE9c0y^F4Y;F@TRSt96ZLTV?gprt"
-  langs="en"
-}
-
-dbplugin=enabled
-evolutionplugin=disabled

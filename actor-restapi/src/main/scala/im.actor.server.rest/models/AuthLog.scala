@@ -1,33 +1,33 @@
-package models
+package im.actor.server.rest.models
 
 import com.secretapp.backend.persist._
 import com.secretapp.backend.persist.events.LogEvent
 import org.joda.time.DateTime
+import spray.json._
 import scala.concurrent.{ExecutionContext, Future}
-import play.api.libs.json._
 
 case class AuthLog(id: Long, authId: Long, phoneNumber: Long, email: String,
                        userId: Int, userName: String, deviceHash: String, deviceTitle: String,
                        klass: Int, jsonBody: String, createdAt: DateTime)
 
-object AuthLog {
-  implicit val authLogItemWrites = new Writes[AuthLog] {
-    def writes(e: AuthLog) = JsObject(Seq(
-      ("id", JsNumber(e.id)),
-      ("authId", JsString(e.authId.toString)),
-      ("phoneNumber", JsString(e.phoneNumber.toString)),
-      ("email", JsString(e.email)),
-      ("userId", JsNumber(e.userId)),
-      ("userName", JsString(e.userName)),
-      ("deviceHash", JsString(e.deviceHash)),
-      ("deviceTitle", JsString(e.deviceTitle)),
-      ("klass", JsNumber(e.klass)),
-      ("body", Json.parse(e.jsonBody)),
-      ("createdAt", JsString(e.createdAt.toDateTimeISO.toString))
-    ))
+object AuthLog extends DefaultJsonProtocol {
+  implicit object AuthLogItemWrites extends RootJsonWriter[AuthLog] {
+    def write(e: AuthLog) = JsObject(
+      "id" -> JsNumber(e.id),
+      "authId" -> JsString(e.authId.toString),
+      "phoneNumber" -> JsString(e.phoneNumber.toString),
+      "email" -> JsString(e.email),
+      "userId" -> JsNumber(e.userId),
+      "userName" -> JsString(e.userName),
+      "deviceHash" -> JsString(e.deviceHash),
+      "deviceTitle" -> JsString(e.deviceTitle),
+      "klass" -> JsNumber(e.klass),
+      "body" -> e.jsonBody.parseJson,
+      "createdAt" -> JsString(e.createdAt.toDateTimeISO.toString)
+    )
   }
 
-  def paginate(req: Map[String, Seq[String]] = Map())
+  def paginate(req: Map[String, String] = Map())
               (implicit ec: ExecutionContext): Future[(Seq[AuthLog], Int)] =
   {
     for {

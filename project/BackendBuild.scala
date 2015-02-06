@@ -3,7 +3,6 @@ import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, distBootClass }
 import org.flywaydb.sbt.FlywayPlugin._
-import play.PlayScala
 import sbtprotobuf.{ ProtobufPlugin => PB }
 import scalabuff.ScalaBuffPlugin._
 import spray.revolver.RevolverPlugin._
@@ -119,8 +118,7 @@ object BackendBuild extends Build {
       javaOptions in Test += "-Dconfig.file=conf/test.conf",
       scalaVersion        := ScalaVersion
     )
-  ).enablePlugins(PlayScala)
-   .dependsOn(actorModels, actorPersist)
+  ).dependsOn(actorModels, actorPersist)
 
   lazy val actorApi = Project(
     id       = "actor-api",

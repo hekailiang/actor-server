@@ -202,7 +202,7 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     }
   }
 
-  def all(req: Map[String, Seq[String]])
+  def all(req: Map[String, String])
          (implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[(Seq[(Int, String)], Int)] =
     Future {
       blocking {

@@ -12,7 +12,7 @@ import com.typesafe.config._
 import scala.util.Try
 
 object SMTPServer {
-  val config = ConfigFactory.load().getConfig("actor-server.smtpd")
+  val config = ConfigFactory.load().getConfig("actor-server.smtpd") // TODO: move into start arguments
 
   val hostname = InetAddress.getLocalHost.getHostName
   val mailHost = config.getString("hostname")
