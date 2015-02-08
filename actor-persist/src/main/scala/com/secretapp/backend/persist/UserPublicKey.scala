@@ -5,6 +5,7 @@ import java.time._
 import org.joda.time.DateTime
 import scala.concurrent._
 import scala.collection.immutable
+import scala.util.{ Try, Success, Failure }
 import scalaz._; import Scalaz._
 import scalikejdbc._
 import scodec.bits._
@@ -31,21 +32,55 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
     authId = rs.long(pk.authId)
   )
 
-  def create(userId: Int, hash: Long, data: BitVector, authId: Long)(
+  def existsSync(userId: Int, hash: Long)(
+    implicit session: DBSession
+  ): Boolean =
+    sql"""
+      select exists (
+        select 1 from ${UserPublicKey.table}
+        where ${column.userId} = ${userId}
+        and   ${column.hash}   = ${hash}
+        and   is_deleted       = false
+      )
+      """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+  def createOrReplace(userId: Int, hash: Long, data: BitVector, authId: Long)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[models.UserPublicKey] = Future {
     blocking {
-      withSQL {
-        insert.into(UserPublicKey).namedValues(
-          column.userId -> userId,
-          column.hash -> hash,
-          column.data -> data.toByteArray,
-          column.authId -> authId
-        )
-      }.execute.apply
-    }
+      def doInsert() = {
+        withSQL {
+          insert.into(UserPublicKey).namedValues(
+            column.userId -> userId,
+            column.hash -> hash,
+            column.data -> data.toByteArray,
+            column.authId -> authId
+          )
+        }.execute.apply
+      }
 
-    models.UserPublicKey(userId, hash, data, authId)
+      Try {
+        doInsert()
+      } recover {
+        case e =>
+          if (existsSync(userId, hash)) {
+            withSQL {
+              update(UserPublicKey).set(
+                column.column("is_deleted") -> true
+              )
+                .where.append(isNotDeleted)
+                .and.eq(column.userId, userId)
+                .and.eq(column.hash, hash)
+            }.execute.apply
+
+            doInsert()
+          } else {
+            throw e
+          }
+      }
+
+      models.UserPublicKey(userId, hash, data, authId)
+    }
   }
 
   def findBySync(where: SQLSyntax)(

@@ -80,7 +80,7 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
   } flatMap { _ =>
     for {
       //_ <- Phone.insertEntity(phone)
-      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+      _ <- UserPublicKey.createOrReplace(id, publicKeyHash, publicKeyData, authId)
       _ <- AuthId.createOrUpdate(authId, Some(id))
     } yield ()
   }
@@ -104,7 +104,7 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     for {
       _ <- AuthId.createOrUpdate(authId, Some(id))
       //_ <- Phone.updateUserName(phoneNumber, name)
-      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+      _ <- UserPublicKey.createOrReplace(id, publicKeyHash, publicKeyData, authId)
     } yield ()
   }
 
