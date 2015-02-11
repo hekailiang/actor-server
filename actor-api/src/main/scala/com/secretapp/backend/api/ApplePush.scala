@@ -61,15 +61,16 @@ trait ApplePush extends AuthIdOwnershipHelpers {
     Future.successful()
   }
 
-  private def deliverApplePush(optCreds: Option[models.ApplePushCredentials], seq: Int, text: Option[String])
+  private def deliverApplePush(creds: models.ApplePushCredentials, seq: Int, text: Option[String])
                               (implicit ec: ExecutionContext): Future[Unit] =
-    optCreds some { c =>
-      sendApplePush(c.token, seq, text)
-    } none Future.successful()
+    sendApplePush(creds.token, seq, text)
 
   def deliverApplePush(authId: Long, seq: Int, text: Option[String])(implicit ec: ExecutionContext): Future[Unit] =
-    persist.ApplePushCredentials.find(authId) flatMap {
-      deliverApplePush(_, seq, text)
+    persist.ApplePushCredentials.find(authId) flatMap { optCreds =>
+      optCreds map { creds =>
+        log.debug("Delivering apple push to authId: {}", authId)
+        deliverApplePush(creds, seq, text)
+      } getOrElse Future.successful()
     }
 
 }
