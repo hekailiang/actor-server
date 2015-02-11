@@ -1,7 +1,7 @@
 package com.secretapp.backend.api
 
 import akka.actor.Actor
-import com.notnoop.apns.{ APNS, ApnsService }
+import com.notnoop.apns.{ APNS, ApnsNotification, ApnsService }
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.helpers.AuthIdOwnershipHelpers
 import com.secretapp.backend.models
@@ -56,20 +56,23 @@ trait ApplePush extends AuthIdOwnershipHelpers {
     text map (builder.alertBody(_)) getOrElse (builder) build
   }
 
-  private def sendApplePush(token: String, seq: Int, text: Option[String]): Future[Unit] = {
+  private def sendApplePush(token: String, seq: Int, text: Option[String]): Future[ApnsNotification] = {
     val notification = apnsService.push(token, payload(seq, text))
-    Future.successful()
+    Future.successful(notification)
   }
 
   private def deliverApplePush(creds: models.ApplePushCredentials, seq: Int, text: Option[String])
-                              (implicit ec: ExecutionContext): Future[Unit] =
+                              (implicit ec: ExecutionContext): Future[ApnsNotification] =
     sendApplePush(creds.token, seq, text)
 
   def deliverApplePush(authId: Long, seq: Int, text: Option[String])(implicit ec: ExecutionContext): Future[Unit] =
     persist.ApplePushCredentials.find(authId) flatMap { optCreds =>
       optCreds map { creds =>
         log.debug("Delivering apple push to authId: {}", authId)
-        deliverApplePush(creds, seq, text)
+        deliverApplePush(creds, seq, text) map {
+          case notification =>
+            log.debug("Apple push for authId: {}, result: {}", authId, notification)
+        }
       } getOrElse Future.successful()
     }
 

@@ -9,7 +9,7 @@ object Dependencies {
   }
 
   object Compile {
-    val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta4"
+    val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta6"
     val scrImageCore    = "com.sksamuel.scrimage"         %% "scrimage-core"                 % "1.4.1"
     val akkaActor       = "com.typesafe.akka"             %% "akka-actor"                    % V.akka
     val akkaCluster     = "com.typesafe.akka"             %% "akka-cluster"                  % V.akka
