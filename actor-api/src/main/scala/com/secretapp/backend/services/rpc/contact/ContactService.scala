@@ -191,13 +191,17 @@ trait ContactService extends UpdatesHelpers with ContactHelpers with UserHelpers
     val authId = currentAuthId
     val currentUser = getUser.get
     PhoneNumber.normalizeStr(request, currentUser.countryCode) match {
-      case None => Future.successful(Ok(ResponseSearchContacts(immutable.Seq[struct.User]())))
+      case None => Future.successful(Ok(ResponseSearchContacts(immutable.Seq.empty)))
       case Some(phoneNumber) =>
         val filteredPhones = Set(phoneNumber).filter(_ != currentUser.phoneNumber)
         for {
-          phones <- persist.UserPhone.findAllByNumbers(filteredPhones)
-          usersAvatars <- Future.sequence(phones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten)
-        } yield Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId, None)).toIndexedSeq))
+          userPhones <- persist.UserPhone.findAllByNumbers(filteredPhones)
+          usersAvatars <- Future.sequence(userPhones map (p => persist.User.findWithAvatar(p.userId)(None))).map(_.flatten)
+        } yield {
+          userPhones foreach (up => socialBrokerRegion ! SocialMessageBox(up.userId, RelationsNoted(Set(currentUser.uid))))
+
+          Ok(ResponseSearchContacts(usersAvatars.map(ua => struct.User.fromModel(ua._1, ua._2, authId, None)).toIndexedSeq))
+        }
     }
   }
 
