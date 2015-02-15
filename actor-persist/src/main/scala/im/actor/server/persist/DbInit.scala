@@ -1,6 +1,7 @@
 package im.actor.server.persist
 
 import com.typesafe.config._
+import java.util.concurrent.TimeUnit
 import scalikejdbc._
 
 trait DbInit {
@@ -13,6 +14,12 @@ trait DbInit {
       sqlConfig.getString("password")
     )
 
-    ConnectionPool.singleton(url, user, password)
+    val settings = ConnectionPoolSettings(
+      initialSize = sqlConfig.getInt("pool.initial-size"),
+      maxSize = sqlConfig.getInt("pool.max-size"),
+      connectionTimeoutMillis = sqlConfig.getDuration("pool.connection-timeout", TimeUnit.MILLISECONDS),
+      validationQuery = "select 1")
+
+    ConnectionPool.singleton(url, user, password, settings)
   }
 }
