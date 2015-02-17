@@ -2,6 +2,7 @@ import sbt._
 import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, distBootClass }
+import im.actor.SbtActorApi
 import org.flywaydb.sbt.FlywayPlugin._
 import sbtprotobuf.{ ProtobufPlugin => PB }
 import scalabuff.ScalaBuffPlugin._
@@ -49,10 +50,10 @@ object BackendBuild extends Build {
     settings =
       defaultSettings               ++
       AkkaKernelPlugin.distSettings ++
-      Revolver.settings             ++
+      Revolver.settings             ++ SbtActorApi.settings ++
       Seq(
         libraryDependencies                       ++= Dependencies.root,
-        distJvmOptions       in Dist              :=  "-server -Xms256M -Xmx1024M",
+        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx10G",
         distBootClass        in Dist              :=  appClass,
         outputDirectory      in Dist              :=  file("target/dist"),
         Revolver.reStartArgs                      :=  Seq(appClassMock),
