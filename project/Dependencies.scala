@@ -63,7 +63,7 @@ object Dependencies {
     val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
     val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"
     val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
-    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"             % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
+    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.4.0"              % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
     val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"              % "test"
   }
 
