@@ -41,6 +41,7 @@ object BackendBuild extends Build {
         javacOptions              ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-Xlint:deprecation"),
         parallelExecution in Test :=  false,
         fork              in Test :=  true
+        unmanagedResourceDirectories in Compile <+= baseDirectory( _ / "src" )
       )
 
   lazy val root = Project(
