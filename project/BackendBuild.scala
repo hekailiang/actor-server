@@ -32,13 +32,13 @@ object BackendBuild extends Build {
       Seq(
         initialize                ~= { _ =>
           sys.props("scalac.patmat.analysisBudget") = "off"
-          if (sys.props("java.specification.version") != "1.8")
-            sys.error("Java 8 is required for this project.")
+          if (sys.props("java.specification.version") != "1.7" && sys.props("java.specification.version") != "1.8")
+            sys.error("Java 7 or 8 is required for this project.")
         },
         resolvers                 ++= Resolvers.seq,
         scalacOptions             ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
         javaOptions               ++= Seq("-Dfile.encoding=UTF-8"),
-        javacOptions              ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-Xlint:deprecation"),
+        javacOptions              ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
         parallelExecution in Test :=  false,
         fork              in Test :=  true
       )
@@ -52,7 +52,7 @@ object BackendBuild extends Build {
       Revolver.settings             ++
       Seq(
         libraryDependencies                       ++= Dependencies.root,
-        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx10G",
+        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx1G",
         distBootClass        in Dist              :=  appClass,
         outputDirectory      in Dist              :=  file("target/dist"),
         Revolver.reStartArgs                      :=  Seq(appClassMock),
