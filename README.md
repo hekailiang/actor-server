@@ -3,6 +3,17 @@ secret-backend
 
 Backend for secret app
 
+# Building
+
+```sbt dist```
+
+# Running dist
+
+* Create APNS certificate or use sample certificate in apns folder
+* Set its location in application.conf
+* Set sql settings in application.conf
+* Remove `-agentlib:TakipiAgent` from bin/start if you don't have takipi agent installed
+* `bin/start`
 
 # Java Keystore
 
