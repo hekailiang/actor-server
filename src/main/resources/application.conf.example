@@ -2,11 +2,11 @@ actor-server {
   actor-system-name = "secret-api-server"
 
   sql {
-    driver = "org.postgresql.Driver"
+    driverClassName = "org.postgresql.Driver"
     url = "jdbc:postgresql://localhost:5432/actor"
     username = "postgres"
-    user = ${actor-server.sql.username}
     password = ""
+    user = ${actor-server.sql.username}
     pass = ${actor-server.sql.password}
   }
 

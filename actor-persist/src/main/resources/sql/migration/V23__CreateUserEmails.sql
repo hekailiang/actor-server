@@ -7,5 +7,5 @@ CREATE TABLE user_emails (
        PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX ON user_emails (lower(email));
-CREATE INDEX ON user_emails (user_id);
+CREATE UNIQUE INDEX idx_user_emails_email ON user_emails (email);
+CREATE INDEX idx_user_emails_user_id ON user_emails (user_id);

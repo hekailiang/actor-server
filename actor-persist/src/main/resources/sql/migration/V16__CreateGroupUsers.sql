@@ -6,4 +6,4 @@ CREATE TABLE group_users (
        PRIMARY KEY (group_id, user_id)
 );
 
-CREATE INDEX on group_users (user_id);
+CREATE INDEX idx_group_users_user_id on group_users (user_id);

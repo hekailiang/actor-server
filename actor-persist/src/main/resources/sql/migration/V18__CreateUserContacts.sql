@@ -8,4 +8,4 @@ CREATE TABLE user_contacts (
        PRIMARY KEY (owner_user_id, contact_user_id)
 );
 
-CREATE INDEX on user_contacts(owner_user_id, is_deleted);
+CREATE INDEX idx_user_contacts_owner_user_id_is_deleted on user_contacts(owner_user_id, is_deleted);

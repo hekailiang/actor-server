@@ -1,6 +1,6 @@
 ALTER TABLE history_messages ADD COLUMN is_read boolean NOT NULL default false;
 
-CREATE INDEX on history_messages (user_id, peer_type, peer_id, is_read);
+CREATE INDEX idx_history_messages_user_peer_is_read on history_messages (user_id, peer_type, peer_id, is_read);
 
 CREATE TABLE dialogs (
        user_id int NOT NULL,

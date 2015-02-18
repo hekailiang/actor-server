@@ -9,6 +9,6 @@ CREATE TABLE log_events (
     PRIMARY KEY (id)
 );
 
-CREATE INDEX ON log_events (auth_id);
-CREATE INDEX ON log_events (phone_number);
-CREATE INDEX ON log_events (lower(email));
+CREATE INDEX idx_log_events_auth_id ON log_events (auth_id);
+CREATE INDEX idx_log_events_phone_number ON log_events (phone_number);
+CREATE INDEX idx_log_events_email ON log_events (email);

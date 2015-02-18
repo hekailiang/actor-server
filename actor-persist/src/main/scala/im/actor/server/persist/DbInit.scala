@@ -8,6 +8,8 @@ trait DbInit {
   protected def sqlConfig: Config
 
   def initDb(sqlConfig: Config) = {
+    Class.forName(sqlConfig.getString("driverClassName"))
+
     val (url, user, password) = (
       sqlConfig.getString("url"),
       sqlConfig.getString("username"),

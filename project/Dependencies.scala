@@ -48,6 +48,7 @@ object Dependencies {
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
+    val h2jdbc          = "com.h2database"                %  "h2"                            % "1.4.185"
     val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
 
     val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
@@ -98,7 +99,7 @@ object Dependencies {
 
   val persist   = common ++ Seq(
     akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
-    scalike, postgresJdbc,
+    scalike, h2jdbc, postgresJdbc,
     specs2
   )
 
