@@ -22,9 +22,9 @@ class HttpApiService(config: Config, fileAdapter: FileStorageAdapter)(implicit s
   val routes: Route =
     pathPrefix("logs") {
       path("auth") {
-        get(LogsController.stats())
-      } ~ path("stats") {
         get(LogsController.authLogs)
+      } ~ path("stats") {
+        get(LogsController.stats())
       }
     } ~ path("users") {
       get(UsersController.index)
