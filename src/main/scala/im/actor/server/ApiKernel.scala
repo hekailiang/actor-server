@@ -76,7 +76,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     //SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
 
     // REST api
-    //HttpApiService.start(config, fileAdapter)
+    HttpApiService.start(config, fileAdapter)
   }
 
   def shutdown() = {
