@@ -40,17 +40,17 @@ class HttpApiService(config: Config, fileAdapter: FileStorageAdapter)(implicit s
 
   def bind() = {
     import headers._
-    import MediaRanges._
     import HttpMethods._
 
     val handler: Route = routes.andThen { r =>
       r.map {
-        case RouteResult.Complete(res) => RouteResult.Complete(res.withHeaders(
-          `Access-Control-Allow-Origin`(HttpOriginRange.`*`),
-          `Access-Control-Allow-Methods`(GET, POST),
-          `Access-Control-Allow-Headers`("*"),
-          `Access-Control-Allow-Credentials`(true)
-        ))
+        case RouteResult.Complete(res) =>
+          RouteResult.Complete(res.withHeaders(res.headers ++ Seq(
+            `Access-Control-Allow-Origin`(HttpOriginRange.`*`),
+            `Access-Control-Allow-Methods`(GET, POST),
+            `Access-Control-Allow-Headers`("*"),
+            `Access-Control-Allow-Credentials`(true)
+          )))
         case m => m
       }
     }
