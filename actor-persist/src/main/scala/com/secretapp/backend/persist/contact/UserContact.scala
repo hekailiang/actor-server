@@ -243,15 +243,17 @@ object UserContact extends SQLSyntaxSupport[models.contact.UserContact] with Use
 
 
   def getCountactsCount(userIds: Seq[Int])
-                       (implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession): Future[Seq[(Int, Int)]] =
-    Future {
+                       (implicit ec: ExecutionContext, session: DBSession = UserContact.autoSession): Future[Seq[(Int, Int)]] = {
+    if (userIds.isEmpty) Future.successful(Seq.empty)
+    else Future {
       blocking {
         sql"""
            select owner_user_id as user_id, count(*) as contacts_count
            from $table
            where owner_user_id in ($userIds)
            group by owner_user_id
-           """.map { rs => (rs.int("user_id"), rs.int("contacts_count")) }.list().apply()
+           """.map { rs => (rs.int("user_id"), rs.int("contacts_count"))}.list().apply()
       }
     }
+  }
 }

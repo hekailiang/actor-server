@@ -1,4 +1,4 @@
-- hosts: staging
+- hosts: production
   roles:
     - role: ANXS.monit
       sudo: yes

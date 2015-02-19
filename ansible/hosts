@@ -1,5 +1,2 @@
 [production]
 mtproto-api ansible_ssh_host=172.31.11.71 ansible_ssh_user=ubuntu
-
-[staging]
-mtproto-api ansible_ssh_host=172.31.8.252 ansible_ssh_user=ubuntu
