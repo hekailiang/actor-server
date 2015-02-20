@@ -9,23 +9,14 @@ trait TransportSerializers {
   val authId: Long
   val sessionId: Long
 
-  var transport: Option[TransportConnection] = None
+//  val transport: Option[TransportConnection] = Some(MTConnection)
 
-  def serializeMessageBox(message: MessageBox): BitVector = {
-    transport match {
-      case Some(MTConnection) => MessageBoxCodec.encodeValid(message)
-      case None =>
-        MessageBoxCodec.encodeValid(message)
-        //throw new IllegalArgumentException("transport == None")
-    }
-  }
+  def serializeMessageBox(message: MessageBox): BitVector =
+    MessageBoxCodec.encodeValid(message)
 
-  def serializePackage(mb: BitVector): ResponseToClient = transport match {
-    case Some(MTConnection) => ResponseToClient(MTPackage(authId, sessionId, mb).encode)
-    case None =>
-      ResponseToClient(MTPackage(authId, sessionId, mb).encode)
-      //throw new IllegalArgumentException("transport == None")
-  }
+  def serializePackage(mb: BitVector): ResponseToClient =
+    ResponseToClient(MTPackage(authId, sessionId, mb).encode)
 
-  def serializePackage(message: MessageBox): ResponseToClient = serializePackage(serializeMessageBox(message))
+  def serializePackage(message: MessageBox): ResponseToClient =
+    serializePackage(serializeMessageBox(message))
 }

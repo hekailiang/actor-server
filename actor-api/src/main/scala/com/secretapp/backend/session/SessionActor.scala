@@ -138,9 +138,6 @@ class SessionActor(
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
       withMDC(log.info(s"HandleMessageBox($handleBox)"))
-      transport = handleBox match {
-        case _: HandleMTMessageBox => MTConnection.some
-      }
       queueNewSession(handleBox.mb.messageId)
       context.become(receiveBusinessLogic)
       receiveBusinessLogic(handleBox)
