@@ -52,7 +52,7 @@ object BackendBuild extends Build {
       Revolver.settings             ++
       Seq(
         libraryDependencies                       ++= Dependencies.root,
-        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx1G",
+        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx1G -Dfile.encoding=UTF-8",
         distBootClass        in Dist              :=  appClass,
         outputDirectory      in Dist              :=  file("target/dist"),
         Revolver.reStartArgs                      :=  Seq(appClassMock),
