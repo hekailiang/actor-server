@@ -50,7 +50,7 @@ class ApiBrokerActor(
               replyTo.tell(
                 SessionProtocol.SendRpcResponseBox(
                   connector,
-                  RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
+                  RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", Option(error.getMessage).getOrElse(""), true))),
                 self)
               log.error(error, s"Failed to handle rpc(right) $connector $messageId $body")
           }
@@ -63,7 +63,7 @@ class ApiBrokerActor(
         case -\/(error) =>
           replyTo.tell(
             SessionProtocol.SendRpcResponseBox(
-              connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
+              connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", Option(error.getMessage).getOrElse(""), true))),
             self)
           log.error(error, s"Failed to handle rpc(left) $connector $messageId $body")
       }

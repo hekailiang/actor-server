@@ -108,6 +108,11 @@ class SessionActor(
     super.preStart()
   }
 
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    withMDC(log.error(reason, s"Session is restarting due to error on handlong $message"))
+    super.preRestart(reason, message)
+  }
+
   override def postStop(): Unit = {
     withMDC(log.debug(s"postStop"))
     connectors foreach (_ ! SilentClose)
@@ -240,6 +245,7 @@ class SessionActor(
 
       currentUser map { user =>
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+        context.become(receiveBusinessLogic)
       }
     case AuthorizeUser(user) =>
       currentUser = Some(user)

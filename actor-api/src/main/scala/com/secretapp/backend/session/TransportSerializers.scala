@@ -14,13 +14,17 @@ trait TransportSerializers {
   def serializeMessageBox(message: MessageBox): BitVector = {
     transport match {
       case Some(MTConnection) => MessageBoxCodec.encodeValid(message)
-      case None => throw new IllegalArgumentException("transport == None")
+      case None =>
+        MessageBoxCodec.encodeValid(message)
+        //throw new IllegalArgumentException("transport == None")
     }
   }
 
   def serializePackage(mb: BitVector): ResponseToClient = transport match {
     case Some(MTConnection) => ResponseToClient(MTPackage(authId, sessionId, mb).encode)
-    case None => throw new IllegalArgumentException("transport == None")
+    case None =>
+      ResponseToClient(MTPackage(authId, sessionId, mb).encode)
+      //throw new IllegalArgumentException("transport == None")
   }
 
   def serializePackage(message: MessageBox): ResponseToClient = serializePackage(serializeMessageBox(message))
