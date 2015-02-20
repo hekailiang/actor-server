@@ -196,10 +196,11 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
   case class UsersCount(receivedMsgCount: Int, sentMsgCount: Int, lastMessageAt: DateTime)
 
   def getUsersCounts(userIds: Seq[Int])
-                    (implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession): Future[Seq[(Int, UsersCount)]] =
-  Future {
-    blocking {
-      val q = sql"""
+                    (implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession): Future[Seq[(Int, UsersCount)]] = {
+    if (userIds.isEmpty) Future.successful(Seq.empty)
+    else Future {
+      blocking {
+        val q = sql"""
               select user_id,
               sum(sent_count) as sent_count,
               sum(received_count) as received_count,
@@ -207,26 +208,27 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
               from (
                 select user_id, 0 as sent_count, count(*) as received_count, max(date) as last_message_at
                 from $table
-                where state = ${models.MessageState.Received.toInt}
+                where state = ${models.MessageState.Received.toInt} and user_id IN ($userIds)
                 group by user_id
 
                 union all
 
                 select user_id, count(*) as sent_count, 0 as received_count, max(date) as last_message_at
                 from $table
-                where state = ${models.MessageState.Sent.toInt}
+                where state = ${models.MessageState.Sent.toInt} and user_id IN ($userIds)
                 group by user_id
               ) as users_counts
               group by user_id
               """
-      q.map { rs =>
-        val uc = UsersCount(
-          receivedMsgCount = rs.int("received_count"),
-          sentMsgCount = rs.int("sent_count"),
-          lastMessageAt = rs.get[DateTime]("last_message_at")
-        )
-        (rs.int("user_id"), uc)
-      }.list().apply()
+        q.map { rs =>
+          val uc = UsersCount(
+            receivedMsgCount = rs.int("received_count"),
+            sentMsgCount = rs.int("sent_count"),
+            lastMessageAt = rs.get[DateTime]("last_message_at")
+          )
+          (rs.int("user_id"), uc)
+        }.list().apply()
+      }
     }
   }
 }
