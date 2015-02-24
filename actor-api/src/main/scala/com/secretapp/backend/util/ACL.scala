@@ -35,6 +35,6 @@ object ACL {
   def emailAccessHash(authId: Long, e: models.UserEmail)(implicit s: ActorSystem): Long =
     emailAccessHash(authId, e.userId, e.id, e.accessSalt)
 
-  def fileAccessHash(fr: persist.File, fileId: Int)(implicit s: ActorSystem): Future[Long] =
-    fr.getFileAccessSalt(fileId) map { accessSalt => hash(s"$fileId:$accessSalt:${secretKey()}") }
+  def fileAccessHash(fileId: Long, accessSalt: String)(implicit s: ActorSystem): Long =
+    hash(s"$fileId:$accessSalt:${secretKey()}")
 }

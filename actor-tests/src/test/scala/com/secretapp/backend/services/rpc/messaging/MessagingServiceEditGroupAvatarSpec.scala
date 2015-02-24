@@ -1,14 +1,16 @@
 package com.secretapp.backend.services.rpc.user
 
-import java.nio.file.{ Files, Paths }
+import com.secretapp.backend.api.AvatarSpecHelpers
 import com.secretapp.backend.data.message.struct.{GroupOutPeer, UserOutPeer}
 import com.secretapp.backend.models
 import com.secretapp.backend.data.message.rpc.update.{ ResponseGetDifference, RequestGetDifference }
 import com.secretapp.backend.data.message.rpc.messaging._
 import com.secretapp.backend.data.message.update._
 import com.secretapp.backend.util.{ACL, AvatarUtils}
+import java.nio.file.{ Files, Paths }
 import org.specs2.specification.BeforeExample
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scala.util.Random
 import scodec.bits._
 import com.websudos.util.testing._
@@ -16,16 +18,20 @@ import com.secretapp.backend.data.message.rpc.messaging.ResponseEditGroupAvatar
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.rpc.RpcSpec
 
-class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
+class MessagingServiceEditGroupAvatarSpec extends RpcSpec with AvatarSpecHelpers {
 
   "valid avatar" should {
-    "have proper size" in {
-      validOrigBytes must have size 112527
+    "have proper size" in new sqlDb {
+      storeImages()
+
+      validOrigAvatarBytes must have size 112527
     }
   }
 
   "user service on receiving `RequestEditGroupAvatar`" should {
-    "respond with `ResponseAvatarChanged`" in {
+    "respond with `ResponseAvatarChanged`" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -37,24 +43,26 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
         val r = setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        r.avatar.fullImage.get.width          should_== validOrigDimensions._1
-        r.avatar.fullImage.get.height         should_== validOrigDimensions._2
-        r.avatar.fullImage.get.fileSize       should_== validOrigBytes.length
-        dbImageBytes(r.avatar.fullImage.get)  should_== validOrigBytes
+        r.avatar.fullImage.get.width          should_== validOrigAvatarDimensions._1
+        r.avatar.fullImage.get.height         should_== validOrigAvatarDimensions._2
+        r.avatar.fullImage.get.fileSize       should_== validOrigAvatarBytes.length
+        dbImageBytes(r.avatar.fullImage.get)  should_== validOrigAvatarBytes
 
-        r.avatar.smallImage.get.width         should_== validSmallDimensions._1
-        r.avatar.smallImage.get.height        should_== validSmallDimensions._2
-        r.avatar.smallImage.get.fileSize      should_== validSmallBytes.length
-        dbImageBytes(r.avatar.smallImage.get) should_== validSmallBytes
+        r.avatar.smallImage.get.width         should_== validSmallAvatarDimensions._1
+        r.avatar.smallImage.get.height        should_== validSmallAvatarDimensions._2
+        r.avatar.smallImage.get.fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(r.avatar.smallImage.get) should_== validSmallAvatarBytes
 
-        r.avatar.largeImage.get.width         should_== validLargeDimensions._1
-        r.avatar.largeImage.get.height        should_== validLargeDimensions._2
-        r.avatar.largeImage.get.fileSize      should_== validLargeBytes.length
-        dbImageBytes(r.avatar.largeImage.get) should_== validLargeBytes
+        r.avatar.largeImage.get.width         should_== validLargeAvatarDimensions._1
+        r.avatar.largeImage.get.height        should_== validLargeAvatarDimensions._2
+        r.avatar.largeImage.get.fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(r.avatar.largeImage.get) should_== validLargeAvatarBytes
       }
     }
 
-    "update group avatar" in {
+    "update group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -73,7 +81,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       dbAvatar(respGroup.groupPeer.id).largeImage  should beSome
     }
 
-    "store full image in group avatar" in {
+    "store full image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -85,14 +95,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbFullImage(respGroup.groupPeer.id).width           should_== validOrigDimensions._1
-        dbFullImage(respGroup.groupPeer.id).height          should_== validOrigDimensions._2
-        dbFullImage(respGroup.groupPeer.id).fileSize        should_== validOrigBytes.length
-        dbImageBytes(dbFullImage(respGroup.groupPeer.id)) should_== validOrigBytes
+        dbFullImage(respGroup.groupPeer.id).width           should_== validOrigAvatarDimensions._1
+        dbFullImage(respGroup.groupPeer.id).height          should_== validOrigAvatarDimensions._2
+        dbFullImage(respGroup.groupPeer.id).fileSize        should_== validOrigAvatarBytes.length
+        dbImageBytes(dbFullImage(respGroup.groupPeer.id)) should_== validOrigAvatarBytes
       }
     }
 
-    "store large image in group avatar" in {
+    "store large image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -104,14 +116,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbLargeImage(respGroup.groupPeer.id).width         should_== validLargeDimensions._1
-        dbLargeImage(respGroup.groupPeer.id).height        should_== validLargeDimensions._2
-        dbLargeImage(respGroup.groupPeer.id).fileSize      should_== validLargeBytes.length
-        dbImageBytes(dbLargeImage(respGroup.groupPeer.id)) should_== validLargeBytes
+        dbLargeImage(respGroup.groupPeer.id).width         should_== validLargeAvatarDimensions._1
+        dbLargeImage(respGroup.groupPeer.id).height        should_== validLargeAvatarDimensions._2
+        dbLargeImage(respGroup.groupPeer.id).fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(dbLargeImage(respGroup.groupPeer.id)) should_== validLargeAvatarBytes
       }
     }
 
-    "store small image in group avatar" in {
+    "store small image in group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -123,14 +137,16 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
         setValidAvatarShouldBeOk(respGroup.groupPeer.id, respGroup.groupPeer.accessHash)
 
-        dbSmallImage(respGroup.groupPeer.id).width         should_== validSmallDimensions._1
-        dbSmallImage(respGroup.groupPeer.id).height        should_== validSmallDimensions._2
-        dbSmallImage(respGroup.groupPeer.id).fileSize      should_== validSmallBytes.length
-        dbImageBytes(dbSmallImage(respGroup.groupPeer.id)) should_== validSmallBytes
+        dbSmallImage(respGroup.groupPeer.id).width         should_== validSmallAvatarDimensions._1
+        dbSmallImage(respGroup.groupPeer.id).height        should_== validSmallAvatarDimensions._2
+        dbSmallImage(respGroup.groupPeer.id).fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(dbSmallImage(respGroup.groupPeer.id)) should_== validSmallAvatarBytes
       }
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -158,24 +174,26 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
         val a = update.avatar.get
 
-        a.fullImage.get.width          should_== validOrigDimensions._1
-        a.fullImage.get.height         should_== validOrigDimensions._2
-        a.fullImage.get.fileSize       should_== validOrigBytes.length
-        dbImageBytes(a.fullImage.get)  should_== validOrigBytes
+        a.fullImage.get.width          should_== validOrigAvatarDimensions._1
+        a.fullImage.get.height         should_== validOrigAvatarDimensions._2
+        a.fullImage.get.fileSize       should_== validOrigAvatarBytes.length
+        dbImageBytes(a.fullImage.get)  should_== validOrigAvatarBytes
 
-        a.smallImage.get.width         should_== validSmallDimensions._1
-        a.smallImage.get.height        should_== validSmallDimensions._2
-        a.smallImage.get.fileSize      should_== validSmallBytes.length
-        dbImageBytes(a.smallImage.get) should_== validSmallBytes
+        a.smallImage.get.width         should_== validSmallAvatarDimensions._1
+        a.smallImage.get.height        should_== validSmallAvatarDimensions._2
+        a.smallImage.get.fileSize      should_== validSmallAvatarBytes.length
+        dbImageBytes(a.smallImage.get) should_== validSmallAvatarBytes
 
-        a.largeImage.get.width         should_== validLargeDimensions._1
-        a.largeImage.get.height        should_== validLargeDimensions._2
-        a.largeImage.get.fileSize      should_== validLargeBytes.length
-        dbImageBytes(a.largeImage.get) should_== validLargeBytes
+        a.largeImage.get.width         should_== validLargeAvatarDimensions._1
+        a.largeImage.get.height        should_== validLargeAvatarDimensions._2
+        a.largeImage.get.fileSize      should_== validLargeAvatarBytes.length
+        dbImageBytes(a.largeImage.get) should_== validLargeAvatarBytes
       }
     }
 
-    "respond with IMAGE_LOAD_ERROR if invalid image passed" in {
+    "respond with IMAGE_LOAD_ERROR if invalid image passed" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -189,7 +207,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "respond with FILE_TOO_BIG if huge image passed" in {
+    "respond with FILE_TOO_BIG if huge image passed" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -206,7 +226,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
 
   "user service on receiving `RequestRemoveGroupAvatar`" should {
 
-    "respond with `ResponseAvatarChanged`" in {
+    "respond with `ResponseAvatarChanged`" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -221,7 +243,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       }
     }
 
-    "update group avatar" in {
+    "update group avatar" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -238,7 +262,9 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
       dbGroup(respGroup.groupPeer.id)._2.avatar should beNone
     }
 
-    "append update to chain" in {
+    "append update to chain" in new sqlDb {
+      storeImages()
+
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -268,49 +294,19 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
     }
   }
 
-  import system.dispatcher
-
+  implicit lazy val ec = system.dispatcher
   implicit val timeout = 5.seconds
 
   private var validFileLocation: models.FileLocation = _
   private var invalidFileLocation: models.FileLocation = _
   private var tooLargeFileLocation: models.FileLocation = _
 
-  override def before = {
-    validFileLocation = storeImage(42, validOrigBytes)
-    invalidFileLocation = storeImage(43, invalidBytes)
-    tooLargeFileLocation = storeImage(44, tooLargeBytes)
-  }
+  def storeImages() = {
+    val fs = storeAvatarFiles(fileAdapter)
 
-  private val fr = new persist.File
-
-  private val validOrigBytes =
-    Files.readAllBytes(Paths.get(getClass.getResource("/valid-avatar.jpg").toURI))
-
-  private val invalidBytes = Stream.continually(Random.nextInt().toByte).take(50000).toArray
-
-  private val tooLargeBytes =
-    Files.readAllBytes(Paths.get(getClass.getResource("/too-large-avatar.jpg").toURI))
-
-  private val validOrigDimensions = AvatarUtils.dimensions(validOrigBytes).sync()
-
-  private val validLargeBytes = AvatarUtils.resizeToLarge(validOrigBytes).sync()
-  private val validLargeDimensions = (200, 200)
-
-  private val validSmallBytes = AvatarUtils.resizeToSmall(validOrigBytes).sync()
-  private val validSmallDimensions = (100, 100)
-
-  private def storeImage(fileId: Int, bytes: Array[Byte]): models.FileLocation = {
-    val fileSalt = (new Random).nextString(30)
-
-    val ffl = for (
-      _    <- fr.createFile(fileId, fileSalt);
-      _    <- fr.write(fileId, 0, bytes);
-      hash <- ACL.fileAccessHash(fr, fileId);
-      fl    = models.FileLocation(fileId, hash)
-    ) yield fl
-
-    ffl.sync()
+    validFileLocation = fs._1
+    invalidFileLocation = fs._2
+    tooLargeFileLocation = fs._3
   }
 
   private def setValidAvatarShouldBeOk(groupId: Int, accessHash: Long)(implicit scope: TestScope) = {
@@ -324,7 +320,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   }
 
   private def dbGroup(groupId: Int) =
-    persist.Group.getEntityWithAvatar(groupId).sync().get
+    persist.Group.findWithAvatar(groupId).sync().get
 
   private def dbAvatar(groupId: Int) = dbGroup(groupId)._2.avatar.get
   private def dbFullImage(groupId: Int) = dbAvatar(groupId).fullImage.get
@@ -332,7 +328,7 @@ class MessagingServiceEditGroupAvatarSpec extends RpcSpec with BeforeExample {
   private def dbSmallImage(groupId: Int) = dbAvatar(groupId).smallImage.get
 
   private def dbImageBytes(a: models.AvatarImage)(implicit scope: TestScope) =
-    fr.getFile(a.fileLocation.fileId.toInt).sync()
+    persist.File.readAll(fileAdapter, a.fileLocation.fileId).sync()
 
   private def createGroup(ownerScope: TestScope, scope2: TestScope) = {
     val rqCreateGroup = RequestCreateGroup(

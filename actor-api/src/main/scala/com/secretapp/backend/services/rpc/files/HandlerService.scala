@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
 import scodec.bits._
-import scodec.codecs.{ int32 => int32codec }
+import scodec.codecs.{ int32 => int32codec, int64 => int64codec }
 
 trait HandlerService extends GeneratorService {
   this: Handler =>
@@ -28,21 +28,30 @@ trait HandlerService extends GeneratorService {
   implicit val timeout = Timeout(5.seconds)
 
   protected def handleRequestStartUpload(): Future[RpcResponse] = {
-    val fileId = rand.nextInt
-    fileRecord.createFile(fileId, genFileAccessSalt) map { _ =>
-      val rsp = ResponseStartUpload(UploadConfig(int32codec.encodeValid(fileId)))
+    val fileId = rand.nextLong
+    persist.File.create(fileAdapter, fileId, genFileAccessSalt) map { _ =>
+      log.debug("Created file {}", fileId)
+      val rsp = ResponseStartUpload(UploadConfig(int64codec.encodeValid(fileId)))
       Ok(rsp)
     }
   }
 
+  protected def decodeServerData(data: BitVector): String \/ Long = {
+    // for compatibility with old serverData which contained int32-decoded file ids
+    (int64codec.decodeValue(data) ||| int32codec.decodeValue(data)) map (_.asInstanceOf[Long])
+  }
+
   protected def handleRequestUploadFile(config: UploadConfig, offset: Int, data: BitVector): Future[RpcResponse] = {
-    int32codec.decodeValue(config.serverData) match {
+    decodeServerData(config.serverData) match {
       case -\/(e) =>
         log.warning(s"Cannot parse serverData $e")
         Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
       case \/-(fileId) =>
         try {
-          fileRecord.write(fileId, offset, data.toByteArray) map { _ =>
+          log.debug("Writing file id: {} with offset: {}", fileId, offset)
+          for {
+            _ <- persist.File.write(fileAdapter, fileId, offset, data.toByteArray)
+          } yield {
             val rsp = ResponseVoid()
             Ok(rsp)
           }
@@ -53,85 +62,90 @@ trait HandlerService extends GeneratorService {
     }
   }
 
-  protected def readBuffer(buffer: ByteBuffer): Array[Byte] = {
-    val bytes: Array[Byte] = new Array(buffer.remaining)
-    buffer.get(bytes, 0, bytes.length)
-    bytes
-  }
-
-  protected def inputCRC32: Iteratee[ByteBuffer, CRC32] = {
-    Iteratee.fold[ByteBuffer, CRC32](new CRC32) {
-      (crc32, buffer) =>
-        crc32.update(readBuffer(buffer))
+  protected def inputCRC32: Iteratee[Array[Byte], CRC32] = {
+    Iteratee.fold[Array[Byte], CRC32](new CRC32) {
+      (crc32, data) =>
+        crc32.update(data)
         crc32
     }
   }
 
   // TODO: refactor makaron
   protected def handleRequestCompleteUpload(config: UploadConfig, blocksCount: Int, crc32: Long): Future[RpcResponse] = {
-    int32codec.decodeValue(config.serverData) match {
+    decodeServerData(config.serverData) match {
       case -\/(e) =>
         log.warning(s"Cannot parse serverData $e")
         Future.successful(Error(400, "CONFIG_INCORRECT", "", false))
       case \/-(fileId) =>
-        val faccessHash = ACL.fileAccessHash(fileRecord, fileId)
+        val blocksCountFuture = persist.FileBlock.countAll(fileId)
+        val dataOptFuture = persist.FileData.find(fileId)
 
-        val f = fileRecord.countSourceBlocks(fileId) flatMap { sourceBlocksCount =>
-          if (blocksCount == sourceBlocksCount) {
-            val f = Iteratee.flatten(fileRecord.blocksByFileId(fileId) |>> inputCRC32).run map (_.getValue) flatMap { realcrc32 =>
-              if (crc32 == realcrc32) {
-                val f = faccessHash map { accessHash =>
+        val countAndDataOptFuture = for {
+          count <- blocksCountFuture
+          dataOpt <- dataOptFuture
+        } yield {
+          dataOpt map ((count, _))
+        }
+
+        countAndDataOptFuture flatMap {
+          case Some((uploadedBlocksCount, models.FileData(_, accessSalt, _))) =>
+            val accessHash = ACL.fileAccessHash(fileId, accessSalt)
+
+            if (blocksCount == uploadedBlocksCount) {
+              val f: Future[RpcResponse] = Iteratee.flatten(persist.File.read(fileAdapter, fileId) |>> inputCRC32).run map (_.getValue) map { realcrc32 =>
+                persist.File.complete(fileAdapter, fileId)
+
+                if (crc32 == realcrc32) {
                   val rsp = ResponseCompleteUpload(models.FileLocation(fileId, accessHash))
                   Ok(rsp)
+                } else {
+                  Error(400, "WRONG_CRC", "", true)
                 }
-                f onFailure {
-                  case e: Throwable =>
-                    log.error("Failed to get file accessHash")
-                    throw e
-                }
-                f
-              } else {
-                Future.successful(Error(400, "WRONG_CRC", "", true))
               }
+              f onFailure {
+                case e: Throwable =>
+                  log.error("Failed to calculate file crc32")
+                  throw e
+              }
+              f
+            } else {
+              Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
             }
-            f onFailure {
-              case e: Throwable =>
-                log.error("Failed to calculate file crc32")
-                throw e
-            }
-            f
-          } else {
-            Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
-          }
+          case None =>
+            throw new persist.LocationInvalid
         }
-        f onFailure {
-          case e: Throwable =>
-            log.error("Failed to get source blocks count")
-            throw e
-        }
-        f
     }
   }
 
   protected def handleRequestGetFile(location: models.FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
-    // TODO: Int vs Long
-    val f = ACL.fileAccessHash(fileRecord, location.fileId.toInt) flatMap { realAccessHash =>
-      if (realAccessHash != location.accessHash) {
-        throw new persist.LocationInvalid
-      }
-      fileRecord.getFile(location.fileId.toInt, offset, limit)
-    } map { bytes =>
-      val rsp = ResponseGetFile(BitVector(bytes))
-      Ok(rsp)
-    } recover {
-      case e: persist.FileError =>
-        Error(400, e.tag, "", e.canTryAgain)
+    persist.FileData.find(location.fileId) flatMap {
+      case Some(models.FileData(fileId, accessSalt, _)) =>
+        val realAccessHash = ACL.fileAccessHash(fileId, accessSalt)
+        if (realAccessHash != location.accessHash) {
+          throw new persist.LocationInvalid
+        }
+
+        try {
+          log.debug("Reading file id: {} offset: {} limit: {}", fileId, offset, limit)
+
+          val f = persist.File.read(fileAdapter, fileId, offset, limit).map { bytes =>
+            val rsp = ResponseGetFile(BitVector(bytes))
+            Ok(rsp)
+          }
+
+          f onFailure {
+            case e: Throwable =>
+              log.error(e, "Failed to read file id: {} offset: {} limit: {}", fileId, offset, limit)
+          }
+
+          f
+        } catch {
+          case e: persist.FileError =>
+            Future successful Error(400, e.tag, "", e.canTryAgain)
+        }
+
+      case None =>
+        Future.successful(Error(400, "LOCATION_INVALID", "", true))
     }
-    f onFailure {
-      case e: Throwable =>
-        log.error("Failed to check file accessHash")
-        throw e
-    }
-    f
   }
 }

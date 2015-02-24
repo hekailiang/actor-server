@@ -16,7 +16,7 @@ import scodec.bits._
 class PublicKeysServiceSpec extends RpcSpec {
   transportForeach { implicit transport =>
     "PublicKeysService" should {
-      "return public keys" in {
+      "return public keys" in new sqlDb {
         implicit val scope = genTestScope()
 
         val messageId = getMessageId()
@@ -40,7 +40,7 @@ class PublicKeysServiceSpec extends RpcSpec {
           name,
           "RU",
           models.NoSex,
-          keyHashes = immutable.Set(pkHash),
+          publicKeyHashes = immutable.Set(pkHash),
           phoneIds = immutable.Set(phoneId),
           emailIds = immutable.Set.empty,
           state = models.UserState.Registered
@@ -49,7 +49,6 @@ class PublicKeysServiceSpec extends RpcSpec {
         authUser(user, phone)
 
         val sndPhoneId = rand.nextInt
-        val sndPhone = models.UserPhone(rand.nextInt, userId, phoneSalt, phoneNumber + 1, "Mobile phone")
 
         val secondUser = models.User(
           userId + 1,
@@ -61,21 +60,41 @@ class PublicKeysServiceSpec extends RpcSpec {
           name,
           "RU",
           models.NoSex,
-          keyHashes = immutable.Set(pkHash),
+          publicKeyHashes = immutable.Set(pkHash),
           phoneIds = immutable.Set(sndPhoneId),
           emailIds = immutable.Set.empty,
           state = models.UserState.Registered
         )
 
         val accessHash = ACL.userAccessHash(scope.authId, secondUser)
-        persist.UserPhone.insertEntity(sndPhone)
-        persist.User.insertEntityWithChildren(secondUser, models.AvatarData.empty).sync()
+
+        val sndPhone = persist.UserPhone.create(
+          id = sndPhoneId,
+          userId = userId,
+          accessSalt = phoneSalt,
+          number = phoneNumber + 1,
+          title = "Mobile phone"
+        ).sync()
+
+        persist.User.create(
+          id = secondUser.uid,
+          accessSalt = secondUser.accessSalt,
+          name = secondUser.name,
+          countryCode = secondUser.countryCode,
+          sex = secondUser.sex,
+          state = secondUser.state
+        )(
+          authId = secondUser.authId,
+          publicKeyHash = secondUser.publicKeyHash,
+          publicKeyData = secondUser.publicKeyData
+        ).sync()
+        persist.AvatarData.create[models.User](secondUser.uid, models.AvatarData.empty).sync()
 
         val reqKeys = immutable.Seq(PublicKeyRequest(secondUser.uid, accessHash, secondUser.publicKeyHash))
         val rpcReq = RpcRequestBox(Request(RequestGetPublicKeys(reqKeys)))
         sendMsg(rpcReq)
 
-        val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKey))
+        val resKeys = immutable.Seq(PublicKeyResponse(secondUser.uid, secondUser.publicKeyHash, secondUser.publicKeyData))
         expectRpcMsg(Ok(ResponseGetPublicKeys(resKeys)), withNewSession = true)
       }
     }

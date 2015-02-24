@@ -9,26 +9,24 @@ import akka.pattern.ask
 import com.secretapp.backend.data._
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport.MessageBox
-import com.secretapp.backend.persist.CassandraSpecification
 import com.secretapp.backend.protocol.codecs._
 import com.secretapp.backend.protocol.codecs.message._
 import com.secretapp.backend.api.counters._
-import org.specs2.mutable.ActorLikeSpecification
+import com.typesafe.config.ConfigFactory
+import im.actor.server.persist.unit.SqlSpec
+import im.actor.testkit.ActorSpecification
 import scala.collection.immutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.language.postfixOps
-import org.specs2.mutable.ActorSpecification
 
-class SocialBrokerSpec extends ActorLikeSpecification with CassandraSpecification with ImplicitSender {
-  import system.dispatcher
-
+class SocialBrokerSpec extends ActorSpecification with SqlSpec {
   import SocialProtocol._
 
   implicit val timeout = Timeout(Duration(20, "seconds"))
 
   "SocialBroker" should {
-    "count relations" in {
+    "count relations" in new sqlDb {
       val uid1 = 1
       val uid2 = 2
 

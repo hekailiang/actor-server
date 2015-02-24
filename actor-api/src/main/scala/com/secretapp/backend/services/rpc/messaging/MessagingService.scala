@@ -3,7 +3,6 @@ package com.secretapp.backend.services.rpc.messaging
 import akka.actor._
 import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.api.ApiBrokerService
 import com.secretapp.backend.api.rpc.RpcProtocol
@@ -29,8 +28,9 @@ trait MessagingService {
         updatesBrokerRegion,
         socialBrokerRegion,
         singletons.dialogManagerRegion,
-        fileRecord,
-        currentUser.get
+        fileAdapter,
+        currentUser.get,
+        currentAuthId
       )
     ), "messaging")
 

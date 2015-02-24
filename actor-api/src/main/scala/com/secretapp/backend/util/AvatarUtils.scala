@@ -8,6 +8,7 @@ import com.secretapp.backend.services.common.RandomService
 import com.sksamuel.scrimage.{ AsyncImage, Format, Position }
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import im.actor.server.persist.file.adapter.FileAdapter
 import scala.concurrent.{ ExecutionContext, Future }
 import scalaz._
 import Scalaz._
@@ -36,36 +37,37 @@ object AvatarUtils extends RandomService {
     (implicit ec: ExecutionContext): Future[(Int, Int)] =
     AsyncImage(imgBytes) map { i => (i.width, i.height) }
 
-  def scaleAvatar(fr: persist.File, fl: models.FileLocation)
+  def scaleAvatar(fa: FileAdapter, fl: models.FileLocation)
     (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[models.Avatar] = {
-    val smallImageId = rand.nextInt
-    val largeImageId = rand.nextInt
+    val smallImageId = rand.nextLong
+    val largeImageId = rand.nextLong
 
-    for (
-      fullImageBytes   <- fr.getFile(fl.fileId.toInt);
-      (fiw, fih)       <- dimensions(fullImageBytes);
+    for {
+      fullImageBytes   <- fa.readAll(fl.fileId.toString)
+      (fiw, fih)       <- dimensions(fullImageBytes)
 
-      _                <- fr.createFile(smallImageId, rand.nextString(30)); // TODO: genAccessSalt makes specs
-      _                <- fr.createFile(largeImageId, rand.nextString(30)); // fail
+      _                <- persist.File.create(fa, smallImageId, rand.nextString(30)) // TODO: genAccessSalt makes specs
+      _                <- persist.File.create(fa, largeImageId, rand.nextString(30)) // fail
 
-      smallImageHash   <- ACL.fileAccessHash(fr, smallImageId);
-      largeImageHash   <- ACL.fileAccessHash(fr, largeImageId);
+      smallImageFD     <- persist.FileData.find(smallImageId)
+      largeImageFD     <- persist.FileData.find(largeImageId)
 
-      smallImageLoc    = models.FileLocation(smallImageId, smallImageHash);
-      largeImageLoc    = models.FileLocation(largeImageId, largeImageHash);
+      // FIXME: make it safe (Option.get)
+      smallImageLoc    = models.FileLocation(smallImageId, ACL.fileAccessHash(smallImageId, smallImageFD.get.accessSalt))
+      largeImageLoc    = models.FileLocation(largeImageId, ACL.fileAccessHash(largeImageId, largeImageFD.get.accessSalt))
 
-      smallImageBytes <- AvatarUtils.resizeToSmall(fullImageBytes);
-      largeImageBytes <- AvatarUtils.resizeToLarge(fullImageBytes);
+      smallImageBytes <- AvatarUtils.resizeToSmall(fullImageBytes)
+      largeImageBytes <- AvatarUtils.resizeToLarge(fullImageBytes)
 
-      _               <- fr.write(smallImageLoc.fileId.toInt, 0, smallImageBytes);
-      _               <- fr.write(largeImageLoc.fileId.toInt, 0, largeImageBytes);
+      _               <- persist.File.write(fa, smallImageLoc.fileId, 0, smallImageBytes)
+      _               <- persist.File.write(fa, largeImageLoc.fileId, 0, largeImageBytes)
 
-      smallAvatarImage = models.AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length);
-      largeAvatarImage = models.AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length);
-      fullAvatarImage  = models.AvatarImage(fl, fiw, fih, fullImageBytes.length);
+      smallAvatarImage = models.AvatarImage(smallImageLoc, 100, 100, smallImageBytes.length)
+      largeAvatarImage = models.AvatarImage(largeImageLoc, 200, 200, largeImageBytes.length)
+      fullAvatarImage  = models.AvatarImage(fl, fiw, fih, fullImageBytes.length)
 
       avatar           = models.Avatar(smallAvatarImage.some, largeAvatarImage.some, fullAvatarImage.some)
 
-    ) yield avatar
+    } yield avatar
   }
 }

@@ -1,52 +1,73 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
 import com.secretapp.backend.models
-import scala.collection.immutable
-import scala.concurrent.Future
+import scala.concurrent._
+import scalikejdbc._
+import scalaz.std.option._
+import scalaz.std.scalaFuture._
+import scalaz.OptionT._
 
-sealed class UserEmail extends CassandraTable[UserEmail, models.UserEmail] {
+object UserEmail extends SQLSyntaxSupport[models.UserEmail] {
   override val tableName = "user_emails"
+  override val columnNames = Seq("id", "email", "user_id", "title", "access_salt")
 
-  object userId extends IntColumn(this) with PartitionKey[Int] {
-    override val name = "user_id"
-  }
+  lazy val ue = UserEmail.syntax("ue")
 
-  object emailId extends IntColumn(this) with PrimaryKey[Int] {
-    override val name = "email_id"
-  }
+  def apply(a: SyntaxProvider[models.UserEmail])(rs: WrappedResultSet): models.UserEmail = apply(ue.resultName)(rs)
 
-  object accessSalt extends StringColumn(this) {
-    override val name = "access_salt"
-  }
-
-  object email extends StringColumn(this)
-
-  object title extends StringColumn(this)
-
-  override def fromRow(row: Row): models.UserEmail =
+  def apply(u: ResultName[models.UserEmail])(rs: WrappedResultSet): models.UserEmail =
     models.UserEmail(
-      id = emailId(row),
-      userId = userId(row),
-      accessSalt = accessSalt(row),
-      email = email(row),
-      title = title(row)
+      id = rs.int(u.id),
+      email = rs.string(u.email),
+      userId = rs.int(u.userId),
+      title = rs.string(u.title),
+      accessSalt = rs.string(u.accessSalt)
     )
-}
 
-object UserEmail extends UserEmail with TableOps {
-  def insertEntity(entity: models.UserEmail)(implicit session: Session): Future[ResultSet] =
-    insert
-      .value(_.userId, entity.userId)
-      .value(_.emailId, entity.id)
-      .value(_.accessSalt, entity.accessSalt)
-      .value(_.email, entity.email)
-      .value(_.title, entity.title)
-      .future()
+  def create(id: Int, email: String, title: String, accessSalt: String, userId: Int)
+            (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Unit] = Future {
+    blocking {
+      withSQL {
+        insert.into(UserEmail).namedValues(
+          column.id -> id,
+          column.email -> email,
+          column.title -> title,
+          column.accessSalt -> accessSalt,
+          column.userId -> userId
+        )
+      }.execute().apply
+    }
+  }
 
-  def getEntity(userId: Int, emailId: Int)(implicit session: Session): Future[Option[models.UserEmail]] =
-    select.where(_.userId eqs userId).and(_.emailId eqs emailId).one()
+  def findAllByUserId(userId: Int)
+                     (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Seq[models.UserEmail]] =
+    Future {
+      blocking {
+        withSQL {
+          select.from(UserEmail as ue)
+            .where.eq(ue.userId, userId)
+        }.map(UserEmail(ue)).list().apply
+      }
+    }
 
-  def fetchUserEmails(userId: Int)(implicit session: Session): Future[Seq[models.UserEmail]] =
-    select.where(_.userId eqs userId).fetch()
+  def findByEmail(email: String)
+                 (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Option[models.UserEmail]] =
+    Future {
+      blocking {
+        withSQL {
+          select.from(UserEmail as ue)
+            .where.eq(ue.email, email)
+        }.map(UserEmail(ue)).single().apply
+      }
+    }
+
+
+  def getUser(email: String)
+             (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Option[models.User]] =
+    {
+      for {
+         userEmail <- optionT(findByEmail(email))
+         user <- optionT(User.find(userEmail.userId)(None))
+      } yield user
+    }.run
 }

@@ -38,35 +38,36 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
   private def handleEditAvatar(user: models.User, r: RequestEditAvatar): Future[RpcResponse] = {
     val sizeLimit: Long = 1024 * 1024 // TODO: configurable
 
-    fileRecord.getFileLength(r.fileLocation.fileId.toInt) flatMap { len =>
-      if (len > sizeLimit)
-        Future successful Error(400, "FILE_TOO_BIG", "", false)
-      else
-        AvatarUtils.scaleAvatar(fileRecord, r.fileLocation) flatMap { a =>
-          persist.User.updateAvatar(user.uid, a) flatMap { _ =>
-            withRelatedAuthIds(user.uid) { authIds =>
-              authIds foreach { authId =>
-                updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, UserAvatarChanged(user.uid, Some(a)))
+    persist.FileData.find(r.fileLocation.fileId) flatMap {
+      case Some(models.FileData(_, _, len)) =>
+        if (len > sizeLimit)
+          Future successful Error(400, "FILE_TOO_BIG", "", false)
+        else
+          AvatarUtils.scaleAvatar(fileAdapter, r.fileLocation) flatMap { a =>
+            persist.AvatarData.save[models.User](user.uid, a.avatarData) flatMap { _ =>
+              withRelatedAuthIds(user.uid) { authIds =>
+                authIds foreach { authId =>
+                  updatesBrokerRegion ! UpdatesBroker.NewUpdatePush(authId, UserAvatarChanged(user.uid, Some(a)))
+                }
+              }
+
+              broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, Some(a))) map {
+                case (seq, state) =>
+                  Ok(ResponseEditAvatar(a, seq, Some(state)))
               }
             }
-
-            broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, Some(a))) map {
-              case (seq, state) =>
-                Ok(ResponseEditAvatar(a, seq, Some(state)))
-            }
+          } recover {
+            case e =>
+              log.warning(s"Failed while updating avatar: $e")
+              Error(400, "IMAGE_LOAD_ERROR", "", false)
           }
-        } recover {
-          case e =>
-            log.warning(s"Failed while updating avatar: $e")
-            Error(400, "IMAGE_LOAD_ERROR", "", false)
-        }
+      case None =>
+        Future successful Error(400, "LOCATION_INVALID", "", false)
     }
   }
 
   private def handleRemoveAvatar(user: models.User): Future[RpcResponse] = {
-    val emptyAvatar = models.Avatar(None, None, None)
-
-    persist.User.updateAvatar(user.uid, emptyAvatar) flatMap { _ =>
+    persist.AvatarData.save[models.User](user.uid, models.AvatarData.empty) flatMap { _ =>
       broadcastCUUpdateAndGetState(currentUser.get, UserAvatarChanged(user.uid, None)) map {
         case (seq, state) =>
           Ok(ResponseSeq(seq, Some(state)))
@@ -91,7 +92,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     }
 
   def handleChangePhoneTitle(user: models.User, r: RequestChangePhoneTitle): Future[RpcResponse] =
-    persist.UserPhone.editTitle(user.uid, r.phoneId, r.title) flatMap { _ =>
+    persist.UserPhone.updateTitle(userId = user.uid, id = r.phoneId, title = r.title) flatMap { _ =>
       val update = PhoneTitleChanged(r.phoneId, r.title)
 
       withRelatedAuthIds(user.uid) { authIds =>

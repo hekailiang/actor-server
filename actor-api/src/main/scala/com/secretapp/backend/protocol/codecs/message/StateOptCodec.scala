@@ -1,9 +1,9 @@
 package com.secretapp.backend.protocol.codecs.message
 
+import java.util.UUID
 import scodec.bits.BitVector
 import scodec.Codec
 import scodec.codecs._
-import java.util.UUID
 import scalaz._
 import Scalaz._
 

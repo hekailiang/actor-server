@@ -1,7 +1,6 @@
 package com.secretapp.backend.api
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc._
 import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.rpc.{ Ok, Error, RpcRequest }
@@ -9,6 +8,7 @@ import com.secretapp.backend.models.User
 import com.secretapp.backend.data.transport.{ MessageBox, MTPackage }
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.session.SessionProtocol
+import im.actor.server.persist.file.adapter.FileAdapter
 import scala.util.{ Failure, Success }
 import scalaz._
 import Scalaz._
@@ -21,8 +21,14 @@ object ApiBrokerProtocol {
 }
 
 class ApiBrokerActor(
-  val currentAuthId: Long, val currentSessionId: Long, val singletons: Singletons,
-  val subscribedToUpdates: Boolean, val session: CSession) extends Actor with ActorLogging with ApiBrokerService {
+  val currentAuthId: Long,
+  val currentSessionId: Long,
+  val singletons: Singletons,
+  val fileAdapter: FileAdapter,
+  val updatesBrokerRegion: ActorRef,
+  val socialBrokerRegion: ActorRef,
+  val subscribedToUpdates: Boolean
+) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._
 
   import context._
@@ -46,7 +52,7 @@ class ApiBrokerActor(
               replyTo.tell(
                 SessionProtocol.SendRpcResponseBox(
                   connector,
-                  RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
+                  RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", Option(error.getMessage).getOrElse(""), true))),
                 self)
               log.error(error, s"Failed to handle rpc(right) $connector $messageId $body")
           }
@@ -59,7 +65,7 @@ class ApiBrokerActor(
         case -\/(error) =>
           replyTo.tell(
             SessionProtocol.SendRpcResponseBox(
-              connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", error.getMessage, true))),
+              connector, RpcResponseBox(messageId, Error(500, "INTERNAL_SERVER_ERROR", Option(error.getMessage).getOrElse(""), true))),
             self)
           log.error(error, s"Failed to handle rpc(left) $connector $messageId $body")
       }

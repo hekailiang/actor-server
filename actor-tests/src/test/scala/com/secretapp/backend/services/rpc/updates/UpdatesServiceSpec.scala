@@ -18,7 +18,7 @@ class UpdatesServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "updates service" should {
-    "not subscribe to updates twice" in {
+    "not subscribe to updates twice" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -66,7 +66,7 @@ class UpdatesServiceSpec extends RpcSpec {
       }
     }
 
-    "send updates in new connection" in {
+    "send updates in new connection" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -131,7 +131,7 @@ class UpdatesServiceSpec extends RpcSpec {
       }
     }
 
-    "get difference" in {
+    "get difference" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(rand.nextInt(), rand.nextInt())
       catchNewSession(scope1)
       catchNewSession(scope2)

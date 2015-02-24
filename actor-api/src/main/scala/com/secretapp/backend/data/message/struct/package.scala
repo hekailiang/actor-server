@@ -11,7 +11,7 @@ package object struct {
       protobuf.FileLocation(a.fileId, a.accessHash)
 
     def fromProto(b: protobuf.FileLocation): models.FileLocation =
-      models.FileLocation(b.fileId.toInt, b.accessHash)
+      models.FileLocation(b.fileId, b.accessHash)
   }
 
   implicit object AvatarImageFormats extends proto.Formats[models.AvatarImage, protobuf.AvatarImage] {

@@ -1,4 +1,4 @@
-package com.secretapp.backend.persist
+/*package com.secretapp.backend.persist
 
 import com.websudos.phantom.Implicits._
 import java.util.concurrent.Executor
@@ -39,3 +39,4 @@ private[persist] class FileSourceBlock(implicit session: Session, context: Execu
     }
   }
 }
+ */

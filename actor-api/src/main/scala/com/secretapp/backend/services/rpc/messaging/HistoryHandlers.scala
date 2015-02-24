@@ -2,7 +2,6 @@ package com.secretapp.backend.services.rpc.messaging
 
 import akka.actor._
 import akka.pattern.ask
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.{ SocialProtocol, UpdatesBroker }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging._
@@ -11,11 +10,12 @@ import com.secretapp.backend.data.message.rpc.{ Error, Ok, RpcResponse, Response
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.{ update => updateProto }
 import com.secretapp.backend.models
-import com.secretapp.backend.helpers.{ GroupHelpers, UserHelpers }
+import com.secretapp.backend.helpers.{HistoryHelpers, GroupHelpers, UserHelpers}
 import com.secretapp.backend.persist
 import com.secretapp.backend.services.common.RandomService
 import com.secretapp.backend.util.{ACL, AvatarUtils}
 import java.util.UUID
+import org.joda.time.DateTime
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -28,8 +28,6 @@ trait HistoryHandlers extends RandomService with UserHelpers {
 
   import context.{ dispatcher, system }
   import UpdatesBroker._
-
-  implicit val session: CSession
 
   val handleHistory: RequestMatcher = {
     case RequestLoadHistory(peer, randomId, message) =>
@@ -49,11 +47,11 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     randomIds: immutable.Seq[Long]
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      markMessageDeleted(currentUser.uid, outPeer.asPeer, randomIds)
+      markMessageDeleted(currentUser.uid, outPeer.asPeer.asModel, randomIds)
       val authIdsF = outPeer.typ match {
-        case struct.PeerType.Group =>
+        case models.PeerType.Group =>
           getGroupUserAuthIds(outPeer.id)
-        case struct.PeerType.Private =>
+        case models.PeerType.Private =>
           val ownAuthIdsF = getAuthIds(currentUser.uid)
           val outAuthIdsF = getAuthIds(outPeer.id)
 
@@ -79,7 +77,8 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
+      clearDialogMessages(currentUser.uid, outPeer.asPeer.asModel)
+      persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer.asModel)
 
       val update = updateProto.ChatClear(outPeer.asPeer)
 
@@ -99,9 +98,8 @@ trait HistoryHandlers extends RandomService with UserHelpers {
   protected def handleRequestDeleteChat(
     outPeer: struct.OutPeer
   ): Future[RpcResponse] = withOutPeer(outPeer, currentUser) {
-    persist.HistoryMessage.deleteByPeer(currentUser.uid, outPeer.asPeer)
-    persist.Dialog.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
-    persist.DialogUnreadCounter.deleteByUserAndPeer(currentUser.uid, outPeer.asPeer)
+    persist.HistoryMessage.destroyAll(currentUser.uid, outPeer.asPeer.asModel)
+    persist.Dialog.destroy(currentUser.uid, outPeer.asPeer.asModel)
 
     val update = updateProto.ChatDelete(outPeer.asPeer)
 
@@ -122,64 +120,57 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     startDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
-    persist.Dialog.fetchDialogs(currentUser.uid, startDate, limit) flatMap { dialogs =>
-      val fullDialogsWithUnreadZero = dialogs.foldLeft(Vector.empty[Dialog]) {
-        case (res, persist.DialogMeta(peer, senderUserId, randomId, date, message)) =>
-          if (res.isEmpty)
-            res :+ Dialog(
-              peer = peer,
-              unreadCount = 0,
-              sortDate = date,
-              senderUserId = senderUserId,
-              randomId = randomId,
-              date = date,
-              message = message
-            )
-          else {
-            val sortDate = if (date != res.last.date)
-              date
-            else
-              date + 1
-
-            res :+ Dialog(
-              peer = peer,
-              unreadCount = 0,
-              sortDate = sortDate,
-              senderUserId = senderUserId,
-              randomId = randomId,
-              date = date,
-              message = message
-            )
+    persist.Dialog.findAllWithUnreadCount(currentUser.uid, new DateTime(startDate), limit) flatMap { dmWithUnread =>
+      val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
+        case (res, Tuple2(models.Dialog(_, peer, sortDate, senderUserId, randomId, date, mcHeader, mcData, state), unreadCount)) =>
+          val stateOpt = if (currentUser.uid == senderUserId) {
+            Some(state) // for outgoing
+          } else {
+            None // for incoming
           }
 
+          res :+ Dialog(
+            peer = struct.Peer.fromModel(peer),
+            unreadCount = unreadCount.toInt,
+            sortDate = sortDate.getMillis,
+            senderUserId = senderUserId,
+            randomId = randomId,
+            date = date.getMillis,
+            message = MessageContent.build(mcHeader, mcData),
+            state = stateOpt
+          )
       }
 
-      val fullDialogsF = Future.sequence(
-        fullDialogsWithUnreadZero map { dialog =>
-          persist.DialogUnreadCounter.getCount(currentUser.uid, dialog.peer) map { count =>
-            dialog.copy(unreadCount = count.toInt)
-          }
-        }
-      )
-
-      val (usersFutures, groupsFutures) = fullDialogsWithUnreadZero.foldLeft((Vector.empty[Future[Option[struct.User]]], Vector.empty[Future[Option[struct.Group]]])) {
+      val (dialogUserIds, groupsFutures) = dialogs.foldLeft((Vector.empty[Int], Vector.empty[Future[Option[struct.Group]]])) {
         case (res, dialog) =>
           dialog.peer.typ match {
-            case struct.PeerType.Private =>
+            case models.PeerType.Private =>
               res.copy(
-                _1 = res._1 :+ getUserStruct(dialog.peer.id, currentUser.authId)
+                _1 = res._1 :+ dialog.peer.id
               )
-            case struct.PeerType.Group =>
+            case models.PeerType.Group =>
               res.copy(
                 _2 = res._2 :+ getGroupStruct(dialog.peer.id, currentUser.uid)
               )
           }
       }
 
+      val groupsFuture: Future[Vector[Option[struct.Group]]] = Future.sequence(groupsFutures)
+      val usersFuture: Future[Vector[Option[struct.User]]] = groupsFuture flatMap { groups =>
+        val groupUserIds = groups.flatten map(_.members map (_.id))
+
+        val structFutures: Set[Future[Option[struct.User]]] =
+          groupUserIds.foldLeft[Set[Int]](dialogUserIds.toSet) {
+            (acc, memberIds) =>
+            acc ++ memberIds
+          } map (getUserStruct(_, currentAuthId, currentUser.uid))
+
+        Future.sequence(structFutures.toVector)
+      }
+
       for {
-        dialogs <- fullDialogsF
-        users <- Future.sequence(usersFutures)
-        groups <- Future.sequence(groupsFutures)
+        users <- usersFuture
+        groups <- groupsFuture
       } yield {
         Ok(ResponseLoadDialogs(
           groups = groups.flatten,
@@ -196,7 +187,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     limit: Int
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.fetchByPeer(currentUser.uid, outPeer.asPeer, startDate, limit) flatMap { messages =>
+      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer.asModel, new DateTime(startDate), limit) flatMap { messages =>
         val userIds = messages.foldLeft(Set.empty[Int]) { (res, message) =>
           if (message.senderUserId != currentUser.uid)
             res + message.senderUserId
@@ -204,10 +195,10 @@ trait HistoryHandlers extends RandomService with UserHelpers {
             res
         }
 
-        val usersF = Future.sequence(userIds map (getUserStruct(_, currentUser.authId))) map (_.flatten)
+        val usersF = Future.sequence(userIds map (getUserStruct(_, currentUser.authId, currentUser.uid))) map (_.flatten)
 
         for (users <- usersF) yield {
-          Ok(ResponseLoadHistory(messages.toVector, users.toVector))
+          Ok(ResponseLoadHistory(messages.toVector map HistoryMessage.fromModel, users.toVector))
         }
       }
     }

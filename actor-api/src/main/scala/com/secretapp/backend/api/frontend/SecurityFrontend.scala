@@ -1,7 +1,6 @@
 package com.secretapp.backend.api.frontend
 
 import akka.actor._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.data.message.Drop
 import com.secretapp.backend.persist
@@ -12,19 +11,19 @@ import scalaz._
 import Scalaz._
 
 object SecurityFrontend {
-  def props(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) = {
-    Props(new SecurityFrontend(connection, sessionRegion, authId, sessionId, transport)(csession))
+  def props(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long) = {
+    Props(new SecurityFrontend(frontend, sessionRegion, authId, sessionId))
   }
 }
 
-class SecurityFrontend(connection: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection)(implicit csession: CSession) extends Actor
+class SecurityFrontend(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long) extends Actor
 with ActorLogging
 {
-  import context.dispatcher
   import context.system
+  implicit val ec = context.dispatcher
 
   val receiveBuffer = new java.util.LinkedList[Any]()
-  val authRecF = persist.AuthId.getEntityWithUser(authId)
+  val authRecF = persist.AuthId.findWithUser(authId)
 
   override def preStart(): Unit = {
     super.preStart()
@@ -41,10 +40,8 @@ with ActorLogging
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#SecurityFrontend.silentClose: $reason")
     // TODO
-    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
-    connection ! ResponseToClientWithDrop(pkg.encode)
-    connection ! SilentClose
-//    context stop self
+    val pkg = MTConnection.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 
   def receivePF: Receive = {
@@ -58,7 +55,7 @@ with ActorLogging
 //              TODO
 //              if (mb.messageId % 4 == 0)
 //                log.debug(s"$authId#Envelope: ${SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}, name: ${self.path.name}")
-                sessionRegion.tell(SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), connection)
+                sessionRegion.tell(SessionProtocol.Envelope(p.authId, p.sessionId, MTConnection.wrapMessageBox(mb)), frontend)
 //              else silentClose()
             case -\/(e) =>
               log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${p.messageBoxBytes.toHex}")

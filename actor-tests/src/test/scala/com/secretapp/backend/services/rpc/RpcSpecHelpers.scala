@@ -18,6 +18,10 @@ import scala.reflect.ClassTag
 trait RpcSpecHelpers {
   self: RpcSpec =>
 
+  def using[A](scope: TestScope)(f: TestScope => A): A = {
+    f(scope)
+  }
+
   implicit class AnyRefWithSpecHelpers(x: AnyRef) {
     def assertInstanceOf[A: ClassTag]: A = {
       x should beAnInstanceOf[A]

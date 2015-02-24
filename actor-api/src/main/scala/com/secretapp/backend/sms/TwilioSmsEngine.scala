@@ -2,12 +2,7 @@ package com.secretapp.backend.sms
 
 import akka.actor._
 import com.typesafe.config._
-
-import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
-
 import spray.http._
 import spray.client.pipelining._
 
@@ -23,7 +18,7 @@ class TwilioSmsEngine(val config: Config)(implicit system: ActorSystem) extends 
       ~> sendReceive
   )
 
-  def send(phoneNumber: Long, code: String): Future[Unit] = {
+  def send(phoneNumber: Long, code: String): Future[String] = {
     val to = "+" + phoneNumber.toString
     val body = message(code)
 
@@ -39,9 +34,8 @@ class TwilioSmsEngine(val config: Config)(implicit system: ActorSystem) extends 
         )
       )
     ) map { resp =>
-      if (resp.status.intValue != 201)
-        throw new Exception(s"Wrong response $resp")
-      else ()
+      if (resp.status.intValue != 201) throw new Exception(s"Wrong response $resp")
+      else resp.entity.asString
     }
   }
 }

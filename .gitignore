@@ -5,6 +5,11 @@ project/target
 application.conf
 .ensime_cache
 src/main/resources/application.conf
+src/main/resources/public/
 actor-restapi/logs
 *.swp
 *~
+actor-tests/snapshots
+actor-tests/journal
+RUNNING_PID
+logs

@@ -1,100 +1,81 @@
 package com.secretapp.backend.persist
 
-import com.websudos.phantom.Implicits._
-import java.nio.ByteBuffer
-import java.util.concurrent.Executor
-import play.api.libs.iteratee._
-import scala.concurrent.{ExecutionContext, Future}
-import scodec.bits._
 import com.secretapp.backend.models
+import scala.concurrent._
+import scala.language.postfixOps
+import scala.util.{ Try, Success, Failure }
+import scalikejdbc._
 
-object FileBlock {
-  type EntityType = Entity[Int, models.FileBlock]
-
-  val blockSize = 8 * 1024 // 8kB
-}
-
-private[persist] class FileBlock(implicit session: Session, context: ExecutionContext with Executor)
-    extends CassandraTable[FileBlock, FileBlock.EntityType] with TableOps {
-  import FileBlock._
-
+object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
   override val tableName = "file_blocks"
+  override val columnNames = Seq(
+    "file_id",
+    "offset_",
+    "length"
+  )
 
-  object fileId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "file_id"
-  }
-  object blockId extends IntColumn(this) with ClusteringOrder[Int] with Ascending {
-    override lazy val name = "block_id"
-  }
-  object bytes extends BlobColumn(this)
-  object accessSalt extends StringColumn(this) with StaticColumn[String] {
-    override lazy val name = "access_salt"
-  }
+  lazy val fb = FileBlock.syntax("fb")
 
-  override def fromRow(row: Row): EntityType =
-    Entity(
-      fileId(row),
-      models.FileBlock(
-        blockId = blockId(row),
-        bytes = BitVector(bytes(row)).toByteArray
+  def apply(fb: SyntaxProvider[models.FileBlock])(rs: WrappedResultSet): models.FileBlock = apply(fb.resultName)(rs)
+
+  def apply(fd: ResultName[models.FileBlock])(rs: WrappedResultSet): models.FileBlock = models.FileBlock(
+    fileId = rs.long(fb.fileId),
+    offset = rs.long(fb.column("offset_")),
+    length = rs.long(fb.length)
+  )
+
+  def existsSync(fileId: Long, offset: Long, length: Long)(
+    implicit session: DBSession
+  ): Boolean =
+    sql"""
+      select exists (
+        select 1 from ${FileBlock.table}
+        where ${column.fileId} = ${fileId} and ${column.column("offset_")} = ${offset} and ${column.length} = ${length}
       )
-    )
+      """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
 
-  private val insertQuery = new ExecutablePreparedStatement {
-    val query = s"INSERT INTO $tableName (${fileId.name}, ${blockId.name}, ${bytes.name}) VALUES (?, ?, ?);"
+  def createIfNotExists(fileId: Long, offset: Long, length: Long)(
+    implicit ec: ExecutionContext, session: DBSession = FileBlock.autoSession
+  ): Future[Boolean] = Future {
+    blocking {
+      Try {
+        withSQL {
+          insert.into(FileBlock).namedValues(
+            column.fileId -> fileId,
+            column.column("offset_") -> offset,
+            column.length -> length
+          )
+        }.execute.apply
+      } recover {
+        case e =>
+          existsSync(fileId, offset, length) match {
+            case true =>
+              false
+            case false =>
+              throw e
+          }
+      } get
+    }
   }
 
-  def insertEntity(entity: EntityType): Future[ResultSet] =
-    insertQuery.execute(
-      entity.key.asInstanceOf[java.lang.Integer],
-      entity.value.blockId.asInstanceOf[java.lang.Integer],
-      ByteBuffer.wrap(entity.value.bytes).asReadOnlyBuffer
-    )
-
-  def write(fileId: Int, offset: Int, bytes: Array[Byte]): Future[Iterator[ResultSet]] = {
-    @inline def offsetValid(offset: Int) = offset >= 0 && offset % blockSize == 0
-
-    if (!offsetValid(offset)) {
-      throw new OffsetInvalid
+  def countAll(fileId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = FileBlock.autoSession
+  ): Future[Long] = Future {
+    blocking {
+      withSQL {
+        select(sqls.count).from(FileBlock as fb)
+          .where.eq(fb.fileId, fileId)
+      }.map(rs => rs.long(1)).single().apply.getOrElse(0)
     }
-
-    val firstBlockId = offset / blockSize
-    val finserts = bytes.grouped(blockSize).zipWithIndex map {
-      case (blockBytes, i) =>
-        val e = Entity(fileId, models.FileBlock(firstBlockId + i, blockBytes))
-        e
-    } map insertEntity
-    Future.sequence(finserts)
   }
 
-  def getFileBlocks(fileId: Int, offset: Int, limit: Int): Future[Seq[ByteBuffer]] = {
-    @inline def offsetValid(offset: Int) = offset >= 0 && offset % 1024 == 0
-    @inline def limitValid(limit: Int) = limit > 0 && limit % 1024 == 0 && limit <= 512 * 1024
-
-    /* TODO: LOCATION_INVALID
-     *       OFFSET_TOO_LARGE
-     *       FILE_LOST (wtf?)
-     */
-    if (!offsetValid(offset)) {
-      throw new OffsetInvalid
+  def deleteAll(fileId: Long)(
+    implicit ec: ExecutionContext, session: DBSession = FileBlock.autoSession
+  ): Future[Boolean] = Future {
+    blocking {
+      withSQL {
+        delete.from(FileBlock).where.eq(column.fileId, fileId)
+      }.execute.apply
     }
-
-    if (!limitValid(limit)) {
-      throw new LimitInvalid
-    }
-
-    val firstBlockId = Math.floor(offset.toDouble / blockSize).toInt
-    val climit = Math.ceil(limit.toDouble / blockSize).toInt
-
-    // TODO: use Iteratee
-    select(_.bytes)
-      .where(_.fileId eqs fileId).and(_.blockId gte firstBlockId)
-      .limit(climit).fetch()
   }
-
-  def blocksByFileId(fileId: Int): Enumerator[ByteBuffer] =
-    select(_.bytes).where(_.fileId eqs fileId).fetchEnumerator
-
-  def getBlocksLength(fileId: Int): Future[Int] =
-    count.where(_.fileId eqs fileId).one() map (_.get * blockSize) map (_.toInt)
 }

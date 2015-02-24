@@ -5,7 +5,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.SubscribeAck
 import akka.contrib.pattern.{ DistributedPubSubExtension, ClusterSharding, ShardRegion }
 import akka.persistence._
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend._
 import com.secretapp.backend.data.message._
@@ -14,6 +13,7 @@ import com.secretapp.backend.data.transport.MessageBox
 import com.secretapp.backend.models
 import com.secretapp.backend.services.common.PackageCommon._
 import com.secretapp.backend.services.common.RandomService
+import im.actor.server.persist.file.adapter.FileAdapter
 import im.actor.util.logging.MDCActorLogging
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -34,20 +34,38 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) = {
-    Props(new SessionActor(singletons, receiveTimeout, session))
+  def props(singletons: Singletons, updatesBrokerRegion: ActorRef, socialBrokerRegion: ActorRef, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration) = {
+    Props(new SessionActor(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, receiveTimeout))
   }
 
-  def startRegion(singletons: Singletons, receiveTimeout: FiniteDuration)(implicit system: ActorSystem, session: CSession) =
+  def startRegion(
+    singletons: Singletons,
+    updatesBrokerRegion: ActorRef,
+    socialBrokerRegion: ActorRef,
+    fileAdapter: FileAdapter,
+    receiveTimeout: FiniteDuration
+  )(implicit system: ActorSystem) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(props(singletons, receiveTimeout, session)),
+      entryProps = Some(props(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, receiveTimeout)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, session: CSession) extends PersistentActor with TransportSerializers with SessionService with PackageAckService with RandomService with MessageIdGenerator with MDCActorLogging {
+class SessionActor(
+  val singletons: Singletons,
+  val updatesBrokerRegion: ActorRef,
+  val socialBrokerRegion: ActorRef,
+  val fileAdapter: FileAdapter,
+  receiveTimeout: FiniteDuration
+) extends PersistentActor
+    with TransportSerializers
+    with SessionService
+    with PackageAckService
+    with RandomService
+    with MessageIdGenerator
+    with MDCActorLogging {
   import ShardRegion.Passivate
   import SessionProtocol._
   import AckTrackerProtocol._
@@ -67,14 +85,19 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
   val sessionId = java.lang.Long.parseLong(splitName(1))
 
   val mediator = DistributedPubSubExtension(context.system).mediator
-  val commonUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)(session)))
+  val seqUpdatesPusher = context.actorOf(Props(new SeqPusherActor(context.self, authId)))
   val weakUpdatesPusher = context.actorOf(Props(new WeakPusherActor(context.self, authId)))
 
   var connectors = immutable.HashSet.empty[ActorRef]
   var lastConnector: Option[ActorRef] = None
 
   // we need lazy here because subscribedToUpdates sets during receiveRecover
-  lazy val apiBroker = context.actorOf(Props(new ApiBrokerActor(authId, sessionId, singletons, subscribedToUpdates, session)), "api-broker")
+  lazy val apiBroker = context.actorOf(
+    Props(
+      classOf[ApiBrokerActor],
+      authId, sessionId, singletons, fileAdapter, updatesBrokerRegion, socialBrokerRegion, subscribedToUpdates
+    ), "api-broker"
+  )
 
   override protected def mdc = Map(
     "unit" -> "session",
@@ -91,6 +114,11 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
   override def preStart(): Unit = {
     withMDC(log.debug(s"$authId, $sessionId#preStart"))
     super.preStart()
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    withMDC(log.error(reason, s"Session is restarting due to error on handlong $message"))
+    super.preRestart(reason, message)
   }
 
   override def postStop(): Unit = {
@@ -118,9 +146,6 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
   val receiveCommand: Receive = {
     case handleBox: HandleMessageBox =>
       withMDC(log.info(s"HandleMessageBox($handleBox)"))
-      transport = handleBox match {
-        case _: HandleMTMessageBox => MTConnection.some
-      }
       queueNewSession(handleBox.mb.messageId)
       context.become(receiveBusinessLogic)
       receiveBusinessLogic(handleBox)
@@ -225,6 +250,7 @@ class SessionActor(val singletons: Singletons, receiveTimeout: FiniteDuration, s
 
       currentUser map { user =>
         apiBroker ! ApiBrokerProtocol.AuthorizeUser(user)
+        context.become(receiveBusinessLogic)
       }
     case AuthorizeUser(user) =>
       currentUser = Some(user)

@@ -1,9 +1,9 @@
 package com.secretapp.backend.data.message.rpc.update
 
-import java.util.UUID
-import scala.collection.immutable
 import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
+import java.util.UUID
+import scala.collection.immutable
 
 @SerialVersionUID(1L)
 case class ResponseGetDifference(seq: Int,

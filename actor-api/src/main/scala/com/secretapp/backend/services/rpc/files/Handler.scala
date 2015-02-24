@@ -2,16 +2,16 @@ package com.secretapp.backend.services.rpc.files
 
 import akka.actor._
 import akka.pattern.pipe
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.file._
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import im.actor.server.persist.file.adapter.FileAdapter
 
 class Handler(
   val currentUser: models.User,
-  val fileRecord: persist.File)(implicit val session: CSession)
-  extends Actor with ActorLogging with HandlerService {
+  val fileAdapter: FileAdapter
+) extends Actor with ActorLogging with HandlerService {
 
   import context._
 

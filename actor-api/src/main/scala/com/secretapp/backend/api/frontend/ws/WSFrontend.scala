@@ -2,7 +2,6 @@ package com.secretapp.backend.api.frontend.ws
 
 import akka.actor._
 import akka.util.ByteString
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.frontend._
 import spray.can.websocket
 import spray.can.websocket.frame._
@@ -16,14 +15,14 @@ import Scalaz._
 import java.net.InetSocketAddress
 
 object WSFrontend {
-  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef, session: CSession) = {
-    Props(new WSFrontend(connection, remote, sessionRegion, session))
+  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef) = {
+    Props(new WSFrontend(connection, remote, sessionRegion))
   }
 }
 
 // TODO: extend NackActor
-class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker with MTPackageService {
-  val transport = MTConnection
+class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker with MTPackageService {
+//  val transport = MTConnection
   val serverConnection = connection
   // var packageIndex: Int = -1
 
@@ -33,7 +32,6 @@ class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val se
       // handleByteStream(BitVector(frame.payload))(handlePackage, e => sendDrop(e.msg))
       protoPackage.decode(BitVector(frame.payload)) match {
         case \/-((_, p)) =>
-          println(s"protoPackage.decode: $p")
           handlePackage(p)
         case -\/(e) => sendDrop(e)
       }

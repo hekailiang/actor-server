@@ -6,7 +6,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.{ Subscribe, SubscribeAck 
 import akka.event.Logging
 import akka.pattern.{ ask, pipe }
 import akka.util.Timeout
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.{ RpcResponseBox, UpdateBox }
 import com.secretapp.backend.data.message.{ struct, update => updateProto }
@@ -30,12 +29,14 @@ import scala.util.Success
 import scalaz._
 import scalaz.Scalaz._
 import scodec.bits._
-import scodec.codecs.{ uuid => uuidCodec }
 
 class UpdatesServiceActor(
-  val sessionActor: ActorRef, val updatesBrokerRegion: ActorRef, val subscribedToUpdates: Boolean,
-  val currentUserId: Int, val currentAuthId: Long
-)(implicit val session: CSession) extends Actor with ActorLogging with UpdatesService {
+  val sessionActor: ActorRef,
+  val updatesBrokerRegion: ActorRef,
+  val subscribedToUpdates: Boolean,
+  val currentUserId: Int,
+  val currentAuthId: Long
+) extends Actor with ActorLogging with UpdatesService {
   import context.dispatcher
 
   def receive = {
@@ -85,28 +86,38 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
     val state = if (updates.length > 0) Some(updates.last.key) else requestState
 
     // TODO: make emails and phones in one loop
-    for {
+
+    val usersGroupsFuture = for {
       groups <- mkGroups(updates)
-      users <- mkUsers(currentAuthId, groups, updates)
-      phones <- mkPhones(currentAuthId, users)
-      emails <- mkEmails(currentAuthId, users)
-    } yield {
-      ResponseGetDifference(
-        seq,
-        state,
-        users,
-        groups,
-        phones,
-        emails,
-        updates map { u => DifferenceUpdate(u.value) },
-        needMore
-      )
+      users <- mkUsers(currentAuthId, currentUserId, groups, updates)
+    } yield (users, groups)
+
+    usersGroupsFuture flatMap {
+      case (users, groups) =>
+        val phonesFuture = mkPhones(currentAuthId, users)
+        val emailsFuture = mkEmails(currentAuthId, users)
+
+        for {
+          phones <- mkPhones(currentAuthId, users)
+          emails <- mkEmails(currentAuthId, users)
+        } yield {
+          ResponseGetDifference(
+            seq,
+            state,
+            users,
+            groups,
+            phones,
+            emails,
+            updates map { u => DifferenceUpdate(u.value) },
+            needMore
+          )
+        }
     }
   }
 
   protected def mkPhones(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Phone]] = {
     val phoneModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.getEntity(u.uid, _))))
+      users map ( u => Future.sequence(u.phoneIds map (persist.UserPhone.findByUserIdAndId(u.uid, _))))
     ) map (_.flatten.flatten)
 
     for (phoneModels <- phoneModelsFuture) yield {
@@ -116,18 +127,18 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
 
   protected def mkEmails(authId: Long, users: immutable.Vector[struct.User]): Future[immutable.Vector[struct.Email]] = {
     val emailModelsFuture = Future.sequence(
-      users map ( u => Future.sequence(u.emailIds map (persist.UserEmail.getEntity(u.uid, _))))
-    ) map (_.flatten.flatten)
+      users map { u => persist.UserEmail.findAllByUserId(u.uid) }
+    ) map (_.flatten)
 
     for (emailModels <- emailModelsFuture) yield {
       emailModels map (struct.Email.fromModel(authId, _)) toVector
     }
   }
 
-  protected def mkUsers(authId: Long, groups: immutable.Seq[struct.Group], updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
+  protected def mkUsers(authId: Long, userId: Int, groups: immutable.Seq[struct.Group], updates: immutable.Seq[persist.Entity[UUID, updateProto.SeqUpdateMessage]]): Future[immutable.Vector[struct.User]] = {
     if (updates.length > 0) {
       val userIds: immutable.Set[Int] = (updates map (_.value.userIds) reduceLeft ((x, y) => x ++ y)) ++ (groups flatMap (_.members map (_.id)))
-      Future.sequence(userIds.map(getUserStruct(_, authId)).toVector) map (_.flatten)
+      Future.sequence(userIds.map(getUserStruct(_, authId, userId)).toVector) map (_.flatten)
     } else { Future.successful(Vector.empty) }
   }
 
@@ -145,7 +156,7 @@ sealed trait UpdatesService extends UserHelpers with GroupHelpers {
   }
 
   @inline
-  protected def getState(authId: Long)(implicit session: CSession): Future[(Int, Option[UUID])] = {
+  protected def getState(authId: Long): Future[(Int, Option[UUID])] = {
     val fseq = getSeq(authId)
     val fstate = persist.SeqUpdate.getState(authId)
     for {

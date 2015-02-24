@@ -1,0 +1,53 @@
+- hosts: production
+  roles:
+    - role: ANXS.monit
+      sudo: yes
+  vars:
+    app_name: "actor-app"
+    app_path: "/home/ubuntu/{{ app_name }}"
+  tasks:
+    - name: "Copy app"
+      synchronize:
+        src="../target/dist/"
+        dest="{{ app_path }}"
+        archive=no
+        checksum=yes
+        delete=yes
+        recursive=yes
+        rsync_opts=" --exclude config/application.conf --exclude apns --exclude ssl --exclude logs "
+    - name: "Create logs directory"
+      file:
+        path="{{ app_path }}/logs"
+        force=yes
+        state=directory
+    - name: "Link application.conf"
+      file:
+        src="~/application.conf"
+        dest="{{ app_path }}/config/application.conf"
+        state=link
+    - name: "Link ssl"
+      file:
+        src="~/ssl"
+        dest="{{ app_path }}/ssl"
+        state=link
+    - name: "Link apns"
+      file:
+        src="~/apns"
+        dest="{{ app_path }}/apns"
+        state=link
+    - name: "Copy the app monit service file"
+      template:
+        src=templates/etc_monit_conf.d_app.j2
+        dest="/etc/monit/conf.d/{{ app_name }}"
+      register: monit_conf
+      sudo: true
+    - name: "Install ntp"
+      apt: name=ntp
+      sudo: true
+    - name: "Reload monit"
+      command: "monit reload"
+      when: monit_conf|changed
+      sudo: true
+    - name: "Restart app"
+      command: "monit restart {{ app_name }}"
+      sudo: true

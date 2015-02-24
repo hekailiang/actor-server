@@ -9,7 +9,7 @@ import scodec.Codec
 import scodec.codecs._
 import scalaz._
 import Scalaz._
-import scala.util.Success
+import scala.util.{ Failure, Success }
 import im.actor.messenger.{ api => protobuf }
 
 object ResponseLoadDialogsCodec extends Codec[ResponseLoadDialogs] with utils.ProtobufCodec {

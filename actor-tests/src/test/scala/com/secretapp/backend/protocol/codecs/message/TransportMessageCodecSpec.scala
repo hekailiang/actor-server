@@ -11,10 +11,9 @@ import com.secretapp.backend.data.message.rpc.contact._
 import com.secretapp.backend.data.message.struct._
 import java.util.UUID
 import scala.collection.immutable
+import scalaz._, Scalaz._
 import scodec.bits._
 import org.specs2.mutable.Specification
-import scalaz._
-import Scalaz._
 
 class TransportMessageCodecSpec extends Specification {
   "TransportMessageCodec" should {

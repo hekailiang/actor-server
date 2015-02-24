@@ -144,8 +144,8 @@ trait SessionService extends UserManagerService {
 
   protected def subscribeToUpdates() = {
     subscribingToUpdates = true
-    withMDC(log.info(s"Subscribing to updates authId=$authId sessionId=$sessionId"))
-    mediator ! Subscribe(UpdatesBroker.topicFor(authId), commonUpdatesPusher)
+    withMDC(log.debug(s"Subscribing to updates"))
+    mediator ! Subscribe(UpdatesBroker.topicFor(authId), seqUpdatesPusher)
 
     subscribeToTypings()
   }
@@ -168,11 +168,11 @@ trait SessionService extends UserManagerService {
   }
 
   protected def handleSubscribeAck(subscribe: Subscribe) = {
-    withMDC(log.info(s"Handling subscribe ack $subscribe"))
-    if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == commonUpdatesPusher) {
+    withMDC(log.debug("Handling subscribe ack {}", subscribe))
+    if (subscribe.topic == UpdatesBroker.topicFor(authId) && subscribe.ref == seqUpdatesPusher) {
       subscribingToUpdates = false
       subscribedToUpdates = true
-    } else if (subscribe.topic.startsWith("presences-") && subscribe.ref == commonUpdatesPusher) {
+    } else if (subscribe.topic.startsWith("presences-") && subscribe.ref == seqUpdatesPusher) {
       // FIXME: don't use startsWith here
 
       // TODO: implement ack handling

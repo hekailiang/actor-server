@@ -2,14 +2,12 @@ package com.secretapp.backend.helpers
 
 import akka.actor._
 import akka.event.LoggingAdapter
-import com.datastax.driver.core.{ Session => CSession }
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.rpc.messaging.EncryptedAESKey
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.util.ACL
-import scala.collection.concurrent.TrieMap
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -18,7 +16,6 @@ import Scalaz._
 
 trait UserHelpers {
   val context: ActorContext
-  implicit val session: CSession
 
   def log: LoggingAdapter
 
@@ -35,18 +32,47 @@ trait UserHelpers {
       case Some(users) =>
         Future.successful(users)
       case None =>
-        persist.User.byUid(userId) map (
-          _ map {user => (user.publicKeyHash, user) }
-        )
+        persist.UserPublicKey.findAllByUserId(userId) flatMap { keys =>
+          keys match {
+            case firstKey :: _ =>
+              for {
+                userOpt <- persist.User.find(userId)(authId = Some(firstKey.authId))
+              } yield userOpt map { user =>
+                keys map { key =>
+                  (
+                    key.hash,
+                    user.copy(
+                      authId = key.authId,
+                      publicKeyHash = key.hash,
+                      publicKeyData = key.data
+                    )
+                  )
+                }
+              } getOrElse (Seq.empty)
+            case Nil => Future.successful(Seq.empty)
+          }
+        }
     }
   }
 
-  def getUserStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.User]] = {
-    for (opt <- persist.User.getEntityWithAvatar(userId)) yield {
-      opt map {
-        case (user, avatarData) =>
-          struct.User.fromModel(user, avatarData, authId)
-      }
+  def getUserStruct(userId: Int, currentAuthId: Long, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.User]] = {
+    val userOptFuture = persist.User.find(userId)(None)
+    val adOptFuture = persist.AvatarData.find(id = userId, typ = persist.AvatarData.typeVal[models.User])
+    val localNameFuture = persist.contact.UserContact.findLocalName(ownerUserId = currentUserId, contactUserId = userId)
+
+    for {
+      userOpt <- userOptFuture
+      adOpt <- adOptFuture
+      localName <- localNameFuture
+    } yield {
+      userOpt map (
+        struct.User.fromModel(
+          _,
+          adOpt.getOrElse(models.AvatarData.empty),
+          currentAuthId,
+          localName
+        )
+      )
     }
   }
 
@@ -60,9 +86,9 @@ trait UserHelpers {
     }
   }
 
-  def getAuthIds(userId: Int): Future[Seq[Long]] = {
-    persist.UserPublicKey.fetchAuthIdsByUserId(userId)
-  }
+  def getAuthIds(userId: Int): Future[Seq[Long]] = for {
+    authIds <- persist.AuthId.findAllIdsByUserId(userId)
+  } yield authIds
 
   def fetchAuthIdsForValidKeys(
     userId: Int,
@@ -71,8 +97,8 @@ trait UserHelpers {
   ): Future[(Vector[struct.UserKey], Vector[struct.UserKey], Vector[struct.UserKey]) \/ Vector[(EncryptedAESKey, Long)]] = {
     val keyHashes = aesKeys map (_.keyHash) toSet
 
-    val activeAuthIdsMapFuture  = persist.UserPublicKey.fetchAuthIdsOfActiveKeys(userId) map (_.toMap)
-    val deletedAuthIdsMapFuture = persist.UserPublicKey.fetchAuthIdsOfDeletedKeys(userId, keyHashes) map (_.toMap)
+    val activeAuthIdsMapFuture  = persist.UserPublicKey.findAllAuthIdsOfActiveKeys(userId) map (_.toMap)
+    val deletedAuthIdsMapFuture = persist.UserPublicKey.findAllAuthIdsOfDeletedKeys(userId, keyHashes) map (_.toMap)
 
     for {
       activeAuthIdsMap  <- activeAuthIdsMapFuture
@@ -113,6 +139,6 @@ trait UserHelpers {
   }
 
   def authIdFor(userId: Int, publicKeyHash: Long): Future[Option[Long \/ Long]] = {
-    persist.UserPublicKey.getAuthIdByUidAndPublicKeyHash(userId, publicKeyHash)
+    persist.UserPublicKey.findAuthIdByUserIdAndHash(userId, publicKeyHash)
   }
 }

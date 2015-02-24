@@ -4,9 +4,9 @@ import akka.actor._
 import akka.contrib.pattern.{ ClusterSharding, DistributedPubSubExtension, ShardRegion }
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.persistence._
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.data.message.{ update => updateProto }
+import com.secretapp.backend.models
 import com.secretapp.backend.persist
 import com.secretapp.backend.helpers.UserHelpers
 import scala.collection.immutable
@@ -72,16 +72,16 @@ object TypingBroker {
     case GroupEnvelope(groupId, msg) => (groupId % shardCount).abs.toString
   }
 
-  def startRegion()(implicit system: ActorSystem, session: CSession) =
+  def startRegion()(implicit system: ActorSystem) =
     ClusterSharding(system).start(
       typeName = "Typing",
-      entryProps = Some(Props(classOf[TypingBroker], session)),
+      entryProps = Some(Props(classOf[TypingBroker])),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
 }
 
-class TypingBroker(implicit val session: CSession) extends Actor with ActorLogging with UserHelpers {
+class TypingBroker extends Actor with ActorLogging with UserHelpers {
   import TypingProtocol._
   import context.dispatcher
   import context.system
@@ -119,7 +119,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
           mediator ! Publish(
             TypingBroker.topicFor(selfId),
             updateProto.Typing(
-              struct.Peer(struct.PeerType.Private, userId),
+              struct.Peer(models.PeerType.Private, userId),
               userId,
               typingType
             )
@@ -127,7 +127,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case BrokerType.Group =>
           //log.debug(s"Publishing UserTypingGroup ${userId}")
           for {
-            groupUserIds <- persist.GroupUser.getUserIds(selfId)
+            groupUserIds <- persist.GroupUser.findGroupUserIds(selfId)
             pairs <- Future.sequence(
               groupUserIds filterNot(_ == userId) map { targetUserId =>
                 getAuthIds(targetUserId) map (_ map ((targetUserId, _)))
@@ -139,7 +139,7 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
                 mediator ! Publish(
                   TypingBroker.topicFor(targetUserId, authId),
                   updateProto.Typing(
-                    struct.Peer(struct.PeerType.Group, selfId),
+                    struct.Peer(models.PeerType.Group, selfId),
                     userId,
                     typingType
                   )
@@ -159,9 +159,9 @@ class TypingBroker(implicit val session: CSession) extends Actor with ActorLoggi
         case ((userId, typingType), _) =>
           selfType match {
             case BrokerType.User =>
-              target ! updateProto.Typing(struct.Peer(struct.PeerType.Private, userId), userId, typingType)
+              target ! updateProto.Typing(struct.Peer(models.PeerType.Private, userId), userId, typingType)
             case BrokerType.Group =>
-              target ! updateProto.Typing(struct.Peer(struct.PeerType.Group, selfId), userId, typingType)
+              target ! updateProto.Typing(struct.Peer(models.PeerType.Group, selfId), userId, typingType)
           }
       }
 

@@ -15,6 +15,8 @@ object PhoneNumber {
     }
   }
 
+  def isValid(number: String, defaultCountry: String = ""): Boolean = normalizeStr(number, defaultCountry).isDefined
+
   def normalizeLong(number: Long, defaultCountry: String = ""): Option[Long] = normalizeStr(s"+$number", defaultCountry)
 
   def normalizeWithCountry(number: Long, defaultCountry: String = ""): Option[(Long, String)] = {
@@ -26,6 +28,8 @@ object PhoneNumber {
       case _ => None
     }
   }
+
+  def tryNormalize(number: Long, defaultCountry: String = "") = normalizeLong(number, defaultCountry).getOrElse(number)
 
   private def sizeOf(number: Long): Long = {
     @tailrec

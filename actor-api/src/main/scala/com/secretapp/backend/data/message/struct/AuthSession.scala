@@ -24,7 +24,7 @@ object AuthSession {
     val authHolder = if (currentAuthId == a.authId) 0 else 1
 
     AuthSession(
-      a.id, authHolder, a.appId, a.appTitle, a.deviceTitle, a.authTime,
+      a.id, authHolder, a.appId, a.appTitle, a.deviceTitle, (a.authTime.getMillis / 1000).toInt,
       a.authLocation, a.latitude, a.longitude
     )
   }

@@ -4,11 +4,8 @@ import akka.actor._
 import akka.io.Tcp.{ Close, Received, Write }
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
-import com.datastax.driver.core.{ Session => CSession }
-import com.secretapp.backend.api.Singletons
-import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
+import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
-import com.secretapp.backend.api.frontend.ws.WSFrontend
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport._
@@ -23,20 +20,19 @@ import com.secretapp.backend.session._
 import com.websudos.util.testing._
 import java.net.InetSocketAddress
 import java.security.{ KeyPairGenerator, SecureRandom, Security }
+import im.actor.server.persist.file.adapter.fs.FileStorageAdapter
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
-import org.specs2.specification.Fragment
-import scala.annotation.tailrec
-import scala.collection.{ immutable, mutable }
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.Random
 import scalaz.Scalaz._
 import scodec.bits._
 import spray.can.websocket._
@@ -52,8 +48,13 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   protected var incMessageId = 0L
 
   val singletons = new Singletons
+  val fileAdapter = new FileStorageAdapter(system)
+
+  val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)
+  val socialBrokerRegion = SocialBroker.startRegion()
+
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, sessionReceiveTimeout.milliseconds)(system, csession)
+  val sessionRegion = SessionActor.startRegion(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
@@ -69,19 +70,79 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   }
 
   def insertAuthId(authId: Long, userId: Option[Int] = None): Unit = blocking {
-    persist.AuthId.insertEntity(models.AuthId(authId, userId)).sync()
+    persist.AuthId.create(authId, userId).sync()
   }
 
   def addUser(authId: Long, sessionId: Long, u: models.User, phone: models.UserPhone): Unit = blocking {
-    persist.UserPhone.insertEntity(phone)
-    persist.AuthId.insertEntity(models.AuthId(authId, None)).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    persist.UserPhone.create(
+      userId = phone.userId,
+      id = phone.id,
+      accessSalt = phone.accessSalt,
+      number = phone.number,
+      title = phone.title
+    ).sync()
+    persist.AuthId.create(authId, None).sync()
+    persist.User.create(
+      id = u.uid,
+      accessSalt = u.accessSalt,
+      name = u.name,
+      countryCode = u.countryCode,
+      sex = u.sex,
+      state = u.state
+    )(
+      authId = u.authId,
+      publicKeyHash = u.publicKeyHash,
+      publicKeyData = u.publicKeyData
+    ).sync()
+    persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty).sync()
   }
 
   def authUser(u: models.User, phone: models.UserPhone): models.User = blocking {
     insertAuthId(u.authId, u.uid.some)
-    persist.UserPhone.insertEntity(phone).sync()
-    persist.User.insertEntityWithChildren(u, models.AvatarData.empty).sync()
+    val createPhoneFuture = persist.UserPhone.findByNumber(phone.number) flatMap {
+      case Some(p) => Future successful p
+      case None =>
+        persist.UserPhone.create(
+          userId = phone.userId,
+          id = phone.id,
+          accessSalt = phone.accessSalt,
+          number = phone.number,
+          title = phone.title
+        )
+    }
+
+    val createUserFuture = persist.User.find(u.uid)(None) flatMap {
+      case Some(exUser) =>
+        persist.User.savePartial(
+          id = u.uid,
+          name = u.name,
+          countryCode = u.countryCode
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData,
+          phoneNumber = u.phoneNumber
+        )
+      case None =>
+        persist.User.create(
+          id = u.uid,
+          accessSalt = u.accessSalt,
+          name = u.name,
+          countryCode = u.countryCode,
+          sex = u.sex,
+          state = u.state
+        )(
+          authId = u.authId,
+          publicKeyHash = u.publicKeyHash,
+          publicKeyData = u.publicKeyData
+        ) flatMap (_ => persist.AvatarData.create[models.User](u.uid, models.AvatarData.empty))
+    }
+
+    Future.sequence(Seq(
+      createPhoneFuture,
+      createUserFuture
+    )).sync()
+
     u
   }
 
@@ -101,7 +162,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -109,7 +170,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     authUser(user, phone)
   }
 
-  val smsCode = "test_sms_code"
+  val smsCode = "102030"
   val smsHash = "test_sms_hash"
   val userId = 101
   val userSalt = "user_salt"
@@ -127,16 +188,16 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
 
   def probeAndActor() = {
     val probe = TestProbe()
-    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion, csession) with GeneratorServiceMock))
+    val actor = system.actorOf(Props(new TcpFrontend(probe.ref, inetAddr, sessionRegion) with GeneratorServiceMock))
     (probe, actor)
   }
 
-  def genTestScope()(implicit transport: TransportConnection): TestScopeNew = {
+  def genTestScope(): TestScopeNew = {
     val (probe, apiActor) = getProbeAndActor()
     TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(), authId = rand.nextLong())
   }
 
-  def genTestScopeWithUser()(implicit transport: TransportConnection) = {
+  def genTestScopeWithUser() = {
     val scope = genTestScope()
     val userId = rand.nextInt()
     val phoneNumber = genPhoneNumber()
@@ -158,7 +219,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
       name,
       "RU",
       models.NoSex,
-      keyHashes = immutable.Set(pkHash),
+      publicKeyHashes = immutable.Set(pkHash),
       phoneIds = immutable.Set(phoneId),
       emailIds = immutable.Set.empty,
       state = models.UserState.Registered
@@ -167,11 +228,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     scope.copy(userOpt = user.some)
   }
 
-  def getProbeAndActor()(implicit transport: TransportConnection) = {
+  def getProbeAndActor() = {
     val probe = TestProbe()
-    val actor = transport match {
-      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion, csession))
-    }
+    val actor = system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion))
     (probe, actor)
   }
 
@@ -188,12 +247,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     }
 
     def pair(uid1: Int, uid2: Int): (TestScope, TestScope) = {
-      (apply(uid1, 79632740769L), apply(uid2, 79853867016L))
+      (apply(uid1, 79632740769L + uid1), apply(uid2, 79853867016L + uid2))
     }
 
     def apply(): TestScope = apply(1, 79632740769L)
 
-    def apply(userId: Int): TestScope = apply(userId, 79632740769L)
+    def apply(userId: Int): TestScope = apply(userId, 79632740769L + userId)
 
     def apply(userId: Int, phoneNumber: Long): TestScope = {
       implicit val (probe, apiActor) = probeAndActor()
@@ -215,7 +274,7 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
         s"Timothy_$userId Klim_$userId",
         "RU",
         models.NoSex,
-        keyHashes = immutable.Set(pkHash),
+        publicKeyHashes = immutable.Set(pkHash),
         phoneIds = immutable.Set(phoneId),
         emailIds = immutable.Set.empty,
         state = models.UserState.Registered

@@ -3,13 +3,15 @@ package com.secretapp.backend.sms
 import akka.actor._
 import scala.util.{ Failure, Success }
 import com.typesafe.config._
+import com.secretapp.backend.models.log.{ Event => E }
+import com.secretapp.backend.services.EventService
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import scala.concurrent.duration._
 
 object SmsEnginesProtocol {
   sealed trait SmsEnginesMessage
-  case class Send(phoneNumber: Long, code: String) extends SmsEnginesMessage
+  case class Send(authId: Long, phoneNumber: Long, code: String) extends SmsEnginesMessage
   case class ForgetSentCode(phoneNumber: Long, code: String) extends SmsEnginesMessage
 }
 
@@ -46,12 +48,14 @@ class SmsEnginesActor() extends Actor with ActorLogging {
   private def forgetSentCodeAfterDelay(phoneNumber: Long, code: String) =
     context.system.scheduler.scheduleOnce(smsWaitIntervalMs.milliseconds, self, ForgetSentCode(phoneNumber, code))
 
-  private def sendCode(phoneNumber: Long, code: String): Unit = {
+  private def sendCode(authId: Long, phoneNumber: Long, code: String): Unit = {
     if (codeWasNotSent(phoneNumber, code)) {
       rememberSentCode(phoneNumber, code)
       engine.send(phoneNumber, code) andThen {
         case Success(res) =>
+          EventService.log(authId, phoneNumber, E.SmsSentSuccessfully(code, res))
         case Failure(e) =>
+          EventService.log(authId, phoneNumber, E.SmsFailure(code, e.getMessage))
           log.error(e, s"Failed to send sms to $phoneNumber with code $code")
       }
       forgetSentCodeAfterDelay(phoneNumber, code)
@@ -61,11 +65,12 @@ class SmsEnginesActor() extends Actor with ActorLogging {
   }
 
   override def postStop(): Unit = {
+    super.postStop()
     spraySystem.shutdown()
   }
 
   override def receive: Receive = {
-    case Send(phoneNumber, code)           => sendCode(phoneNumber, code)
+    case Send(authId, phoneNumber, code)   => sendCode(authId, phoneNumber, code)
     case ForgetSentCode(phoneNumber, code) => forgetSentCode(phoneNumber, code)
   }
 }

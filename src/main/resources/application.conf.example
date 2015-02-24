@@ -1,4 +1,17 @@
 actor-server {
+  actor-system-name = "actor-server"
+
+  sql {
+    driverClassName = "org.postgresql.Driver"
+    url = "jdbc:postgresql://localhost:5432/actor"
+    username = "postgres"
+    password = ""
+    user = ${actor-server.sql.username}
+    pass = ${actor-server.sql.password}
+  }
+
+  jdbc-connection = ${actor-server.sql}
+
   sms {
     clickatell {
       user = "user"
@@ -22,6 +35,26 @@ actor-server {
     cert {
       path = "apns/apns-dev.pfx"
       password = "private"
+    }
+  }
+
+  smtpd {
+    certificate {
+      password = "password"
+      keystore = "ssl/keystore.jks"
+    }
+  }
+
+  akka {
+    remote {
+      netty.tcp {
+        port = 2553
+        hostname = 127.0.0.1
+      }
+    }
+
+    cluster {
+      seed-nodes = [ "akka.tcp://actor-server@127.0.0.1:2553" ]
     }
   }
 }

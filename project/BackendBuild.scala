@@ -2,7 +2,7 @@ import sbt._
 import sbt.Keys._
 import akka.sbt.AkkaKernelPlugin
 import akka.sbt.AkkaKernelPlugin.{ Dist, outputDirectory, distJvmOptions, distBootClass }
-import play.PlayScala
+import org.flywaydb.sbt.FlywayPlugin._
 import sbtprotobuf.{ ProtobufPlugin => PB }
 import scalabuff.ScalaBuffPlugin._
 import spray.revolver.RevolverPlugin._
@@ -13,9 +13,8 @@ object BackendBuild extends Build {
   val ScalaVersion = "2.10.4"
 
   val appName = "backend"
-  val appClass = "com.secretapp.backend.ApiKernel"
-  val appClassMock = "com.secretapp.backend.Main"
-
+  val appClass = "im.actor.server.ApiKernel"
+  val appClassMock = "im.actor.server.Main"
 
   lazy val buildSettings =
     Defaults.defaultSettings ++
@@ -31,10 +30,14 @@ object BackendBuild extends Build {
   lazy val defaultSettings =
     buildSettings ++
       Seq(
-        initialize                ~= { _ => sys.props("scalac.patmat.analysisBudget") = "off" },
+        initialize                ~= { _ =>
+          sys.props("scalac.patmat.analysisBudget") = "off"
+          if (sys.props("java.specification.version") != "1.7" && sys.props("java.specification.version") != "1.8")
+            sys.error("Java 7 or 8 is required for this project.")
+        },
         resolvers                 ++= Resolvers.seq,
-        scalacOptions             ++= Seq("-target:jvm-1.7", "-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
-        javaOptions               ++= Seq("-Dfile.encoding=UTF-8", "-XX:MaxPermSize=1024m"),
+        scalacOptions             ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked", "-feature", "-language:higherKinds"),
+        javaOptions               ++= Seq("-Dfile.encoding=UTF-8"),
         javacOptions              ++= Seq("-source", "1.7", "-target", "1.7", "-Xlint:unchecked", "-Xlint:deprecation"),
         parallelExecution in Test :=  false,
         fork              in Test :=  true
@@ -49,7 +52,7 @@ object BackendBuild extends Build {
       Revolver.settings             ++
       Seq(
         libraryDependencies                       ++= Dependencies.root,
-        distJvmOptions       in Dist              :=  "-server -Xms256M -Xmx1024M",
+        distJvmOptions       in Dist              :=  "-agentlib:TakipiAgent -server -Xms256M -Xmx1G -Dfile.encoding=UTF-8",
         distBootClass        in Dist              :=  appClass,
         outputDirectory      in Dist              :=  file("target/dist"),
         Revolver.reStartArgs                      :=  Seq(appClassMock),
@@ -58,14 +61,22 @@ object BackendBuild extends Build {
         scalacOptions        in (Compile,doc)     :=  Seq("-groups", "-implicits", "-diagrams")
       )
   ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
-   .dependsOn(actorApi, actorModels, actorPersist)
-   .aggregate(actorTests, actorProtobuf)
+   .dependsOn(actorApi, actorSmtpd, actorRestApi)
+   .aggregate(actorTests, actorPersist, actorProtobuf)
 
   lazy val actorUtil = Project(
     id   = "actor-util",
     base = file("actor-util"),
     settings = defaultSettings ++ Seq(
       libraryDependencies ++= Dependencies.util
+    )
+  )
+
+  lazy val actorTestkit = Project(
+    id   = "actor-testkit",
+    base = file("actor-testkit"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.testkit
     )
   )
 
@@ -90,8 +101,14 @@ object BackendBuild extends Build {
   lazy val actorPersist = Project(
     id       = "actor-persist",
     base     = file("actor-persist"),
-    settings = defaultSettings
-  ).dependsOn(actorModels, actorProtobuf)
+    settings = defaultSettings ++ flywaySettings ++ Seq(
+      flywayUrl := "jdbc:postgresql://localhost:5432/actor",
+      flywayUser := "postgres",
+      flywayPassword := "",
+      flywaySchemas := Seq("public"),
+      flywayLocations := Seq("sql/migration")
+    )
+  ).dependsOn(actorModels, actorProtobuf, actorUtil, actorTestkit % "test")
 
   lazy val actorRestApi = Project(
     id       = "actor-restapi",
@@ -101,8 +118,7 @@ object BackendBuild extends Build {
       javaOptions in Test += "-Dconfig.file=conf/test.conf",
       scalaVersion        := ScalaVersion
     )
-  ).enablePlugins(PlayScala)
-   .dependsOn(actorModels, actorPersist)
+  ).dependsOn(actorModels, actorPersist)
 
   lazy val actorApi = Project(
     id       = "actor-api",
@@ -110,9 +126,25 @@ object BackendBuild extends Build {
     settings = defaultSettings
   ).dependsOn(actorPersist, actorUtil, actorProtobuf)
 
+  lazy val actorSmtpd = Project(
+    id       = "actor-smtpd",
+    base     = file("actor-smtpd"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.smtpd
+    )
+  ).dependsOn(actorApi)
+
   lazy val actorTests = Project(
     id       = "actor-tests",
     base     = file("actor-tests"),
     settings = defaultSettings
-  ).dependsOn(actorApi, actorModels, actorPersist)
+  ).dependsOn(actorApi, actorModels, actorPersist, actorTestkit % "test")
+
+  lazy val actorSchema = Project(
+    id       = "actor-schema",
+    base     = file("actor-schema"),
+    settings = defaultSettings ++ Seq(
+      libraryDependencies ++= Dependencies.schema
+    )
+  )
 }

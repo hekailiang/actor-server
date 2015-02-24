@@ -1,15 +1,25 @@
 package com.secretapp.backend.data.message.struct
 
+import com.secretapp.backend.models
 import im.actor.messenger.{ api => protobuf }
 
 @SerialVersionUID(1L)
-case class Peer(typ: PeerType, id: Int) {
-  def toProto = protobuf.Peer(typ.toProto, id)
+case class Peer(typ: models.PeerType, id: Int) {
+  def toProto = protobuf.Peer(Peer.typeToProto(typ), id)
+
+  lazy val asModel = models.Peer(typ, id)
 }
 
 object Peer {
-  def fromProto(p: protobuf.Peer) = Peer(PeerType.fromProto(p.`type`), p.id)
+  def typeToProto(typ: models.PeerType) = protobuf.PeerType.valueOf(typ.toInt)
 
-  def privat(userId: Int) = Peer(PeerType.Private, userId)
-  def group(groupId: Int) = Peer(PeerType.Group, groupId)
+  def fromModel(peerModel: models.Peer): Peer = Peer(
+    peerModel.typ, peerModel.id
+  )
+
+  def fromProto(p: protobuf.Peer) = Peer(models.PeerType.fromInt(p.`type`.id), p.id)
+
+  def privat(userId: Int) = Peer(models.PeerType.Private, userId)
+
+  def group(groupId: Int) = Peer(models.PeerType.Group, groupId)
 }

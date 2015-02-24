@@ -1,6 +1,7 @@
 package org.specs2.mutable
 
 import akka.actor._
+import akka.cluster.Cluster
 import akka.io.Tcp._
 import akka.testkit._
 import com.secretapp.backend.api.counters._
@@ -40,6 +41,8 @@ with TestKitBase
   lazy val config: Config = createConfig
 
   implicit lazy val system: ActorSystem = ActorSystem(systemName, config)
+
+  im.actor.testkit.ActorSpecification.cleanAkkaPersistence()
 
   private def shutdownActorSystem() {
     TestKit.shutdownActorSystem(system)

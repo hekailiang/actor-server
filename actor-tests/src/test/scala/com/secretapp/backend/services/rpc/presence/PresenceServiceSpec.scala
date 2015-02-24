@@ -12,9 +12,10 @@ import com.secretapp.backend.data.message.RpcResponseBox
 import com.secretapp.backend.data.message.update
 import com.secretapp.backend.data.message.rpc.update._
 import com.secretapp.backend.data.message.update._
-import com.secretapp.backend.models.User
+import com.secretapp.backend.models
 import com.secretapp.backend.protocol.codecs.message.MessageBoxCodec
 import com.secretapp.backend.services.rpc.RpcSpec
+import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scodec.bits._
@@ -23,7 +24,7 @@ class PresenceServiceSpec extends RpcSpec {
   import system.dispatcher
 
   "presence service" should {
-    "return ResponseVoid for subscribe" in {
+    "return ResponseVoid for subscribe" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(1, 2)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -35,7 +36,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "return ResponseVoid for unsubscribe" in {
+    "return ResponseVoid for unsubscribe" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(3, 4)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -46,7 +47,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "subscribe to updates and receive them" in {
+    "subscribe to updates and receive them" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(5, 6)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -83,7 +84,7 @@ class PresenceServiceSpec extends RpcSpec {
       }
     }
 
-    "tell presences on subscription" in {
+    "tell presences on subscription" in new sqlDb {
       val (scope1, scope2) = TestScope.pair(7, 8)
       catchNewSession(scope1)
       catchNewSession(scope2)
@@ -109,38 +110,19 @@ class PresenceServiceSpec extends RpcSpec {
         mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[UserOnline]
       }
     }
-/*
-    "count group presences" in {
+
+    "count group presences" in new sqlDb {
       implicit val scope = TestScope()
       catchNewSession(scope)
 
-      val rqCreateGroup = RequestCreateGroup(
-        randomId = 1L,
-        title = "Groupgroup 3000",
-        keyHash = BitVector(1, 1, 1),
-        publicKey = BitVector(1, 0, 1, 0),
-        broadcast = EncryptedRSABroadcast(
-          encryptedMessage = BitVector(1, 2, 3),
-          keys = immutable.Seq.empty,
-          ownKeys = immutable.Seq(
-            EncryptedAESKey(
-              keyHash = scope.user.publicKeyHash,
-              aesEncryptedKey = BitVector(2, 0, 2, 0)
-            )
-          )
-        )
-      )
-      val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
+      val groupId = createGroup(List(scope.user)).groupPeer.id
 
-      Thread.sleep(500)
+      Thread.sleep(1000)
 
-      val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.Difference]
-
-      diff.updates.length should beEqualTo(1)
-      diff.updates.head.body.assertInstanceOf[GroupCreated]
+      val (diff, _) = updateProto.RequestGetDifference(0, None) :~> <~:[updateProto.ResponseGetDifference]
 
       RequestSetOnline(true, 3000) :~> <~:[ResponseVoid]
-      SubscribeToGroupOnline(immutable.Seq(struct.GroupOutPeer(resp.groupId, 0))) :~> <~:[ResponseVoid]
+      RequestSubscribeToGroupOnline(immutable.Seq(struct.GroupOutPeer(groupId, 0))) :~> <~:[ResponseVoid]
 
       {
         val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
@@ -148,13 +130,27 @@ class PresenceServiceSpec extends RpcSpec {
         go.count should beEqualTo(1)
       }
 
-      Thread.sleep(3000)
+      Thread.sleep(3100)
 
       {
         val (mb :: _) = receiveNMessageBoxes(1)(scope.probe, scope.apiActor)
         val go = mb.body.assertInstanceOf[UpdateBox].body.assertInstanceOf[WeakUpdate].body.assertInstanceOf[GroupOnline]
         go.count should beEqualTo(0)
       }
-    }*/
+    }
+  }
+
+  def createGroup(users: immutable.Seq[models.User])(implicit scope: TestScope): ResponseCreateGroup = {
+    val rqCreateGroup = RequestCreateGroup(
+      randomId = 1L,
+      title = "Group 3000",
+      users = users map { user =>
+        struct.UserOutPeer(user.uid, ACL.userAccessHash(scope.user.authId, user))
+      }
+    )
+
+    val (resp, _) = rqCreateGroup :~> <~:[ResponseCreateGroup]
+
+    resp
   }
 }

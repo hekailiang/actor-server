@@ -1,69 +1,94 @@
 package com.secretapp.backend.persist
 
-import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.websudos.phantom.Implicits._
-import com.websudos.phantom.query.SelectQuery
-import scala.concurrent.Future
-import scalaz._
-import Scalaz._
+import org.joda.time.DateTime
+import scala.concurrent._
+import scalikejdbc._
 
-case class GroupUserMeta(inviterUserId: Int, date: Long)
+case class GroupUserMeta(inviterUserId: Int, invitedAt: DateTime)
 
-sealed class GroupUser extends CassandraTable[GroupUser, Int] {
+object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
   override val tableName = "group_users"
+  override val columnNames = Seq(
+    "group_id",
+    "user_id",
+    "inviter_user_id",
+    "invited_at"
+  )
 
-  object groupId extends IntColumn(this) with PartitionKey[Int] {
-    override lazy val name = "group_id"
-  }
-  object userId extends IntColumn(this) with PrimaryKey[Int] {
-    override lazy val name = "user_id"
-  }
-  object inviterUserId extends IntColumn(this) {
-    override lazy val name = "inviter_user_id"
-  }
-  object date extends LongColumn(this)
+  lazy val gu = GroupUser.syntax("gu")
 
-  override def fromRow(row: Row): Int = {
-    userId(row)
-  }
+  def apply(gu: SyntaxProvider[GroupUserMeta])(rs: WrappedResultSet): GroupUserMeta = apply(gu.resultName)(rs)
 
-  def fromRowWithMeta(row: Row): (Int, GroupUserMeta) = {
-    (
-      userId(row),
-      GroupUserMeta(
-        inviterUserId = inviterUserId(row),
-        date = date(row)
-      )
-    )
-  }
+  def apply(gu: ResultName[GroupUserMeta])(rs: WrappedResultSet): GroupUserMeta = GroupUserMeta(
+    inviterUserId = rs.int(gu.inviterUserId),
+    invitedAt = rs.get[DateTime](gu.invitedAt)
+  )
 
-  def selectWithMeta: SelectQuery[GroupUser, (Int, GroupUserMeta)] =
-    new SelectQuery[GroupUser, (Int, GroupUserMeta)](
-      this.asInstanceOf[GroupUser],
-      QueryBuilder.select().from(tableName),
-      this.asInstanceOf[GroupUser].fromRowWithMeta
-    )
-}
-
-object GroupUser extends GroupUser with TableOps {
-  def addUser(groupId: Int, userId: Int, inviterUserId: Int, date: Long)(implicit session: Session): Future[ResultSet] = {
-    insert
-      .value(_.groupId, groupId)
-      .value(_.userId, userId)
-      .value(_.inviterUserId, inviterUserId)
-      .value(_.date, date)
-      .future()
+  def addGroupUser(groupId: Int, userId: Int, inviterUserId: Int, invitedAt: DateTime)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+  ): Future[Unit] = Future {
+    blocking {
+      withSQL {
+        insert.into(GroupUser).namedValues(
+          column.column("group_id") -> groupId,
+          column.column("user_id") -> userId,
+          column.inviterUserId -> inviterUserId,
+          column.invitedAt -> invitedAt
+        )
+      }.execute.apply
+    }
   }
 
-  def removeUser(groupId: Int, userId: Int)(implicit session: Session): Future[ResultSet] = {
-    delete.where(_.groupId eqs groupId).and(_.userId eqs userId).future()
+  def findGroupUserIds(groupId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+  ): Future[List[Int]] = Future {
+    blocking {
+      withSQL {
+        select(gu.column("user_id")).from(GroupUser as gu)
+          .where.eq(gu.column("group_id"), groupId)
+      }.map(rs => rs.int(column.column("user_id"))).list.apply
+    }
   }
 
-  def getUserIds(groupId: Int)(implicit session: Session): Future[Seq[Int]] = {
-    select.where(_.groupId eqs groupId).fetch()
+  def findUserGroupIds(userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+  ): Future[List[Int]] = Future {
+    blocking {
+      withSQL {
+        select(gu.column("group_id")).from(GroupUser as gu)
+          .where.eq(gu.column("user_id"), userId)
+      }.map(rs => rs.int(column.column("group_id"))).list.apply
+    }
   }
 
-  def getUserIdsWithMeta(groupId: Int)(implicit session: Session): Future[Seq[Tuple2[Int, GroupUserMeta]]] = {
-    selectWithMeta.where(_.groupId eqs groupId).fetch()
+  def findGroupUserIdsWithMeta(groupId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+  ): Future[List[(Int, GroupUserMeta)]] = Future {
+    blocking {
+      withSQL {
+        select(gu.column("user_id"), gu.inviterUserId, gu.invitedAt).from(GroupUser as gu)
+          .where.eq(gu.column("group_id"), groupId)
+      }.map { rs =>
+        (
+          rs.int(column.column("user_id")),
+          GroupUserMeta(
+            inviterUserId = rs.int(column.inviterUserId),
+            invitedAt = rs.get[DateTime](column.invitedAt)
+          )
+        )
+      }.list.apply
+    }
+  }
+
+  def removeGroupUser(groupId: Int, userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+  ): Future[Boolean] = Future {
+    blocking {
+      withSQL {
+        delete.from(GroupUser)
+          .where.eq(column.column("group_id"), groupId)
+          .and.eq(column.column("user_id"), userId)
+      }.execute.apply
+    }
   }
 }

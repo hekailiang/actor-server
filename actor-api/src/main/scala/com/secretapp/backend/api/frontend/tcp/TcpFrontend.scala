@@ -10,28 +10,22 @@ import scodec.bits.BitVector
 import scala.concurrent.duration._
 import scalaz._
 import Scalaz._
-import com.datastax.driver.core.{ Session => CSession }
 import java.net.InetSocketAddress
 
 object TcpFrontend {
-  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef, session: CSession) = {
-    Props(new TcpFrontend(connection, remote, sessionRegion, session))
+  def props(connection: ActorRef, remote: InetSocketAddress, sessionRegion: ActorRef) = {
+    Props(new TcpFrontend(connection, remote, sessionRegion))
   }
 }
 
-class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef, val session: CSession) extends Frontend with NackActor with ActorLogging with MTPackageService {
+class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef) extends Frontend with NackActor with ActorLogging with MTPackageService {
   import akka.io.Tcp._
 
-  val transport = MTConnection
+//  val transport = MTConnection
 
   var packageIndex: Int = -1
 
   context.setReceiveTimeout(15.minutes) // TODO
-
-  override  def postStop(): Unit = {
-    super.postStop()
-    //log.debug(s"$authId#postStop(): $remote, $connection")
-  }
 
   def receiveBusinessLogic(writing: Boolean): Receive = {
     case Received(data) =>
@@ -45,6 +39,8 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
       silentClose(s"$authId#ResponseToClientWithDrop")
     case SilentClose =>
       silentClose("SilentClose")
+    case ReceiveTimeout =>
+      silentClose("ReceiveTimeout")
   }
 
   def serialize2MTPackageBox(payload: ByteString, writing: Boolean): Unit = {
@@ -58,9 +54,8 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#TcpFrontend.silentClose: $reason")
     // TODO
-    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
-    connection ! ResponseToClientWithDrop(pkg.encode)
+    val pkg = MTConnection.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    connection ! Write(pkg.encode)
     connection ! Close
-//    context.stop(self)
   }
 }

@@ -2,14 +2,11 @@ package com.secretapp.backend.services.rpc.push
 
 import akka.actor.{ActorLogging, Actor}
 import akka.pattern.pipe
-import com.datastax.driver.core.{ Session => CSession }
 import com.secretapp.backend.api.rpc.RpcProtocol
 import com.secretapp.backend.data.message.rpc.push._
 import com.secretapp.backend.models.User
 
-class Handler(val currentAuthId: Long)
-             (implicit val session: CSession)
-  extends Actor with ActorLogging with HandlerService {
+class Handler(val currentAuthId: Long) extends Actor with ActorLogging with HandlerService {
   import context._
 
   override def receive = {
