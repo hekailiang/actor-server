@@ -25,6 +25,8 @@ class ApiBrokerActor(
   val currentSessionId: Long,
   val singletons: Singletons,
   val fileAdapter: FileAdapter,
+  val updatesBrokerRegion: ActorRef,
+  val socialBrokerRegion: ActorRef,
   val subscribedToUpdates: Boolean
 ) extends Actor with ActorLogging with ApiBrokerService {
   import ApiBrokerProtocol._

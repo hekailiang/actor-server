@@ -34,14 +34,20 @@ object SessionActor {
     case Envelope(authId, sessionId, _) => (authId * sessionId % shardCount).abs.toString
   }
 
-  def props(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration) = {
-    Props(new SessionActor(singletons, fileAdapter, receiveTimeout))
+  def props(singletons: Singletons, updatesBrokerRegion: ActorRef, socialBrokerRegion: ActorRef, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration) = {
+    Props(new SessionActor(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, receiveTimeout))
   }
 
-  def startRegion(singletons: Singletons, fileAdapter: FileAdapter, receiveTimeout: FiniteDuration)(implicit system: ActorSystem) =
+  def startRegion(
+    singletons: Singletons,
+    updatesBrokerRegion: ActorRef,
+    socialBrokerRegion: ActorRef,
+    fileAdapter: FileAdapter,
+    receiveTimeout: FiniteDuration
+  )(implicit system: ActorSystem) =
     ClusterSharding(system).start(
       typeName = "Session",
-      entryProps = Some(props(singletons, fileAdapter, receiveTimeout)),
+      entryProps = Some(props(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, receiveTimeout)),
       idExtractor = idExtractor,
       shardResolver = shardResolver
     )
@@ -49,6 +55,8 @@ object SessionActor {
 
 class SessionActor(
   val singletons: Singletons,
+  val updatesBrokerRegion: ActorRef,
+  val socialBrokerRegion: ActorRef,
   val fileAdapter: FileAdapter,
   receiveTimeout: FiniteDuration
 ) extends PersistentActor
@@ -87,7 +95,7 @@ class SessionActor(
   lazy val apiBroker = context.actorOf(
     Props(
       classOf[ApiBrokerActor],
-      authId, sessionId, singletons, fileAdapter, subscribedToUpdates
+      authId, sessionId, singletons, fileAdapter, updatesBrokerRegion, socialBrokerRegion, subscribedToUpdates
     ), "api-broker"
   )
 

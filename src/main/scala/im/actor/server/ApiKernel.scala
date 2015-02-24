@@ -49,8 +49,17 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
 
     //val (keyManagerFactory, trustManagerFactory) = TLSActor.getManagerFactories() // check ssl configuration
 
+    val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)
+    val socialBrokerRegion = SocialBroker.startRegion()
+
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-    val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
+    val sessionRegion = SessionActor.startRegion(
+      singletons,
+      updatesBrokerRegion,
+      socialBrokerRegion,
+      fileAdapter,
+      sessionReceiveTimeout.milliseconds
+    )(system)
 
     val serverConfig = system.settings.config.getConfig("server")
 

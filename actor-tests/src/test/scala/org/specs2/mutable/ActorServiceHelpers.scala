@@ -4,7 +4,7 @@ import akka.actor._
 import akka.io.Tcp.{ Close, Received, Write }
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
-import com.secretapp.backend.api.Singletons
+import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message._
@@ -50,8 +50,11 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   val singletons = new Singletons
   val fileAdapter = new FileStorageAdapter(system)
 
+  val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)
+  val socialBrokerRegion = SocialBroker.startRegion()
+
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
+  val sessionRegion = SessionActor.startRegion(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
