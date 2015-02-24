@@ -44,7 +44,7 @@ object Dependencies {
 
     val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % V.play
 
-    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.2"
+    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.3"
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
