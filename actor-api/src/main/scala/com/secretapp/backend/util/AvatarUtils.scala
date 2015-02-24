@@ -37,13 +37,16 @@ object AvatarUtils extends RandomService {
     (implicit ec: ExecutionContext): Future[(Int, Int)] =
     AsyncImage(imgBytes) map { i => (i.width, i.height) }
 
+  // TODO: get rid of Option.get
   def scaleAvatar(fa: FileAdapter, fl: models.FileLocation)
     (implicit ec: ExecutionContext, timeout: Timeout, s: ActorSystem): Future[models.Avatar] = {
     val smallImageId = rand.nextLong
     val largeImageId = rand.nextLong
 
     for {
-      fullImageBytes   <- fa.readAll(fl.fileId.toString)
+      fullImageFD      <- persist.FileData.find(fl.fileId)
+
+      fullImageBytes   <- fa.readAll(fullImageFD.get.adapterData)
       (fiw, fih)       <- dimensions(fullImageBytes)
 
       _                <- persist.File.create(fa, smallImageId, rand.nextString(30)) // TODO: genAccessSalt makes specs

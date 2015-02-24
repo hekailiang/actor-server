@@ -1,8 +1,10 @@
 package com.secretapp.backend.persist
 
+import com.secretapp.backend.models
 import im.actor.server.persist.file.adapter.FileAdapter
 import play.api.libs.iteratee.Enumerator
 import scala.concurrent._
+import scala.util.{ Failure, Success }
 
 abstract class FileError(val tag: String, val canTryAgain: Boolean) extends Exception
 class LocationInvalid extends FileError("LOCATION_INVALID", false)
@@ -39,42 +41,65 @@ object File {
   def create(fa: FileAdapter, id: Long, accessSalt: String)(
     implicit ec: ExecutionContext
   ): Future[Unit] = {
-    FileData.create(id, accessSalt) map (_ => ())
+    fa.create(id.toString) flatMap { adapterData =>
+      FileData.create(id, accessSalt, adapterData) map (_ => ())
+    }
   }
 
   def write(fa: FileAdapter, id: Long, offset: Int, data: Array[Byte])(
     implicit ec: ExecutionContext
   ): Future[Unit] = withValidOffset(offset) {
-    for {
-      _ <- fa.write(id.toString, offset, data)
-      _ <- Future.sequence(Seq(
-        FileData.incrementLength(id, data.length),
-        FileBlock.createIfNotExists(id, offset, data.length)
-      ))
-    } yield ()
+    withFileData(id, { fd: models.FileData =>
+      for {
+        _ <- fa.write(fd.adapterData, offset, data)
+        _ <- Future.sequence(Seq(
+          FileData.incrementLength(id, data.length),
+          FileBlock.createIfNotExists(id, offset, data.length)
+        ))
+      } yield ()
+    })
   }
 
   def read(fa: FileAdapter, id: Long, offset: Int, limit: Int)(
     implicit ec: ExecutionContext
   ): Future[Array[Byte]] = withValidOL(offset, limit) {
-    fa.read(id.toString, offset, limit)
+    withFileData(id, { fd: models.FileData =>
+      fa.read(fd.adapterData, offset, limit)
+    })
   }
 
   def read(fa: FileAdapter, id: Long)(
     implicit ec: ExecutionContext
-  ): Enumerator[Array[Byte]] = {
-    fa.read(id.toString)
+  ): Future[Enumerator[Array[Byte]]] = {
+    withFileData(id, { fd: models.FileData =>
+      fa.read(fd.adapterData)
+    })
   }
 
   def readAll(fa: FileAdapter, id: Long)(
     implicit ec: ExecutionContext
   ): Future[Array[Byte]] = {
-    fa.readAll(id.toString)
+    withFileData(id, { fd: models.FileData =>
+      fa.readAll(fd.adapterData)
+    })
   }
 
   def complete(fa: FileAdapter, id: Long)(
     implicit ec: ExecutionContext
   ): Future[Boolean] = {
     FileBlock.deleteAll(id)
+  }
+
+  private def withFileData[A](id: Long, f: models.FileData => Future[A])(implicit ec: ExecutionContext): Future[A] = {
+    FileData.find(id) flatMap {
+      case Some(fd) => f(fd)
+      case None => throw new LocationInvalid
+    }
+  }
+
+  private def withFileData[A](id: Long, f: models.FileData => A)(implicit ec: ExecutionContext): Future[A] = {
+    withFileData(id, { fd: models.FileData =>
+      Future.successful(f(fd))
+    })
   }
 }
