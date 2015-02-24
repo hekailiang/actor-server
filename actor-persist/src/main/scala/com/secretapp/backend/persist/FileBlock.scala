@@ -11,7 +11,8 @@ object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
   override val columnNames = Seq(
     "file_id",
     "offset_",
-    "length"
+    "length",
+    "adapter_data"
   )
 
   lazy val fb = FileBlock.syntax("fb")
@@ -21,7 +22,8 @@ object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
   def apply(fd: ResultName[models.FileBlock])(rs: WrappedResultSet): models.FileBlock = models.FileBlock(
     fileId = rs.long(fb.fileId),
     offset = rs.long(fb.column("offset_")),
-    length = rs.long(fb.length)
+    length = rs.long(fb.length),
+    adapterData = rs.bytes(fb.adapterData)
   )
 
   def existsSync(fileId: Long, offset: Long, length: Long)(
@@ -34,7 +36,7 @@ object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
       )
       """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
 
-  def createIfNotExists(fileId: Long, offset: Long, length: Long)(
+  def createIfNotExists(fileId: Long, offset: Long, length: Long, adapterData: Array[Byte])(
     implicit ec: ExecutionContext, session: DBSession = FileBlock.autoSession
   ): Future[Boolean] = Future {
     blocking {
@@ -43,7 +45,8 @@ object FileBlock extends SQLSyntaxSupport[models.FileBlock] {
           insert.into(FileBlock).namedValues(
             column.fileId -> fileId,
             column.column("offset_") -> offset,
-            column.length -> length
+            column.length -> length,
+            column.adapterData -> adapterData
           )
         }.execute.apply
       } recover {

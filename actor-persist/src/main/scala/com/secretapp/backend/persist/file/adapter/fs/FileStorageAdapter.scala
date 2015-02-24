@@ -74,11 +74,11 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
     Future.successful(name.getBytes)
   }
 
-  def write(adapterData: Array[Byte], offset: Int, bytes: Array[Byte]): Future[Unit] = {
+  def write(adapterData: Array[Byte], offset: Int, bytes: Array[Byte]): Future[Array[Byte]] = {
     log.debug("Sending Write to FileStorageActor, name: {}, offset: {}, length: {}",
       name(adapterData), offset, bytes.length)
 
-    fsActor.ask(Write(name(adapterData), offset, ByteString(bytes)))(writeTimeout) map (_ => ())
+    fsActor.ask(Write(name(adapterData), offset, ByteString(bytes)))(writeTimeout) map (_ => Array())
   }
 
   def read(adapterData: Array[Byte], offset: Int, length: Int): Future[Array[Byte]] = {

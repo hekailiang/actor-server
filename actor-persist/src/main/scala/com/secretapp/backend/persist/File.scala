@@ -51,10 +51,10 @@ object File {
   ): Future[Unit] = withValidOffset(offset) {
     withFileData(id, { fd: models.FileData =>
       for {
-        _ <- fa.write(fd.adapterData, offset, data)
+        blockAdapterData <- fa.write(fd.adapterData, offset, data)
         _ <- Future.sequence(Seq(
           FileData.incrementLength(id, data.length),
-          FileBlock.createIfNotExists(id, offset, data.length)
+          FileBlock.createIfNotExists(id, offset, data.length, blockAdapterData)
         ))
       } yield ()
     })
