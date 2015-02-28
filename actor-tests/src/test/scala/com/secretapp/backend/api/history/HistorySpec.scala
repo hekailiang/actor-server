@@ -25,7 +25,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
     RequestLoadDialogs should
       load dialogs from start if date is 0 ${cases.loadDialogs.zeroDate}
     RequestSendEncryptedMessage should
-      create dialog with date 0 ${cases.encrypted.createDialog}
+      create dialog with date 0 and state None ${cases.encrypted.createDialog}
       lift dialog               ${cases.encrypted.liftDialog}
     RequestDeleteMessage handler should
       respond with ResponseVoid   ${cases.deleteMessages.e1}
@@ -100,7 +100,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           sendEncryptedMessage(scope2.user)
           Thread.sleep(100)
 
-          val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(s.user.authId, scope2.user)), 0l, 100)
+          cope2.user)), 0l, 100)
           respHistory.history.length should_==(0)
 
           val respDialogs = loadDialogs(Long.MaxValue, 100)
@@ -113,6 +113,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           dialog.message should_==(TextMessage(""))
           dialog.randomId should_==(0)
           dialog.date should_==(0)
+          dialog.state should_==(None)
         }
 
         using(scope2) { implicit s =>

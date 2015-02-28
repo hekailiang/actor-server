@@ -146,7 +146,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
           Some(randomId),
           Some(date),
           Some((message.header, message.content)),
-          state
+          Some(state)
         )
       ))
 
@@ -165,7 +165,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
         None,
         None,
         None,
-        models.MessageState.Sent
+        None
       )
 
     case Envelope(userId, peer, ClearMessages) =>
@@ -182,7 +182,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
     case Envelope(userId, peer, OutMessagesReceived(date)) =>
       val f = Future.sequence(Seq(
         p.HistoryMessage.updateStateOfSentBefore(userId, peer, date, models.MessageState.Received),
-        p.Dialog.updateStateIfFresh(userId, peer, userId, date, models.MessageState.Received)
+        p.Dialog.updateStateIfFresh(userId, peer, userId, date, Some(models.MessageState.Received))
       ))
 
       backToBusinessAfter(f)
@@ -191,7 +191,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
     case Envelope(userId, peer, OutMessagesRead(date)) =>
       val f = Future.sequence(Seq(
         p.HistoryMessage.updateStateOfSentBefore(userId, peer, date, models.MessageState.Read),
-        p.Dialog.updateStateIfFresh(userId, peer, userId, date, models.MessageState.Read)
+        p.Dialog.updateStateIfFresh(userId, peer, userId, date, Some(models.MessageState.Read))
       ))
 
       backToBusinessAfter(f)

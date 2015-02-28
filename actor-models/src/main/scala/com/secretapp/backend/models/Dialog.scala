@@ -12,5 +12,5 @@ case class Dialog(
   date: DateTime,
   messageContentHeader: Int,
   messageContentData: BitVector,
-  state: MessageState
+  state: Option[MessageState]
 )

@@ -43,7 +43,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
       bs.close()
       bv
     },
-    state = models.MessageState.fromInt(rs.int(d.state))
+    state = rs.intOpt(d.state) map (models.MessageState.fromInt)
   )
 
   def updateMessage(
@@ -88,7 +88,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
     randomIdOpt: Option[Long],
     dateOpt: Option[DateTime],
     messageOpt: Option[(Int, BitVector)],
-    state: models.MessageState
+    state: Option[models.MessageState]
   )(
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
   ): Future[Unit] = Future {
@@ -130,7 +130,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
               column.sortDate -> sortDateSql,
               column.messageContentHeader -> messageContentHeaderSql,
               column.messageContentData -> messageContentDataSql,
-              column.state -> state.toInt
+              column.state -> (state map (_.toInt))
             )
               .where.eq(column.userId, userId)
               .and.eq(column.column("peer_type"), peer.typ.toInt)
@@ -160,7 +160,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
               column.date -> date,
               column.messageContentHeader -> messageContentHeader,
               column.messageContentData -> messageContentData,
-              column.state -> state.toInt
+              column.state -> (state map (_.toInt))
             )
           }.execute.apply
       }
@@ -169,14 +169,14 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
     }
   }
 
-  def updateStateIfFresh(userId: Int, peer: models.Peer, senderUserId: Int, date: DateTime, state: models.MessageState)(
+  def updateStateIfFresh(userId: Int, peer: models.Peer, senderUserId: Int, date: DateTime, state: Option[models.MessageState])(
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
   ): Future[Int] =
     Future {
       blocking {
         withSQL {
           update(Dialog).set(
-            column.state -> state.toInt
+            column.state -> (state map (_.toInt))
           )
             .where.eq(column.userId, userId)
             .and.eq(column.column("peer_type"), peer.typ.toInt)
@@ -197,7 +197,7 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
           case Some(date) =>
             select.from(Dialog as d)
               .where.eq(d.userId, userId)
-              .and.le(d.date, date)
+              .and.le(d.sortDate, date)
               .orderBy(d.sortDate).desc
               .limit(limit)
           case None =>

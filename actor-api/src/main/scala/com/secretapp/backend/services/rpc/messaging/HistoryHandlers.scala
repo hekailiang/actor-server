@@ -136,11 +136,11 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     persist.Dialog.findAllWithUnreadCount(currentUser.uid, endDateTimeFrom(endDate), limit) flatMap { dmWithUnread =>
       val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
         case (res, Tuple2(models.Dialog(_, peer, sortDate, senderUserId, randomId, date, mcHeader, mcData, state), unreadCount)) =>
-          val stateOpt = if (currentUser.uid == senderUserId) {
-            Some(state) // for outgoing
-          } else {
-            None // for incoming
-          }
+          val stateOpt =
+            if (currentUser.uid == senderUserId)
+              state // for outgoing
+            else
+              None // for incoming
 
           res :+ Dialog(
             peer = struct.Peer.fromModel(peer),
