@@ -96,16 +96,25 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
       }.map(HistoryMessage(hm)).list.apply()
     }
 
-  def findAll(userId: Int, peer: models.Peer, endDate: DateTime, limit: Int)(
+  def findAll(userId: Int, peer: models.Peer, endDate: Option[DateTime], limit: Int)(
     implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession
   ): Future[List[models.HistoryMessage]] =
     findAllBy(
-      sqls.eq(hm.userId, userId)
-        .and.eq(hm.column("peer_type"), peer.typ.toInt)
-        .and.eq(hm.column("peer_id"), peer.id)
-        .and.le(hm.date, endDate)
-        .orderBy(hm.date).desc
-        .limit(limit)
+      endDate match {
+        case Some(date) =>
+          sqls.eq(hm.userId, userId)
+            .and.eq(hm.column("peer_type"), peer.typ.toInt)
+            .and.eq(hm.column("peer_id"), peer.id)
+            .and.le(hm.date, endDate)
+            .orderBy(hm.date).desc
+            .limit(limit)
+        case None =>
+          sqls.eq(hm.userId, userId)
+            .and.eq(hm.column("peer_type"), peer.typ.toInt)
+            .and.eq(hm.column("peer_id"), peer.id)
+            .orderBy(hm.date).asc
+            .limit(limit)
+      }
     )
 
   def countUnread(userId: Int, peer: models.Peer)(

@@ -116,13 +116,16 @@ trait HistoryHandlers extends RandomService with UserHelpers {
   }
 
   private val MaxDate = (new DateTime(294276, 1, 1, 0, 0)).getMillis
-  private def dateTimeFrom(date: Long): DateTime = {
-    new DateTime(
-      if (date > MaxDate)
-        new DateTime(294276, 1, 1, 0, 0)
-      else
-        date
-    )
+  private def endDateTimeFrom(date: Long): Option[DateTime] = {
+    if (date == 0l)
+      None
+    else
+      Some(new DateTime(
+        if (date > MaxDate)
+          new DateTime(294276, 1, 1, 0, 0)
+        else
+          date
+      ))
   }
 
   // TODO: refactor
@@ -130,7 +133,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     endDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
-    persist.Dialog.findAllWithUnreadCount(currentUser.uid, dateTimeFrom(endDate), limit) flatMap { dmWithUnread =>
+    persist.Dialog.findAllWithUnreadCount(currentUser.uid, endDateTimeFrom(endDate), limit) flatMap { dmWithUnread =>
       val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
         case (res, Tuple2(models.Dialog(_, peer, sortDate, senderUserId, randomId, date, mcHeader, mcData, state), unreadCount)) =>
           val stateOpt = if (currentUser.uid == senderUserId) {
@@ -197,7 +200,7 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     limit: Int
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer.asModel, dateTimeFrom(endDate), limit) flatMap { messages =>
+      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer.asModel, endDateTimeFrom(endDate), limit) flatMap { messages =>
         val userIds = messages.foldLeft(Set.empty[Int]) { (res, message) =>
           if (message.senderUserId != currentUser.uid)
             res + message.senderUserId
