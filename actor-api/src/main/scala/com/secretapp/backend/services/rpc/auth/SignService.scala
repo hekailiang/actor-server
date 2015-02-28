@@ -127,16 +127,17 @@ trait SignService extends ContactHelpers with SocialHelpers {
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
-            case Some(models.AuthSmsCode(_, sHash, sCode)) =>
-              EventService.log(authId, phoneNumber, E.AuthCodeSent(sHash, sCode))
-              Future.successful(Ok(ResponseSendAuthCode(sHash, phoneR.isDefined)))
+            case Some(models.AuthSmsCode(_, smsHash, smsCode)) =>
+              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode)
+              EventService.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
+              Future.successful(Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined)))
             case None =>
               val smsHash = genSmsHash
               val smsCode = phoneNumber.toString match {
                 case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
                 case _ => genSmsCode
               }
-              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode) // TODO: move it to actor with persistence
+              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode)
               for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
               yield {
                 EventService.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
