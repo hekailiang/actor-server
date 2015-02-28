@@ -187,24 +187,24 @@ object Dialog extends SQLSyntaxSupport[models.Dialog] {
       }
     }
 
-  def findAll(userId: Int, startDate: DateTime, limit: Int)(
+  def findAll(userId: Int, endDate: DateTime, limit: Int)(
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
   ): Future[List[models.Dialog]] = Future {
     blocking {
        withSQL {
         select.from(Dialog as d)
           .where.eq(d.userId, userId)
-          .and.ge(d.date, startDate)
+          .and.le(d.date, endDate)
           .orderBy(d.sortDate).desc
           .limit(limit)
        }.map(Dialog(d)).list.apply
     }
   }
 
-  def findAllWithUnreadCount(userId: Int, startDate: DateTime, limit: Int)(
+  def findAllWithUnreadCount(userId: Int, endDate: DateTime, limit: Int)(
     implicit ec: ExecutionContext, session: DBSession = Dialog.autoSession
   ): Future[List[(models.Dialog, Long)]] =
-    findAll(userId, startDate, limit) flatMap { ds =>
+    findAll(userId, endDate, limit) flatMap { ds =>
       val futures =
         for (d <- ds)
         yield HistoryMessage.countUnread(userId, d.peer) map ((d, _))

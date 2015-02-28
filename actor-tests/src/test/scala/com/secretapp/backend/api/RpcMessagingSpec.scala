@@ -434,7 +434,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         val (resp, _) = RequestLoadHistory(
           outPeer = struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)),
-          startDate = 0,
+          endDate = Long.MaxValue,
           limit = 2
         ) :~> <~:[ResponseLoadHistory]
 
@@ -507,7 +507,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         {
           val (resp, _) = RequestLoadDialogs(
-            startDate = 0,
+            endDate = Long.MaxValue,
             limit = 10
           ) :~> <~:[ResponseLoadDialogs]
 
@@ -526,7 +526,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         {
           val (resp, _) = RequestLoadDialogs(
-            startDate = 0,
+            endDate = Long.MaxValue,
             limit = 10
           ) :~> <~:[ResponseLoadDialogs]
 
@@ -568,7 +568,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         {
           val (resp, _) = RequestLoadDialogs(
-            startDate = 0,
+            endDate = Long.MaxValue,
             limit = 10
           ) :~> <~:[ResponseLoadDialogs]
 
@@ -586,7 +586,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         {
           val (resp, _) = RequestLoadDialogs(
-            startDate = 0,
+            endDate = Long.MaxValue,
             limit = 10
           ) :~> <~:[ResponseLoadDialogs]
 
@@ -599,7 +599,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val (resp, _) = RequestLoadDialogs(
-          startDate = 0,
+          endDate = Long.MaxValue,
           limit = 10
         ) :~> <~:[ResponseLoadDialogs]
 
@@ -619,7 +619,7 @@ class RpcMessagingSpec extends RpcSpec {
 
         {
           val (resp, _) = RequestLoadDialogs(
-            startDate = 0,
+            endDate = Long.MaxValue,
             limit = 10
           ) :~> <~:[ResponseLoadDialogs]
 
@@ -632,7 +632,7 @@ class RpcMessagingSpec extends RpcSpec {
         implicit val scope = scope1
 
         val (resp, _) = RequestLoadDialogs(
-          startDate = 0,
+          endDate = Long.MaxValue,
           limit = 10
         ) :~> <~:[ResponseLoadDialogs]
 

@@ -3,7 +3,7 @@ package com.secretapp.backend.data.message.rpc.history
 import com.secretapp.backend.data.message.rpc._
 
 @SerialVersionUID(1L)
-case class RequestLoadDialogs(startDate: Long, limit: Int) extends RpcRequestMessage {
+case class RequestLoadDialogs(endDate: Long, limit: Int) extends RpcRequestMessage {
   val header = RequestLoadDialogs.header
 }
 

@@ -96,14 +96,14 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
       }.map(HistoryMessage(hm)).list.apply()
     }
 
-  def findAll(userId: Int, peer: models.Peer, startDate: DateTime, limit: Int)(
+  def findAll(userId: Int, peer: models.Peer, endDate: DateTime, limit: Int)(
     implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession
   ): Future[List[models.HistoryMessage]] =
     findAllBy(
       sqls.eq(hm.userId, userId)
         .and.eq(hm.column("peer_type"), peer.typ.toInt)
         .and.eq(hm.column("peer_id"), peer.id)
-        .and.ge(hm.date, startDate)
+        .and.le(hm.date, endDate)
         .orderBy(hm.date).desc
         .limit(limit)
     )

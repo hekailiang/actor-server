@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestLoadHistoryCodec extends Codec[RequestLoadHistory] with utils.ProtobufCodec {
   def encode(r: RequestLoadHistory) = {
-    val boxed = protobuf.RequestLoadHistory(r.outPeer.toProto, r.startDate, r.limit)
+    val boxed = protobuf.RequestLoadHistory(r.outPeer.toProto, r.endDate, r.limit)
     encodeToBitVector(boxed)
   }
 

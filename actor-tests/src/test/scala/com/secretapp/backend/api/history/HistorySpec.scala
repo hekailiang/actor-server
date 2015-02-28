@@ -45,7 +45,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
     }
 
     def loadDialogs(date: Long, limit: Int)(implicit scope: TestScope): ResponseLoadDialogs = {
-      val (rsp, _) = RequestLoadDialogs(date, limit) :~> <~:[ResponseLoadDialogs]
+      val (rsp, _) = RequestLoadDialogs(Long.MaxValue, limit) :~> <~:[ResponseLoadDialogs]
       rsp
     }
 
@@ -67,7 +67,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(s.user.authId, scope2.user)), 0l, 100)
           respHistory.history.length should_==(0)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -83,7 +83,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           val respHistory = loadHistory(struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(s.user.authId, scope1.user)), 0l, 100)
           respHistory.history.length should_==(0)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(1)
@@ -105,7 +105,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           Thread.sleep(100)
 
           {
-            val dialogs = loadDialogs(0, 100).dialogs
+            val dialogs = loadDialogs(Long.MaxValue, 100).dialogs
             dialogs.length should_==(2)
             dialogs.head.peer should_==(struct.Peer.privat(scope3.user.uid))
             dialogs.last.peer should_==(struct.Peer.privat(scope2.user.uid))
@@ -116,7 +116,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           sendEncryptedMessage(scope2.user)
           Thread.sleep(100)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -164,7 +164,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         Thread.sleep(100)
 
         using(scope1) { implicit scope =>
-          val respHistory = loadHistory(outPeer, 0L, 3)
+          val respHistory = loadHistory(outPeer, Long.MaxValue, 3)
           respHistory.history.length should_==(1)
           respHistory.history.head.randomId should_==(2L)
         }
@@ -186,11 +186,11 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           sendMessage(scope2.user)
           Thread.sleep(100)
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(1)
           respHistory.history.head.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -198,11 +198,11 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         }
 
         using(scope2) { implicit s =>
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(1)
           respHistory.history.head.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -217,7 +217,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           kickUser(respGroup.groupPeer, scope2.user)
           Thread.sleep(100)
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(2)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
@@ -225,7 +225,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         }
 
         using(scope2) { implicit s =>
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(2)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
@@ -243,13 +243,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           inviteUser(respGroup.groupPeer, scope2.user)
           Thread.sleep(100)
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(3)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -258,13 +258,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         }
 
         using(scope2) { implicit s =>
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(3)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -283,13 +283,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
           val smsg = ServiceMessage("Group title changed", Some(GroupChangedTitleExtension("New title")))
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(4)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -308,13 +308,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
           val smsg = ServiceMessage("Group avatar changed", Some(GroupChangedAvatarExtension(Some(respAvatar.avatar))))
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(5)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -333,13 +333,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
           val smsg = ServiceMessage("Group avatar changed", Some(GroupChangedAvatarExtension(None)))
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(6)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope1.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -358,13 +358,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           leaveGroup(respGroup.groupPeer)
           Thread.sleep(100)
 
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(7)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope2.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -375,13 +375,13 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         }
 
         using(scope1) { implicit s =>
-          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, 0l, 100)
+          val respHistory = loadHistory(respGroup.groupPeer.asOutPeer, Long.MaxValue, 100)
           respHistory.history.length should_==(7)
           val msg = respHistory.history.head
           msg.senderUserId should_==(scope2.user.uid)
           msg.message should_==(smsg)
 
-          val respDialogs = loadDialogs(0, 100)
+          val respDialogs = loadDialogs(Long.MaxValue, 100)
           val dialogs = respDialogs.dialogs
 
           dialogs.length should_==(2)
@@ -414,7 +414,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
         val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(scope.user.authId, scope2.user)), 0l, 100)
         respHistory.history.length should_==(0)
 
-        val respDialogs = loadDialogs(0, 100)
+        val respDialogs = loadDialogs(Long.MaxValue, 100)
         val dialogs = respDialogs.dialogs
 
         dialogs.length should_==(1)
