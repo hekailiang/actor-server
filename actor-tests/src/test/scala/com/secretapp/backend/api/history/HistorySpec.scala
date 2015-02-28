@@ -20,6 +20,10 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
   object sqlDb extends sqlDb
 
   override def is = sequential ^ s2"""
+    RequestLoadHistory should
+      load history from start if date is 0 ${cases.loadHistory.zeroDate}
+    RequestLoadDialogs should
+      load dialogs from start if date is 0 ${cases.loadDialogs.zeroDate}
     RequestSendEncryptedMessage should
       create dialog with date 0 ${cases.encrypted.createDialog}
       lift dialog               ${cases.encrypted.liftDialog}
@@ -47,6 +51,38 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
     def loadDialogs(date: Long, limit: Int)(implicit scope: TestScope): ResponseLoadDialogs = {
       val (rsp, _) = RequestLoadDialogs(Long.MaxValue, limit) :~> <~:[ResponseLoadDialogs]
       rsp
+    }
+
+    object loadHistory {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+
+      catchNewSession(scope1)
+
+      def zeroDate = {
+        using(scope1) { implicit s =>
+          sendMessage(scope2.user)
+          Thread.sleep(100)
+
+          val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(s.user.authId, scope2.user)), 0l, 100)
+          respHistory.history.length should_==(1)
+        }
+      }
+    }
+
+    object loadDialogs {
+      val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+
+      catchNewSession(scope1)
+
+      def zeroDate = {
+        using(scope1) { implicit s =>
+          sendMessage(scope2.user)
+          Thread.sleep(100)
+
+          val respDialogs = loadDialogs(0l, 100)
+          respDialogs.dialogs.length should_==(1)
+        }
+      }
     }
 
     object encrypted {
