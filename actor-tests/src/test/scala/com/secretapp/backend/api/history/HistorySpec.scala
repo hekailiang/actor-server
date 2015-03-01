@@ -49,7 +49,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
     }
 
     def loadDialogs(date: Long, limit: Int)(implicit scope: TestScope): ResponseLoadDialogs = {
-      val (rsp, _) = RequestLoadDialogs(Long.MaxValue, limit) :~> <~:[ResponseLoadDialogs]
+      val (rsp, _) = RequestLoadDialogs(date, limit) :~> <~:[ResponseLoadDialogs]
       rsp
     }
 
@@ -71,6 +71,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
 
     object loadDialogs {
       val (scope1, scope2) = TestScope.pair(rand.nextInt, rand.nextInt)
+      val scope3 = TestScope(rand.nextInt)
 
       catchNewSession(scope1)
 
@@ -79,8 +80,12 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           sendMessage(scope2.user)
           Thread.sleep(100)
 
-          val respDialogs = loadDialogs(0l, 100)
+          sendMessage(scope3.user)
+          Thread.sleep(100)
+
+          val respDialogs = loadDialogs(0l, 1)
           respDialogs.dialogs.length should_==(1)
+          respDialogs.dialogs.head.peer.id should_==(scope2.user.uid)
         }
       }
     }
@@ -100,7 +105,7 @@ class HistorySpec extends RpcSpec with MessagingSpecHelpers with GroupSpecHelper
           sendEncryptedMessage(scope2.user)
           Thread.sleep(100)
 
-          cope2.user)), 0l, 100)
+          val respHistory = loadHistory(struct.OutPeer.privat(scope2.user.uid, ACL.userAccessHash(s.user.authId, scope2.user)), Long.MaxValue, 100)
           respHistory.history.length should_==(0)
 
           val respDialogs = loadDialogs(Long.MaxValue, 100)
