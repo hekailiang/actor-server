@@ -39,10 +39,14 @@ class KeyFrontend(frontend: ActorRef) extends Actor with ActorLogging with Rando
             case _ if p.sessionId != 0L =>
               dropClient(message.messageId, "sessionId must equal to 0", p.sessionId)
             case RequestAuthId() =>
+              log.debug("Requested AuthId")
               val newAuthId = rand.nextLong()
-              persist.AuthId.create(newAuthId, None)
-              val pkg = MTConnection.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
-              frontend ! ResponseToClient(pkg.encode)
+              for (_ <- persist.AuthId.create(newAuthId, None))
+                yield {
+                  log.debug("Created authId {}", newAuthId)
+                  val pkg = MTConnection.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
+                  frontend ! ResponseToClient(pkg.encode)
+                }
             case _ =>
               dropClient(message.messageId, "unknown message type in authorize mode")
           }
