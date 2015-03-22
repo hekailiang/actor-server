@@ -124,7 +124,7 @@ trait HandlerService extends GeneratorService {
       case Some(models.FileData(fileId, accessSalt, _, _)) =>
         val realAccessHash = ACL.fileAccessHash(fileId, accessSalt)
         if (realAccessHash != location.accessHash) {
-          throw new persist.LocationInvalid
+          Future.successful(Error(400, "LOCATION_INVALID", "", true))
         }
 
         try {
