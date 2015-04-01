@@ -68,7 +68,7 @@ object DialogManager {
   case object Stop
 
   private val idExtractor: ShardRegion.IdExtractor = {
-    case msg @ Envelope(userId, peer, payload) => ("$userId-${peer.typ.intType}-${peer.id}", msg)
+    case msg @ Envelope(userId, peer, payload) => (s"$userId-${peer.typ.toInt}-${peer.id}", msg)
   }
 
   private val shardCount = 2 // TODO: configurable
@@ -92,7 +92,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
 
   private case object Unstash
 
-  context.setReceiveTimeout(15.minutes)
+  //context.setReceiveTimeout(15.minutes)
 
   var lastDate = new DateTime
 
@@ -203,7 +203,7 @@ class DialogManager extends Actor with Stash with ActorLogging {
       backToBusinessAfter(f)
 
       context.become(stashing)
-    case Envelope(userId, peer, InMessagesRead(date)) =>
+    case env @ Envelope(userId, peer, InMessagesRead(date)) =>
       val f = p.HistoryMessage.updateStateOfReceivedBefore(userId, peer, date, models.MessageState.Read)
 
       backToBusinessAfter(f)
@@ -214,9 +214,11 @@ class DialogManager extends Actor with Stash with ActorLogging {
   }
 
   def backToBusinessAfter(f: Future[Any]): Unit = f onComplete {
-    case Success(_) => backToBusiness()
+    case Success(_) =>
+      backToBusiness()
     case Failure(e) =>
       log.error(e, "Future failed")
+      backToBusiness()
   }
 
   def backToBusiness(): Unit = {
