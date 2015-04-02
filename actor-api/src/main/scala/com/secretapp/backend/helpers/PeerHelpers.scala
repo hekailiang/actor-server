@@ -5,6 +5,7 @@ import com.secretapp.backend.data.message.rpc.{ Error, RpcResponse }
 import com.secretapp.backend.data.message.struct
 import com.secretapp.backend.models
 import com.secretapp.backend.persist
+import com.secretapp.backend.persist.GroupUserMeta
 import com.secretapp.backend.util.ACL
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -57,10 +58,28 @@ trait PeerHelpers extends UserHelpers {
     }
   }
 
+  protected def withKickableGroupMember(groupOutPeer: struct.GroupOutPeer, currentUser: models.User, kickUserOutPeer: struct.UserOutPeer)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
+    withGroupOutPeer(groupOutPeer, currentUser) { group =>
+      if (group.creatorUserId != currentUser.uid) {
+        persist.GroupUser.findGroupUser(group.id, kickUserOutPeer.id).flatMap {
+          case Some(GroupUserMeta(inviterUserId, _)) =>
+            if (inviterUserId == currentUser.uid) {
+              f(group)
+            } else {
+              Future.successful(Error(403, "NO_PERMISSION", "You are permitted to kick this user.", false))
+            }
+          case None => Future.successful(Error(404, "USER_NOT_FOUND", "User is not a group member.", false))
+        }
+      } else {
+        f(group)
+      }
+    }
+  }
+
   protected def withOwnGroupOutPeer(groupOutPeer: struct.GroupOutPeer, currentUser: models.User)(f: models.Group => Future[RpcResponse]): Future[RpcResponse] = {
     withGroupOutPeer(groupOutPeer, currentUser) { group =>
       if (group.creatorUserId != currentUser.uid) {
-        Future.successful(Error(403, "NO_PERMISSION", "You are not an admin of this group.", true))
+        Future.successful(Error(403, "NO_PERMISSION", "You are not an admin of this group.", false))
       } else {
         f(group)
       }

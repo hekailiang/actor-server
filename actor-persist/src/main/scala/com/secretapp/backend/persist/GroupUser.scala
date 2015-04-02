@@ -1,7 +1,8 @@
 package com.secretapp.backend.persist
 
-import org.joda.time.DateTime
 import scala.concurrent._
+
+import org.joda.time.DateTime
 import scalikejdbc._
 
 case class GroupUserMeta(inviterUserId: Int, invitedAt: DateTime)
@@ -26,7 +27,7 @@ object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
 
   def addGroupUser(groupId: Int, userId: Int, inviterUserId: Int, invitedAt: DateTime)(
     implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
-  ): Future[Unit] = Future {
+    ): Future[Unit] = Future {
     blocking {
       withSQL {
         insert.into(GroupUser).namedValues(
@@ -41,7 +42,7 @@ object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
 
   def findGroupUserIds(groupId: Int)(
     implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
-  ): Future[List[Int]] = Future {
+    ): Future[List[Int]] = Future {
     blocking {
       withSQL {
         select(gu.column("user_id")).from(GroupUser as gu)
@@ -52,7 +53,7 @@ object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
 
   def findUserGroupIds(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
-  ): Future[List[Int]] = Future {
+    ): Future[List[Int]] = Future {
     blocking {
       withSQL {
         select(gu.column("group_id")).from(GroupUser as gu)
@@ -61,9 +62,19 @@ object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
     }
   }
 
+  def findGroupUser(groupId: Int, userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
+    ): Future[Option[GroupUserMeta]] = Future {
+    blocking {
+      withSQL {
+        select.from(GroupUser as gu).where.eq(gu.column("group_id"), groupId).and.eq(gu.column("user_id"), userId)
+      }.map(GroupUser(gu)).single.apply
+    }
+  }
+
   def findGroupUserIdsWithMeta(groupId: Int)(
     implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
-  ): Future[List[(Int, GroupUserMeta)]] = Future {
+    ): Future[List[(Int, GroupUserMeta)]] = Future {
     blocking {
       withSQL {
         select(gu.column("user_id"), gu.inviterUserId, gu.invitedAt).from(GroupUser as gu)
@@ -75,14 +86,14 @@ object GroupUser extends SQLSyntaxSupport[GroupUserMeta] {
             inviterUserId = rs.int(column.inviterUserId),
             invitedAt = rs.get[DateTime](column.invitedAt)
           )
-        )
+          )
       }.list.apply
     }
   }
 
   def removeGroupUser(groupId: Int, userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = GroupUser.autoSession
-  ): Future[Boolean] = Future {
+    ): Future[Boolean] = Future {
     blocking {
       withSQL {
         delete.from(GroupUser)
