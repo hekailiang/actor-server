@@ -312,7 +312,7 @@ class SignServiceSpec extends RpcSpec {
         sendRpcMsg(RequestGetState())
 
         expectMsgByPF(withNewSession = true) {
-          case RpcResponseBox(_, Ok(ResponseSeq(0, None))) =>
+          case RpcResponseBox(_, Ok(ResponseSeq(1000, None))) =>
         }
       }
 
