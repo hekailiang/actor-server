@@ -10,6 +10,8 @@ trait DbInit {
   def initDb(sqlConfig: Config) = {
     Class.forName(sqlConfig.getString("driverClassName"))
 
+    GlobalSettings.loggingSQLAndTime = GlobalSettings.loggingSQLAndTime.copy(singleLineMode = true)
+
     val (url, user, password) = (
       sqlConfig.getString("url"),
       sqlConfig.getString("username"),
