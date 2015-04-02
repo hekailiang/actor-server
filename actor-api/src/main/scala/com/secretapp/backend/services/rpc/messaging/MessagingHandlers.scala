@@ -46,8 +46,6 @@ with HistoryHelpers with SendMessagingHandlers {
     message: MessageContent
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      // Record relation between receiver authId and sender uid
-
       sendMessage(
         socialBrokerRegion = socialBrokerRegion,
         dialogManagerRegion = dialogManagerRegion,
@@ -299,16 +297,17 @@ trait SendMessagingHandlers {
                   outPeer: struct.OutPeer,
                   randomId: Long,
                   message: MessageContent)(implicit ec: ExecutionContext): Future[updateProto.MessageSent] = {
-    // Record relation between receiver authId and sender uid
 
-    socialBrokerRegion ! SocialProtocol.SocialMessageBox(
-      currentUser.uid, SocialProtocol.RelationsNoted(Set(outPeer.id)))
 
     val dateTime = new DateTime
     val date = dateTime.getMillis
 
     outPeer.typ match {
       case models.PeerType.Private =>
+        // Record relation between receiver authId and sender uid
+        socialBrokerRegion ! SocialProtocol.SocialMessageBox(
+          currentUser.uid, SocialProtocol.RelationsNoted(Set(outPeer.id)))
+
         val myAuthIdsFuture   = getAuthIds(currentUser.uid)
         val peerAuthIdsFuture = getAuthIds(outPeer.id)
 
