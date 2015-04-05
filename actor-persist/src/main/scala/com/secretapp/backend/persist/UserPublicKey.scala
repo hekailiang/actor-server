@@ -110,6 +110,15 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
       }.map(UserPublicKey(pk)).list.apply()
     }
 
+  def findAllHashesBy(where: SQLSyntax)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession): Future[List[Long]] =
+    Future {
+      withSQL {
+        select(pk.hash).from(UserPublicKey as pk)
+          .where.append(isNotDeleted).and.append(sqls"${where}")
+      }.map(rs => rs.long(column.hash)).list.apply()
+    }
+
   def findByUserIdAndHash(userId: Int, hash: Long)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[Option[models.UserPublicKey]] =
@@ -181,6 +190,10 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = findAllBy(sqls.eq(pk.userId, userId))
 
+  def findAllHashesByUserId(userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+    ): Future[List[Long]] = findAllHashesBy(sqls.eq(pk.userId, userId))
+
   def findAllDeletedByUserId(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = Future {
@@ -189,18 +202,6 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
         select.from(UserPublicKey as pk)
           .where.append(isDeleted)
       }.map(UserPublicKey(pk)).list.apply
-    }
-  }
-
-  def findAllHashesByUserId(userId: Int)(
-    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
-  ): Future[List[Long]] = Future {
-    blocking {
-      withSQL {
-        select.from(UserPublicKey as pk)
-          .where.append(isNotDeleted)
-          .and.eq(pk.userId, userId)
-      }.map(rs => rs.long(column.hash)).list.apply
     }
   }
 

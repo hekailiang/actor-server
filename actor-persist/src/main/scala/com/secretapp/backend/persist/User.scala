@@ -108,6 +108,44 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     } yield ()
   }
 
+  def findData(id: Int)(implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[Option[models.UserData]] = {
+    val mainDataFuture: Future[Option[models.BasicUserData]] = Future {
+      blocking {
+        withSQL {
+          select.from(User as u).where.eq(u.column("id"), id)
+        }.map { rs =>
+          println(column)
+            models.BasicUserData(id = rs.int(u.resultName.column("id")),
+              accessSalt = rs.string(u.resultName.accessSalt),
+              name = rs.string(u.resultName.name),
+              countryCode = rs.string(u.resultName.countryCode),
+              sex = models.Sex.fromInt(rs.int(u.resultName.sex)),
+              state = models.UserState.fromInt(rs.int(u.resultName.column("state"))))
+          }.single.apply
+      }
+    }
+
+    for {
+      mainDataOpt <- mainDataFuture
+      keyHashes <- UserPublicKey.findAllHashesByUserId(userId = id)
+      phones <- UserPhone.findAllByUserId(userId = id)
+      emails <- UserEmail.findAllByUserId(userId = id)
+    } yield {
+      mainDataOpt map { mainData =>
+        models.UserData(id = mainData.id,
+          accessSalt = mainData.accessSalt,
+          name = mainData.name,
+          countryCode = mainData.countryCode,
+          sex = mainData.sex,
+          state = mainData.state,
+          phoneNumber = phones.head.number,
+          phoneIds = phones.map(_.id).toSet,
+          emailIds = emails.map(_.id).toSet,
+          publicKeyHashes = keyHashes.toSet)
+      }
+    }
+  }
+
   def find(id: Int)(authId: Option[Long])(
     implicit
       ec: ExecutionContext, session: DBSession = User.autoSession

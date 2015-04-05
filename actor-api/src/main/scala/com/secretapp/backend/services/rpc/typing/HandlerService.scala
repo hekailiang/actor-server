@@ -17,13 +17,13 @@ trait HandlerService extends UserHelpers {
   import TypingProtocol._
 
   protected def handleRequestTyping(userId: Int, accessHash: Long, typingType: Int): Future[RpcResponse] = {
-    getUsers(userId) map {
+    getUserDatas(userId) map {
       case users if users.isEmpty =>
         Error(404, "USER_DOES_NOT_EXISTS", "User does not exists.", true)
       case users =>
         val (_, checkUser) = users.head
 
-        if (ACL.userAccessHash(currentUser.authId, checkUser) != accessHash) {
+        if (ACL.userAccessHash(currentUser.authId, checkUser.id, checkUser.accessSalt) != accessHash) {
           Error(401, "ACCESS_HASH_INVALID", "Invalid user access hash.", false)
         } else {
           typingBrokerRegion ! Envelope(userId, UserTyping(currentUser.uid, typingType))
