@@ -9,7 +9,6 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
-import im.actor.server.smtpd.TLSActor
 import com.typesafe.config._
 import java.net.InetSocketAddress
 import im.actor.server.persist.{ FlywayInit, DbInit }
