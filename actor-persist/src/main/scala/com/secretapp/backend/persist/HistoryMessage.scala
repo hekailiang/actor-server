@@ -146,7 +146,7 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
           .and.eq(column.column("peer_type"), peer.typ.toInt)
           .and.eq(column.column("peer_id"), peer.id)
           .and.eq(column.senderUserId, userId)
-          .and.not.eq(column.state, state.toInt)
+          .and.le(column.state, state.toInt)
           .and.le(column.date, beforeDate)
       }.update.apply
     }
@@ -165,7 +165,7 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
           .and.eq(column.column("peer_type"), peer.typ.toInt)
           .and.eq(column.column("peer_id"), peer.id)
           .and.not.eq(column.senderUserId, userId)
-          .and.not.eq(column.state, state.toInt)
+          .and.le(column.state, state.toInt)
           .and.le(column.date, beforeDate)
       }.update.apply
     }

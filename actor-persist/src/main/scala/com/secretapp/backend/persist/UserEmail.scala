@@ -62,12 +62,4 @@ object UserEmail extends SQLSyntaxSupport[models.UserEmail] {
     }
 
 
-  def getUser(email: String)
-             (implicit ec: ExecutionContext, session: DBSession = UserEmail.autoSession): Future[Option[models.User]] =
-    {
-      for {
-         userEmail <- optionT(findByEmail(email))
-         user <- optionT(User.find(userEmail.userId)(None))
-      } yield user
-    }.run
 }

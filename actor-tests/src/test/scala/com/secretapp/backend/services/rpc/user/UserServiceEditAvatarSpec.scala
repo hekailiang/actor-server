@@ -216,7 +216,7 @@ class UserServiceEditAvatarSpec extends RpcSpec {
   }
 
   private def dbUserAvatar(implicit scope: TestScope) =
-    persist.User.findWithAvatar(scope.user.uid)(Some(scope.user.authId)).sync().get
+    persist.User.findDataWithAvatar(scope.user.uid).sync().get
 
   private def dbUser(implicit scope: TestScope) = dbUserAvatar._1
   private def dbAvatarData(implicit scope: TestScope) = dbUserAvatar._2

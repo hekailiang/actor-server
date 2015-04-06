@@ -205,17 +205,16 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt))).list().apply
   }
 
-  def findWithAvatar(userId: Int)(authId: Option[Long] = None)(
+  def findDataWithAvatar(userId: Int)(
     implicit
-      ec: ExecutionContext, session: DBSession = User.autoSession
-  ): Future[Option[(models.User, models.AvatarData)]] = {
+    ec: ExecutionContext, session: DBSession = User.autoSession
+    ): Future[Option[(models.UserData, models.AvatarData)]] = {
     for {
-      userOpt <- find(userId)(authId)
+      userDataOpt <- findData(userId)
       adOpt <- AvatarData.find(id = userId, typ = AvatarData.typeVal[models.User])
     } yield {
-      userOpt map (
-        (_, adOpt getOrElse (models.AvatarData.empty))
-      )
+      userDataOpt map (
+        (_, adOpt getOrElse (models.AvatarData.empty)))
     }
   }
 
