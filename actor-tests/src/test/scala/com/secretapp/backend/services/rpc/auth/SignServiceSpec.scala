@@ -229,7 +229,7 @@ class SignServiceSpec extends RpcSpec {
 
       sendRpcMsg(RequestSignUp(phoneNumber, "invalid", smsCode, "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key", false))
 
-      expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
+      expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "Code is expired.", false), withNewSession = true)
     }
 
     "fail with invalid sms hash" in new sqlDb {
@@ -241,7 +241,7 @@ class SignServiceSpec extends RpcSpec {
 
       sendRpcMsg(RequestSignUp(phoneNumber, smsHash, "invalid", "Timothy Klim", publicKey, BitVector.empty, "app", 0, "key", false))
 
-      expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
+      expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "Invalid phone code.", false), withNewSession = true)
     }
 
     "fail with invalid first name if it is empty" in new sqlDb {
@@ -491,7 +491,7 @@ class SignServiceSpec extends RpcSpec {
 
       sendRpcMsg(RequestSignIn(scope.user.phoneNumber, "invlid", smsCode, scope.user.publicKeyData, BitVector.empty, "app", 0, "key"))
 
-      expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "", false), withNewSession = true)
+      expectRpcMsg(Error(400, "PHONE_CODE_EXPIRED", "Code is expired.", false), withNewSession = true)
     }
 
     "failed with invalid sms code" in new sqlDb {
@@ -500,7 +500,7 @@ class SignServiceSpec extends RpcSpec {
 
       sendRpcMsg(RequestSignIn(scope.user.phoneNumber, smsHash, "invalid", scope.user.publicKeyData, BitVector.empty, "app", 0, "key"))
 
-      expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "", false), withNewSession = true)
+      expectRpcMsg(Error(400, "PHONE_CODE_INVALID", "Invalid phone code.", false), withNewSession = true)
     }
 
     "remove previous auth  keep keyHash on sign in with the same deviceHash and same keyHash" in new sqlDb {

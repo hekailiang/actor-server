@@ -37,7 +37,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
   object Errors {
     val PhoneCodeExpired = Error(400, "PHONE_CODE_EXPIRED", "Code is expired.", false)
     val PhoneCodeEmpty = Error(400, "PHONE_CODE_EMPTY", "Code is empty.", false)
-    val PhoneCodeInvalid = Error(400, "PHONE_CODE_EMPTY", "Invalid phone code.", false)
+    val PhoneCodeInvalid = Error(400, "PHONE_CODE_INVALID", "Invalid phone code.", false)
     val PhoneNumberInvalid = Error(400, "PHONE_NUMBER_INVALID", "Invalid phone number.", false)
     val PhoneNumberUnoccupied = Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false)
   }
