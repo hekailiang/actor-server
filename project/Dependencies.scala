@@ -32,7 +32,7 @@ object Dependencies {
     val bcprov          = "org.bouncycastle"              %  "bcprov-jdk15on"                % "1.50"
     val scodecBits      = "org.typelevel"                 %% "scodec-bits"                   % "1.0.2"
     val scodecCore      = "org.typelevel"                 %% "scodec-core"                   % "1.2.0"
-    val libPhoneNumber  = "com.googlecode.libphonenumber" % "libphonenumber"                 % "7.0"
+    val libPhoneNumber  = "com.googlecode.libphonenumber" % "libphonenumber"                 % "7.0.4"
     val clinkedhashmap  = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2_jdk5"
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val scalazConcurrent = "org.scalaz"                   %% "scalaz-concurrent"             % V.scalaz
