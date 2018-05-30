@@ -4,13 +4,13 @@ import play.api.libs.iteratee.Enumerator
 import scala.concurrent._
 
 trait FileAdapter {
-  def create(name: String): Future[Unit]
+  def create(name: String): Future[Array[Byte]]
 
-  def write(name: String, offset: Int, bytes: Array[Byte]): Future[Unit]
+  def write(adapterData: Array[Byte], offset: Int, bytes: Array[Byte]): Future[Array[Byte]]
 
-  def read(name: String, offset: Int, length: Int): Future[Array[Byte]]
+  def read(adapterData: Array[Byte], offset: Int, length: Int): Future[Array[Byte]]
 
-  def read(name: String): Enumerator[Array[Byte]]
+  def read(adapterData: Array[Byte]): Enumerator[Array[Byte]]
 
-  def readAll(name: String): Future[Array[Byte]]
+  def readAll(adapterData: Array[Byte]): Future[Array[Byte]]
 }

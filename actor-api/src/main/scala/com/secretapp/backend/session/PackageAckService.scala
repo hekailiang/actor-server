@@ -20,7 +20,6 @@ trait PackageAckService { self: MessageIdGenerator with TransportSerializers =>
   val authId: Long
   val sessionId: Long
   val context: ActorContext
-  var transport: Option[TransportConnection]
   def log: LoggingAdapter
 
   import context.dispatcher

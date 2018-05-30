@@ -21,31 +21,26 @@ trait UserHelpers {
 
   import context.dispatcher
 
-  // Caches userId -> accessHash associations
-  val usersCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[(Long, models.User)]]
+  val userDatasCache = new ConcurrentLinkedHashMap.Builder[Int, immutable.Seq[(Long, models.UserData)]]
     .initialCapacity(10).maximumWeightedCapacity(100).build
 
   // TODO: optimize this helpers
 
-  def getUsers(userId: Int): Future[Seq[(Long, models.User)]] = {
-    Option(usersCache.get(userId)) match {
-      case Some(users) =>
-        Future.successful(users)
+  def getUserDatas(userId: Int): Future[Seq[(Long, models.UserData)]] = {
+    Option(userDatasCache.get(userId)) match {
+      case Some(userDatas) =>
+        Future.successful(userDatas)
       case None =>
         persist.UserPublicKey.findAllByUserId(userId) flatMap { keys =>
           keys match {
             case firstKey :: _ =>
               for {
-                userOpt <- persist.User.find(userId)(authId = Some(firstKey.authId))
-              } yield userOpt map { user =>
+                userDataOpt <- persist.User.findData(userId)
+              } yield userDataOpt map { userData =>
                 keys map { key =>
                   (
                     key.hash,
-                    user.copy(
-                      authId = key.authId,
-                      publicKeyHash = key.hash,
-                      publicKeyData = key.data
-                    )
+                    userData
                   )
                 }
               } getOrElse (Seq.empty)
@@ -56,17 +51,17 @@ trait UserHelpers {
   }
 
   def getUserStruct(userId: Int, currentAuthId: Long, currentUserId: Int)(implicit s: ActorSystem): Future[Option[struct.User]] = {
-    val userOptFuture = persist.User.find(userId)(None)
+    val userDataOptFuture = persist.User.findData(userId)
     val adOptFuture = persist.AvatarData.find(id = userId, typ = persist.AvatarData.typeVal[models.User])
     val localNameFuture = persist.contact.UserContact.findLocalName(ownerUserId = currentUserId, contactUserId = userId)
 
     for {
-      userOpt <- userOptFuture
+      userDataOpt <- userDataOptFuture
       adOpt <- adOptFuture
       localName <- localNameFuture
     } yield {
-      userOpt map (
-        struct.User.fromModel(
+      userDataOpt map (
+        struct.User.fromData(
           _,
           adOpt.getOrElse(models.AvatarData.empty),
           currentAuthId,
@@ -78,10 +73,10 @@ trait UserHelpers {
 
   def getUserIdStruct(userId: Int, authId: Long)(implicit s: ActorSystem): Future[Option[struct.UserOutPeer]] = {
     for {
-      users <- getUsers(userId)
+      userDatas <- getUserDatas(userId)
     } yield {
-      users.headOption map { user =>
-        struct.UserOutPeer(userId, ACL.userAccessHash(authId, user._2))
+      userDatas.headOption map { userData =>
+        struct.UserOutPeer(userId, ACL.userAccessHash(authId, userData._2.id, userData._2.accessSalt))
       }
     }
   }

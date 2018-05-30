@@ -16,7 +16,7 @@ trait Frontend extends Actor with ActorLogging {
 
   val connection: ActorRef
   val sessionRegion: ActorRef
-  val transport: TransportConnection
+//  val transport: TransportConnection
   val remote: InetSocketAddress
 
   var keyFrontend: Option[ActorRef] = None
@@ -33,7 +33,7 @@ trait Frontend extends Actor with ActorLogging {
       val keyFrontRef = keyFrontend match {
         case Some(keyRef) => keyRef
         case None =>
-          val keyRef = context.system.actorOf(KeyFrontend.props(self, transport))
+          val keyRef = context.system.actorOf(KeyFrontend.props(self))
           context.watch(keyRef)
           keyFrontend = keyRef.some
           keyRef
@@ -44,7 +44,7 @@ trait Frontend extends Actor with ActorLogging {
       if (p.authId != authId) silentClose("p.authId != authId")
       else {
         val secFrontRef = secFrontend.getOrElse(p.sessionId, {
-          val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId, transport))
+          val secRef = context.system.actorOf(SecurityFrontend.props(self, sessionRegion, p.authId, p.sessionId))
           secFrontend += Tuple2(p.sessionId, secRef)
           context.watch(secRef)
           secRef
@@ -58,7 +58,7 @@ trait Frontend extends Actor with ActorLogging {
   def sendDrop(msg: String): Unit = {
     log.error(msg)
     // TODO: silentClose() ???
-    val reply = transport.buildPackage(0L, 0L, MessageBox(0L, Drop(0L, msg)))
+    val reply = MTConnection.buildPackage(0L, 0L, MessageBox(0L, Drop(0L, msg)))
     self ! ResponseToClientWithDrop(reply.encode)
   }
 

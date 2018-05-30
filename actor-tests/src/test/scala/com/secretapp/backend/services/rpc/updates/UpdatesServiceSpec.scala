@@ -91,7 +91,7 @@ class UpdatesServiceSpec extends RpcSpec {
       {
         implicit val scope = scope2
         val (state, _) = RequestGetState() :~> <~:[ResponseSeq]
-        state.seq must equalTo(0)
+        state.seq must equalTo(1000)
 
         val rq = RequestSendEncryptedMessage(
           struct.OutPeer.privat(scope1.user.uid, ACL.userAccessHash(scope.user.authId, scope1.user)),

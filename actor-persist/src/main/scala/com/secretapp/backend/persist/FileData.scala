@@ -9,7 +9,8 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
   override val columnNames = Seq(
     "id",
     "access_salt",
-    "length"
+    "length",
+    "adapter_data"
   )
 
   lazy val fd = FileData.syntax("fd")
@@ -19,7 +20,8 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
   def apply(fd: ResultName[models.FileData])(rs: WrappedResultSet): models.FileData = models.FileData(
     id = rs.long(fd.id),
     accessSalt = rs.string(fd.accessSalt),
-    length = rs.long(fd.length)
+    length = rs.long(fd.length),
+    adapterData = rs.bytes(fd.adapterData)
   )
 
   def find(id: Long)(
@@ -46,18 +48,19 @@ object FileData extends SQLSyntaxSupport[models.FileData] {
     }
   }
 
-  def create(id: Long, accessSalt: String)(
+  def create(id: Long, accessSalt: String, adapterData: Array[Byte])(
     implicit ec: ExecutionContext, session: DBSession = FileData.autoSession
   ): Future[models.FileData] = Future {
     blocking {
       withSQL {
         insert.into(FileData).namedValues(
           column.id -> id,
-          column.accessSalt -> accessSalt
+          column.accessSalt -> accessSalt,
+          column.adapterData -> adapterData
         )
       }.execute.apply
 
-      models.FileData(id, accessSalt, 0)
+      models.FileData(id, accessSalt, 0, adapterData)
     }
   }
 }

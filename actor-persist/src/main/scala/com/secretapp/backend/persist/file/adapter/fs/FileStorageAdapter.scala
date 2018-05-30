@@ -70,25 +70,25 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
     pathDepth = pathDepth
   ), actorName)
 
-  def create(name: String): Future[Unit] = {
-    Future.successful(())
+  def create(name: String): Future[Array[Byte]] = {
+    Future.successful(name.getBytes)
   }
 
-  def write(name: String, offset: Int, bytes: Array[Byte]): Future[Unit] = {
+  def write(adapterData: Array[Byte], offset: Int, bytes: Array[Byte]): Future[Array[Byte]] = {
     log.debug("Sending Write to FileStorageActor, name: {}, offset: {}, length: {}",
-      name, offset, bytes.length)
+      name(adapterData), offset, bytes.length)
 
-    fsActor.ask(Write(name, offset, ByteString(bytes)))(writeTimeout) map (_ => ())
+    fsActor.ask(Write(name(adapterData), offset, ByteString(bytes)))(writeTimeout) map (_ => Array())
   }
 
-  def read(name: String, offset: Int, length: Int): Future[Array[Byte]] = {
-    fsActor.ask(Read(name, offset, length))(readTimeout).mapTo[ReadBytes] map (_.data.toArray)
+  def read(adapterData: Array[Byte], offset: Int, length: Int): Future[Array[Byte]] = {
+    fsActor.ask(Read(name(adapterData), offset, length))(readTimeout).mapTo[ReadBytes] map (_.data.toArray)
   }
 
-  def read(name: String): Enumerator[Array[Byte]] = {
-    val file = FileStorageAdapter.mkFile(name, basePath, pathDepth)
+  def read(adapterData: Array[Byte]): Enumerator[Array[Byte]] = {
+    val file = FileStorageAdapter.mkFile(name(adapterData), basePath, pathDepth)
 
-    log.debug("Opening file name: {}, path: {}", name, file.toPath().toString)
+    log.debug("Opening file name: {}, path: {}", name(adapterData), file.toPath().toString)
 
     Enumerator.fromFile(
       file,
@@ -103,8 +103,10 @@ class FileStorageAdapter(system: ActorSystem, actorName: String = "fs-actor") ex
     }
   }
 
-  def readAll(name: String): Future[Array[Byte]] = {
+  def readAll(adapterData: Array[Byte]): Future[Array[Byte]] = {
     //Iteratee.flatten(read(name) |>> concat)
-    read(name)(concat) flatMap (_.run)
+    read(adapterData)(concat) flatMap (_.run)
   }
+
+  private def name(adapterData: Array[Byte]): String = new String(adapterData)
 }

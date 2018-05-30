@@ -40,16 +40,15 @@ trait ApiBrokerService extends GeneratorService with UserManagerService with Sig
   val singletons: Singletons
   val fileAdapter: FileAdapter
 
+  val updatesBrokerRegion: ActorRef
+  val socialBrokerRegion: ActorRef
+
   val subscribedToUpdates: Boolean
 
   val context: ActorContext
   import context._
 
   implicit val timeout = Timeout(5.seconds)
-
-  // FIXME: move to service init. Now it creates regions on each session creation
-  val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)(context.system)
-  val socialBrokerRegion = SocialBroker.startRegion()
 
   def handleRpc(messageId: Long): PartialFunction[RpcRequest, \/[Throwable, Future[RpcResponse]]] = {
     case Request(body) =>

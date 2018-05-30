@@ -304,7 +304,7 @@ trait GroupHandlers extends RandomService
     val dateTime = new DateTime
     val date = dateTime.getMillis
 
-    withOwnGroupOutPeer(groupOutPeer, currentUser) { _ =>
+    withKickableGroupMember(groupOutPeer, currentUser, userOutPeer) { _ =>
       withUserOutPeer(userOutPeer, currentUser) {
         val userIdsAuthIdsF = getGroupUserIdsWithAuthIds(groupId) map (_.toMap)
 

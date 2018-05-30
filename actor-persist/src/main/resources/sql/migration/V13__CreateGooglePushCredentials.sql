@@ -5,4 +5,4 @@ CREATE TABLE google_push_credentials (
        PRIMARY KEY (auth_id)
 );
 
-CREATE INDEX on google_push_credentials(reg_id);
+CREATE INDEX idx_google_push_credentials_reg_id on google_push_credentials(reg_id);

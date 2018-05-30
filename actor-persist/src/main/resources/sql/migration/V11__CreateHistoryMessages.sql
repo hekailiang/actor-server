@@ -11,4 +11,4 @@ CREATE TABLE history_messages (
        PRIMARY KEY(user_id, peer_type, peer_id, sender_user_id, date, random_id)
 );
 
-CREATE INDEX ON history_messages(user_id, peer_type, peer_id, random_id);
+CREATE INDEX idx_history_messages_user_peer_random_id ON history_messages(user_id, peer_type, peer_id, random_id);

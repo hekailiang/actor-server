@@ -72,14 +72,17 @@ class UpdatesBroker(implicit val apnsService: ApnsService)
   context.setReceiveTimeout(1.day)
   override def persistenceId: String = self.path.parent.name + "-" + self.path.name
 
-  val mediator = DistributedPubSubExtension(context.system).mediator
-  val topic = UpdatesBroker.topicFor(self.path.name)
-
-  var seq: Int = 0
-
   type PersistentStateType = Int // Seq
-  var lastSnapshottedAtSeq: Int = 0
-  val minSnapshotStep: Int = 200
+
+  private[this] val PersistSeqStep = 500
+
+  private[this] val mediator = DistributedPubSubExtension(context.system).mediator
+  private[this] val topic = UpdatesBroker.topicFor(self.path.name)
+
+  private[this] var seq: Int = 0
+
+  private[this] var lastSnapshottedAtSeq: Int = 0
+  private[this] val minSnapshotStep: Int = 200 // TODO: configurable
 
   val receiveCommand: Actor.Receive = {
     case ReceiveTimeout ⇒ context.parent ! Passivate(stopMessage = UpdatesBroker.Stop)
@@ -88,12 +91,18 @@ class UpdatesBroker(implicit val apnsService: ApnsService)
       sender() ! this.seq
     case NewUpdatePush(authId, update) =>
       val replyTo = sender()
-      persist(SeqUpdate) { _ =>
+
+      if (seq % PersistSeqStep == 0) {
+        persist(SeqUpdate) { _ =>
+          seq += 1
+
+          pushUpdate(authId, seq, update) pipeTo replyTo
+
+          maybeSnapshot()
+        }
+      } else {
         seq += 1
-
         pushUpdate(authId, seq, update) pipeTo replyTo
-
-        maybeSnapshot()
       }
     case e: SaveSnapshotFailure =>
       log.error("SaveSnapshotFailure {}", e)
@@ -101,6 +110,7 @@ class UpdatesBroker(implicit val apnsService: ApnsService)
 
   val receiveRecover: Actor.Receive = {
     case RecoveryCompleted =>
+      this.seq += PersistSeqStep * 2
     case SnapshotOffer(metadata, offeredSnapshot) =>
       val seq = offeredSnapshot.asInstanceOf[PersistentStateType]
       this.seq = seq

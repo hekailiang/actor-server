@@ -1,12 +1,12 @@
 actor-server {
-  actor-system-name = "secret-api-server"
+  actor-system-name = "actor-server"
 
   sql {
-    driver = "org.postgresql.Driver"
+    driverClassName = "org.postgresql.Driver"
     url = "jdbc:postgresql://localhost:5432/actor"
     username = "postgres"
-    user = ${actor-server.sql.username}
     password = ""
+    user = ${actor-server.sql.username}
     pass = ${actor-server.sql.password}
   }
 
@@ -54,7 +54,7 @@ actor-server {
     }
 
     cluster {
-      seed-nodes = [ "akka.tcp://secret-api-server@127.0.0.1:2553" ]
+      seed-nodes = [ "akka.tcp://actor-server@127.0.0.1:2553" ]
     }
   }
 }

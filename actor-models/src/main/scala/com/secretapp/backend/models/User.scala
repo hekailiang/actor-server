@@ -91,3 +91,25 @@ case class User(
       .addAllKeyHashes(publicKeyHashes map (long2Long) asJava)
       .build()
 }
+
+// Temporary structures on the way to remove authId and public key data from User model
+
+@SerialVersionUID(1L)
+case class UserData(id: Int,
+                    accessSalt: String,
+                    name: String,
+                    countryCode: String,
+                    sex: Sex,
+                    state: UserState,
+                    phoneNumber: Long,
+                    phoneIds: Set[Int],
+                    emailIds: Set[Int],
+                    publicKeyHashes: Set[Long])
+
+@SerialVersionUID(1L)
+case class BasicUserData(id: Int,
+                         accessSalt: String,
+                         name: String,
+                         countryCode: String,
+                         sex: Sex,
+                         state: UserState)

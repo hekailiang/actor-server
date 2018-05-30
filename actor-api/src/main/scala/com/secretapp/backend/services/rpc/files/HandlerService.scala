@@ -88,26 +88,28 @@ trait HandlerService extends GeneratorService {
         }
 
         countAndDataOptFuture flatMap {
-          case Some((uploadedBlocksCount, models.FileData(_, accessSalt, _))) =>
+          case Some((uploadedBlocksCount, models.FileData(_, accessSalt, _, _))) =>
             val accessHash = ACL.fileAccessHash(fileId, accessSalt)
 
             if (blocksCount == uploadedBlocksCount) {
-              val f: Future[RpcResponse] = Iteratee.flatten(persist.File.read(fileAdapter, fileId) |>> inputCRC32).run map (_.getValue) map { realcrc32 =>
-                persist.File.complete(fileAdapter, fileId)
+              persist.File.read(fileAdapter, fileId) flatMap { enumerator =>
+                val f: Future[RpcResponse] = Iteratee.flatten(enumerator |>> inputCRC32).run map (_.getValue) map { realcrc32 =>
+                  persist.File.complete(fileAdapter, fileId)
 
-                if (crc32 == realcrc32) {
-                  val rsp = ResponseCompleteUpload(models.FileLocation(fileId, accessHash))
-                  Ok(rsp)
-                } else {
-                  Error(400, "WRONG_CRC", "", true)
+                  if (crc32 == realcrc32) {
+                    val rsp = ResponseCompleteUpload(models.FileLocation(fileId, accessHash))
+                    Ok(rsp)
+                  } else {
+                    Error(400, "WRONG_CRC", "", true)
+                  }
                 }
+                f onFailure {
+                  case e: Throwable =>
+                    log.error("Failed to calculate file crc32")
+                    throw e
+                }
+                f
               }
-              f onFailure {
-                case e: Throwable =>
-                  log.error("Failed to calculate file crc32")
-                  throw e
-              }
-              f
             } else {
               Future.successful(Error(400, "WRONG_BLOCKS_COUNT", "", true))
             }
@@ -119,10 +121,10 @@ trait HandlerService extends GeneratorService {
 
   protected def handleRequestGetFile(location: models.FileLocation, offset: Int, limit: Int): Future[RpcResponse] = {
     persist.FileData.find(location.fileId) flatMap {
-      case Some(models.FileData(fileId, accessSalt, _)) =>
+      case Some(models.FileData(fileId, accessSalt, _, _)) =>
         val realAccessHash = ACL.fileAccessHash(fileId, accessSalt)
         if (realAccessHash != location.accessHash) {
-          throw new persist.LocationInvalid
+          Future.successful(Error(400, "LOCATION_INVALID", "", true))
         }
 
         try {

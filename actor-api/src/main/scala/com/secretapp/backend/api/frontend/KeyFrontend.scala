@@ -14,12 +14,12 @@ object KeyFrontend {
   @SerialVersionUID(1L)
   case class InitDH(p: TransportPackage) extends KeyInitializationMessage
 
-  def props(frontend: ActorRef, transport: TransportConnection): Props = {
-    Props(new KeyFrontend(frontend, transport))
+  def props(frontend: ActorRef): Props = {
+    Props(new KeyFrontend(frontend))
   }
 }
 
-class KeyFrontend(frontend: ActorRef, transport: TransportConnection) extends Actor with ActorLogging with RandomService {
+class KeyFrontend(frontend: ActorRef) extends Actor with ActorLogging with RandomService {
   import KeyFrontend._
 
   implicit val ec = context.dispatcher
@@ -27,7 +27,7 @@ class KeyFrontend(frontend: ActorRef, transport: TransportConnection) extends Ac
   def silentClose(reason: String): Unit = {
     log.error(s"KeyFrontend.silentClose: $reason")
     // TODO
-    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    val pkg = MTConnection.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
     frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 
@@ -39,10 +39,14 @@ class KeyFrontend(frontend: ActorRef, transport: TransportConnection) extends Ac
             case _ if p.sessionId != 0L =>
               dropClient(message.messageId, "sessionId must equal to 0", p.sessionId)
             case RequestAuthId() =>
+              log.debug("Requested AuthId")
               val newAuthId = rand.nextLong()
-              persist.AuthId.create(newAuthId, None)
-              val pkg = transport.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
-              frontend ! ResponseToClient(pkg.encode)
+              for (_ <- persist.AuthId.create(newAuthId, None))
+                yield {
+                  log.debug("Created authId {}", newAuthId)
+                  val pkg = MTConnection.buildPackage(0L, 0L, MessageBox(message.messageId, ResponseAuthId(newAuthId)))
+                  frontend ! ResponseToClient(pkg.encode)
+                }
             case _ =>
               dropClient(message.messageId, "unknown message type in authorize mode")
           }
@@ -53,7 +57,7 @@ class KeyFrontend(frontend: ActorRef, transport: TransportConnection) extends Ac
   }
 
   def dropClient(messageId: Long, message: String, sessionId: Long = 0): Unit = {
-    val pkg = transport.buildPackage(0L, sessionId, MessageBox(messageId, Drop(messageId, message)))
+    val pkg = MTConnection.buildPackage(0L, sessionId, MessageBox(messageId, Drop(messageId, message)))
     frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 }

@@ -30,8 +30,8 @@ trait HistoryHandlers extends RandomService with UserHelpers {
   import UpdatesBroker._
 
   val handleHistory: RequestMatcher = {
-    case RequestLoadHistory(peer, randomId, message) =>
-      handleRequestLoadHistory(peer, randomId, message)
+    case RequestLoadHistory(peer, startDate, message) =>
+      handleRequestLoadHistory(peer, startDate, message)
     case RequestLoadDialogs(startDate, limit) =>
       handleRequestLoadDialogs(startDate, limit)
     case RequestDeleteMessage(outPeer, randomIds) =>
@@ -115,19 +115,32 @@ trait HistoryHandlers extends RandomService with UserHelpers {
     }
   }
 
+  private val MaxDate = (new DateTime(294276, 1, 1, 0, 0)).getMillis
+  private def endDateTimeFrom(date: Long): Option[DateTime] = {
+    if (date == 0l)
+      None
+    else
+      Some(new DateTime(
+        if (date > MaxDate)
+          new DateTime(294276, 1, 1, 0, 0)
+        else
+          date
+      ))
+  }
+
   // TODO: refactor
   protected def handleRequestLoadDialogs(
-    startDate: Long,
+    endDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
-    persist.Dialog.findAllWithUnreadCount(currentUser.uid, new DateTime(startDate), limit) flatMap { dmWithUnread =>
+    persist.Dialog.findAllWithUnreadCount(currentUser.uid, endDateTimeFrom(endDate), limit) flatMap { dmWithUnread =>
       val dialogs: Vector[Dialog] = dmWithUnread.foldLeft(Vector.empty[Dialog]) {
         case (res, Tuple2(models.Dialog(_, peer, sortDate, senderUserId, randomId, date, mcHeader, mcData, state), unreadCount)) =>
-          val stateOpt = if (currentUser.uid == senderUserId) {
-            Some(state) // for outgoing
-          } else {
-            None // for incoming
-          }
+          val stateOpt =
+            if (currentUser.uid == senderUserId)
+              state // for outgoing
+            else
+              None // for incoming
 
           res :+ Dialog(
             peer = struct.Peer.fromModel(peer),
@@ -183,11 +196,11 @@ trait HistoryHandlers extends RandomService with UserHelpers {
 
   protected def handleRequestLoadHistory(
     outPeer: struct.OutPeer,
-    startDate: Long,
+    endDate: Long,
     limit: Int
   ): Future[RpcResponse] = {
     withOutPeer(outPeer, currentUser) {
-      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer.asModel, new DateTime(startDate), limit) flatMap { messages =>
+      persist.HistoryMessage.findAll(currentUser.uid, outPeer.asPeer.asModel, endDateTimeFrom(endDate), limit) flatMap { messages =>
         val userIds = messages.foldLeft(Set.empty[Int]) { (res, message) =>
           if (message.senderUserId != currentUser.uid)
             res + message.senderUserId

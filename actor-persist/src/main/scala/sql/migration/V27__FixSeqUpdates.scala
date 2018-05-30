@@ -10,7 +10,7 @@ import scalikejdbc._
 
 class V27__FixSeqUpdates extends JdbcMigration {
   def migrate(connection: Connection): Unit = {
-    val db: DB = new DB(connection, DBConnectionAttributes(Some("postgresql")))
+    val db: DB = new DB(connection)
     db.autoClose(false)
 
     db.withinTx { implicit s =>
@@ -23,9 +23,11 @@ class V27__FixSeqUpdates extends JdbcMigration {
   private def fixSchema()(implicit session: DBSession): Unit = {
     sql"""
       ALTER TABLE seq_updates
-        ADD COLUMN ts bigint,
-        ADD COLUMN msb bigint,
-        ADD COLUMN lsb bigint
+        ADD COLUMN ts bigint;
+      ALTER TABLE seq_updates
+        ADD COLUMN msb bigint;
+      ALTER TABLE seq_updates
+        ADD COLUMN lsb bigint;
     """.execute.apply
   }
 
@@ -52,13 +54,15 @@ class V27__FixSeqUpdates extends JdbcMigration {
 
     sql"""
       ALTER TABLE seq_updates
-        ALTER COLUMN ts SET NOT NULL,
-        ALTER COLUMN msb SET NOT NULL,
-        ALTER COLUMN lsb SET NOT NULL
+        ALTER COLUMN ts SET NOT NULL;
+      ALTER TABLE seq_updates
+        ALTER COLUMN msb SET NOT NULL;
+      ALTER TABLE seq_updates
+        ALTER COLUMN lsb SET NOT NULL;
     """.execute.apply
 
     sql"""
-    CREATE UNIQUE INDEX on seq_updates (auth_id, ts)
+    CREATE UNIQUE INDEX idx_seq_updates_auth_id_ts on seq_updates (auth_id, ts)
     """.execute.apply
   }
 }

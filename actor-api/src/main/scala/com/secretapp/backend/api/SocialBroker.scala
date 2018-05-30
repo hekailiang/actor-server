@@ -41,15 +41,19 @@ class SocialBroker extends PersistentActor with ActorLogging {
 
   override def persistenceId: String = self.path.parent.name + self.path.name
 
-  val minSnapshotStep = 10
-  var lastSnapshottedAtSize = 0
-  var uids: PersistentStateType = immutable.Set.empty
+  private[this] val minSnapshotStep = 10
+  private[this] var lastSnapshottedAtSize = 0
+  private[this] var uids: PersistentStateType = immutable.Set.empty
 
   val receiveCommand: Actor.Receive = {
-    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
-      persist(msg) { _ =>
-        uids = uids ++ newUids.filterNot(_ == userId)
-        maybeSnapshot()
+    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if !newUids.isEmpty =>
+      val uidsToAdd = newUids.filterNot(_ == userId).diff(uids)
+
+      if (!uidsToAdd.isEmpty) {
+        persist(msg) { _ =>
+          uids = uids ++ newUids.filterNot(_ == userId)
+          maybeSnapshot()
+        }
       }
     case SocialMessageBox(userId, GetRelations) =>
       sender ! uids
@@ -58,7 +62,7 @@ class SocialBroker extends PersistentActor with ActorLogging {
   val receiveRecover: Actor.Receive = {
     case SnapshotOffer(metadata, offeredSnapshot) =>
       uids = offeredSnapshot.asInstanceOf[PersistentStateType]
-    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) if newUids.size > 0 =>
+    case msg @ SocialMessageBox(userId, RelationsNoted(newUids)) =>
       uids = uids ++ newUids.filterNot(_ == userId)
   }
 

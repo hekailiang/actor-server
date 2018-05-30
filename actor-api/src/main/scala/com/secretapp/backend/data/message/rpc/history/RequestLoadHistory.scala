@@ -4,7 +4,7 @@ import com.secretapp.backend.data.message.rpc._
 import com.secretapp.backend.data.message.struct
 
 @SerialVersionUID(1L)
-case class RequestLoadHistory(outPeer: struct.OutPeer, startDate: Long, limit: Int) extends RpcRequestMessage {
+case class RequestLoadHistory(outPeer: struct.OutPeer, endDate: Long, limit: Int) extends RpcRequestMessage {
   val header = RequestLoadHistory.header
 }
 

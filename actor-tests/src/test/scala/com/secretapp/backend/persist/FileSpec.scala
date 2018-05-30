@@ -30,6 +30,8 @@ class FileSpec extends ActorSpecification with SqlSpec {
       val content = ((1 to (1024 * 20)) map (i => (i % 255).toByte)).toArray
       val fileSize = content.length
 
+      Await.result(File.create(fa, fileId, "salt"), 1.second)
+
       val fResult = File.write(fa, fileId, 0, content) map { _ =>
 
         val (fv1, fv2, fv3, /*fv4, fv5, fv6,*/ fv7, feverything1, feverything2) = (

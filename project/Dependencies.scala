@@ -9,7 +9,7 @@ object Dependencies {
   }
 
   object Compile {
-    val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta4"
+    val apns            = "com.notnoop.apns"              %  "apns"                          % "1.0.0.Beta6"
     val scrImageCore    = "com.sksamuel.scrimage"         %% "scrimage-core"                 % "1.4.1"
     val akkaActor       = "com.typesafe.akka"             %% "akka-actor"                    % V.akka
     val akkaCluster     = "com.typesafe.akka"             %% "akka-cluster"                  % V.akka
@@ -32,7 +32,7 @@ object Dependencies {
     val bcprov          = "org.bouncycastle"              %  "bcprov-jdk15on"                % "1.50"
     val scodecBits      = "org.typelevel"                 %% "scodec-bits"                   % "1.0.2"
     val scodecCore      = "org.typelevel"                 %% "scodec-core"                   % "1.2.0"
-    val libPhoneNumber  = "com.googlecode.libphonenumber" % "libphonenumber"                 % "7.0"
+    val libPhoneNumber  = "com.googlecode.libphonenumber" % "libphonenumber"                 % "7.0.4"
     val clinkedhashmap  = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2_jdk5"
     val scalazCore      = "org.scalaz"                    %% "scalaz-core"                   % V.scalaz
     val scalazConcurrent = "org.scalaz"                   %% "scalaz-concurrent"             % V.scalaz
@@ -44,10 +44,11 @@ object Dependencies {
 
     val playIteratees  = "com.typesafe.play"              %% "play-iteratees"                % V.play
 
-    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.2"
+    val scalike         = "org.scalikejdbc"               %% "scalikejdbc"                   % "2.2.3"
 
     val akkaPersistenceJdbc = "com.github.dnvriend"       %% "akka-persistence-jdbc"         % "1.0.9"
 
+    val h2jdbc          = "com.h2database"                %  "h2"                            % "1.4.185"
     val postgresJdbc    = "org.postgresql"                %  "postgresql"                    % "9.3-1102-jdbc41"
 
     val flywayCore      = "org.flywaydb"                  %  "flyway-core"                   % "3.1"
@@ -63,7 +64,7 @@ object Dependencies {
     val scalacheck        = "org.scalacheck"             %% "scalacheck"                    % "1.11.6"             % "test"
     val specs2            = "org.specs2"                 %% "specs2-core"                   % "2.4.11"
     val scalazSpecs2      = "org.typelevel"              %% "scalaz-specs2"                 % "0.3.0"              % "test"
-    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.3.12"             % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
+    val utilTesting       = "com.websudos"               %% "util-testing"                  % "0.4.0"              % "test" excludeAll(ExclusionRule(organization = "org.slf4j"))
     val scalaLoggingSlf4j = "com.typesafe.scala-logging" %% "scala-logging-slf4j"           % "2.1.2"              % "test"
   }
 
@@ -98,7 +99,7 @@ object Dependencies {
 
   val persist   = common ++ Seq(
     akkaActor, flywayCore, scodecBits, scalazCore, playIteratees,
-    scalike, postgresJdbc,
+    scalike, h2jdbc, postgresJdbc,
     specs2
   )
 

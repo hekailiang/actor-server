@@ -37,7 +37,10 @@ class SmsEnginesActor() extends Actor with ActorLogging {
   // need separate system because of https://github.com/wandoulabs/spray-websocket/issues/44
   private val spraySystem = ActorSystem("spray-client", ConfigFactory.load().getConfig("spray-client"))
 
-  private val engine = new TwilioSmsEngine(config.getConfig("twilio"))(spraySystem)
+  private val engines = List(
+    new TwilioSmsEngine(config.getConfig("twilio"))(spraySystem),
+    new ClickatellSmsEngine(config.getConfig("clickatell"))(spraySystem)
+  )
 
   private def codeWasNotSent(phoneNumber: Long, code: String) = !sentCodes.contains((phoneNumber, code))
 
@@ -51,13 +54,17 @@ class SmsEnginesActor() extends Actor with ActorLogging {
   private def sendCode(authId: Long, phoneNumber: Long, code: String): Unit = {
     if (codeWasNotSent(phoneNumber, code)) {
       rememberSentCode(phoneNumber, code)
-      engine.send(phoneNumber, code) andThen {
-        case Success(res) =>
-          EventService.log(authId, phoneNumber, E.SmsSentSuccessfully(code, res))
-        case Failure(e) =>
-          EventService.log(authId, phoneNumber, E.SmsFailure(code, e.getMessage))
-          log.error(e, s"Failed to send sms to $phoneNumber with code $code")
+
+      engines foreach { engine =>
+        engine.send(phoneNumber, code) andThen {
+          case Success(res) =>
+            EventService.log(authId, phoneNumber, E.SmsSentSuccessfully(code, res))
+          case Failure(e) =>
+            EventService.log(authId, phoneNumber, E.SmsFailure(code, e.getMessage))
+            log.error(e, s"Failed to send sms to $phoneNumber with code $code")
+        }
       }
+
       forgetSentCodeAfterDelay(phoneNumber, code)
     } else {
       //log.debug(s"Ignoring send $code to $phoneNumber")

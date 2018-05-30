@@ -4,10 +4,8 @@ import akka.actor._
 import akka.io.Tcp.{ Close, Received, Write }
 import akka.testkit.{ TestKitBase, TestProbe }
 import akka.util.ByteString
-import com.secretapp.backend.api.Singletons
-import com.secretapp.backend.api.frontend.{ MTConnection, TransportConnection }
+import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpFrontend
-import com.secretapp.backend.api.frontend.ws.WSFrontend
 import com.secretapp.backend.crypto.ec
 import com.secretapp.backend.data.message._
 import com.secretapp.backend.data.transport._
@@ -29,15 +27,12 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.specs2.execute.StandardResults
 import org.specs2.matcher._
-import org.specs2.specification.Fragment
-import scala.annotation.tailrec
-import scala.collection.{ immutable, mutable }
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.blocking
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.Random
 import scalaz.Scalaz._
 import scodec.bits._
 import spray.can.websocket._
@@ -55,8 +50,11 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
   val singletons = new Singletons
   val fileAdapter = new FileStorageAdapter(system)
 
+  val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)
+  val socialBrokerRegion = SocialBroker.startRegion()
+
   val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-  val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
+  val sessionRegion = SessionActor.startRegion(singletons, updatesBrokerRegion, socialBrokerRegion, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
 
   def genPhoneNumber() = {
     79853867016L + rand.nextInt(10000000)
@@ -194,12 +192,12 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     (probe, actor)
   }
 
-  def genTestScope()(implicit transport: TransportConnection): TestScopeNew = {
+  def genTestScope(): TestScopeNew = {
     val (probe, apiActor) = getProbeAndActor()
     TestScopeNew(probe = probe, apiActor = apiActor, session = SessionIdentifier(), authId = rand.nextLong())
   }
 
-  def genTestScopeWithUser()(implicit transport: TransportConnection) = {
+  def genTestScopeWithUser() = {
     val scope = genTestScope()
     val userId = rand.nextInt()
     val phoneNumber = genPhoneNumber()
@@ -230,11 +228,9 @@ trait ActorServiceHelpers extends RandomService with ActorServiceImplicits with 
     scope.copy(userOpt = user.some)
   }
 
-  def getProbeAndActor()(implicit transport: TransportConnection) = {
+  def getProbeAndActor() = {
     val probe = TestProbe()
-    val actor = transport match {
-      case MTConnection => system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion))
-    }
+    val actor = system.actorOf(TcpFrontend.props(probe.ref, inetAddr, sessionRegion))
     (probe, actor)
   }
 

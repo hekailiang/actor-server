@@ -11,12 +11,12 @@ import scalaz._
 import Scalaz._
 
 object SecurityFrontend {
-  def props(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection) = {
-    Props(new SecurityFrontend(frontend, sessionRegion, authId, sessionId, transport))
+  def props(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long) = {
+    Props(new SecurityFrontend(frontend, sessionRegion, authId, sessionId))
   }
 }
 
-class SecurityFrontend(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long, transport: TransportConnection) extends Actor
+class SecurityFrontend(frontend: ActorRef, sessionRegion: ActorRef, authId: Long, sessionId: Long) extends Actor
 with ActorLogging
 {
   import context.system
@@ -40,7 +40,7 @@ with ActorLogging
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#SecurityFrontend.silentClose: $reason")
     // TODO
-    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    val pkg = MTConnection.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
     frontend ! ResponseToClientWithDrop(pkg.encode)
   }
 
@@ -55,7 +55,7 @@ with ActorLogging
 //              TODO
 //              if (mb.messageId % 4 == 0)
 //                log.debug(s"$authId#Envelope: ${SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb))}, name: ${self.path.name}")
-                sessionRegion.tell(SessionProtocol.Envelope(p.authId, p.sessionId, transport.wrapMessageBox(mb)), frontend)
+                sessionRegion.tell(SessionProtocol.Envelope(p.authId, p.sessionId, MTConnection.wrapMessageBox(mb)), frontend)
 //              else silentClose()
             case -\/(e) =>
               log.error(s"$e, p.messageBoxBytes: ${p.messageBoxBytes}, ${p.messageBoxBytes.toHex}")

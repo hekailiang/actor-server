@@ -25,7 +25,6 @@ class TcpFrontendSpec extends RpcSpec {
     }
 
     "parse packages in single stream" in {
-      implicit val transport = MTConnection
       implicit val scope = genTestScope()
 
       insertAuthId(scope.authId)

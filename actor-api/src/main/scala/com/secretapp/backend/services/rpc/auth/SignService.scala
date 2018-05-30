@@ -34,6 +34,14 @@ trait SignService extends ContactHelpers with SocialHelpers {
   import context._
   import UpdatesBroker._
 
+  object Errors {
+    val PhoneCodeExpired = Error(400, "PHONE_CODE_EXPIRED", "Code is expired.", false)
+    val PhoneCodeEmpty = Error(400, "PHONE_CODE_EMPTY", "Code is empty.", false)
+    val PhoneCodeInvalid = Error(400, "PHONE_CODE_INVALID", "Invalid phone code.", false)
+    val PhoneNumberInvalid = Error(400, "PHONE_NUMBER_INVALID", "Invalid phone number.", false)
+    val PhoneNumberUnoccupied = Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false)
+  }
+
   def handleRpcAuth: PartialFunction[RpcRequestMessage, \/[Throwable, Future[RpcResponse]]] = {
     case r: RequestSendAuthCode =>
       unauthorizedRequest {
@@ -86,7 +94,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           Ok(ResponseVoid())
         }
       case None =>
-        Future.successful(Error(404, "USER_NOT_FOUND", "User not found", false))
+        Future.successful(Error(404, "USER_NOT_FOUND", "User not found.", false))
     }
   }
 
@@ -97,7 +105,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           Ok(ResponseVoid())
         }
       case None =>
-        Future.successful(Error(404, "USER_NOT_FOUND", "User not found", false))
+        Future.successful(Error(404, "USER_NOT_FOUND", "User not found.", false))
     }
   }
 
@@ -119,7 +127,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     PhoneNumber.normalizeLong(phoneNumberRaw) match {
       case None =>
         EventService.log(authId, PhoneNumber.tryNormalize(phoneNumberRaw), E.RpcError(EK.AuthCode, 400, "PHONE_NUMBER_INVALID"))
-        Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
+        Future.successful(Errors.PhoneNumberInvalid)
       case Some(phoneNumber) =>
         val smsPhoneTupleFuture = for {
           smsR <- persist.AuthSmsCode.findByPhoneNumber(phoneNumber)
@@ -127,16 +135,17 @@ trait SignService extends ContactHelpers with SocialHelpers {
         } yield (smsR, phoneR)
         smsPhoneTupleFuture flatMap { case (smsR, phoneR) =>
           smsR match {
-            case Some(models.AuthSmsCode(_, sHash, sCode)) =>
-              EventService.log(authId, phoneNumber, E.AuthCodeSent(sHash, sCode))
-              Future.successful(Ok(ResponseSendAuthCode(sHash, phoneR.isDefined)))
+            case Some(models.AuthSmsCode(_, smsHash, smsCode)) =>
+              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode)
+              EventService.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
+              Future.successful(Ok(ResponseSendAuthCode(smsHash, phoneR.isDefined)))
             case None =>
               val smsHash = genSmsHash
               val smsCode = phoneNumber.toString match {
                 case strNumber if strNumber.startsWith("7555") => strNumber(4).toString * 4
                 case _ => genSmsCode
               }
-              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode) // TODO: move it to actor with persistence
+              singletons.smsEngines ! SmsEnginesProtocol.Send(authId, phoneNumber, smsCode)
               for { _ <- persist.AuthSmsCode.create(phoneNumber = phoneNumber, smsHash = smsHash, smsCode = smsCode) }
               yield {
                 EventService.log(authId, phoneNumber, E.AuthCodeSent(smsHash, smsCode))
@@ -154,7 +163,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
     val authId = currentAuthId // TODO
     val res = PhoneNumber.normalizeWithCountry(phoneNumberRaw) match {
       case None =>
-        Future.successful(Error(400, "PHONE_NUMBER_INVALID", "", true))
+        Future.successful(Errors.PhoneNumberInvalid)
       case Some((phoneNumber, countryCode)) =>
         @inline
         def auth(u: models.User): Future[RpcResponse] = {
@@ -193,8 +202,6 @@ trait SignService extends ContactHelpers with SocialHelpers {
             for {
               avatarData <- persist.AvatarData.find[models.User](u.uid)
             } yield {
-              println(s"oooold $oldKeyHashes $authItems")
-
               val userStruct = struct.User.fromModel(
                 u.copy(publicKeyHashes = u.publicKeyHashes -- oldKeyHashes),
                 avatarData getOrElse(models.AvatarData.empty),
@@ -281,7 +288,7 @@ trait SignService extends ContactHelpers with SocialHelpers {
           }
         }
 
-        if (smsCode.isEmpty) Future.successful(Error(400, "PHONE_CODE_EMPTY", "", false))
+        if (smsCode.isEmpty) Future.successful(Errors.PhoneCodeEmpty)
         else if (publicKey.length == 0) Future.successful(Error(400, "INVALID_KEY", "", false))
         else {
           val f = for {
@@ -290,14 +297,14 @@ trait SignService extends ContactHelpers with SocialHelpers {
           } yield (smsCodeR, phoneR)
           f flatMap tupled {
             (smsCodeR, phoneR) =>
-              if (smsCodeR.isEmpty) Future.successful(Error(400, "PHONE_CODE_EXPIRED", s"$phoneNumber $phoneNumberRaw", false))
+              if (smsCodeR.isEmpty) Future.successful(Errors.PhoneCodeExpired)
               else smsCodeR.get match {
-                case s if s.smsHash != smsHash => Future.successful(Error(400, "PHONE_CODE_EXPIRED", "", false))
-                case s if s.smsCode != smsCode => Future.successful(Error(400, "PHONE_CODE_INVALID", "", false))
+                case s if s.smsHash != smsHash => Future.successful(Errors.PhoneCodeExpired)
+                case s if s.smsCode != smsCode => Future.successful(Errors.PhoneCodeInvalid)
                 case _ =>
                   m match {
                     case -\/(_: RequestSignIn) => phoneR match {
-                      case None => Future.successful(Error(400, "PHONE_NUMBER_UNOCCUPIED", "", false))
+                      case None => Future.successful(Errors.PhoneNumberUnoccupied)
                       case Some(rec) =>
                         persist.AuthSmsCode.destroy(phoneNumber)
                         signIn(rec.userId) // user must be persisted before sign in

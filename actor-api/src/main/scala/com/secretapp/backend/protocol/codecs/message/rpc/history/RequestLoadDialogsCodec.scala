@@ -14,7 +14,7 @@ import im.actor.messenger.{ api => protobuf }
 
 object RequestLoadDialogsCodec extends Codec[RequestLoadDialogs] with utils.ProtobufCodec {
   def encode(r: RequestLoadDialogs) = {
-    val boxed = protobuf.RequestLoadDialogs(r.startDate, r.limit)
+    val boxed = protobuf.RequestLoadDialogs(r.endDate, r.limit)
     encodeToBitVector(boxed)
   }
 

@@ -103,4 +103,20 @@ object User {
       avatar = ad.avatar
     )
   }
+
+  def fromData(ud: models.UserData, ad: models.AvatarData, senderAuthId: Long, localName: Option[String])(implicit s: ActorSystem) = {
+    User(
+      uid = ud.id,
+      accessHash = ACL.userAccessHash(senderAuthId, ud.id, ud.accessSalt),
+      name = ud.name,
+      localName = toLocalName(localName),
+      sex = ud.sex.toOption,
+      keyHashes = ud.publicKeyHashes,
+      phoneNumber = ud.phoneNumber,
+      phoneIds = ud.phoneIds,
+      emailIds = ud.emailIds,
+      state = ud.state,
+      avatar = ad.avatar
+    )
+  }
 }

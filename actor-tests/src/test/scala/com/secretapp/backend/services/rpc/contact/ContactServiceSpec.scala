@@ -17,8 +17,6 @@ import scalaz.Scalaz._
 import scodec.bits.BitVector
 
 class ContactServiceSpec extends RpcSpec {
-  implicit val transport = com.secretapp.backend.api.frontend.MTConnection // TODO
-
   override def is = sequential ^ s2"""
   ImportContacts handler should
     respond with users found           ${allCases.importRequest}

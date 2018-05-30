@@ -21,7 +21,7 @@ object TcpFrontend {
 class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef) extends Frontend with NackActor with ActorLogging with MTPackageService {
   import akka.io.Tcp._
 
-  val transport = MTConnection
+//  val transport = MTConnection
 
   var packageIndex: Int = -1
 
@@ -54,7 +54,7 @@ class TcpFrontend(val connection: ActorRef, val remote: InetSocketAddress, val s
   def silentClose(reason: String): Unit = {
     log.error(s"$authId#TcpFrontend.silentClose: $reason")
     // TODO
-    val pkg = transport.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
+    val pkg = MTConnection.buildPackage(0L, 0, MessageBox(0, Drop(0, reason)))
     connection ! Write(pkg.encode)
     connection ! Close
   }

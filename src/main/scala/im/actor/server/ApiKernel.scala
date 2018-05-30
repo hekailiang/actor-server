@@ -9,7 +9,6 @@ import com.secretapp.backend.api._
 import com.secretapp.backend.api.frontend.tcp.TcpServer
 import com.secretapp.backend.api.frontend.ws.WSServer
 import com.secretapp.backend.session.SessionActor
-import im.actor.server.smtpd.{ SMTPServer, TLSActor }
 import com.typesafe.config._
 import java.net.InetSocketAddress
 import im.actor.server.persist.{ FlywayInit, DbInit }
@@ -47,10 +46,19 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     val singletons = new Singletons
     val fileAdapter = new FileStorageAdapter(system)
 
-    val (keyManagerFactory, trustManagerFactory) = TLSActor.getManagerFactories() // check ssl configuration
+    //val (keyManagerFactory, trustManagerFactory) = TLSActor.getManagerFactories() // check ssl configuration
+
+    val updatesBrokerRegion = UpdatesBroker.startRegion(singletons.apnsService)
+    val socialBrokerRegion = SocialBroker.startRegion()
 
     val sessionReceiveTimeout = system.settings.config.getDuration("session.receive-timeout", MILLISECONDS)
-    val sessionRegion = SessionActor.startRegion(singletons, fileAdapter, sessionReceiveTimeout.milliseconds)(system)
+    val sessionRegion = SessionActor.startRegion(
+      singletons,
+      updatesBrokerRegion,
+      socialBrokerRegion,
+      fileAdapter,
+      sessionReceiveTimeout.milliseconds
+    )(system)
 
     val serverConfig = system.settings.config.getConfig("server")
 
@@ -73,7 +81,7 @@ class ApiKernel extends Bootable with FlywayInit with DbInit {
     system.actorOf(Props(new WSHeatingUpActor(hostname, wsPort)), "ws-heat-service")
 
     // SMTP service
-    SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
+    //SMTPServer.start(singletons, keyManagerFactory, trustManagerFactory)
 
     // REST api
     HttpApiService.start(config, fileAdapter)

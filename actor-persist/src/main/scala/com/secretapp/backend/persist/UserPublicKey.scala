@@ -5,6 +5,7 @@ import java.time._
 import org.joda.time.DateTime
 import scala.concurrent._
 import scala.collection.immutable
+import scala.util.{ Try, Success, Failure }
 import scalaz._; import Scalaz._
 import scalikejdbc._
 import scodec.bits._
@@ -31,21 +32,55 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
     authId = rs.long(pk.authId)
   )
 
-  def create(userId: Int, hash: Long, data: BitVector, authId: Long)(
+  def existsSync(userId: Int, hash: Long)(
+    implicit session: DBSession
+  ): Boolean =
+    sql"""
+      select exists (
+        select 1 from ${UserPublicKey.table}
+        where ${column.userId} = ${userId}
+        and   ${column.hash}   = ${hash}
+        and   is_deleted       = false
+      )
+      """.map(rs => rs.boolean(1)).single.apply.getOrElse(false)
+
+  def createOrReplace(userId: Int, hash: Long, data: BitVector, authId: Long)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[models.UserPublicKey] = Future {
     blocking {
-      withSQL {
-        insert.into(UserPublicKey).namedValues(
-          column.userId -> userId,
-          column.hash -> hash,
-          column.data -> data.toByteArray,
-          column.authId -> authId
-        )
-      }.execute.apply
-    }
+      def doInsert() = {
+        withSQL {
+          insert.into(UserPublicKey).namedValues(
+            column.userId -> userId,
+            column.hash -> hash,
+            column.data -> data.toByteArray,
+            column.authId -> authId
+          )
+        }.execute.apply
+      }
 
-    models.UserPublicKey(userId, hash, data, authId)
+      Try {
+        doInsert()
+      } recover {
+        case e =>
+          if (existsSync(userId, hash)) {
+            withSQL {
+              update(UserPublicKey).set(
+                column.column("is_deleted") -> true
+              )
+                .where.append(isNotDeleted)
+                .and.eq(column.userId, userId)
+                .and.eq(column.hash, hash)
+            }.execute.apply
+
+            doInsert()
+          } else {
+            throw e
+          }
+      }
+
+      models.UserPublicKey(userId, hash, data, authId)
+    }
   }
 
   def findBySync(where: SQLSyntax)(
@@ -73,6 +108,15 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
         select.from(UserPublicKey as pk)
           .where.append(isNotDeleted).and.append(sqls"${where}")
       }.map(UserPublicKey(pk)).list.apply()
+    }
+
+  def findAllHashesBy(where: SQLSyntax)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession): Future[List[Long]] =
+    Future {
+      withSQL {
+        select(pk.hash).from(UserPublicKey as pk)
+          .where.append(isNotDeleted).and.append(sqls"${where}")
+      }.map(rs => rs.long(column.hash)).list.apply()
     }
 
   def findByUserIdAndHash(userId: Int, hash: Long)(
@@ -146,6 +190,10 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = findAllBy(sqls.eq(pk.userId, userId))
 
+  def findAllHashesByUserId(userId: Int)(
+    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
+    ): Future[List[Long]] = findAllHashesBy(sqls.eq(pk.userId, userId))
+
   def findAllDeletedByUserId(userId: Int)(
     implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
   ): Future[List[models.UserPublicKey]] = Future {
@@ -154,18 +202,6 @@ object UserPublicKey extends SQLSyntaxSupport[models.UserPublicKey] {
         select.from(UserPublicKey as pk)
           .where.append(isDeleted)
       }.map(UserPublicKey(pk)).list.apply
-    }
-  }
-
-  def findAllHashesByUserId(userId: Int)(
-    implicit ec: ExecutionContext, session: DBSession = UserPublicKey.autoSession
-  ): Future[List[Long]] = Future {
-    blocking {
-      withSQL {
-        select.from(UserPublicKey as pk)
-          .where.append(isNotDeleted)
-          .and.eq(pk.userId, userId)
-      }.map(rs => rs.long(column.hash)).list.apply
     }
   }
 

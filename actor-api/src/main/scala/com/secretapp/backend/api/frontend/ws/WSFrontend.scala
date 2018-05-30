@@ -22,7 +22,7 @@ object WSFrontend {
 
 // TODO: extend NackActor
 class WSFrontend(val connection: ActorRef, val remote: InetSocketAddress, val sessionRegion: ActorRef) extends HttpServiceActor with Frontend with websocket.WebSocketServerWorker with MTPackageService {
-  val transport = MTConnection
+//  val transport = MTConnection
   val serverConnection = connection
   // var packageIndex: Int = -1
 

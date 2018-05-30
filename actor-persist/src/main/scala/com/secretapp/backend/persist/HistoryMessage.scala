@@ -96,16 +96,25 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
       }.map(HistoryMessage(hm)).list.apply()
     }
 
-  def findAll(userId: Int, peer: models.Peer, startDate: DateTime, limit: Int)(
+  def findAll(userId: Int, peer: models.Peer, endDate: Option[DateTime], limit: Int)(
     implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession
   ): Future[List[models.HistoryMessage]] =
     findAllBy(
-      sqls.eq(hm.userId, userId)
-        .and.eq(hm.column("peer_type"), peer.typ.toInt)
-        .and.eq(hm.column("peer_id"), peer.id)
-        .and.ge(hm.date, startDate)
-        .orderBy(hm.date).desc
-        .limit(limit)
+      endDate match {
+        case Some(date) =>
+          sqls.eq(hm.userId, userId)
+            .and.eq(hm.column("peer_type"), peer.typ.toInt)
+            .and.eq(hm.column("peer_id"), peer.id)
+            .and.le(hm.date, endDate)
+            .orderBy(hm.date).desc
+            .limit(limit)
+        case None =>
+          sqls.eq(hm.userId, userId)
+            .and.eq(hm.column("peer_type"), peer.typ.toInt)
+            .and.eq(hm.column("peer_id"), peer.id)
+            .orderBy(hm.date).asc
+            .limit(limit)
+      }
     )
 
   def countUnread(userId: Int, peer: models.Peer)(
@@ -137,7 +146,7 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
           .and.eq(column.column("peer_type"), peer.typ.toInt)
           .and.eq(column.column("peer_id"), peer.id)
           .and.eq(column.senderUserId, userId)
-          .and.not.eq(column.state, state.toInt)
+          .and.le(column.state, state.toInt)
           .and.le(column.date, beforeDate)
       }.update.apply
     }
@@ -156,7 +165,7 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
           .and.eq(column.column("peer_type"), peer.typ.toInt)
           .and.eq(column.column("peer_id"), peer.id)
           .and.not.eq(column.senderUserId, userId)
-          .and.not.eq(column.state, state.toInt)
+          .and.le(column.state, state.toInt)
           .and.le(column.date, beforeDate)
       }.update.apply
     }
@@ -196,10 +205,11 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
   case class UsersCount(receivedMsgCount: Int, sentMsgCount: Int, lastMessageAt: DateTime)
 
   def getUsersCounts(userIds: Seq[Int])
-                    (implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession): Future[Seq[(Int, UsersCount)]] =
-  Future {
-    blocking {
-      val q = sql"""
+                    (implicit ec: ExecutionContext, session: DBSession = HistoryMessage.autoSession): Future[Seq[(Int, UsersCount)]] = {
+    if (userIds.isEmpty) Future.successful(Seq.empty)
+    else Future {
+      blocking {
+        val q = sql"""
               select user_id,
               sum(sent_count) as sent_count,
               sum(received_count) as received_count,
@@ -207,26 +217,27 @@ object HistoryMessage extends SQLSyntaxSupport[models.HistoryMessage] {
               from (
                 select user_id, 0 as sent_count, count(*) as received_count, max(date) as last_message_at
                 from $table
-                where state = ${models.MessageState.Received.toInt}
+                where state = ${models.MessageState.Received.toInt} and user_id IN ($userIds)
                 group by user_id
 
                 union all
 
                 select user_id, count(*) as sent_count, 0 as received_count, max(date) as last_message_at
                 from $table
-                where state = ${models.MessageState.Sent.toInt}
+                where state = ${models.MessageState.Sent.toInt} and user_id IN ($userIds)
                 group by user_id
               ) as users_counts
               group by user_id
               """
-      q.map { rs =>
-        val uc = UsersCount(
-          receivedMsgCount = rs.int("received_count"),
-          sentMsgCount = rs.int("sent_count"),
-          lastMessageAt = rs.get[DateTime]("last_message_at")
-        )
-        (rs.int("user_id"), uc)
-      }.list().apply()
+        q.map { rs =>
+          val uc = UsersCount(
+            receivedMsgCount = rs.int("received_count"),
+            sentMsgCount = rs.int("sent_count"),
+            lastMessageAt = rs.get[DateTime]("last_message_at")
+          )
+          (rs.int("user_id"), uc)
+        }.list().apply()
+      }
     }
   }
 }

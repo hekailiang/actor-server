@@ -5,4 +5,4 @@ CREATE TABLE apple_push_credentials (
        PRIMARY KEY (auth_id)
 );
 
-CREATE INDEX on apple_push_credentials(token);
+CREATE INDEX idx_apple_push_credentials_token on apple_push_credentials(token);

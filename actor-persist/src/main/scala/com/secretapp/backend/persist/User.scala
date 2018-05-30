@@ -80,7 +80,7 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
   } flatMap { _ =>
     for {
       //_ <- Phone.insertEntity(phone)
-      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+      _ <- UserPublicKey.createOrReplace(id, publicKeyHash, publicKeyData, authId)
       _ <- AuthId.createOrUpdate(authId, Some(id))
     } yield ()
   }
@@ -104,8 +104,46 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     for {
       _ <- AuthId.createOrUpdate(authId, Some(id))
       //_ <- Phone.updateUserName(phoneNumber, name)
-      _ <- UserPublicKey.create(id, publicKeyHash, publicKeyData, authId)
+      _ <- UserPublicKey.createOrReplace(id, publicKeyHash, publicKeyData, authId)
     } yield ()
+  }
+
+  def findData(id: Int)(implicit ec: ExecutionContext, session: DBSession = User.autoSession): Future[Option[models.UserData]] = {
+    val mainDataFuture: Future[Option[models.BasicUserData]] = Future {
+      blocking {
+        withSQL {
+          select.from(User as u).where.eq(u.column("id"), id)
+        }.map { rs =>
+          println(column)
+            models.BasicUserData(id = rs.int(u.resultName.column("id")),
+              accessSalt = rs.string(u.resultName.accessSalt),
+              name = rs.string(u.resultName.name),
+              countryCode = rs.string(u.resultName.countryCode),
+              sex = models.Sex.fromInt(rs.int(u.resultName.sex)),
+              state = models.UserState.fromInt(rs.int(u.resultName.column("state"))))
+          }.single.apply
+      }
+    }
+
+    for {
+      mainDataOpt <- mainDataFuture
+      keyHashes <- UserPublicKey.findAllHashesByUserId(userId = id)
+      phones <- UserPhone.findAllByUserId(userId = id)
+      emails <- UserEmail.findAllByUserId(userId = id)
+    } yield {
+      mainDataOpt map { mainData =>
+        models.UserData(id = mainData.id,
+          accessSalt = mainData.accessSalt,
+          name = mainData.name,
+          countryCode = mainData.countryCode,
+          sex = mainData.sex,
+          state = mainData.state,
+          phoneNumber = phones.head.number,
+          phoneIds = phones.map(_.id).toSet,
+          emailIds = emails.map(_.id).toSet,
+          publicKeyHashes = keyHashes.toSet)
+      }
+    }
   }
 
   def find(id: Int)(authId: Option[Long])(
@@ -167,17 +205,16 @@ object User extends SQLSyntaxSupport[models.User] with Paginator[models.User] {
     }.map(rs => (rs.int(column.column("id")), rs.string(column.accessSalt))).list().apply
   }
 
-  def findWithAvatar(userId: Int)(authId: Option[Long] = None)(
+  def findDataWithAvatar(userId: Int)(
     implicit
-      ec: ExecutionContext, session: DBSession = User.autoSession
-  ): Future[Option[(models.User, models.AvatarData)]] = {
+    ec: ExecutionContext, session: DBSession = User.autoSession
+    ): Future[Option[(models.UserData, models.AvatarData)]] = {
     for {
-      userOpt <- find(userId)(authId)
+      userDataOpt <- findData(userId)
       adOpt <- AvatarData.find(id = userId, typ = AvatarData.typeVal[models.User])
     } yield {
-      userOpt map (
-        (_, adOpt getOrElse (models.AvatarData.empty))
-      )
+      userDataOpt map (
+        (_, adOpt getOrElse (models.AvatarData.empty)))
     }
   }
 

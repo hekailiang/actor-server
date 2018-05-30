@@ -39,7 +39,7 @@ trait UserService extends SocialHelpers with UserHelpers with UpdatesHelpers {
     val sizeLimit: Long = 1024 * 1024 // TODO: configurable
 
     persist.FileData.find(r.fileLocation.fileId) flatMap {
-      case Some(models.FileData(_, _, len)) =>
+      case Some(models.FileData(_, _, len, _)) =>
         if (len > sizeLimit)
           Future successful Error(400, "FILE_TOO_BIG", "", false)
         else
